@@ -99,6 +99,8 @@ sources:
   - src/treg/catalog/examples/replicate.image-gen.flux-schnell.json
   - src/treg/domain/catalog/__init__.py
   - src/treg/domain/catalog/store.py
+  - src/treg/catalog/hunter.yaml
+  - src/treg/mcp.py
   - src/treg/domain/money/settlement.py
   - src/treg/domain/catalog/stats.py
   - src/treg/infra/catalog_observations.py
@@ -834,8 +836,14 @@ which is the whole reason the provenance keys exist.
 
 **`per` and `unit`.** Read a block as "`value` `currency` per `per` `unit`". SpyFu bills a CPM, so
 `value: 2.00, per: 1000, unit: row` — and `cost_view` divides, serving `usd: 0.002` per row. Hunter
-charges 1 credit per 10 emails (`per: 10, unit: record`), Akta 1.5 credits per 50 reviews. Without
-`per`, every one of those had to be either wrong or rounded into prose.
+Domain Search charges 1 SEARCH credit per 1–10 emails returned (`per: 10, unit: record`), so `usd`
+is the linear slice ($0.00245/email) that reserve can scale with `limit`. A live hit does not sell
+that slice: it bills one whole credit (~$0.0245) for one email or ten (observed 2026-07-31).
+`cost.display` with `grouped` + `round_up` advertises the credit (`display_usd: 0.0245`, "started
+10 emails"); `Catalog.advertised_usd` is what `catalog_search` / `catalog_get` put on
+`usd_per_call`. Settlement still reads `usd` and the derived email-count rule — display only.
+Akta bills 1.5 credits per 50 reviews the same `per` way. Without `per`, every one of those had
+to be either wrong or rounded into prose.
 
 **Three kinds of denomination convert, and they convert differently:**
 
@@ -1858,9 +1866,12 @@ See [ContactOut](contactout.md) for request limitations, derived settlement and 
 `Catalog.cost_view` reads optional provider-neutral `cost.display` metadata. `unit` names the
 shown unit; `grouped` displays the price for `cost.per` units; `round_up` labels a started block;
 `variable` adds a plus sign for selected additions. It returns computed display USD/unit/suffix
-fields without changing `usd` or settlement. The CLI and web formatters consume those fields.
+fields without changing `usd` or settlement. The CLI and web formatters consume those fields;
+`Catalog.advertised_usd` prefers `display_usd` so MCP `usd_per_call` quotes the chargeable event.
 The validator checks flags and requires grouped prices to declare a positive integer `per`.
-Sumble keeps its billing rules in the existing provider-module pattern, separate from display rules.
+Hunter Domain Search is the credit-block case (`1` credit / `10` emails → `$0.0245/started 10
+emails`). Sumble keeps its billing rules in the existing provider-module pattern, separate from
+display rules.
 
 
 ### Similar-company routing
