@@ -617,6 +617,39 @@ async def test_unknown_endpoint_is_404(clients: AsyncClient):
     assert r.status_code == 404 and "tikhub.tiktok.nope" in r.text
 
 
+def test_hunter_multi_domain_search_uses_official_query_filters():
+    """Hunter Multi-Domain Search (Beta) rejects a JSON `companies` array with
+    `wrong_params` / `Unknown parameter: companies.` Official docs take company
+    and email filters as query parameters on POST (feedback #183)."""
+    cat = cs.load()
+    ep = cat.by_id["hunter.x.multi-domain-search"]
+    inp = ep.get("input") or {}
+    body = inp.get("body") or {}
+    query = inp.get("queryParams") or {}
+    test = ep.get("test_request") or {}
+
+    assert "companies" not in body
+    assert "companies" not in query
+    assert "companies" not in (test.get("body") or {})
+    assert "companies" not in (test.get("queryParams") or {})
+    assert "location" in query
+    assert "department" in query
+    assert "company_name" in query
+    assert query["location"].get("example") == "US"
+    assert test.get("queryParams", {}).get("location") == "US"
+    assert test.get("queryParams", {}).get("department") == "executive"
+    assert "body" not in test
+
+    tmpl = cs.call_template(ep)
+    assert tmpl.startswith("treg call hunter.x.multi-domain-search --method POST")
+    assert "--data" not in tmpl
+    assert "companies" not in tmpl
+    argv = shlex.split(tmpl)
+    queries = [argv[i + 1] for i, part in enumerate(argv) if part == "--query"]
+    assert "location=US" in queries
+    assert "department=executive" in queries
+
+
 def test_serpstat_jsonrpc_id_is_required_in_call_template():
     """Serpstat rejects a JSON-RPC body without top-level `id`. `call_template` only
     includes required body fields via `_required_examples`, so `id` must be required
