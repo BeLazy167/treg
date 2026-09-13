@@ -1304,3 +1304,33 @@ def test_generic_display_prices_match_web_and_cli():
     cost = cat.cost_view({'type': 'per_result', 'currency': 'USD', 'value': 2,
                          'display': {'unit': 'item', 'variable': True}}, 'another-provider')
     assert _price_label(cost) == _cost_usd(cost) == _cost_label(cost) == '$2+/item'
+
+
+def test_hunter_domain_search_advertises_one_search_credit():
+    """Feedback #201: live Domain Search bills 1 SEARCH credit (~$0.0245) even for one email.
+
+    `value`/`per`/`note` stay 1 credit per 10 emails — `usd` is still that linear slice so
+    reserve can scale with `limit`. catalog_get / usd_per_call must quote the whole credit,
+    which is what `display.grouped` + `advertised_usd` do. Settlement is unchanged.
+    """
+    cat = cs.load()
+    raw = cat.by_id["hunter.companies.emails"]["cost"]
+    assert (raw["value"], raw["per"], raw["unit"]) == (1, 10, "record")
+    cost = cat.cost_view(raw, "hunter")
+    assert cost["usd"] == 0.00245
+    assert cost["display_usd"] == 0.0245
+    assert cost["display_unit"] == "started 10 emails"
+    assert cat.advertised_usd(cost) == 0.0245
+    # Sibling Finder and Multi-Domain reveal already quote one full search credit.
+    find = cat.cost_view(cat.by_id["hunter.people.email.find"]["cost"], "hunter")
+    assert find["usd"] == 0.0245 and cat.advertised_usd(find) == 0.0245
+    reveal = cat.cost_view(cat.by_id["hunter.x.multi-domain-search-reveal"]["cost"], "hunter")
+    assert reveal["usd"] == 0.0245 and cat.advertised_usd(reveal) == 0.0245
+
+
+async def test_catalog_get_hunter_domain_search_quotes_the_credit(clients: AsyncClient):
+    body = (await clients.get("/catalog/endpoints/hunter.companies.emails")).json()
+    cost = body["endpoint"]["cost"]
+    assert cost["usd"] == 0.00245, "reserve unit stays the per-record slice"
+    assert cost["display_usd"] == 0.0245
+    assert cost["display_unit"] == "started 10 emails"

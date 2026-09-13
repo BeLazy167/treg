@@ -135,6 +135,21 @@ async def test_catalog_search_returns_priced_results(clients):
     assert "usd_per_call" in first and "no_key_needed" in first
 
 
+async def test_catalog_search_and_get_quote_hunter_domain_search_as_one_credit(clients):
+    """Feedback #201: usd_per_call must be the live 1-credit charge, not the 1/10 slice."""
+    token = (await clients.post("/users", json={"email": "hunter-price@superdesign.dev"})).json()["token"]
+    async with mcp_session(clients) as c:
+        search = await _call_tool(c, "catalog_search",
+                                  {"query": "hunter.companies.emails", "limit": 8}, token=token)
+        got = await _call_tool(c, "catalog_get",
+                               {"endpoint_id": "hunter.companies.emails"}, token=token)
+    row = next(r for r in search["results"] if r["endpoint_id"] == "hunter.companies.emails")
+    assert row["usd_per_call"] == 0.0245
+    assert got["usd_per_call"] == 0.0245
+    assert got["endpoint"]["cost"]["usd"] == 0.00245
+    assert got["endpoint"]["cost"]["display_usd"] == 0.0245
+
+
 async def test_no_key_needed_is_false_when_the_deploy_holds_no_key(clients):
     """`no_key_needed` must mean "THIS deploy will serve it on treg's key", not "the row is priced".
     The test env configures no platform keys at all, so every result — however eligible its price —
