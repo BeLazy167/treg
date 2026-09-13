@@ -1334,3 +1334,7 @@ async def test_catalog_get_hunter_domain_search_quotes_the_credit(clients: Async
     assert cost["usd"] == 0.00245, "reserve unit stays the per-record slice"
     assert cost["display_usd"] == 0.0245
     assert cost["display_unit"] == "started 10 emails"
+    search = (await clients.get("/catalog/search", params={"q": "hunter domain search emails", "limit": 50})).json()
+    row = next(r for r in search["results"] if r["id"] == "hunter.companies.emails")
+    assert row["cost"]["display_usd"] == 0.0245
+    assert row["cost"]["usd"] == 0.00245
