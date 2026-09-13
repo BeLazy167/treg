@@ -25,6 +25,7 @@ sources:
   - tests/test_ssrf_public_addresses.py
   - tests/test_call_application_contract.py
   - tests/test_call_cancellation.py
+  - tests/test_call_response_limits.py
   - tests/test_error_capture.py
   - tests/test_marketplace_call.py
   - tests/test_oauth_billed.py
@@ -192,7 +193,14 @@ escape. This prevents an already encoded Search Console property id such as
 `sc-domain%3Aexample.com` becoming double-encoded as `%253A`. Raw `@` remains literal because it is
 a legal path-segment character. This also supports email-path APIs such as Tomba's verifier, which
 rejects `%40` before decoding. Slashes, query/fragment delimiters and invalid percent signs remain
-escaped; URL-passthrough bytes are unchanged. A `retired`/`broken` tombstone is
+escaped; URL-passthrough bytes are unchanged. Before building that URL, an optional catalog `host`
+on a provider that opted in to `catalog_targets` must resolve through
+`OAuthProvider.profile_for_catalog_host` to an exact approved HTTPS base URL. Providers without
+that opt-in keep resolving catalog paths against their primary base URL.
+The approved root keeps its path prefix when `_marketplace_upstream` appends the endpoint path, and
+the selected provider profile supplies the correct credential binding. An unapproved or malformed
+target fails as a treg-owned 502 before reserve and relay; catalog data cannot redirect an injected
+credential to a host of its choice. A `retired`/`broken` tombstone is
 instead refused with 410, its `status_note`, and its optional `superseded_by`, before credentials are
 selected or the relay can run; the refusal is audited as `refused_by=retired`. This ordering is
 deliberate: an org's own tool named exactly like the old catalog id already resolved above and is not
@@ -396,8 +404,8 @@ maybe_overflow` runs a **child cycle** after the primary's settle released its h
 
 1. Route from the in-process route view (`domain.capacity.routes_view`, Orthogonal first), skipping
    an aggregator marked unhealthy (`overflow:<name>` in the capacity view) or without a key; budget
-   check against `OverflowSpend` (`overflow_daily_budget_usd` per aggregator per day; $20 in code,
-   production's value lives in the private Blueprint) on a short session.
+   check against `OverflowSpend` (`overflow_daily_budget_usd` per aggregator per day) on a short
+   session. A deployment's live value belongs in its private operational configuration.
 2. **Child hold**, own id `{call_ref}:overflow`, through the ordinary `_platform_reserve` (tag
    budgets, daily cap, trial allowance apply; an empty balance is the normal 402). Never the parent's
    id: release-by-id is a conditional claim and `_finish_cancelled_call` releases both ids exactly once.
@@ -493,3 +501,23 @@ can observe a changed status. Successful and failed polls retain diagnostic audi
 `kind=async_poll` and zero charged cost; `/calls` excludes them before pagination. The original
 submission shows the shared finalizer's settlement state and result in Activity. Terminal evidence
 is archived under that submission's call id, not the poll's id.
+
+## Complete downloads and bounded response evidence
+
+`MarketplaceCall.streamable_free_result` identifies platform fetch utilities with an explicit free
+price, zero estimate, a required fetch ownership rule, and no async submission, owned poll or produced
+resource evidence. Only successful GET responses bypass `_buffer_response`; the normal ownership
+check still runs before relay. Their existing zero-amount reserve/settle gates stay in place, while
+the full upstream stream and headers (including Range metadata) pass to the router's close-once
+lifecycle. The original generation task is not observed or finalized by the download. Audit byte
+size is unknown, not a fabricated zero. No body is archived or retained for idempotent replay:
+these free reads release the claim, so a retry fetches the provider again.
+
+Other responses needing settlement or ownership evidence have a hard 8 MiB complete-body budget.
+`_buffer_response` raises `GatewayFailed(response_buffer_limit)` on the first overflowing chunk,
+before any success headers, and closes the upstream in `finally` on EOF, exception or cancellation.
+The application releases the hold/claim and returns 502 with zero cost; no partial response reaches
+settlement, archive or replay. This is an explicit size limitation, not support for arbitrarily large
+metered JSON. The fault is attributed to treg's buffer limit, not to the provider. Own-key streams
+remain outside this limit. `tests/test_call_response_limits.py` exercises both real HTTP hops,
+CLI output, boundaries, Range, disconnects, settlement evidence, archive and replay behavior.

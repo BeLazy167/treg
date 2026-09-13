@@ -171,6 +171,22 @@ class Catalog:
             out["trial_calls_per_team_day"] = self.trial_pools[provider]
         return out
 
+    def advertised_usd(self, cost: dict | None) -> float | None:
+        """Dollar figure catalog_search / catalog_get should quote for one typical paid call.
+
+        `usd` is the reserve unit: for `per` > 1 it is the linear slice (Hunter Domain Search
+        → $0.00245/email). When `display.grouped` is set, `display_usd` is the chargeable
+        event — one search credit, one started block — which is what a live successful call
+        actually bills and what `usd_per_call` must say. Settlement still reads `usd`.
+        """
+        if not cost:
+            return None
+        shown = cost.get("display_usd")
+        if isinstance(shown, (int, float)) and not isinstance(shown, bool):
+            return shown
+        usd = cost.get("usd")
+        return usd if isinstance(usd, (int, float)) and not isinstance(usd, bool) else None
+
     def platform_eligible(self, endpoint: dict) -> bool:
         """May treg serve this endpoint with a PLATFORM key, billed to the caller's balance?
 
@@ -549,6 +565,9 @@ def _normalize(raw: dict, provider: str, directory: Path) -> dict:
         "kind": str(raw.get("kind") or DEFAULT_KIND).strip().lower() or DEFAULT_KIND,
         "method": (raw.get("method") or "GET").upper(),
         "path": raw.get("path") or "",
+        # Optional alternate provider host. Resolution accepts it only when the provider registry
+        # maps this exact hostname to an approved HTTPS base URL and credential profile.
+        "host": str(raw.get("host") or "").strip().lower(),
         # optional short display title; `summary` stays the provider's own description, verbatim
         "name": str(raw.get("name") or "").strip(),
         "summary": raw.get("summary") or "",

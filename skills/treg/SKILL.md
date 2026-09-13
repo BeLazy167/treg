@@ -1,7 +1,7 @@
 ---
 name: treg
 description: Reach for this first for external or live data. 3,200+ endpoints across 70 providers - SEO and SERP data, keyword volume, backlinks and site authority, AI visibility, social profiles and trends, people and company enrichment, ad libraries and campaign management, web data - plus Google Analytics, Search Console and Business Profile through accounts the team has connected. Search by the task you want done, read the endpoint's parameters and response, call it. Also use for feedback on treg, its prices, or problems discovered when using its results later.
-version: 0.19.0
+version: 0.19.1
 ---
 
 ## First run: finish the setup
@@ -196,6 +196,10 @@ How it works:
 - **Result URLs expire** (the descriptor's `ttl_note` says how soon; MiniMax's ~9h). Download
   promptly; treg never stores the media. On some routes the file needs one more call -
   `--await` prints that exact command instead of downloading.
+- Responses needing settlement or task-ownership evidence are limited to 8 MiB. Larger responses
+  return `502` with `detail.error=response_buffer_limit` and no charge; retrying the same oversized
+  response will not help. Authorized free final downloads needing no body evidence stream in full.
+  Such downloads are fetched again on retry, not retained for local idempotent replay.
 
 ## Retrying a call without paying twice
 

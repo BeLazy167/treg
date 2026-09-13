@@ -332,6 +332,17 @@ class MarketplaceCall:
                 and not self.billed_oauth)
 
     @property
+    def streamable_free_result(self) -> bool:
+        """An authorized final fetch with no body evidence to settle or learn."""
+        ownership = self.resource_ownership or {}
+        required = ownership.get("requires") or {}
+        return (self.tier == "platform" and self.cost_type == "free"
+                and self.estimate_micro == 0 and not self.billed_oauth
+                and self.async_owner_call_id is None and not self.async_descriptor
+                and not ownership.get("produces")
+                and str(required.get("kind", "")).startswith("fetch:"))
+
+    @property
     def metered(self) -> bool:
         """True when OUR money is at stake: treg's platform key (tier 4), or an org credential that
         rides treg's pay-per-use OAuth app (`billed_oauth`). Tiers 1/2 on a provider that bills the
@@ -1304,6 +1315,16 @@ async def _resolve_marketplace_call(
         authorization = connection_authorization.method_spec(provider, chosen_method)
         _preflight_authorization(ep, chosen_secret, chosen_method, authorization)
         provider = provider.profile_for_authorization(chosen_method)
+
+    endpoint_host = str(ep.get("host") or "").strip().lower()
+    if endpoint_host and provider.catalog_targets:
+        try:
+            provider = provider.profile_for_catalog_host(endpoint_host)
+        except ValueError as exc:
+            raise ResolutionFailed(
+                "injection_failed", status_code=502,
+                detail=f"{ep['id']} declares an upstream host that is not approved for {service}",
+            ) from exc
 
     upstream, consumed = _marketplace_upstream(ep, provider, query, chosen_method)
     body = await read_body() if has_body else b""

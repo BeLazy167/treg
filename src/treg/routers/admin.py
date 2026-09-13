@@ -423,10 +423,11 @@ async def admin_archive(
     report = {"mode": archive_mod.mode(),
               "change_outcomes": dict(archive_mod.change_outcomes),
               "body_outcomes": dict(archive_mod.archive_bodies.outcomes),
-              "comparison_mode": "strict",
+              "comparison_mode": "json",
               "ttl_policy": "adaptive",
               "serve_endpoints": sorted(archive_mod.serve_endpoints()),
               "serve_percent": get_settings().archive_serve_percent,
+              "serve_max_age_s": get_settings().archive_serve_max_age_s,
               # Cumulative counters include observations from older comparison policies.
               "change_statistics_scope": "lifetime_mixed_comparison_modes",
             "worker_on": archive_mod.worker_enabled(),

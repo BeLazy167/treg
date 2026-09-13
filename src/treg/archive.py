@@ -327,9 +327,11 @@ def record(
         if rejection is None:
             return kh, ch
         if rejection != "duplicate":
-            plan = archive_bodies.WritePlan("db" if plan.keep_db else None, reason=rejection)
+            # An eligible body rejected by the R2 admission bounds still needs a durable home.
+            # Both and R2-only modes use the separately bounded DB queue as their fallback.
+            plan = archive_bodies.WritePlan("db", reason=rejection)
         # Duplicates use the existing bounded DB queue and still join prepare's shared upload.
-        # Both mode preserves the DB copy when admission of a distinct upload is rejected.
+        # A distinct rejected upload preserves its body in DB in either R2 write mode.
 
     body_len = len(body)
     # Shed on EITHER count OR bytes — whichever bound bites first. The bytes bound prevents OOM
@@ -535,33 +537,40 @@ async def _store(
         cache = (catalog_store.load().by_id.get(endpoint_id) or {}).get("cache")
         ignore_paths = cache.get("ignore_paths", []) if isinstance(cache, dict) else []
         ignored_matches = set()
-        if ignore_paths and plan.storage is not None and origin in ("caller", "refresh"):
-            async with _get_sem():
-                ignored_matches = await _ignored_matches(kh, body, ignore_paths)
+        if plan.storage is not None and origin in ("caller", "refresh"):
+            async with observation.wait(_get_sem(), "compare_sem_wait"):
+                with observation.measure("compare"):
+                    ignored_matches = await _ignored_matches(kh, body, ignore_paths)
 
         # Same-key waiters must queue before taking a scarce database-write slot. Otherwise four
         # duplicate recordings can occupy the whole semaphore while only one touches the database.
-        async with asyncio.timeout(_TERMINAL_DB_S if origin == "async_terminal" else _STORE_TIMEOUT_S), _get_key_lock(kh):
-            async with _get_sem():
-                # Postgres row locking handles other processes. A retry also covers the narrow
-                # first-key race and multi-process SQLite, where SELECT FOR UPDATE is ignored.
-                for attempt in range(4):
-                    try:
-                        change = await _store_locked(
-                            method=method, endpoint_id=endpoint_id, provider=provider, url=url,
-                            caller_body=caller_body, headers=headers, status_code=status_code,
-                            media_type=media_type, body=body, origin=origin,
-                            key_hash=kh, body_hash=ch, plan=plan, ignored_matches=ignored_matches)
-                        stored, reason = plan.storage, plan.reason
-                        break
-                    except IntegrityError:
-                        if attempt == 3:
-                            raise
-                        await asyncio.sleep(0.01 * (attempt + 1))
+        async with (
+            asyncio.timeout(_TERMINAL_DB_S if origin == "async_terminal" else _STORE_TIMEOUT_S),
+            observation.wait(_get_key_lock(kh), "record_key_wait"),
+        ):
+            async with observation.wait(_get_sem(), "record_sem_wait"):
+                # Wall time includes pool checkout, packing, SQL/commit and integrity retries.
+                with observation.measure("record_db"):
+                    # Postgres row locking handles other processes. A retry also covers the narrow
+                    # first-key race and multi-process SQLite, where SELECT FOR UPDATE is ignored.
+                    for attempt in range(4):
+                        try:
+                            change = await _store_locked(
+                                method=method, endpoint_id=endpoint_id, provider=provider, url=url,
+                                caller_body=caller_body, headers=headers, status_code=status_code,
+                                media_type=media_type, body=body, origin=origin,
+                                key_hash=kh, body_hash=ch, plan=plan, ignored_matches=ignored_matches)
+                            stored, reason = plan.storage, plan.reason
+                            break
+                        except IntegrityError:
+                            if attempt == 3:
+                                raise
+                            await asyncio.sleep(0.01 * (attempt + 1))
         if change is not None and get_settings().archive_change_observation_enabled:
             previous_id, masked_by_ignore = change
-            async with _get_sem():
-                await _observe_change(previous_id, body, endpoint_id, provider, masked_by_ignore)
+            async with observation.wait(_get_sem(), "observe_sem_wait"):
+                with observation.measure("observe"):
+                    await _observe_change(previous_id, body, endpoint_id, provider, masked_by_ignore)
     except asyncio.CancelledError:
         reason = "cancelled"
         raise
@@ -582,9 +591,32 @@ def _change_json(body: bytes):
 
 
 def _normalized_hash(body: bytes, paths: list[str]) -> str | None:
-    """Delete only declared paths in a parsed copy; raw bytes and their identity never change."""
+    """Canonical JSON equality with optional field exclusions; keep raw identity unchanged.
+
+    Ambiguous objects and numbers that Python would round fall back to exact bytes.
+    """
+    from decimal import Decimal
+
+    def unique_object(pairs):
+        result = {}
+        for key, value in pairs:
+            if key in result:
+                raise ValueError("duplicate JSON key")
+            result[key] = value
+        return result
+
+    def exact_float(text):
+        value = float(text)
+        if Decimal(str(value)) != Decimal(text):
+            raise ValueError("lossy JSON number")
+        return value
+
+    def invalid_constant(_value):
+        raise ValueError("non-JSON numeric constant")
+
     try:
-        value = _change_json(body)
+        value = json.loads(body, object_pairs_hook=unique_object, parse_float=exact_float,
+                           parse_constant=invalid_constant)
 
         def remove(node, parts):
             part, *rest = parts
@@ -643,9 +675,6 @@ async def _ignored_matches(key_hash: str, body: bytes, paths: list[str]) -> set[
     matches = set()
     try:
         async with asyncio.timeout(_CHANGE_TIMEOUT_S):
-            new_hash = await _change_compute(_normalized_hash, body, paths)
-            if new_hash is None:
-                return matches
             async with background_session_maker() as s:
                 key = (await s.execute(select(ArchiveKey).where(
                     ArchiveKey.key_hash == key_hash))).scalar_one_or_none()
@@ -658,8 +687,17 @@ async def _ignored_matches(key_hash: str, body: bytes, paths: list[str]) -> set[
                 rows = (await s.execute(select(ArchiveSnapshot).where(
                     ArchiveSnapshot.key_id == key.id, ArchiveSnapshot.id.in_(ids))
                     .options(*archive_bodies.read_options("observation")))).scalars().all()
+                raw_hash = content_hash(body)
+                matches.update(row.id for row in rows if row.content_hash == raw_hash)
                 pointers = [(row.id, await archive_bodies.pointer(s, row, "observation"))
-                            for row in rows if _has_change_body(row)]
+                            for row in rows if row.content_hash != raw_hash and _has_change_body(row)]
+            if not pointers:
+                return matches
+            # New keys and raw-identical baselines need no JSON parsing or serialization.
+            # Close the pointer session before any off-thread work or object I/O.
+            new_hash = await _change_compute(_normalized_hash, body, paths)
+            if new_hash is None:
+                return matches
             for snapshot_id, pointer in pointers:
                 previous = await archive_bodies.read(pointer, "observation")
                 if previous is None:
@@ -882,6 +920,7 @@ async def _store_locked(
         previous_state = key.result_state if result_aware else "found"
         next_state = result.state if result_aware else "found"
         masked_by_ignore = False
+        comparison_baseline = None
         decisive = next_state in ("found", "empty") and origin != "async_terminal"
         if decisive and baseline is not None and (previous_state, next_state) != ("empty", "empty"):
             stable = previous_state == next_state == "found" and (
@@ -893,6 +932,9 @@ async def _store_locked(
                 key.change_seen += 1
                 key.last_changed_at = now
             learn(key, stable=stable, entry=entry)
+            # Both event properties must describe the pair that drove TTL learning. The
+            # newest row may only be intervening unknown/error evidence, not this baseline.
+            comparison_baseline = baseline
         key.fetched_at, key.policy = now, pol
         if origin == "caller":     # a refresh is treg asking itself — never demand
             key.last_requested_at = now
@@ -911,8 +953,9 @@ async def _store_locked(
             stable_d=key.stable_seen - seen_before[0], changed_d=key.change_seen - seen_before[1],
             kept=plan.storage is not None, size=len(body), now=now)
         await s.commit()
-        return ((newest.id, masked_by_ignore) if newest is not None and newest.content_hash != ch
-                and plan.storage is not None and _has_change_body(newest)
+        return ((comparison_baseline.id, masked_by_ignore)
+                if comparison_baseline is not None and comparison_baseline.content_hash != ch
+                and plan.storage is not None and _has_change_body(comparison_baseline)
                 and get_settings().archive_change_observation_enabled
                 and origin in ("caller", "refresh") else None)
 
@@ -1094,6 +1137,18 @@ _TTL_DEFAULTS: tuple[tuple[str, int], ...] = (
 DEFAULT_TTL_S = 3600
 
 
+def declared_max_age_s(entry: dict[str, Any] | None) -> int | None:
+    """Vendor ceiling only; static capability defaults must not cap learned TTLs."""
+    declared = (entry or {}).get("cache")
+    if not isinstance(declared, dict):
+        return None
+    try:
+        cap = int(declared.get("max_age_s") or 0)
+    except (TypeError, ValueError):
+        return None
+    return cap if cap > 0 else None
+
+
 def ttl_for(entry: dict[str, Any] | None) -> int:
     """The phase-1 freshness window for one endpoint, in seconds. Longest matching capability
     prefix from the fixed table (else the 1-hour default), always capped by the vendor's own
@@ -1104,14 +1159,9 @@ def ttl_for(entry: dict[str, Any] | None) -> int:
     for prefix, seconds in _TTL_DEFAULTS:
         if capability.startswith(prefix) and len(prefix) > best:
             best, ttl = len(prefix), seconds
-    declared = (entry or {}).get("cache")
-    if isinstance(declared, dict):
-        try:
-            cap = int(declared.get("max_age_s") or 0)
-        except (TypeError, ValueError):
-            cap = 0
-        if cap > 0:
-            ttl = min(ttl, cap)
+    cap = declared_max_age_s(entry)
+    if cap is not None:
+        ttl = min(ttl, cap)
     return ttl
 
 
@@ -1191,6 +1241,12 @@ async def lookup(
             if key.ttl_s == TTL_NEVER:
                 return miss("ttl_disabled")
             window = key.ttl_s if key.ttl_s > 0 else ttl_for(entry)
+            cap = declared_max_age_s(entry)
+            if cap is not None:
+                window = min(window, cap)
+            operator_cap = get_settings().archive_serve_max_age_s.get(endpoint_id)
+            if operator_cap is not None:
+                window = min(window, operator_cap)
             if wanted is not None:
                 window = min(window, wanted)
             if window <= 0:
@@ -1281,14 +1337,9 @@ def learn(key, *, stable: bool, entry: dict[str, Any] | None) -> None:
     change (×0.5, floored). The vendor's declared ceiling always caps; a key that only ever
     changes marks itself TTL_NEVER and is never served again until a stable refetch resets it."""
     ceiling = TTL_CEILING_S
-    declared = (entry or {}).get("cache")
-    if isinstance(declared, dict):
-        try:
-            cap = int(declared.get("max_age_s") or 0)
-        except (TypeError, ValueError):
-            cap = 0
-        if cap > 0:
-            ceiling = min(ceiling, cap)
+    cap = declared_max_age_s(entry)
+    if cap is not None:
+        ceiling = min(ceiling, cap)
     current = key.ttl_s if key.ttl_s > 0 else ttl_for(entry)
     if stable:
         key.ttl_s = min(int(current * 1.5), ceiling)
@@ -1372,6 +1423,9 @@ async def refresh_once(client) -> int:
         if not storable(entry):
             continue  # judgment changed since recording — never refresh what may not be kept
         window = key.ttl_s if key.ttl_s > 0 else ttl_for(entry)
+        operator_cap = get_settings().archive_serve_max_age_s.get(key.endpoint_id)
+        if operator_cap is not None:
+            window = min(window, operator_cap)
         age = (now - key.fetched_at).total_seconds()
         demanded = key.last_requested_at is not None and key.last_requested_at > key.fetched_at
         if age < window * _DUE_SHARE or not demanded:

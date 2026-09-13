@@ -208,6 +208,12 @@ module symbols:
   their display label, connect description, and their own configured state. The dashboard and CLI
   consume this metadata instead of mapping provider or method ids themselves. A multi-method
   provider's top-level `configured` value is true when any declared method is configured.
+- `CatalogTarget` and `profile_for_catalog_host()` let a provider opt in to binding a catalog
+  endpoint's optional `host` to an exact provider-approved HTTPS base URL. A target may override
+  the provider's token placement and
+  format, as Diffbot Web Search does for Bearer auth. Catalog data cannot add credential destinations;
+  opted-in provider's resolution rejects an unapproved host before any secret reaches relay or
+  money is reserved. Providers without targets retain their prior primary-base behavior.
 - `consent_notice` — one line the dashboard shows **before** the consent popup opens, for a provider
   whose consent screen names something the user has not seen on treg. Only the Meta family carries one:
   the shared Meta app is registered as **Crewlet**, a sibling product of the same company (Superdesign
@@ -314,8 +320,8 @@ module symbols:
   this. No commit changed, no test failed (nothing in the suite makes a live call), and the two failure
   modes read differently: a version that **never existed** returns an HTML 404, a **sunset** one returns
   a JSON 400 `UNSUPPORTED_VERSION`. `POST /health/run` would surface it on the day it breaks — it probes
-  every credential through the same versioned `probe_path` — but nothing schedules it; `render.yaml`
-  carries only Render's own `healthCheckPath: /meta`. Bump the version in all four places together:
+  every credential through the same versioned `probe_path`, but nothing schedules it by default.
+  Operators may add a health worker to their own deployment. Bump the version in all four places together:
   `oauth_providers.GOOGLE_ADS`, `catalog/google-ads.yaml`, `catalog/google-ads.extended.yaml`, and
   `scripts/catalog_ingest.py:GADS_VERSION`.
 
