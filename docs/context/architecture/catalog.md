@@ -85,6 +85,8 @@ sources:
   - src/treg/catalog/oceanio.yaml
   - src/treg/catalog/akta.extended.yaml
   - src/treg/catalog/dataforseo.extended.yaml
+  - src/treg/catalog/diffbot.yaml
+  - src/treg/catalog/diffbot.extended.yaml
   - src/treg/catalog/tikhub.extended.yaml
   - src/treg/catalog/examples/minimax.video-gen.result.retrieve.json
   - src/treg/catalog/examples/minimax.video-gen.from_image.json
@@ -97,6 +99,8 @@ sources:
   - src/treg/catalog/examples/replicate.image-gen.flux-schnell.json
   - src/treg/domain/catalog/__init__.py
   - src/treg/domain/catalog/store.py
+  - src/treg/catalog/hunter.yaml
+  - src/treg/mcp.py
   - src/treg/domain/money/settlement.py
   - src/treg/domain/catalog/stats.py
   - src/treg/infra/catalog_observations.py
@@ -683,13 +687,19 @@ Rules:
   state, which every other check happily passed. A never-verified entry straight out of ingest has
   neither a request nor a state key and is left alone.
 - Ids are unique across the WHOLE catalog, both tiers, all providers.
-- Two optional fields exist only in this tier, both added for the first-party OAuth providers:
-  - `host: <fqdn>` — this route is NOT on the provider's `base_url`, and its `path` is relative to
-    the named host instead. Google splits one product across sibling `*.googleapis.com` services
-    (GA4 reporting vs GA4 admin; six separate My Business services) while an `OAuthProvider` names
-    one host. The same OAuth token calls them all, so the endpoints are real and worth listing —
-    but the auto-provisioned tool is bound to `base_url`, so calling one needs a second tool bound
-    to that host. Absence of `host` means "callable through the provisioned tool".
+- Two optional fields exist only in this tier, both added for providers with split surfaces:
+  - `host: <fqdn>` describes an additional API root for an endpoint whose `path` is not relative to
+    the provider's primary `base_url`. It becomes executable only when the provider explicitly opts
+    in with `OAuthProvider.catalog_targets`; otherwise historical host metadata remains inert and
+    calling still uses the provider's primary profile. The catalog cannot authorize a host by itself.
+    `OAuthProvider.catalog_targets` must map the exact hostname to a safe HTTPS base URL and any
+    credential-profile override. `profile_for_catalog_host` rejects missing, duplicate, malformed,
+    credential-bearing, port-bearing, query-bearing, and fragment-bearing targets before reserve or
+    relay. The endpoint path is joined after the approved base URL's existing prefix, so primary KG
+    paths and alternate Extract paths do not duplicate or erase version prefixes. Diffbot uses this
+    for its KG, Extract, Web Search, and Natural Language host families; Web Search's target also
+    changes query-token injection to its documented Bearer header. Absence of `host` retains the
+    primary provider profile and `base_url`.
   - `scope_gap: <one line>` — the credential treg's OAuth app obtains CANNOT call this, and this is
     the scope that is missing. These are listed rather than dropped on purpose: the set of gaps is
     the answer to "which scopes should we add to the registered app", and it is only visible if the
@@ -826,8 +836,14 @@ which is the whole reason the provenance keys exist.
 
 **`per` and `unit`.** Read a block as "`value` `currency` per `per` `unit`". SpyFu bills a CPM, so
 `value: 2.00, per: 1000, unit: row` — and `cost_view` divides, serving `usd: 0.002` per row. Hunter
-charges 1 credit per 10 emails (`per: 10, unit: record`), Akta 1.5 credits per 50 reviews. Without
-`per`, every one of those had to be either wrong or rounded into prose.
+Domain Search charges 1 SEARCH credit per 1–10 emails returned (`per: 10, unit: record`), so `usd`
+is the linear slice ($0.00245/email) that reserve can scale with `limit`. A live hit does not sell
+that slice: it bills one whole credit (~$0.0245) for one email or ten (observed 2026-07-31).
+`cost.display` with `grouped` + `round_up` advertises the credit (`display_usd: 0.0245`, "started
+10 emails"); `Catalog.advertised_usd` is what `catalog_search` / `catalog_get` put on
+`usd_per_call`. Settlement still reads `usd` and the derived email-count rule — display only.
+Akta bills 1.5 credits per 50 reviews the same `per` way. Without `per`, every one of those had
+to be either wrong or rounded into prose.
 
 **Three kinds of denomination convert, and they convert differently:**
 
@@ -1850,9 +1866,12 @@ See [ContactOut](contactout.md) for request limitations, derived settlement and 
 `Catalog.cost_view` reads optional provider-neutral `cost.display` metadata. `unit` names the
 shown unit; `grouped` displays the price for `cost.per` units; `round_up` labels a started block;
 `variable` adds a plus sign for selected additions. It returns computed display USD/unit/suffix
-fields without changing `usd` or settlement. The CLI and web formatters consume those fields.
+fields without changing `usd` or settlement. The CLI and web formatters consume those fields;
+`Catalog.advertised_usd` prefers `display_usd` so MCP `usd_per_call` quotes the chargeable event.
 The validator checks flags and requires grouped prices to declare a positive integer `per`.
-Sumble keeps its billing rules in the existing provider-module pattern, separate from display rules.
+Hunter Domain Search is the credit-block case (`1` credit / `10` emails → `$0.0245/started 10
+emails`). Sumble keeps its billing rules in the existing provider-module pattern, separate from
+display rules.
 
 
 ### Similar-company routing

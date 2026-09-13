@@ -13,7 +13,6 @@ sources:
   - src/treg/domain/capacity/policy.py
   - src/treg/catalog/adapters.yaml
   - scripts/catalog_validate.py
-  - render.yaml
   - tests/test_harvestapi.py
   - src/treg/catalog/examples/harvestapi.linkedin.ads.get.json
   - src/treg/catalog/examples/harvestapi.linkedin.ads.search.json
@@ -165,9 +164,10 @@ selected the basic profile variant. A connected own key then served company look
 before an upstream request on both platform and BYOK catalog calls. The isolated test org
 holding the connected key was deleted afterward.
 
-The Render template declares the secret on the web service and forwards it to the capacity
-cron using the same `fromService` pattern as other providers. No production setting was
-changed, no deployment was performed, and no files were staged or committed.
+Hosted wiring (`TREG_PLATFORM_KEY_HARVESTAPI` on the web service, forwarded to the capacity
+cron, plus `harvestapi` in `TREG_PLATFORM_PROVIDERS`) lives in the private deployment
+repository, not here. Checked 2026-09-14: the key is set on the production web service and
+`harvestapi` is not yet in the allow-list, so merging does not enable platform calls by itself.
 
 ### Repository check results
 

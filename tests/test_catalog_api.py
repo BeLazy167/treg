@@ -11,6 +11,7 @@ from __future__ import annotations
 import dataclasses
 import json
 import re
+import shlex
 
 from httpx import AsyncClient
 
@@ -614,6 +615,60 @@ async def test_eligibility_rides_on_the_served_row(clients: AsyncClient):
 async def test_unknown_endpoint_is_404(clients: AsyncClient):
     r = await clients.get("/catalog/endpoints/tikhub.tiktok.nope")
     assert r.status_code == 404 and "tikhub.tiktok.nope" in r.text
+
+
+def test_hunter_multi_domain_search_uses_official_query_filters():
+    """Hunter Multi-Domain Search (Beta) rejects a JSON `companies` array with
+    `wrong_params` / `Unknown parameter: companies.` Official docs take company
+    and email filters as query parameters on POST (feedback #183)."""
+    cat = cs.load()
+    ep = cat.by_id["hunter.x.multi-domain-search"]
+    inp = ep.get("input") or {}
+    body = inp.get("body") or {}
+    query = inp.get("queryParams") or {}
+    test = ep.get("test_request") or {}
+
+    assert "companies" not in body
+    assert "companies" not in query
+    assert "companies" not in (test.get("body") or {})
+    assert "companies" not in (test.get("queryParams") or {})
+    assert "location" in query
+    assert "department" in query
+    assert "company_name" in query
+    assert query["location"].get("example") == "US"
+    assert test.get("queryParams", {}).get("location") == "US"
+    assert test.get("queryParams", {}).get("department") == "executive"
+    assert "body" not in test
+
+    tmpl = cs.call_template(ep)
+    assert tmpl.startswith("treg call hunter.x.multi-domain-search --method POST")
+    assert "--data" not in tmpl
+    assert "companies" not in tmpl
+    argv = shlex.split(tmpl)
+    queries = [argv[i + 1] for i, part in enumerate(argv) if part == "--query"]
+    assert "location=US" in queries
+    assert "department=executive" in queries
+
+
+def test_serpstat_jsonrpc_id_is_required_in_call_template():
+    """Serpstat rejects a JSON-RPC body without top-level `id`. `call_template` only
+    includes required body fields via `_required_examples`, so `id` must be required
+    on every Serpstat endpoint that declares it."""
+    cat = cs.load()
+    serpstat = [ep for ep in cat.endpoints if ep["provider"] == "serpstat"]
+    assert len(serpstat) >= 12, "every curated Serpstat endpoint is in play"
+    for ep in serpstat:
+        field = ((ep.get("input") or {}).get("body") or {}).get("id")
+        assert isinstance(field, dict), ep["id"]
+        assert field.get("required") is True, ep["id"]
+        assert field.get("example") == "1", ep["id"]
+
+    tmpl = cs.call_template(cat.by_id["serpstat.web.backlinks.summary"])
+    assert tmpl.startswith("treg call serpstat.web.backlinks.summary --method POST")
+    argv = shlex.split(tmpl)
+    data = json.loads(argv[argv.index("--data") + 1])
+    assert data["id"] == "1"
+    assert data["method"] == "SerpstatBacklinksProcedure.getSummaryV2"
 
 
 def test_call_template_falls_back_to_documented_examples(tmp_path):
@@ -1249,3 +1304,37 @@ def test_generic_display_prices_match_web_and_cli():
     cost = cat.cost_view({'type': 'per_result', 'currency': 'USD', 'value': 2,
                          'display': {'unit': 'item', 'variable': True}}, 'another-provider')
     assert _price_label(cost) == _cost_usd(cost) == _cost_label(cost) == '$2+/item'
+
+
+def test_hunter_domain_search_advertises_one_search_credit():
+    """Feedback #201: live Domain Search bills 1 SEARCH credit (~$0.0245) even for one email.
+
+    `value`/`per`/`note` stay 1 credit per 10 emails — `usd` is still that linear slice so
+    reserve can scale with `limit`. catalog_get / usd_per_call must quote the whole credit,
+    which is what `display.grouped` + `advertised_usd` do. Settlement is unchanged.
+    """
+    cat = cs.load()
+    raw = cat.by_id["hunter.companies.emails"]["cost"]
+    assert (raw["value"], raw["per"], raw["unit"]) == (1, 10, "record")
+    cost = cat.cost_view(raw, "hunter")
+    assert cost["usd"] == 0.00245
+    assert cost["display_usd"] == 0.0245
+    assert cost["display_unit"] == "started 10 emails"
+    assert cat.advertised_usd(cost) == 0.0245
+    # Sibling Finder and Multi-Domain reveal already quote one full search credit.
+    find = cat.cost_view(cat.by_id["hunter.people.email.find"]["cost"], "hunter")
+    assert find["usd"] == 0.0245 and cat.advertised_usd(find) == 0.0245
+    reveal = cat.cost_view(cat.by_id["hunter.x.multi-domain-search-reveal"]["cost"], "hunter")
+    assert reveal["usd"] == 0.0245 and cat.advertised_usd(reveal) == 0.0245
+
+
+async def test_catalog_get_hunter_domain_search_quotes_the_credit(clients: AsyncClient):
+    body = (await clients.get("/catalog/endpoints/hunter.companies.emails")).json()
+    cost = body["endpoint"]["cost"]
+    assert cost["usd"] == 0.00245, "reserve unit stays the per-record slice"
+    assert cost["display_usd"] == 0.0245
+    assert cost["display_unit"] == "started 10 emails"
+    search = (await clients.get("/catalog/search", params={"q": "hunter domain search emails", "limit": 50})).json()
+    row = next(r for r in search["results"] if r["id"] == "hunter.companies.emails")
+    assert row["cost"]["display_usd"] == 0.0245
+    assert row["cost"]["usd"] == 0.00245
