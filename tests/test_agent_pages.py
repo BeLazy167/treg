@@ -9,6 +9,7 @@ reachability, sitemap membership, FAQ schema that matches the visible page.
 from __future__ import annotations
 
 import html as html_mod
+from pathlib import Path
 import json
 import re
 
@@ -741,3 +742,20 @@ async def test_routed_rows_never_surface_a_provider_named_treg(clients: AsyncCli
     assert "treg" not in {r["service"] for r in _provider_rows()}
     assert (await clients.get("/tools/treg")).status_code == 404
     assert "/tools/treg<" not in (await clients.get("/sitemap.xml")).text
+
+
+def test_every_workflow_run_has_its_csv_on_disk():
+    """`run.csv` is the href of "Download the CSV of this run"; the route serves
+    src/treg/workflow_runs/<slug>.csv. A workflow whose receipt has no file behind it is a
+    receipt nobody can check."""
+    runs_dir = Path(agent_pages.__file__).parent / "workflow_runs"
+    for slug, spec in agent_pages.WORKFLOWS.items():
+        assert spec["run"]["csv"] == f"/workflows/{slug}.csv", slug
+        assert (runs_dir / f"{slug}.csv").is_file(), f"{slug}: no recorded run CSV"
+
+
+async def test_every_workflow_csv_route_serves(clients: AsyncClient):
+    for slug in agent_pages.WORKFLOWS:
+        r = await clients.get(f"/workflows/{slug}.csv")
+        assert r.status_code == 200, (slug, r.status_code)
+        assert r.headers["content-type"].startswith("text/csv"), slug

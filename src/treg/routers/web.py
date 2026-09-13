@@ -1829,7 +1829,7 @@ async def workflow_page(request: Request, slug: str,
 
         + '<section id="run"><div class="wrap"><div class="seclab">The receipt</div>'
           '<h2>What it actually cost</h2>'
-          f'<p style="color:var(--muted)">Run on {_esc_html(run["date"])}, {rows_in} companies in.</p>'
+          f'<p style="color:var(--muted)">Run on {_esc_html(run["date"])}, {rows_in} {_esc_html(run.get("rows_noun", "companies"))} in.</p>'
           f'<dl class="receipt">{receipt}</dl>{narrative}'
           f'<p><a class="ghostbtn" href="{_esc_html(run["csv"])}">Download the CSV of this run</a></p>'
           '</div></section>'
@@ -3204,13 +3204,13 @@ async def people_search_page():
 # chronological (newest first), not alphabetical.
 _BLOG_LAUNCHES: list[tuple[str, str, str, str]] = [
     # (slug, title, date, one-line blurb)
-    ("/gpt6", "GPT-6 and treg.to", "2026-09",
+    ("/gpt6", "GPT-6 and treg.to", "2026-09-08",
      "Codex demo: one prompt, the market read, and the catalog of tools it called."),
-    ("/fable", "Claude Fable 5.1 + treg.to", "2026-08",
+    ("/fable", "Claude Fable 5.1 + treg.to", "2026-09-02",
      "Run your GTM from the terminal: one prompt, four agents, four results."),
-    ("/grokbot", "Grok Bot for Outreach", "2026-07",
+    ("/grokbot", "Grok Bot for Outreach", "2026-09-01",
      "A scroll animatic of Grok Bot working a lead list through treg.to."),
-    ("/people-search", "People Search Launch", "2026-07",
+    ("/people-search", "People Search Launch", "2026-09-01",
      "Give your agent 1B+ contacts. The destination the launch film points at."),
 ]
 
@@ -3218,7 +3218,7 @@ _BLOG_LAUNCHES: list[tuple[str, str, str, str]] = [
 # have their own top-level routes), but they sit prominently on the /blog index above launches.
 _BLOG_POSTS: list[tuple[str, str, str, str]] = [
     # (slug under /blog/, title, date, one-line blurb)
-    ("people-search-bench", "#1 on People Search Bench", "2026-09",
+    ("people-search-bench", "#1 on People Search Bench", "2026-09-14",
      "treg.to scores 80.0% on recruiting, 78.2% on B2B prospecting. 119 real tasks, same agent."),
 ]
 
