@@ -987,7 +987,7 @@ endpoints:
         type: string
         required: false
         note: The unique identifier of the LinkedIn Ad.
-        example: '1597524366'
+        example: '1559276204'
       url:
         type: string
         required: false
@@ -998,7 +998,7 @@ endpoints:
   strict_query: true
   test_request:
     queryParams:
-      adId: '1597524366'
+      adId: '1559276204'
   cost:
     type: per_call
     value: 0.0016
