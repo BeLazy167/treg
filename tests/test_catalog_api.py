@@ -898,6 +898,9 @@ async def test_ai_generation_pages_keep_comparisons_curated_and_coverage_in_mode
     shared_images = {"image-gen.gpt-image-2-5.generate", "image-gen.gpt-image-2.generate",
                      "image-gen.gemini-3-pro-image.generate"}
     assert {row["capability"] for row in image_rows if row["kind"] != "single"} == shared_images
+    # every image model row compares the two resellers with Replicate's official model
+    assert all({e["provider"] for e in row["endpoints"]} == {"reapi", "piapi", "replicate"}
+               for row in image_rows if row["capability"] in shared_images)
     assert "image-gen.from_text" not in {row["capability"] for row in image_rows}
     image_ids = {endpoint["id"] for row in image_rows for endpoint in row["endpoints"]}
     assert {"minimax.image-gen.from_text", "replicate.image-gen.flux-schnell",

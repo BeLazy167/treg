@@ -100,6 +100,10 @@ sources:
   - src/treg/catalog/replicate.extended.yaml
   - src/treg/catalog/reapi.yaml
   - src/treg/catalog/piapi.yaml
+  - src/treg/catalog/examples/replicate.image-gen.nano-banana-pro.json
+  - src/treg/catalog/examples/replicate.image-gen.gpt-image-2.json
+  - src/treg/catalog/examples/replicate.image-gen.gpt-image-2-5-flare.json
+  - src/treg/catalog/examples/replicate.image-gen.gpt-image-2-5-sunburst.json
   - src/treg/catalog/examples/reapi.tasks.get.json
   - src/treg/catalog/examples/reapi.video-gen.seedance-2-5.json
   - src/treg/catalog/examples/reapi.video-gen.seedance-2-5.unrestricted.json
@@ -436,7 +440,10 @@ only route on which a real person's photo is accepted as the subject reference, 
 reason those resellers are listed beside the official-rate OpenRouter route. OpenRouter's Seedance 2.5
 is curated into `openrouter.yaml` on the same join key (its generated extended twin is therefore
 skipped by the ingester's curated-model rule), so the default-filter row compares three routes and
-the Less Restriction row two. Merged rows are titled by the capability description, which for these
+the Less Restriction row two. Replicate's official `google/nano-banana-pro`, `openai/gpt-image-2` and both
+`openai/gpt-image-2.5-*` models are curated into `replicate.yaml` on the image keys the same way (per
+output image by quality or resolution, from the model pages' price criteria), so each image model
+row compares reAPI, PiAPI and Replicate. Merged rows are titled by the capability description, which for these
 per-model keys is the plain model name ("Seedance 2.5"), not a sentence.
 
 ## Schema
