@@ -4567,7 +4567,7 @@ WORKFLOWS["screen-instagram-creators-before-outreach"] = {
         "keep or skip column: keep if over 10k followers, public, posting, and engagement above 1%."),
     "prompt_why": [
         ("List the handles upfront", "The agent runs one profile call and one posts call per handle. One batch beats twenty prompts."),
-        ("Ask for the price before each step", "Both TikHub routes are a tenth of a cent per success; the verify step is the one that costs, and only fires when an email exists."),
+        ("Ask for the price before each step", "Both TikHub routes bill per success at the rate in the table; the verify step is the one that costs, and only fires when an email exists."),
         ("Define your keep criteria", "Follower floor, public account, recent posts, engagement floor. The agent filters; you set the rules."),
         ("Request a CSV", "Structured output you can sort before spending time on outreach."),
     ],
@@ -4599,8 +4599,7 @@ WORKFLOWS["screen-instagram-creators-before-outreach"] = {
         "cost_usd": 0.036,
         "csv": "/workflows/screen-instagram-creators-before-outreach.csv",
         "narrative": [
-            "Thirty-six successful calls, all at a tenth of a cent, because both TikHub routes bill "
-            "per success. Fourteen of the twenty made the keep list. None of these creators exposes a "
+            "Thirty-six successful calls at the two TikHub rates, billed per success. Fourteen of the twenty made the keep list. None of these creators exposes a "
             "business email in the profile, which is common: the email step is there for the lists "
             "where they do, and it is the only step with a real price. One profile call did not answer "
             "and was not billed; the retry policy is one line in the prompt. Handles are removed from the "
@@ -4619,7 +4618,7 @@ WORKFLOWS["screen-instagram-creators-before-outreach"] = {
     ],
     "faq": [
         ("What does a 20-creator screen cost?",
-         "The receipt above is one real run. Profiles and posts are a tenth of a cent each; only the email verify step, when it fires, costs more."),
+         "The receipt above is one real run. Profiles and posts are the cheap steps; only the email verify step, when it fires, costs more."),
         ("What if the account is private?",
          "The profile call still returns followers, category and the private flag. Posts and engagement are unavailable."),
         ("Can I screen TikTok creators the same way?",
@@ -4629,7 +4628,7 @@ WORKFLOWS["screen-instagram-creators-before-outreach"] = {
     ],
     "related": (
         "Find creators by keyword",
-        "A channel's profile and lifetime stats",
+        "Search posts by keyword",
         "Verify an email before you send",
         "Find people by role, company or location",
     ),
@@ -4715,8 +4714,8 @@ WORKFLOWS["discover-creators-in-a-niche"] = {
     ],
     "related": (
         "Find creators by keyword",
-        "A channel's profile and lifetime stats",
         "Search posts by keyword",
+        "Mine the comments",
         "Find people by role, company or location",
     ),
 }
@@ -4751,10 +4750,10 @@ WORKFLOWS["keyword-demand-to-ad-budget"] = {
          "One flat request covers up to 1,000 keywords. Never loop this route."),
         ("Read the trend", "google.keywords.trends",
          "interest over time for up to five keywords",
-         "treg.google.keywords.trends",
-         "Routed: treg picks the cheapest provider with your own keys first, and the answer names which one served."),
+         "dataforseo.x.keywords-data-dataforseo-trends-explore-live",
+         "The run asked treg's routed trends endpoint, which picks the cheapest provider with your own keys first; this is the child that served."),
     ],
-    "once": ("dataforseo.google.keywords.ideas", "dataforseo.google.keywords.volume", "treg.google.keywords.trends"),
+    "once": ("dataforseo.google.keywords.ideas", "dataforseo.google.keywords.volume", "dataforseo.x.keywords-data-dataforseo-trends-explore-live"),
     "run": {
         "date": "2026-09-14",
         "rows_in": 50,
@@ -4838,7 +4837,9 @@ WORKFLOWS["mine-competitor-meta-ads-as-creative-pack"] = {
          "serpapi.google.ads.transparency",
          "One flat call per domain, with format and first-shown dates per creative. Failed and empty searches are free."),
     ],
-    "once": ("apify.meta-ads.library.search", "serpapi.google.ads.transparency"),
+    # the Meta pull is one call billed per ad returned, which the once/per-row model cannot say; leaving
+    # it out of `once` makes the worst-case total count one result per row, which is what the bill is
+    "once": ("serpapi.google.ads.transparency",),
     "run": {
         "date": "2026-09-14",
         "rows_in": 20,
@@ -4855,7 +4856,8 @@ WORKFLOWS["mine-competitor-meta-ads-as-creative-pack"] = {
         "csv": "/workflows/mine-competitor-meta-ads-as-creative-pack.csv",
         "narrative": [
             "The count probe came back as one result row, then twenty ads came back in one Meta call "
-            "and 17 in one Google call. Every Meta ad opened with "
+            "and 17 in one Google call. The worst-case total above counts the count probe once per row "
+            "because it shares the pull's endpoint; in practice it is one result. Every Meta ad opened with "
             "the same line and pointed at a sign-up; the variety is in format, not copy. The Google side "
             "is mostly text ads. The Meta route is billed per ad at the rate in the table, but this run "
             "settled at zero on treg's balance, so the receipt shows both the metered figure and what "
@@ -4941,7 +4943,7 @@ WORKFLOWS["category-content-intel-tiktok-xiaohongshu"] = {
             "counts to the TikTok hits. The spread is the finding: the same category's top TikTok post "
             "has fifteen times the likes of the top Xiaohongshu note, and the creators behind the TikTok "
             "hits range from an 11k-follower account to an 11M one, so reach alone does not explain the "
-            "ranking. The Xiaohongshu search is the expensive call; everything else is a tenth of a cent.",
+            "ranking. The Xiaohongshu search is the expensive call; everything else is TikHub's per-success rate.",
         ],
     },
     "failure_modes": [
@@ -4956,7 +4958,7 @@ WORKFLOWS["category-content-intel-tiktok-xiaohongshu"] = {
     ],
     "faq": [
         ("What does the dual-platform search cost?",
-         "The receipt above is one real run. The Xiaohongshu call is the expensive one; the rest is a tenth of a cent each."),
+         "The receipt above is one real run. The Xiaohongshu call is the expensive one; the TikHub calls are the cheap ones."),
         ("Can I get transcripts?",
          "Yes. The catalog has TikTok transcript routes; add them as a step for the posts you shortlist."),
         ("What about Instagram or YouTube?",

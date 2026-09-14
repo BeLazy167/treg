@@ -617,10 +617,13 @@ async def test_workflow_pages_are_hosted_only(monkeypatch):
 def test_every_workflow_step_capability_and_endpoint_exist():
     """A step names a capability and the endpoint the worked run used. Both must be in the catalog,
     or the page prices a step from nothing."""
+    from treg.routers import web
     cat = catalog_store.load()
     for key, spec in agent_pages.WORKFLOWS.items():
         for name, cap, _asks, ep_id, _why in spec["steps"]:
-            eps = [e for e in cat.for_capability(cap) if e["kind"] not in catalog_store.HIDDEN_KINDS]
+            # the same filter the page applies: a routed meta-row would render as provider "treg"
+            # with no price and drop out of the live total
+            eps = [e for e in cat.for_capability(cap) if web._pub(e)]
             assert eps, (key, name, cap)
             assert ep_id in {e["id"] for e in eps}, (key, name, ep_id)
 
