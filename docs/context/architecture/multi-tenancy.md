@@ -291,7 +291,8 @@ bearer path refuses it once expired rather than reviving an expired cookie.
   transfer = promote another to owner, then step down), `leave_org` (`POST /orgs/{id}/leave`, self-removal,
   same last-owner guard), `delete_org` (`DELETE /orgs/{id}`, owner-only, cascades every org-scoped row
   through `cascade_delete_org` / `ORG_SCOPED_MODELS` in `domain/governance/teams.py` - including any
-  pending `AdConversion`: a queued conversion belongs to the team it would be attributed to).
+  pending `AdConversion`: a queued conversion belongs to the team it would be attributed to, and
+  `Media`: hosted reference files would otherwise outlive the team until their TTL).
   **That list is the only one.** Owner delete, admin force-delete, the landing-sandbox reaper and the
   demo reset all go through it; `test_org_delete_clears_EVERY_org_scoped_table` walks the models module
   for anything carrying `org_id` and also refuses a reaper that keeps a private copy. The sandbox reaper

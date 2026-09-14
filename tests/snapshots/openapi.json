@@ -6463,6 +6463,69 @@
         "summary": "Accept My Invite"
       }
     },
+    "/media": {
+      "post": {
+        "description": "Raw body in, public URL out. The Content-Type header names the media type; there is no\nmultipart wrapper because the CLI and an agent's HTTP client both send bytes more simply.",
+        "operationId": "host_media_media_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-treg-token",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "X-Treg-Token",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-treg-org",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "X-Treg-Org",
+              "type": "string"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "treg_session",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "Treg Session",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Host Media Media Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Host Media"
+      }
+    },
     "/meta": {
       "get": {
         "description": "Open: what the dashboard needs to render correct, shareable snippets — the public proxy URL\n(so copy/paste snippets use the real domain, not whatever origin the browser happens to be on)\n— plus the bundle version, so an open tab can detect a new deploy and offer a refresh.\n\n`treg_version` and `app_version` answer DIFFERENT questions and both are worth having.\n`app_version` is a hash of index.html: it changes whenever the dashboard bundle does, which is\nwhat an open tab compares to offer a refresh. `treg_version` is the released package version,\nwhich is what a release check needs — after publishing 0.9.0 there was no way to confirm from the\nlive path which version was actually serving, only the commit id.",

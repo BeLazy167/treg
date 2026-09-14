@@ -40,6 +40,7 @@ EXPECTED_MAKERS: dict[str, set[str]] = {
     "application/arena_verification_insights.py": {API},  # explicit aggregate publication, no worker
 
     "application/feedback.py": {API},  # synchronous intake; admin reads use get_admin_session
+    "application/media.py": {API},  # `treg host`: one short write, one short read, no upstream wait
 
     "application/referrals.py": {API}, "application/signup.py": {API},
     "application/onboard/__init__.py": {API},

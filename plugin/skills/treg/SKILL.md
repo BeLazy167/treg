@@ -203,6 +203,10 @@ How it works:
   task id, a resumable `treg call …` command (Ctrl-C loses the wait, never the task or the money),
   progress, and the result URL. Exit 0 = done, 2 = the provider failed the task, 3 = timed out
   (resume with the printed command).
+- **Reference media (a face image, a voice clip, a first frame) must be a public URL the vendor
+  can fetch.** Do not reach for a paste host: they fail vendor probes at random (catbox, tmpfiles,
+  uguu all did). `treg host face.jpg` prints a public URL (30 MB, 7 days, free) that drops straight
+  into `image_urls` / `audio_urls`: `--data "{\"image_urls\":[\"$(treg host face.jpg)\"], …}"`.
 - **CLI agents: raise your shell tool's timeout or run the call in the background.** A video takes
   1-5 minutes; a runtime's default 2-minute command limit cuts it off mid-wait.
 - **MCP and raw-HTTP agents:** the response header `X-Treg-Async` is the descriptor - where to poll,

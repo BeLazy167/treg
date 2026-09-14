@@ -584,3 +584,12 @@ Existing unscoped tokens retain their old team-create behavior. Fresh email logi
 with typed credentials require the updated CLI on the affected paths. This is a controlled upgrade
 requirement, not full support for all fresh-login flows in old clients. The released-wheel test in
 `test_released_cli_compat` checks that refusal preserves config bytes and the prior usable team.
+
+## `treg host` - reference files for AIGC endpoints
+
+`cmd_host` implements `treg host <file> [--content-type TYPE] [--json]`: one `POST /media` with the
+file's bytes and a type guessed from the extension, printing the public URL alone on stdout (size
+and expiry go to stderr) so `$(treg host face.jpg)` drops straight into a `--data` body. 30 MB per
+file, 7-day TTL, image / audio / video only, free. See
+[media](../architecture/media.md). `treg call <catalog-id> <path>` (the own-tool shape applied to a
+catalog id) now answers 400 naming the endpoint's parameter slots instead of "no tool in this org".
