@@ -5763,7 +5763,11 @@ createApp({
       // fall back to the native figure rather than dropping the price entirely.
       if(typeof c.usd!=='number') return this.nativeAmount(c)+'/'+this.priceUnit(c.type);
       const unit=(c.type==='quota_rows'?'call':this.priceUnit(c.type));
-      // A price table (generation models) is a range: cheapest row up to the validated ceiling.
+      // A duration-priced table (video models) is quoted per second, the way the model is sold.
+      if(c.rate_unit && typeof c.rate_usd==='number'){
+        const lo=c.rate_usd_min, hi=c.rate_usd;
+        return (typeof lo==='number' && lo<hi ? '$'+this.usdNum(lo)+'-$'+this.usdNum(hi) : '$'+this.usdNum(hi))+'/'+c.rate_unit; }
+      // Any other price table (image models) is a range: cheapest row up to the validated ceiling.
       if(typeof c.usd_min==='number' && c.usd_min<c.usd) return '$'+this.usdNum(c.usd_min)+'-$'+this.usdNum(c.usd)+'/'+unit;
       return '$'+this.usdNum(c.usd)+'/'+unit; },
     costTitle(c){ if(!c) return 'The catalog has no price for this endpoint';

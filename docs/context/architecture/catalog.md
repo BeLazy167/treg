@@ -434,7 +434,11 @@ to share join keys on purpose: both files propose `video-gen.seedance-2-5.genera
 one model sit on one row with their prices side by side. The `-unrestricted` key names the relaxed
 content filter (reAPI `content_filter: false`, PiAPI's `seedance-2.5-less-restriction` task): the
 only route on which a real person's photo is accepted as the subject reference, which is the whole
-reason those resellers are listed beside the official-rate OpenRouter route.
+reason those resellers are listed beside the official-rate OpenRouter route. OpenRouter's Seedance 2.5
+is curated into `openrouter.yaml` on the same join key (its generated extended twin is therefore
+skipped by the ingester's curated-model rule), so the default-filter row compares three routes and
+the relaxed-filter row two. Merged rows are titled by the capability description, which for these
+per-model keys is the plain model name ("Seedance 2.5"), not a sentence.
 
 ## Schema
 
@@ -571,7 +575,13 @@ A `cost.table` also prices out as a range: at load time `_table_floor` computes 
 (a `times` row at its field's declared `min`) into `cost.table_min`, and `cost_view` exposes it as
 `usd_min` beside `usd`, which stays the validated ceiling (what reserve and eligibility read). Every
 price surface - the wall, `treg catalog search`, the dashboard, `/access` - shows `$low-$high` for a
-table rather than the worst case alone.
+table rather than the worst case alone. A table whose every row multiplies by a `duration` field is
+a video model sold per second, and `$0.47-$13.9/success` (shortest clip at the cheapest resolution
+up to the longest at the dearest) reads as nonsense beside a vendor page saying `$0.12/s`; so
+`_table_rate` records the row span as `cost.table_rate`, `cost_view` serves it as `rate_usd_min`,
+`rate_usd`, `rate_unit: s`, and the dashboard and CLI quote `$0.119-$0.462/s` for those rows while
+`usd`/`usd_min` keep pricing the whole call for reserve. `type: per_success` on these rows is the
+billing rule (a failed generation is not charged), not the display unit.
 
 The validator checks the effective descriptor. Dotted JSON paths are syntactically valid; success and
 failure are non-empty, disjoint lists; `interval` is positive; poll has exactly one of `endpoint`

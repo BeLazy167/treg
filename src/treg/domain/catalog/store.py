@@ -168,6 +168,15 @@ class Catalog:
         floor = cost.get("table_min")
         if isinstance(floor, (int, float)) and rate is not None and per > 0 and usd is not None:
             out["usd_min"] = min(usd, round(floor * rate / per, 9))
+        # A duration-priced table is ADVERTISED as a per-second rate (`rate_usd_min`-`rate_usd`
+        # per `rate_unit`), the way every video model is quoted; `usd`/`usd_min` stay the
+        # reserve ceiling and floor for a whole call.
+        span = cost.get("table_rate")
+        if isinstance(span, list) and len(span) == 2 and rate is not None and per > 0 \
+                and usd is not None:
+            out["rate_usd_min"] = round(float(span[0]) * rate / per, 9)
+            out["rate_usd"] = round(float(span[1]) * rate / per, 9)
+            out["rate_unit"] = "s"
         # A $0 trial price travels with its allowance, so every surface showing the price can also
         # say how much of it a team gets — a bare $0.00 would read as unlimited.
         if provider in self.trial_pools and usd == 0:
@@ -300,6 +309,25 @@ def _table_floor(cost: object, input_schema: object) -> float | None:
     return min(floors) if floors else None
 
 
+def _table_rate(cost: object) -> tuple[float, float] | None:
+    """The per-second rate span of a duration-priced table: (cheapest row, dearest row) in the
+    table's own currency, when EVERY row multiplies its value by a `duration` field. A video
+    model is quoted per second of output everywhere else, so a $0.47-$13.9 total range (minimum
+    clip at the cheapest resolution up to the longest clip at the dearest) reads as a mistake;
+    the rate is what a reader compares. Display only - reserve and settle read the rows."""
+    if not isinstance(cost, dict) or not isinstance(cost.get("table"), list) or not cost["table"]:
+        return None
+    values = []
+    for row in cost["table"]:
+        if not isinstance(row, dict) or not isinstance(row.get("value"), (int, float)):
+            return None
+        times = row.get("times")
+        if not isinstance(times, str) or times.rsplit(".", 1)[-1] != "duration":
+            return None
+        values.append(float(row["value"]))
+    return (min(values), max(values))
+
+
 def _parse(directory: Path) -> Catalog:
     if not directory.is_dir():
         return Catalog()
@@ -362,6 +390,9 @@ def _parse(directory: Path) -> Catalog:
             floor = _table_floor(raw.get("cost"), raw.get("input"))
             if floor is not None:
                 raw = {**raw, "cost": {**raw["cost"], "table_min": floor}}
+            span = _table_rate(raw.get("cost"))
+            if span is not None:
+                raw = {**raw, "cost": {**raw["cost"], "table_rate": list(span)}}
             ep = _normalize(raw, provider, directory)
             if ep["id"] in by_id:  # first file wins; ids are unique by validator contract
                 continue

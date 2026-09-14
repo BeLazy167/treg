@@ -7,11 +7,11 @@ limits: "Every generation is asynchronous: submission answers with a task id; po
 proposed_capabilities:
   # Per-model capabilities (see minimax.yaml): one join key per model, shared with piapi.yaml so
   # the model wall shows the two routes to the same model side by side.
-  video-gen.seedance-2-5.generate: "Generate a Seedance 2.5 video from text, reference images and audio (default content filter)"
-  video-gen.seedance-2-5-unrestricted.generate: "Generate a Seedance 2.5 video with the relaxed content filter (real-person reference images allowed)"
-  image-gen.gpt-image-2-5.generate: "Generate or edit images with GPT Image 2.5 (Flare or Sunburst)"
-  image-gen.gpt-image-2.generate: "Generate or edit images with GPT Image 2"
-  image-gen.gemini-3-pro-image.generate: "Generate or edit images with Gemini 3 Pro Image (Nano Banana Pro)"
+  video-gen.seedance-2-5.generate: "Seedance 2.5"
+  video-gen.seedance-2-5-unrestricted.generate: "Seedance 2.5 (relaxed content filter)"
+  image-gen.gpt-image-2-5.generate: "GPT Image 2.5"
+  image-gen.gpt-image-2.generate: "GPT Image 2"
+  image-gen.gemini-3-pro-image.generate: "Gemini 3 Pro Image"
 async:
   id_from: id
   poll:

@@ -879,8 +879,10 @@ async def test_ai_generation_pages_keep_comparisons_curated_and_coverage_in_mode
     # the one merged row the wall is built for (a real comparison of price and filter policy).
     shared = {"video-gen.seedance-2-5.generate", "video-gen.seedance-2-5-unrestricted.generate"}
     assert {row["capability"] for row in rows if row["kind"] != "single"} == shared
-    assert all({e["provider"] for e in row["endpoints"]} == {"reapi", "piapi"}
-               for row in rows if row["capability"] in shared)
+    providers = {row["capability"]: {e["provider"] for e in row["endpoints"]} for row in rows}
+    # the official OpenRouter route joins the default-filter row; only the resellers relax the filter
+    assert providers["video-gen.seedance-2-5.generate"] == {"reapi", "piapi", "openrouter"}
+    assert providers["video-gen.seedance-2-5-unrestricted.generate"] == {"reapi", "piapi"}
     caps = {row["capability"] for row in rows}
     assert "video-gen.from_text" not in caps and "video-gen.from_image" not in caps
     ids = {endpoint["id"] for row in rows for endpoint in row["endpoints"]}

@@ -4911,6 +4911,12 @@ def _cost_usd(cost: dict | None) -> str:
     # value (plus the provider's own currency) is one `treg catalog get` away
     if not usd:
         return "free"
+    rate = cost.get("rate_usd")  # a duration-priced table: quoted per second, as the model is sold
+    if isinstance(rate, (int, float)) and cost.get("rate_unit"):
+        low = cost.get("rate_usd_min")
+        if isinstance(low, (int, float)) and low < rate:
+            return f"${low:.3g}-${rate:.3g}/{cost['rate_unit']}"
+        return f"${rate:.3g}/{cost['rate_unit']}"
     low = cost.get("usd_min")  # a price table: the cheapest row up to the validated ceiling
     if isinstance(low, (int, float)) and low < usd:
         return f"${low:.3g}-${usd:.3g}/{unit}"

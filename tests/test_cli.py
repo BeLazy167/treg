@@ -786,6 +786,10 @@ def test_a_credit_price_reads_as_dollars_with_the_credits_behind_it():
 
     unpriced = {"type": "per_success", "value": 3, "currency": "credit", "usd": None}
     assert cli._cost_label(unpriced) == "3 credits/success"         # native, labelled as credits
+    # a duration-priced video table is quoted per second, not as a whole-call total range
+    per_second = {"type": "per_success", "usd": 13.87, "usd_min": 0.4744,
+                  "rate_usd_min": 0.1186, "rate_usd": 0.462, "rate_unit": "s"}
+    assert cli._cost_usd(per_second) == "$0.119-$0.462/s"
     assert cli._cost_usd(unpriced) == "3 credits/success"
     assert "$" not in cli._cost_usd(unpriced), "no rate, no invented dollar figure"
 
