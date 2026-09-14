@@ -177,7 +177,10 @@ pays the aggregator's real price, 0% markup, disclosed in-band when it ships (st
   account (`balance` / `quota` means exhausted, `burst` is smoothed but never exhausted, and an
   `unknown` 429 is logged).
   Lusha's "Daily" 429 and Hunter's "per billing period" 429 are quota exhaustion wearing a 429;
-  a `retry-after ≤ 60 s` is a burst. Apollo says "out of credits" with a **422** and Moz uses a
+  a `retry-after ≤ 60 s` is a burst. cloro says it with a **403** `error.code INSUFFICIENT_CREDITS`
+  (from its OpenAPI spec, 2026-09-07 — documented, not yet observed); its 429s are concurrency /
+  rate bursts with `X-RateLimit-*` headers and the allowance resets monthly at the
+  `cycleResetsAt` that `GET /v1/credits` reports. Apollo says "out of credits" with a **422** and Moz uses a
   **403** `{"issue": "insufficient-quota"}`. Influencers Club's
   documented HTTP 429 `Discovery API credit limit reached` is an endpoint quota signal; ordinary
   per-minute 429s with Retry-After remain bursts. HTTP 402 still uses the shared balance signature.
