@@ -761,6 +761,24 @@
       "GET",
       "HEAD"
     ],
+    "name": "blog_index",
+    "path": "/blog"
+  },
+  {
+    "kind": "APIRoute",
+    "methods": [
+      "GET",
+      "HEAD"
+    ],
+    "name": "blog_people_search_bench",
+    "path": "/blog/people-search-bench"
+  },
+  {
+    "kind": "APIRoute",
+    "methods": [
+      "GET",
+      "HEAD"
+    ],
     "name": "resources_page",
     "path": "/resources"
   },
