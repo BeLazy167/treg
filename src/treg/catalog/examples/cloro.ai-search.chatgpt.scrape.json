@@ -51,12 +51,6 @@
     "mapSearchQueries": [],
     "rawResponse": [
       {
-        "type": "resume_conversation_token",
-        "kind": "topic",
-        "token": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJjb25kdWl0X3V1aWQiOiJkMGFkMDdhOWQ4ZmM0NDQ4YjBlZDA5YmNiOWI4YTJmYiIsImNvbmR1aXRfbG9jYXRpb24iOiIxMC4xMjguMjExLjE1Mzo4MzAzIiwiY2x1c3RlciI6InVuaWZpZWQtNDEiLCJpYXQiOjE3ODg3NjIwMjcsImV4cCI6MTc4ODc3NjQyNywidHVybl90b3BpY19pZCI6ImNvbnZlcnNhdGlvbi10dXJuLWQ3MThhYjBmLWQ0YzUtNDc5Yi1iYzI1LTFiYWUyZDZiZGQ2YSJ9.s_jrKeQGnR6leB48nTSaKELpTl3pInRvKJWSjyL56dNgWA4NtskIgUcbliNIygDv4amv8D86gnNSHH7CToiKRQ",
-        "conversation_id": "6a9e57aa-3778-83ea-bb52-ba40f10197f8"
-      },
-      {
         "p": "",
         "o": "add",
         "v": {
