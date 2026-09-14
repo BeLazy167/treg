@@ -934,3 +934,34 @@ async def test_a_failed_variable_run_pays_the_seller_nothing(clients: AsyncClien
     assert run.status_code == 424
     assert (await clients.get(f"/orgs/{seller_org}/balance")).json()["balance_micro"] == seller_before
     assert (await clients.get(f"/orgs/{buyer_org}/balance", headers=hdr)).json()["balance_micro"] == buyer_before
+
+
+# ---------------------------------------------------------------------------------------------
+# Pricing flexibility (9.3): the check, and the surfaces that show the price.
+
+async def test_per_unit_check_with_non_integer_units_fails_to_publish(clients: AsyncClient, hub_on, platform_on, monkeypatch):
+    monkeypatch.setattr(call_service, "relay", _fake_relay(200, b'{"data": [1, 1], "status": "ok"}'))
+    await _own_supabase(clients)
+    m = _steps_manifest(steps=[{"name": "people", "call": EP, "input": {"aweme_id": "$input.domain"}}],
+                        output={"rows": "$people.data", "units": "$people.status"},
+                        pricing={"mode": "per_unit", "per_unit_usd": 0.002, "max_price_usd": 0.5})
+    m.pop("price_usd", None)
+    r = await clients.post("/hub/tools", json={"manifest": m, "readme": "x",
+                                               "check": {"inputs": {"domain": "figma.com"}, "fields": ["rows"]}})
+    assert r.status_code == 201 and r.json()["status"] == "failed"
+    assert r.json()["check"]["error"]["error"] == "hub_units_invalid"
+    assert (await clients.post(f"/call/{r.json()['tool_id']}", json={"domain": "x"})).status_code == 404
+
+
+async def test_the_public_page_shows_a_per_unit_price(clients: AsyncClient, hub_on, platform_on, monkeypatch):
+    tool_id = await _publish_priced(clients, monkeypatch,
+                                    {"mode": "per_unit", "per_unit_usd": 0.002, "max_price_usd": 0.5}, n=5)
+    page = (await clients.get(f"/hub/{tool_id}")).text
+    assert "per unit, up to" in page and "$0.5" in page
+
+
+async def test_the_mine_list_carries_the_price_label(clients: AsyncClient, hub_on, platform_on, monkeypatch):
+    tool_id = await _publish_priced(clients, monkeypatch,
+                                    {"mode": "cost_plus", "markup_percent": 30, "max_price_usd": 0.5}, n=3)
+    row = [t for t in (await clients.get("/hub/tools/mine")).json() if t["tool_id"] == tool_id][0]
+    assert row["pricing"]["mode"] == "cost_plus" and "+30%" in row["price_label"]

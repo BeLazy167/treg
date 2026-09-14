@@ -435,6 +435,19 @@ def pricing_micro(manifest: dict[str, Any]) -> dict[str, Any]:
             "per_unit_micro": 0, "markup_micro": 0, "max_price_micro": 0}
 
 
+def price_label(manifest: dict[str, Any]) -> str:
+    """A short human price for a hub tool: the mode and the worst case, for a list or a chip. The
+    tool's steps are billed on top. A manifest from before the pricing block reads as flat."""
+    p = manifest.get("pricing") or {"mode": "flat", "price_usd": manifest.get("price_usd", 0)}
+    mode = p.get("mode", "flat")
+    if mode == "per_unit":
+        return f"${p['per_unit_usd']:.6g}/unit up to ${p['max_price_usd']:.6g}/run"
+    if mode == "cost_plus":
+        return f"steps +{p['markup_percent']:.6g}% up to ${p['max_price_usd']:.6g}/run"
+    price = p.get("price_usd", 0)
+    return f"${price:.6g}/run" if price else "free"
+
+
 def _bad_ref(value: Any) -> str | None:
     """The first reference-looking token that does not parse, or None."""
     from . import refs
