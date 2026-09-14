@@ -1183,6 +1183,19 @@ def test_exa_catalog_is_platform_priced():
     assert all(cat.cost_view(ep["cost"], "exa")["usd"] > 0 for ep in rows)
 
 
+def test_reapi_and_piapi_catalogs_are_platform_priced():
+    """Both AIGC resellers price in dollars per second or per image, so every generation row
+    converts natively; the free poll utilities are eligible as free routes."""
+    cat = A.catalog_store.load()
+    for provider, count in (("reapi", 6), ("piapi", 6)):
+        rows = cat.for_provider(provider)
+        assert len(rows) == count, provider
+        assert all(cat.platform_eligible(ep) for ep in rows), provider
+    # 480p Seedance 2.5, five seconds: the cheapest video cell on each route
+    assert cat.cost_view(cat.by_id["reapi.video-gen.seedance-2-5"]["cost"], "reapi")["usd_min"] == 0.4744
+    assert cat.cost_view(cat.by_id["piapi.video-gen.seedance-2-5.less-restriction"]["cost"], "piapi")["usd_min"] == 0.825
+
+
 def test_cloro_catalog_is_platform_priced():
     """cloro prices in credits with a fx.yaml rate, so every curated route converts and is
     eligible — except the own-account balance read, which tier 4 never serves."""

@@ -54,7 +54,7 @@ def test_key_providers_appear_in_the_marketplace_listing():
 
 
 def test_aigc_token_providers_are_offerable_without_deployment_credentials():
-    for service in ("minimax", "openrouter", "replicate"):
+    for service in ("minimax", "openrouter", "replicate", "reapi"):
         provider = P.get(service)
         assert provider is not None
         assert provider.auth_kind == "token"
@@ -63,6 +63,10 @@ def test_aigc_token_providers_are_offerable_without_deployment_credentials():
     assert P.get("minimax").probe_method == "POST"
     assert P.get("minimax").probe_json == {}
     assert P.get("minimax").probe_reject_statuses == (401, 403)
+    # reAPI has no free account route: an unknown task id is 404 on a valid key, 401 on a bad one.
+    assert P.get("reapi").probe_path == "/tasks/probe"
+    assert P.get("reapi").probe_reject_statuses == (401, 403)
+    assert P.get("piapi").auth_kind == "key" and P.get("piapi").token_header == "X-API-Key"
 
 
 # ---- connect-by-key ----------------------------------------------------------------------

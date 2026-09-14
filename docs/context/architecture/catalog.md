@@ -98,6 +98,8 @@ sources:
   - src/treg/catalog/examples/openrouter.x.alibaba-wan-3-0.json
   - src/treg/catalog/replicate.yaml
   - src/treg/catalog/replicate.extended.yaml
+  - src/treg/catalog/reapi.yaml
+  - src/treg/catalog/piapi.yaml
   - src/treg/catalog/examples/replicate.image-gen.flux-schnell.json
   - src/treg/domain/catalog/__init__.py
   - src/treg/domain/catalog/store.py
@@ -413,7 +415,14 @@ memberless, reserved for hand-picked models (see capabilities.yaml). Both AI gen
 therefore render as ONE flat model wall; the same model reachable over several routes (MiniMax
 direct, OpenRouter, Replicate all serve Hailuo) sits adjacent under model-led names, which is the
 comparison that actually means something. The per-model capability is the join key that lets those
-routes merge onto one row if that comparison is later curated.
+routes merge onto one row if that comparison is later curated. reAPI and PiAPI are the first pair
+to share join keys on purpose: both files propose `video-gen.seedance-2-5.generate`,
+`video-gen.seedance-2-5-unrestricted.generate`, `image-gen.gpt-image-2-5.generate`,
+`image-gen.gpt-image-2.generate` and `image-gen.gemini-3-pro-image.generate`, so the two routes to
+one model sit on one row with their prices side by side. The `-unrestricted` key names the relaxed
+content filter (reAPI `content_filter: false`, PiAPI's `seedance-2.5-less-restriction` task): the
+only route on which a real person's photo is accepted as the subject reference, which is the whole
+reason those resellers are listed beside the official-rate OpenRouter route.
 
 ## Schema
 
@@ -597,6 +606,15 @@ MiniMax's curated Hailuo routes intentionally use the v1 three-step protocol: su
 the terminal values `Success`/`Fail`, then pass the returned `file_id` to
 `GET /v1/files/retrieve`. The v2 generation path serves the H3 family and is not a protocol upgrade
 for the Hailuo models in this listing.
+
+reAPI answers every submission with a bare `{id, status}` and reports the charge on the poll body
+(`usage.credits`, 1 credit = $0.001); video rows keep the file-level descriptor (`output.video_urls`)
+and image rows replace it whole for `output.image_urls`. PiAPI wraps its task routes in
+`{code, data}` (HTTP 200 with `code` 400 on a bad request, hence the provider-wide `expect`), but
+its OpenAI-shaped `/api/v1/images/generations/async` route answers the bare task object, so those
+two rows override both `id_from` and `expect` (`error.code` 0). PiAPI's `meta.usage` counts
+"points" at ten million per dollar; it is read for the evidence ledger, not settled on, because
+`usd` is the only usage unit the settlement engine accepts.
 
 OpenRouter ingest reads `/api/v1/videos/models`, emits one extended row per model on the shared
 `POST /videos` route, and converts duration-based `pricing_skus` into price tables with
