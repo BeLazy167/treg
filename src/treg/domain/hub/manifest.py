@@ -414,6 +414,27 @@ def own_names(uses: list[str]) -> set[str]:
     return {u for u in uses if "." not in u}
 
 
+def pricing_micro(manifest: dict[str, Any]) -> dict[str, Any]:
+    """The stored `pricing` block as micro-dollar integers, for the runner. A manifest from before
+    the pricing block (only `price_usd`) reads as flat. The keys mirror Validated.pricing:
+    mode, price_micro, per_unit_micro, markup_micro, max_price_micro."""
+    p = manifest.get("pricing") or {"mode": "flat", "price_usd": manifest.get("price_usd", 0)}
+
+    def m(x: Any) -> int:
+        return int(round(float(x) * 1_000_000))
+
+    mode = p.get("mode", "flat")
+    if mode == "per_unit":
+        return {"mode": "per_unit", "price_micro": 0, "per_unit_micro": m(p["per_unit_usd"]),
+                "markup_micro": 0, "max_price_micro": m(p["max_price_usd"])}
+    if mode == "cost_plus":
+        return {"mode": "cost_plus", "price_micro": 0, "per_unit_micro": 0,
+                "markup_micro": int(round(float(p["markup_percent"]) / 100 * 1_000_000)),
+                "max_price_micro": m(p["max_price_usd"])}
+    return {"mode": "flat", "price_micro": m(p.get("price_usd", 0)),
+            "per_unit_micro": 0, "markup_micro": 0, "max_price_micro": 0}
+
+
 def _bad_ref(value: Any) -> str | None:
     """The first reference-looking token that does not parse, or None."""
     from . import refs

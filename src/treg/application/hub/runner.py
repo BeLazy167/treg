@@ -30,6 +30,7 @@ from sqlalchemy import select
 from ... import audit
 from ...domain.catalog import store as catalog_store
 from ...domain.hub import graph as hub_graph
+from ...domain.hub import manifest as hub_manifest
 from ...domain.hub import refs
 from ...infra.db import session_maker
 from ...models import HubRun, HubTool, Org
@@ -171,7 +172,9 @@ async def run_hub_tool(
     maker = await _maker_snapshot(parent, tool)
     catalog = catalog_store.load()
     own_tools = {u for u in manifest["uses"] if "." not in u}
-    price_held = await _reserve_price(parent, tool, run_id)
+    pricing = hub_manifest.pricing_micro(manifest)
+    reserve_micro = pricing["price_micro"] if pricing["mode"] == "flat" else pricing["max_price_micro"]
+    price_held = await _reserve_price(parent, tool, run_id, reserve_micro)
     if price_held > ceiling:
         await _close_price(tool, run_id, price_held, success=False, reason="hub_run_max_cost")
         raise ResolutionFailed("hub_run_failed", status_code=402, detail={
@@ -181,7 +184,8 @@ async def run_hub_tool(
     async def _after_reserve():
         if tool.kind == "script":
             return await _run_script_road(parent, tool, inputs, ceiling, maker, catalog, own_tools,
-                                          upstream_client, execute_child, started, audit_client, price_held)
+                                          upstream_client, execute_child, started, audit_client,
+                                          price_held, pricing)
         g = hub_graph.build(manifest["steps"])
         wall_deadline = started + manifest["limits"]["wall_s"]
 
@@ -342,7 +346,19 @@ async def run_hub_tool(
             raise ResolutionFailed("hub_run_failed", status_code=stop.status, detail=_public_detail(detail))
 
         output = refs.resolve(manifest["output"], scope, g.positions)
-        earned = await _close_price(tool, run_id, price_held, success=True)
+        try:
+            price_now = _final_price(pricing, output, spent)
+        except _PriceInvalid as exc:
+            await _close_price(tool, run_id, price_held, success=False, reason="hub_units_invalid")
+            detail = {"error": "hub_units_invalid", "run_id": run_id,
+                      "recipe": f"{tool.tool_id}@{tool.version}", "charged_micro": spent,
+                      "price_micro": 0, "trace": trace, "message": exc.args[0]}
+            await _record(tool, parent, run_id, "failed", counted, spent, ms_total,
+                          masked(manifest["inputs"], inputs), trace, error=detail)
+            _audit_parent(parent, tool, 424, spent, audit_client)
+            raise ResolutionFailed("hub_run_failed", status_code=424, detail=_public_detail(detail))
+        actual = None if pricing["mode"] == "flat" else price_now
+        earned = await _close_price(tool, run_id, price_held, success=True, actual=actual)
         body_out = {
             "run_id": run_id, "recipe": f"{tool.tool_id}@{tool.version}", "output": output,
             "usage": {"cost_micro": spent + earned, "steps_micro": spent, "price_micro": earned,
@@ -378,40 +394,45 @@ async def run_hub_tool(
             "kind": type(exc).__name__, "charged_micro": 0, "price_micro": 0, "trace": [],
             "message": "the run could not finish; the maker's log has the detail"}) from exc
 
-async def _reserve_price(parent: CallContext, tool: HubTool, run_id: str) -> int:
-    """Open the price hold. Returns the amount held (0 when nothing is owed). Raises
-    ResolutionFailed 402 `hub_price_unaffordable` when the caller cannot afford it."""
+async def _reserve_price(parent: CallContext, tool: HubTool, run_id: str, reserve_micro: int) -> int:
+    """Open the price hold for `reserve_micro`: the flat price, or the declared `max_price_usd` for a
+    variable-price tool (the worst case is held, the rest is refunded at settle). Returns the amount
+    held (0 when nothing is owed). Raises ResolutionFailed 402 `hub_price_unaffordable` when the
+    caller cannot afford it."""
     from ...domain import money as ledger
     caller = parent.input.caller
-    if tool.price_micro <= 0 or caller.org_id == tool.org_id:
+    if reserve_micro <= 0 or caller.org_id == tool.org_id:
         return 0
     async with session_maker() as s:
         try:
             await ledger.reserve_in_transaction(
-                s, caller.org_id, tool.tool_id, tool.price_micro, call_id=f"{run_id}:price",
+                s, caller.org_id, tool.tool_id, reserve_micro, call_id=f"{run_id}:price",
                 meta={"tier": "hub_price", "tool_id": tool.tool_id, "version": tool.version,
                       "maker_org_id": tool.org_id}, tags=dict(getattr(parent.meta, "tags", {}) or {}))
         except ledger.InsufficientBalance as exc:
             await s.rollback()
             raise ResolutionFailed("hub_price_unaffordable", status_code=402, detail={
                 "error": "insufficient_balance", "tool_id": tool.tool_id,
-                "balance_micro": exc.balance_micro, "price_micro": tool.price_micro,
-                "message": f"this tool costs ${tool.price_micro / 1e6:.6g} per run from its maker, "
-                           f"before its steps; your balance is ${exc.balance_micro / 1e6:.4f}"}) from None
+                "balance_micro": exc.balance_micro, "price_micro": reserve_micro,
+                "message": f"this tool can cost up to ${reserve_micro / 1e6:.6g} per run from its "
+                           f"maker, before its steps; your balance is ${exc.balance_micro / 1e6:.4f}"}) from None
         await s.commit()
-    return tool.price_micro
+    return reserve_micro
 
 
-async def _close_price(tool: HubTool, run_id: str, held: int, *, success: bool, reason: str = "") -> int:
-    """Settle the price to the maker (success) or give it back to the caller (failure).
-    Returns what the maker earned."""
+async def _close_price(tool: HubTool, run_id: str, held: int, *, success: bool, reason: str = "",
+                       actual: int | None = None) -> int:
+    """Settle the price to the maker (success) or give it back to the caller (failure). `actual` is
+    the real price for a variable-price tool: that much is paid to the maker and the rest of the held
+    amount is refunded to the caller. `None` settles the full held amount (a flat price). Returns
+    what the maker earned."""
     if held <= 0:
         return 0
     from ...domain import money as ledger
     async with session_maker() as s:
         if success:
             earned = await ledger.settle_to_in_transaction(
-                s, f"{run_id}:price", tool.org_id,
+                s, f"{run_id}:price", tool.org_id, actual_micro=actual,
                 meta={"tool_id": tool.tool_id, "version": tool.version, "run_id": run_id})
         else:
             earned = 0
@@ -419,6 +440,27 @@ async def _close_price(tool: HubTool, run_id: str, held: int, *, success: bool, 
                                                 meta={"tool_id": tool.tool_id, "run_id": run_id})
         await s.commit()
     return earned
+
+
+class _PriceInvalid(Exception):
+    """A per_unit tool returned no usable `units`. The run fails, the maker earns nothing."""
+
+
+def _final_price(pricing: dict[str, Any], output: dict[str, Any], spent: int) -> int:
+    """The real price of one successful run, in micro-dollars. flat: the flat price. per_unit: the
+    integer `units` the tool returned times the per-unit price, capped at max_price. cost_plus: the
+    markup percent of the run's catalog step cost (`spent`), capped at max_price. Decisions in
+    docs/hub-pricing-decisions.md (2026-09-14)."""
+    mode = pricing.get("mode", "flat")
+    if mode == "per_unit":
+        u = output.get("units") if isinstance(output, dict) else None
+        if not (isinstance(u, int) and not isinstance(u, bool) and u >= 0):
+            raise _PriceInvalid("run(ctx) must return an integer `units` of 0 or more for a per_unit tool")
+        return min(u * pricing["per_unit_micro"], pricing["max_price_micro"])
+    if mode == "cost_plus":
+        earned = (spent * pricing["markup_micro"] + 500_000) // 1_000_000
+        return min(earned, pricing["max_price_micro"])
+    return pricing.get("price_micro", 0)
 
 
 class _StepFailed:
@@ -617,7 +659,8 @@ def _json(value, status: int, headers: dict[str, str]) -> UpstreamResponse:
 # The script road: the same child call, asked for by run.js through the sandbox bridge
 
 async def _run_script_road(parent, tool, inputs, ceiling, maker, catalog, own_tools,
-                           upstream_client, execute_child, started, audit_client, price_held=0):
+                           upstream_client, execute_child, started, audit_client, price_held=0,
+                           pricing=None):
     from . import sandbox
 
     manifest = tool.manifest
@@ -753,7 +796,19 @@ async def _run_script_road(parent, tool, inputs, ceiling, maker, catalog, own_to
                       masked(manifest["inputs"], inputs), trace, error=detail, log=log)
         _audit_parent(parent, tool, 424, spent, audit_client)
         raise ResolutionFailed("hub_run_failed", status_code=424, detail=_public_detail(detail))
-    earned = await _close_price(tool, run_id, price_held, success=True)
+    try:
+        price_now = _final_price(pricing or {"mode": "flat", "price_micro": 0}, output, spent)
+    except _PriceInvalid as exc:
+        await _close_price(tool, run_id, price_held, success=False, reason="hub_units_invalid")
+        detail = {"error": "hub_units_invalid", "run_id": run_id, "recipe": f"{tool.tool_id}@{tool.version}",
+                  "charged_micro": spent, "price_micro": 0, "trace": trace, "log": log,
+                  "message": exc.args[0]}
+        await _record(tool, parent, run_id, "failed", counted, spent, ms_total,
+                      masked(manifest["inputs"], inputs), trace, error=detail, log=log)
+        _audit_parent(parent, tool, 424, spent, audit_client)
+        raise ResolutionFailed("hub_run_failed", status_code=424, detail=_public_detail(detail))
+    actual = None if (pricing or {}).get("mode", "flat") == "flat" else price_now
+    earned = await _close_price(tool, run_id, price_held, success=True, actual=actual)
     body_out = {"run_id": run_id, "recipe": f"{tool.tool_id}@{tool.version}", "output": output,
                 "usage": {"cost_micro": spent + earned, "steps_micro": spent, "price_micro": earned,
                           "steps": counted, "ms": ms_total}, "trace": _public_trace(trace), "log": log}

@@ -838,3 +838,99 @@ async def test_the_makers_list_carries_health_and_thirty_day_numbers(clients: As
         assert (await clients.post(f"/call/{pub['tool_id']}", json={"domain": "x"}, headers={"X-Treg-Token": token})).status_code == 200
     mine = (await clients.get("/hub/tools/mine")).json()
     assert mine[0]["health"] == "ok" and mine[0]["runs_30d"] == 2 and mine[0]["earned_30d_micro"] == 40_000
+
+
+# ---------------------------------------------------------------------------------------------
+# Pricing flexibility (9.2): the runner reserves the max, settles the real price, releases the rest.
+
+from treg.application.hub.runner import _PriceInvalid, _final_price  # noqa: E402
+
+
+@pytest.mark.parametrize("pricing,output,spent,expected", [
+    ({"mode": "flat", "price_micro": 10_000}, {}, 0, 10_000),
+    ({"mode": "per_unit", "per_unit_micro": 2_000, "max_price_micro": 500_000}, {"units": 5}, 0, 10_000),
+    ({"mode": "per_unit", "per_unit_micro": 200_000, "max_price_micro": 500_000}, {"units": 5}, 0, 500_000),
+    ({"mode": "per_unit", "per_unit_micro": 2_000, "max_price_micro": 500_000}, {"units": 0}, 0, 0),
+    ({"mode": "cost_plus", "markup_micro": 300_000, "max_price_micro": 1_000_000}, {}, 200_000, 60_000),
+    ({"mode": "cost_plus", "markup_micro": 300_000, "max_price_micro": 50_000}, {}, 200_000, 50_000),
+])
+def test_final_price(pricing, output, spent, expected):
+    assert _final_price(pricing, output, spent) == expected
+
+
+@pytest.mark.parametrize("bad", [{}, {"units": "x"}, {"units": -1}, {"units": 1.5}, {"units": True}])
+def test_final_price_rejects_bad_units(bad):
+    with pytest.raises(_PriceInvalid):
+        _final_price({"mode": "per_unit", "per_unit_micro": 2_000, "max_price_micro": 500_000}, bad, 0)
+
+
+async def _publish_priced(clients, monkeypatch, pricing, *, n=5):
+    """A live steps tool whose one catalog step returns a list of `n` items, with a `pricing` block.
+    `rows` is the list; `units` is its length (for a per_unit tool)."""
+    monkeypatch.setattr(call_service, "relay",
+                        _fake_relay(200, ("{\"data\": [" + ",".join(["1"] * n) + "]}").encode()))
+    await _own_supabase(clients)
+    m = _steps_manifest(steps=[{"name": "people", "call": EP, "input": {"aweme_id": "$input.domain"}}],
+                        output={"rows": "$people.data", "units": "$people.data.length"}, pricing=pricing)
+    m.pop("price_usd", None)
+    r = await clients.post("/hub/tools", json={"manifest": m, "readme": "x",
+                                               "check": {"inputs": {"domain": "figma.com"}, "fields": ["rows"]}})
+    assert r.status_code == 201, r.text
+    return r.json()["tool_id"]
+
+
+async def test_per_unit_run_charges_units_times_price(clients: AsyncClient, hub_on, platform_on, monkeypatch):
+    tool_id = await _publish_priced(clients, monkeypatch,
+                                    {"mode": "per_unit", "per_unit_usd": 0.002, "max_price_usd": 0.5}, n=5)
+    token = (await clients.post("/users", json={"email": "b1@example.com"})).json()["token"]
+    run = await clients.post(f"/call/{tool_id}", json={"domain": "x"}, headers={"X-Treg-Token": token})
+    assert run.status_code == 200, run.text
+    assert run.json()["usage"]["price_micro"] == 10_000        # 5 units x $0.002
+    assert run.json()["usage"]["cost_micro"] == 11_000         # + one $0.001 step
+
+
+async def test_per_unit_price_is_capped_at_max(clients: AsyncClient, hub_on, platform_on, monkeypatch):
+    tool_id = await _publish_priced(clients, monkeypatch,
+                                    {"mode": "per_unit", "per_unit_usd": 0.2, "max_price_usd": 0.5}, n=5)
+    token = (await clients.post("/users", json={"email": "b2@example.com"})).json()["token"]
+    run = await clients.post(f"/call/{tool_id}", json={"domain": "x"}, headers={"X-Treg-Token": token})
+    assert run.json()["usage"]["price_micro"] == 500_000       # 5 x $0.2 = $1.0, capped at $0.5
+
+
+async def test_cost_plus_charges_markup_of_step_cost(clients: AsyncClient, hub_on, platform_on, monkeypatch):
+    tool_id = await _publish_priced(clients, monkeypatch,
+                                    {"mode": "cost_plus", "markup_percent": 50, "max_price_usd": 0.5}, n=3)
+    token = (await clients.post("/users", json={"email": "b4@example.com"})).json()["token"]
+    run = await clients.post(f"/call/{tool_id}", json={"domain": "x"}, headers={"X-Treg-Token": token})
+    assert run.json()["usage"]["steps_micro"] == 1_000
+    assert run.json()["usage"]["price_micro"] == 500          # 50% of $0.001
+
+
+async def test_variable_run_moves_money_on_both_teams(clients: AsyncClient, hub_on, platform_on, monkeypatch):
+    tool_id = await _publish_priced(clients, monkeypatch,
+                                    {"mode": "per_unit", "per_unit_usd": 0.002, "max_price_usd": 0.5}, n=5)
+    seller_org = (await clients.get("/orgs")).json()[0]["org_id"]
+    seller_before = (await clients.get(f"/orgs/{seller_org}/balance")).json()["balance_micro"]
+    hdr = {"X-Treg-Token": (await clients.post("/users", json={"email": "b5@example.com"})).json()["token"]}
+    buyer_org = (await clients.get("/orgs", headers=hdr)).json()[0]["org_id"]
+    buyer_before = (await clients.get(f"/orgs/{buyer_org}/balance", headers=hdr)).json()["balance_micro"]
+    await clients.post(f"/call/{tool_id}", json={"domain": "x"}, headers=hdr)
+    seller_after = (await clients.get(f"/orgs/{seller_org}/balance")).json()["balance_micro"]
+    buyer_after = (await clients.get(f"/orgs/{buyer_org}/balance", headers=hdr)).json()["balance_micro"]
+    assert seller_after - seller_before == 10_000             # the maker earns the price
+    assert buyer_before - buyer_after == 11_000               # the buyer pays the price plus one step
+
+
+async def test_a_failed_variable_run_pays_the_seller_nothing(clients: AsyncClient, hub_on, platform_on, monkeypatch):
+    tool_id = await _publish_priced(clients, monkeypatch,
+                                    {"mode": "per_unit", "per_unit_usd": 0.002, "max_price_usd": 0.5}, n=5)
+    seller_org = (await clients.get("/orgs")).json()[0]["org_id"]
+    seller_before = (await clients.get(f"/orgs/{seller_org}/balance")).json()["balance_micro"]
+    hdr = {"X-Treg-Token": (await clients.post("/users", json={"email": "b6@example.com"})).json()["token"]}
+    buyer_org = (await clients.get("/orgs", headers=hdr)).json()[0]["org_id"]
+    buyer_before = (await clients.get(f"/orgs/{buyer_org}/balance", headers=hdr)).json()["balance_micro"]
+    monkeypatch.setattr(call_service, "relay", _fake_relay(500, b'{"error": "down"}'))   # the step now fails
+    run = await clients.post(f"/call/{tool_id}", json={"domain": "x"}, headers=hdr)
+    assert run.status_code == 424
+    assert (await clients.get(f"/orgs/{seller_org}/balance")).json()["balance_micro"] == seller_before
+    assert (await clients.get(f"/orgs/{buyer_org}/balance", headers=hdr)).json()["balance_micro"] == buyer_before
