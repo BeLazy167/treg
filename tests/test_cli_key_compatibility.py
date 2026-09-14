@@ -16,6 +16,7 @@ async def test_old_email_flow_is_refused_before_otp_or_token_issue(clients):
         assert 'treg update' in response.json()['detail']
         assert 'token' not in response.json()
         assert response.headers['Cache-Control'] == 'no-store'
+        assert response.headers['X-Treg-Error'] == '1'
         assert 'set-cookie' not in response.headers
 
 
@@ -36,6 +37,7 @@ async def test_old_team_change_rejected_before_creating_team_or_consuming_invite
                        ('/invites/999/accept', {})]:
         response = await clients.post(path, json=body, headers=OLD_CLI)
         assert response.status_code == 426
+        assert response.headers['X-Treg-Error'] == '1'
     assert (await clients.get('/orgs')).json() == before
     assert (await clients.get('/tools')).status_code == 200
 

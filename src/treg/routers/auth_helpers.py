@@ -87,4 +87,4 @@ def require_managed_cli(request: Request, *, team_change: bool = False) -> None:
     raise HTTPException(status_code=426, detail=(
         "This CLI must be updated for managed API keys. Run `treg update`, then retry. "
         "Your saved token and active team have not changed."
-    ), headers={"Cache-Control": "no-store"})
+    ), headers={"Cache-Control": "no-store", "X-Treg-Error": "1"})

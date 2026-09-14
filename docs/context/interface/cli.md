@@ -573,7 +573,8 @@ previous token after selecting the new team. A scoped Default key must still rej
 
 `routers.auth_helpers.require_managed_cli` stops these known old-client requests with HTTP 426
 before issuing email credentials, creating a team, or consuming an invite. The response tells the
-user to run `treg update` and retry. Current CLI requests send `X-Treg-Key-Protocol: 1` and save the
+user to run `treg update` and retry. It sets `X-Treg-Error: 1` so the released CLIs correctly
+identify treg as the source of the refusal. Current CLI requests send `X-Treg-Key-Protocol: 1` and save the
 returned team's key. The legacy-client hint is the released CLI's `python-httpx/` User-Agent plus
 `ngrok-skip-browser-warning: 1`, without that protocol marker. It is a compatibility check, not an
 authorization boundary or a universal client-version detector. Browsers and generic API clients

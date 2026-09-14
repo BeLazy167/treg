@@ -23,7 +23,7 @@ from treg.domain.identity import session as sess
 
 
 @pytest.mark.parametrize('version', ['0.16.0', '0.19.0', 'current'])
-async def test_released_cli_flows(clients, tmp_path, monkeypatch, version):
+async def test_released_cli_flows(clients, tmp_path, monkeypatch, capsys, version):
     if version == 'current':
         from treg import cli
     else:
@@ -123,8 +123,12 @@ async def test_released_cli_flows(clients, tmp_path, monkeypatch, version):
     if version == 'current':
         await command('org', 'create', 'Browser-created')
     else:
+        capsys.readouterr()
         with pytest.raises(SystemExit):
             await command('org', 'create', 'Browser-created')
+        error = capsys.readouterr().err
+        assert 'HTTP 426 — treg refused the call' in error
+        assert 'the provider answered' not in error
         assert cli.CONFIG_PATH.read_bytes() == before
         assert len((await clients.get('/orgs')).json()) == before_orgs
         assert trace[-1] == ('POST', '/orgs', 426)
@@ -138,8 +142,12 @@ async def test_released_cli_flows(clients, tmp_path, monkeypatch, version):
     if version == 'current':
         await command('login', '--email', email)
     else:
+        capsys.readouterr()
         with pytest.raises(SystemExit):
             await command('login', '--email', email)
+        error = capsys.readouterr().err
+        assert 'HTTP 426 — treg refused the call' in error
+        assert 'the provider answered' not in error
         assert cli.CONFIG_PATH.read_bytes() == before
         assert trace[-1] == ('POST', '/auth/email/start', 426)
     outcomes['email_login'] = await resources() if cfg.get('active_org') else 'no team'
