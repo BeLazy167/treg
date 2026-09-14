@@ -5,8 +5,9 @@ DataForSEO has provider-specific rules that generic catalog validation can't cat
 1. Live endpoints (/live) accept exactly 1 task per POST body array — multi-task
    arrays are only supported by async task_post endpoints.
 
-2. Google Trends item_types google_trends_topics_list and google_trends_queries_list
-   require exactly 1 keyword — multiple keywords with these item_types cause error 40501.
+2. Google Trends explore/live does not accept item_types. Vendor docs still list
+   google_trends_graph / map / topics_list / queries_list, but a live POST with
+   that field returns task status 40501 Invalid Field: 'item_types' and $0.
 
 These tests ensure catalog test_requests and documentation stay aligned with live behavior.
 """
@@ -79,55 +80,44 @@ def test_live_endpoints_have_single_task_test_requests():
     assert not violations, "DataForSEO Live endpoints must have exactly 1 task:\n" + "\n".join(violations)
 
 
-def test_google_trends_topics_queries_require_single_keyword():
-    """Google Trends topics_list/queries_list item_types require exactly 1 keyword.
+GOOGLE_TRENDS_EXPLORE_LIVE_ID = "dataforseo.x.keywords-data-google-trends-explore-live"
 
-    The upstream API documentation states: "to obtain google_trends_topics_list
-    and google_trends_queries_list items, specify no more than 1 keyword".
-    Sending multiple keywords with these item_types causes error 40501 (Invalid Field).
+
+def test_google_trends_explore_live_omits_item_types():
+    """Live /keywords_data/google_trends/explore/live rejects item_types (40501).
+
+    Vendor docs still list item_types including google_trends_queries_list.
+    A live POST with that field returns HTTP 200 + task status 40501
+    Invalid Field: 'item_types' and $0. Feedback #125 / #127.
 
     Ref: https://docs.dataforseo.com/v3/keywords_data/google_trends/explore/live/
     """
     endpoints = load_dataforseo_endpoints()
-    restricted_item_types = {"google_trends_topics_list", "google_trends_queries_list"}
-    violations = []
+    endpoint = next((ep for ep in endpoints if ep.get("id") == GOOGLE_TRENDS_EXPLORE_LIVE_ID), None)
+    assert endpoint is not None, f"{GOOGLE_TRENDS_EXPLORE_LIVE_ID} not found"
 
-    for ep in endpoints:
-        path = ep.get("path", "")
+    body = (endpoint.get("input") or {}).get("body") or {}
+    assert "item_types" not in body, (
+        f"{GOOGLE_TRENDS_EXPLORE_LIVE_ID}: input.body must not document item_types "
+        "(live API rejects the field with 40501)"
+    )
 
-        if "google_trends" not in path:
-            continue
+    note = (endpoint.get("input") or {}).get("note", "")
+    assert "item_types" in note and "do not send" in note.lower(), (
+        f"{GOOGLE_TRENDS_EXPLORE_LIVE_ID}: input.note should tell agents not to send item_types"
+    )
+    assert "serpapi.x.google-trends" in note, (
+        f"{GOOGLE_TRENDS_EXPLORE_LIVE_ID}: input.note should point related-query discovery "
+        "at the documented serpapi sibling"
+    )
 
-        test_req = ep.get("test_request", {})
-        body = test_req.get("body")
-
-        if not isinstance(body, list) or not body:
-            continue
-
-        for i, task in enumerate(body):
-            if not isinstance(task, dict):
-                continue
-
-            item_types = task.get("item_types", [])
-            if not isinstance(item_types, list):
-                item_types = [item_types] if item_types else []
-
-            uses_restricted = bool(set(item_types) & restricted_item_types)
-
-            if not uses_restricted:
-                continue
-
-            keywords = task.get("keywords", [])
-            if not isinstance(keywords, list):
-                keywords = [keywords] if keywords else []
-
-            if len(keywords) > 1:
-                violations.append(
-                    f"{ep['id']}: task[{i}] uses {set(item_types) & restricted_item_types} "
-                    f"with {len(keywords)} keywords, but these item_types require exactly 1 keyword"
-                )
-
-    assert not violations, "Google Trends constraint violated:\n" + "\n".join(violations)
+    test_req = endpoint.get("test_request") or {}
+    tasks = test_req.get("body") or []
+    for i, task in enumerate(tasks):
+        if isinstance(task, dict):
+            assert "item_types" not in task, (
+                f"{GOOGLE_TRENDS_EXPLORE_LIVE_ID}: test_request.body[{i}] must not send item_types"
+            )
 
 
 def test_limits_doc_mentions_single_task_for_live():

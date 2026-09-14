@@ -7208,15 +7208,11 @@ endpoints:
         type: string
         required: false
         note: 'preset time ranges optional field if you specify date_from or date_to parameters, this field will be ignored when setting a task possible values for all type parameters: past_hour, past_4_hours, past_day, past_7_days, past_30_days, past_90_days, past_12_months, past_5_years possible values for web o'
-      item_types:
-        type: array
-        required: false
-        note: 'possible values: "google_trends_graph" (default), "google_trends_map", "google_trends_topics_list", "google_trends_queries_list". IMPORTANT: google_trends_topics_list and google_trends_queries_list require exactly 1 keyword — if you pass multiple keywords with these item_types, the API returns error 40501 (Invalid Field).'
       tag:
         type: string
         required: false
         note: user-defined task identifier optional field the character limit is 255 you can use this parameter to identify the task and match it with the result you will find the specified tag value in the data object of the response
-    note: POST body is an array with exactly 1 task object (Live endpoints do not support multi-task arrays)
+    note: POST body is an array with exactly 1 task object (Live endpoints do not support multi-task arrays). Do not send item_types — live API returns 40501 Invalid Field even though vendor docs list it. This route returns interest-over-time (google_trends_graph). For related queries use serpapi.x.google-trends with data_type RELATED_QUERIES.
   test_request:
     body:
     - location_name: United States
