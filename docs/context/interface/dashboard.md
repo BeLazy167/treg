@@ -531,7 +531,7 @@ account can I attach?" — see `architecture/catalog.md` for the data behind it,
 **default** view. `loadPlatforms` reads **`GET /catalog/platforms`** (once per session; cached on
 `plats.loaded`), whose rows carry a **`category`** and a **`featured`** rank (`int|null`). `platCategories`
 groups the rows **by whatever category they carry**, sorts those groups into the founder's canonical
-reading order (SEO · Social · Advertising · Enrichment · E-commerce · Reviews & Apps · China Social ·
+reading order (Enrichment · SEO/AEO · Social · Advertising · E-commerce · Reviews & Apps · AI generation ·
 Community, then anything new alphabetically) and **drops `Other`** — the taxonomy's bucket for things like
 `account`, whose capabilities only make sense inside a platform page, never as a tile. The order list is
 only an *order*: a category the catalog invents still gets a shelf and a tab, at the end — but at the end
