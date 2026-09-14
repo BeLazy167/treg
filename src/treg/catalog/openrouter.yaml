@@ -222,6 +222,7 @@ endpoints:
       source_url: https://openrouter.ai/api/v1/videos/models
       checked: 2026-09-14
       confidence: documented
-      note: "The live rate card bills video tokens at $10.70 per million, which is ByteDance's official meter: $0.1028/s at 480p and $0.2312/s at 720p for text or image input. The matched row is reserved and the terminal usage.cost settles; a reference-video input (not listed) bills at the cheaper video-input token rate."
-    unverified: "Listed from the rate card so the model wall shows the official route beside the resellers; not live-called (no OpenRouter key in this checkout)."
+      note: "The live rate card bills video tokens at $10.70 per million, which is ByteDance's official meter: $0.1028/s at 480p and $0.2312/s at 720p for text or image input. The matched row is reserved and the terminal usage.cost settles: live 2026-09-14 a 4 s 480p clip priced $0.4112 by the table settled usage.cost 0.415481 (1% over, the same unpublished rounding Wan 3.0 shows). A reference-video input (not listed) bills at the cheaper video-input token rate."
+    verified: 2026-09-14
+    example_response: examples/openrouter.video-gen.seedance-2-5.json
     docs_url: https://openrouter.ai/bytedance/seedance-2.5

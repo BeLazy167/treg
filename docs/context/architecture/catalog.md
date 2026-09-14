@@ -97,6 +97,7 @@ sources:
   - src/treg/catalog/openrouter.yaml
   - src/treg/catalog/openrouter.extended.yaml
   - src/treg/catalog/examples/openrouter.x.alibaba-wan-3-0.json
+  - src/treg/catalog/examples/openrouter.video-gen.seedance-2-5.json
   - src/treg/catalog/replicate.yaml
   - src/treg/catalog/replicate.extended.yaml
   - src/treg/catalog/reapi.yaml
