@@ -379,10 +379,12 @@ verified accuracy, and speed excludes queue time. Single-entry winner rules rema
 
 ## Discovery queries
 
-Discover contains Find people (`people.search`), People at a company (`people.company.search`,
-an Arena alias of the catalog's `people.search` capability), and Find similar companies
-(`companies.similar`). Find people accepts a search description or job title plus a recognized
-ISO country code; company people search accepts a company domain with an optional job title.
+Discover contains Find people (`people.search`) and Find similar companies (`companies.similar`).
+Find people offers four input shapes, ordered by real demand: job title plus company domain
+(the default), company domain alone, a free-text search description, or job title plus a
+recognized ISO country code. The former "People at a company" task (`people.company.search`)
+was merged into it on 2026-09-14; runs saved under the old id still resolve through
+`domain.arena.catalog_capability`.
 Similar-company discovery accepts a seed domain. These are direct catalog queries, with no
 agent harness, model-written plan, automatic pagination or implicit follow-up enrichment.
 

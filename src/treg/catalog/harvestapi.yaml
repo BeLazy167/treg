@@ -456,10 +456,10 @@ endpoints:
   verified: '2026-09-10'
   example_response: examples/harvestapi.linkedin.service.search.json
 - id: harvestapi.linkedin.leads.search
-  capability: linkedin.search.people
-  platform: linkedin
+  capability: people.search
+  platform: people
   scope: any_account
-  domain: social
+  domain: contacts
   method: GET
   path: /linkedin/lead-search
   name: Search LinkedIn leads
