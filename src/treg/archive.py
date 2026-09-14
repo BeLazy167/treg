@@ -6,13 +6,19 @@ results preserve the previous decisive observation without renewing its freshnes
 without verified hit/miss rules retain the original cache and learning behavior. Response
 history and byte deduplication remain independent of result usefulness.
 
-Recording observes already-buffered metered platform calls under the catalog retention policy.
-Own-key and own-tool streams are untouched. Async terminal JSON is mandatory settlement evidence,
-not cache evidence. This module never changes balances or the upstream response.
+Recording observes every catalog answer the retention policy allows: metered platform calls
+(already buffered for the settle) and own-key calls whose body fits the archive's size cap (read
+before relaying; larger own-key answers stream untouched and are not recorded). An own-key answer
+carries its origin team and serves other teams only on a provider whose licence was judged to
+allow storage. Own-tool calls (no catalog entry) are never touched. Async terminal JSON is
+mandatory settlement evidence, not cache evidence. This module never changes balances or the
+upstream response; the one pricing fact it supplies is whether a metered hit is a REPEAT for the
+calling team (`ArchiveKeyOrg`), which the settle prices at `archive_hit_repeat_price_percent`.
 
 Modes: off disables recording and serving; shadow records and learns; serve additionally permits
-fresh eligible answers behind the endpoint allowlist and team cohort gate. Background recording
-is bounded and best-effort. Cache hits do not create new observations or learning evidence.
+fresh eligible answers behind the endpoint allowlist ("*" = every endpoint, the default) and
+team cohort gate. Background recording is bounded and best-effort. Cache hits do not create new
+observations or learning evidence.
 """
 
 from __future__ import annotations
@@ -48,13 +54,23 @@ def serving() -> bool:
 
 
 
+SERVE_ALL = "*"
+
+
 def serve_endpoints() -> set[str]:
+    """The serving allowlist: exact endpoint ids, or `{"*"}` meaning every endpoint the policy
+    allows. Empty means nothing serves even in serve mode (the operator's rollback lever)."""
     return {value.strip() for value in get_settings().archive_serve_endpoints.split(",")
             if value.strip()}
 
 
+def endpoint_served(endpoint_id: str) -> bool:
+    allowed = serve_endpoints()
+    return SERVE_ALL in allowed or endpoint_id in allowed
+
+
 def rollout_reason(endpoint_id: str, cohort: str) -> str:
-    if endpoint_id not in serve_endpoints():
+    if not endpoint_served(endpoint_id):
         return "endpoint_disabled"
     percent = get_settings().archive_serve_percent
     if not 0 < percent <= 100:
@@ -102,6 +118,20 @@ def policy(entry: dict[str, Any] | None) -> str:
 
 def storable(entry: dict[str, Any] | None) -> bool:
     return policy(entry) in _STORABLE
+
+
+def judged_storable(entry: dict[str, Any] | None) -> bool:
+    """True only when a human READ the provider's licence and declared `transient` or `archive`
+    on the entry (or its provider header) - never from the unjudged default. This is the line
+    for serving one team's OWN-KEY answer to another team: the data was fetched under that
+    team's vendor contract, so it crosses teams only where the licence was judged to permit
+    storage. Actions stay excluded whatever the declaration says."""
+    if not entry or entry.get("kind") == "action":
+        return False
+    declared = entry.get("cache")
+    if isinstance(declared, dict):
+        declared = declared.get("mode")
+    return declared in _STORABLE
 
 
 # ---------------------------------------------------------------------------------------------
@@ -303,10 +333,12 @@ def record(
     body: bytes,
     origin: str = "caller",
     observation: archive_bodies.StorageReport | None = None,
+    origin_org_id: int | None = None,
 ) -> tuple[str, str]:
-    """Schedule one observation of a metered platform answer. Returns immediately; the write runs
+    """Schedule one observation of a catalog answer. Returns immediately; the write runs
     off-request on its own session. Call sites gate on `recording()` and 2xx — this function
-    trusts them and never raises.
+    trusts them and never raises. `origin_org_id` names the team whose OWN credential fetched
+    the answer (None on treg's platform key); it decides who the snapshot may serve.
 
     Returns `(key_hash, content_hash)` — the identities of the question and of this exact
     answer. They are what the audit row keeps so a call can later be joined back to its stored
@@ -323,7 +355,8 @@ def record(
             method=method, endpoint_id=endpoint_id, provider=provider, url=url,
             caller_body=caller_body, headers=headers, status_code=status_code,
             media_type=media_type, body=body, origin=origin, key_hash=kh, body_hash=ch,
-            observation=observation, plan=plan), len(body), observation, content_hash=ch)
+            observation=observation, plan=plan, origin_org_id=origin_org_id),
+            len(body), observation, content_hash=ch)
         if rejection is None:
             return kh, ch
         if rejection != "duplicate":
@@ -345,7 +378,7 @@ def record(
         method=method, endpoint_id=endpoint_id, provider=provider, url=url,
         caller_body=caller_body, headers=headers, status_code=status_code,
         media_type=media_type, body=body, origin=origin, key_hash=kh, body_hash=ch,
-        observation=observation, plan=plan))
+        observation=observation, plan=plan, origin_org_id=origin_org_id))
     _pending.add(task)
     # Release bytes AND task when done. NOT redundant with drain()'s own removal: on a running
     # server drain() never fires, and this callback is the only exit from `_pending` — without it
@@ -500,6 +533,7 @@ async def _store(
     body_hash: str | None = None,
     observation: archive_bodies.StorageReport | None = None,
     plan: archive_bodies.WritePlan | None = None,
+    origin_org_id: int | None = None,
 ) -> None:
     """One recording: upsert the key, append a version, keep the change statistics honest.
 
@@ -559,7 +593,8 @@ async def _store(
                                 method=method, endpoint_id=endpoint_id, provider=provider, url=url,
                                 caller_body=caller_body, headers=headers, status_code=status_code,
                                 media_type=media_type, body=body, origin=origin,
-                                key_hash=kh, body_hash=ch, plan=plan, ignored_matches=ignored_matches)
+                                key_hash=kh, body_hash=ch, plan=plan, ignored_matches=ignored_matches,
+                                origin_org_id=origin_org_id)
                             stored, reason = plan.storage, plan.reason
                             break
                         except IntegrityError:
@@ -829,6 +864,7 @@ async def _store_locked(
     body_hash: str | None = None,
     plan: archive_bodies.WritePlan,
     ignored_matches: set[int] | None = None,
+    origin_org_id: int | None = None,
 ) -> tuple[int, bool] | None:
     from sqlalchemy import select
     from sqlalchemy.exc import IntegrityError
@@ -888,7 +924,8 @@ async def _store_locked(
             key_id=key.id, version=1 if newest is None else newest.version + 1,
             status_code=status_code, media_type=media_type, content_hash=ch,
             body=stored, enc=enc, size_bytes=len(body),
-            fetched_at=now, origin=origin, body_storage=plan.storage)
+            fetched_at=now, origin=origin, body_storage=plan.storage,
+            origin_org_id=origin_org_id)
         # Byte deduplication is independent of usefulness, including empty history.
         if newest is not None and newest.content_hash == ch:
             carrier = newest.body_of or (newest.id if newest.body is not None else None)
@@ -1195,13 +1232,18 @@ async def lookup(
     request_headers,
     cohort: str = "",
     diagnostics: dict | None = None,
+    org_id: int | None = None,
+    price_repeat: bool = False,
 ) -> dict[str, Any] | None:
     """A fresh stored answer for this exact question, or None (= make the live call).
 
     None on every uncertain branch: serving off, caller veto, unjudged/forbidden policy, no
-    snapshot, stale snapshot, bytes not on file. The age check runs against the newest snapshot's
+    snapshot, stale snapshot, bytes not on file, or an own-key answer another team fetched on a
+    provider whose licence was not judged. The age check runs against the newest snapshot's
     own fetch time, and the window is min(endpoint TTL, caller X-Treg-Max-Age). Returns the
-    verbatim stored bytes plus what the hook needs for headers: fetched_at and age_s."""
+    verbatim stored bytes plus what the hook needs for headers: fetched_at and age_s - and, when
+    `price_repeat` (a metered caller), `repeat_for_org`: whether `org_id` has already paid for
+    this question, which the settle turns into the repeat price."""
     def miss(reason: str):
         if diagnostics is not None:
             diagnostics["cache_outcome"] = reason
@@ -1223,13 +1265,14 @@ async def lookup(
         # this module is a write nobody awaits and goes to the background pool; this one is on the
         # hot path and must not queue behind them.
         from .infra.db import session_maker
-        from .models import ArchiveKey, ArchiveSnapshot
+        from .models import ArchiveKey, ArchiveKeyOrg, ArchiveSnapshot
 
         result_aware = has_result_rules(endpoint_id)
         entry = catalog_store.load().by_id.get(endpoint_id)
         if not storable(entry):
             return miss("policy_excluded")
         wanted = caller_max_age_s(request_headers)
+        cross_team_own_key = judged_storable(entry)
 
         kh = cache_key(method, endpoint_id, url, caller_body, {
             k: request_headers.get(k, "") for k in ("accept", "accept-language")})
@@ -1266,12 +1309,23 @@ async def lookup(
                     return miss("snapshot_unavailable")
             if newest is None or not (200 <= newest.status_code < 300):
                 return miss("snapshot_unavailable")
+            # An answer fetched on a team's OWN key serves that team; it crosses to another team
+            # only where the provider's licence was judged to allow storage.
+            if (newest.origin_org_id is not None and newest.origin_org_id != org_id
+                    and not cross_team_own_key):
+                return miss("own_key_scoped")
             age_s = int((_utcnow() - newest.fetched_at).total_seconds())
             if diagnostics is not None:
                 diagnostics.update(cache_age_s=age_s, cache_window_s=window)
             if age_s < 0 or age_s > window:
                 return miss("stale")
             pointer = await archive_bodies.pointer(s, newest, "lookup")
+            repeat = False
+            if price_repeat and org_id is not None:
+                repeat = (await s.execute(
+                    select(ArchiveKeyOrg.id).where(ArchiveKeyOrg.org_id == org_id,
+                                                   ArchiveKeyOrg.key_hash == kh)
+                    .limit(1))).first() is not None
         body = await archive_bodies.read(pointer, "lookup", diagnostics=diagnostics)
         if body is None:
             return miss("body_missing")
@@ -1284,12 +1338,40 @@ async def lookup(
         _touch(kh)
         return {"body": body, "media_type": newest.media_type,
                 "status_code": newest.status_code, "fetched_at": newest.fetched_at,
-                "age_s": age_s,
+                "age_s": age_s, "repeat_for_org": repeat,
                 # Identities of the served answer, for the audit row's call→archive link.
                 "key_hash": kh, "content_hash": newest.content_hash, "version": newest.version}
     except Exception:  # noqa: BLE001 — a lookup fault must degrade to a live call, never a 500
         _log.warning("archive lookup failed for %s - serving live", endpoint_id, exc_info=True)
         return miss("lookup_error")
+
+
+async def note_org_use_in_transaction(db, org_id: int, key_hash: str) -> None:
+    """Remember that `org_id` has now paid for the question `key_hash` - staged in the CALLER's
+    transaction (the metered settle's), so the row lands with the charge or not at all. First
+    write inserts; a later one bumps the counter. Two first calls racing on the same (org, key)
+    are confined to a savepoint: the loser updates instead of failing the settle."""
+    from sqlalchemy import select, update
+    from sqlalchemy.exc import IntegrityError
+
+    from .models import ArchiveKeyOrg
+
+    now = _utcnow()
+    existing = (await db.execute(
+        select(ArchiveKeyOrg.id).where(ArchiveKeyOrg.org_id == org_id,
+                                       ArchiveKeyOrg.key_hash == key_hash).limit(1))).first()
+    if existing is None:
+        try:
+            async with db.begin_nested():
+                db.add(ArchiveKeyOrg(org_id=org_id, key_hash=key_hash,
+                                     first_call_at=now, last_call_at=now, calls=1))
+                await db.flush()
+            return
+        except IntegrityError:
+            pass  # the other first call won the race; count this one below
+    await db.execute(update(ArchiveKeyOrg)
+                     .where(ArchiveKeyOrg.org_id == org_id, ArchiveKeyOrg.key_hash == key_hash)
+                     .values(calls=ArchiveKeyOrg.calls + 1, last_call_at=now))
 
 
 def _touch(key_hash: str) -> None:
@@ -1396,7 +1478,9 @@ async def refresh_once(client) -> int:
     async with background_session_maker() as s:
         candidates = (await s.execute(
             select(ArchiveKey)
-            .where(ArchiveKey.endpoint_id.in_(serve_endpoints()), ArchiveKey.ttl_s > 0,
+            .where(*([] if SERVE_ALL in serve_endpoints()
+                     else [ArchiveKey.endpoint_id.in_(serve_endpoints())]),
+                   ArchiveKey.ttl_s > 0,
                    ArchiveKey.req_url != "",
                    ArchiveKey.last_requested_at.is_not(None))
             .order_by(ArchiveKey.fetched_at))).scalars().all()

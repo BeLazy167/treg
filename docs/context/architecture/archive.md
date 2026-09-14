@@ -19,6 +19,8 @@ sources:
   - src/treg/alembic/versions/0004_archivekey_request_shape.py
   - src/treg/alembic/versions/0011_callrecord_archive_link.py
   - src/treg/application/call/service.py
+  - src/treg/application/call/settle.py
+  - src/treg/alembic/versions/0034_archive_own_key_and_repeat_pricing.py
   - scripts/backfill_call_archive_links.py
   - src/treg/api.py
   - src/treg/bootstrap.py
@@ -53,9 +55,60 @@ time-series — backlink profiles over time, price history), not waste.
 
 **Build state: COMPLETE (PR 6 of 6 — the panel shipped after the original five).** All five slices exist behind `TREG_ARCHIVE_MODE`:
 skeleton, recorder, catalog `cache` field + report, serve path, and the learner + refresh worker.
-What does NOT exist: any billing difference for a cached hit (deferred founder decision), and the
-phase-3 aggregator surfaces (history endpoints) — do not document either as existing. What DOES
-exist since 2026-09-03 is the per-call read below: a team can see the answer ITS OWN call got.
+Since 2026-09-14 every credential tier takes part (own-key answers are recorded and served, see
+"Own-key answers") and a metered hit has ONE pricing difference (see "Pricing a hit"). What does
+NOT exist: the phase-3 aggregator surfaces (history endpoints) — do not document them as existing.
+What DOES exist since 2026-09-03 is the per-call read below: a team can see the answer ITS OWN
+call got.
+
+## Own-key answers (2026-09-14)
+
+An own-key catalog call (tier `tool`/`credential`, never metered) is a cache participant too:
+the founder's serve-everything decision. `_execute_call` looks a storable question up before
+the relay exactly as for a metered call, and after the relay reads the 2xx answer whole when it
+fits `archive_max_body_bytes` (`settle._read_whole_if_small`: bounded, before headers go out —
+the same bounded buffering a metered call already pays); an answer that does not fit, or whose
+declared `Content-Length` exceeds the cap, streams on untouched and is NOT recorded — never a
+prefix. The relay asks such calls for identity encoding (`force_identity`), and a vendor that
+compresses anyway is not recorded (`_identity_encoded`). A caller body the own-key path never
+read (streamed, no small `Content-Length`) cannot key the question: no lookup, no recording.
+Own-TOOL calls (no catalog entry) stay untouched. **An answer that quotes the team's own
+credential back is never recorded** (`_echoes_own_credential`: the exact renderings the error
+masking uses, failing closed when they cannot be rendered) — on a judged provider it would be
+served to another team. The same guard and the same `origin_org_id` apply to a metered call on an
+org credential that rides treg's pay-per-use OAuth app (`billed_oauth`): the token is the team's.
+
+The snapshot carries `origin_org_id` (migration 0034; NULL = treg's platform key). Who it may
+serve is decided at READ time in `lookup`: its own team always; another team only when the
+provider's licence was JUDGED to allow storage (`judged_storable`: an explicit
+`cache: transient|archive`, never the unjudged default) — the data was fetched under that team's
+vendor contract. Otherwise the miss is `own_key_scoped` and the vendor answers; the platform's
+own recording of that answer then serves everyone. A platform-key snapshot serves own-key
+callers too. **A hit on an own key is free**: nothing is reserved or settled (non-negotiable 1),
+the response carries the same `X-Treg-Cache: hit` headers and the audit row `cached: true`, and
+`cache_price` reports `free`. Own-key observations train the timer and the result state like any
+other; the refresh worker still re-asks on treg's platform key.
+
+## Pricing a hit (2026-09-14)
+
+A metered hit goes through the same reserve → settle as a live call (the hold is reserved
+before the lookup and settled once, whatever answered). The one difference is the amount, and
+it is per TEAM and per QUESTION: a team's first billed call on a question pays full price
+whether the vendor or the archive answered it — the archive saved treg a vendor call, not the
+team its first price — and from that team's second call on, a hit settles at
+`archive_hit_repeat_price_percent` (default 10) of what the live call would cost. Another team's
+first hit on the same question is full price. A forced live call (`Cache-Control: no-cache`) is
+a billed call like any other and counts.
+
+The evidence is `ArchiveKeyOrg` — one row per (org, key_hash), written by
+`archive.note_org_use_in_transaction` INSIDE the settle transaction (`_platform_settle`, the
+allowlisted write `archive_org_use_in_settle`), so the mark lands with the charge or not at all;
+a racing pair of first calls is confined to a savepoint. `lookup` reads it on a hit
+(`repeat_for_org`), the call service hands `cached_hit`/`cached_repeat` to the settle, which
+scales the RAW amount (floor division) before the ledger applies the margin. The settle entry's
+meta carries `cached: true` and `cache_price_percent`; `tool_called` carries `cache_price`
+(`full` | `repeat` | `free`). Setting the percentage to 100 restores "a hit bills exactly like a
+live call"; 0 makes repeats free. Own-key hits are outside this: never metered, never marked.
 
 ## Body storage and R2 double writing
 
@@ -294,12 +347,13 @@ refreshing IS the sampling that teaches the timer.
 ## Serving (PR 4)
 
 `archive.lookup()` runs in `call_tool` at the RELAY's position — after every access/deny/cap gate
-AND after the money reserve, replacing only the network trip. **Money on a hit is identical to a
-live call, on purpose**: reserve, settle, cost header and ledger rows are byte-for-byte the same;
-the response carries `X-Treg-Cache: hit`, `X-Treg-Fetched-At`, `X-Treg-Age`, and the audit row
-(+ `/calls`) carries `cached: true`. The founder's deferred pricing decision attaches to that tag
-later without touching this code. A hit is NOT a new observation: no snapshot, no change
-statistics — only `last_requested_at` (fire-and-forget `_touch`), the demand signal PR 5 reads.
+AND after the money reserve, replacing only the network trip. **Money on a hit has the same
+shape as a live call**: reserve, settle, cost header and ledger rows — the settle just closes
+the hold at the repeat price when the team has paid for the question before (see "Pricing a
+hit"; own-key hits are free). The response carries `X-Treg-Cache: hit`, `X-Treg-Fetched-At`,
+`X-Treg-Age`, and the audit row (+ `/calls`) carries `cached: true`. A hit is NOT a new
+observation: no snapshot, no change statistics — only `last_requested_at` (fire-and-forget
+`_touch`), the demand signal PR 5 reads.
 
 Freshness (phase 1) is `archive.ttl_for(entry)`: FIXED guesses per capability prefix
 (`crypto.price` 5 min, `web.search` 1 h, `people.`/`company.` 7 d, default 1 h), always capped by
@@ -383,6 +437,12 @@ fresh hits — phase 1+). Any unrecognized value degrades to `off`: a typo must 
 enable. Rollback is an environment-setting change through the deployment's normal configuration
 process.
 
+In serve mode the two rollout gates default open since 2026-09-14: `TREG_ARCHIVE_SERVE_ENDPOINTS`
+is `*` (every endpoint the policy allows; an exact comma-separated list still narrows it, and
+empty serves nothing — the rollback lever) and `TREG_ARCHIVE_SERVE_PERCENT` is `100` (the
+sha256 team/endpoint cohort still applies below 100). `TREG_ARCHIVE_SERVE_MAX_AGE_S` remains the
+per-endpoint operator ceiling and `TREG_ARCHIVE_HIT_REPEAT_PRICE_PERCENT` (10) the repeat price.
+
 ## Conservative comparison and controlled serving (2026-09-08)
 
 The comparison setting and helper are removed. Old `TREG_ARCHIVE_COMPARISON_MODE` environment
@@ -446,10 +506,11 @@ produce hypothetical hit counts or fresh-answer comparisons.
    keep-all decision (2026-08-29): unjudged providers' bodies ARE kept as short-lived cache, and
    the env flips it back to `forbidden` without a deploy. A JUDGED forbidden (a licence that was
    read and says no — Finnhub) is always respected, and a missing entry is never stored.
-3. **Tier.** Only fully buffered METERED PLATFORM calls are recorded. Those responses are already fully buffered
-   for the settle (`_buffer_response` needs the provider's reported cost), so recording adds no
-   latency and no new data path. Own-key and own-tool calls stream and are never touched — that
-   is the privacy line, enforced at write time, not filtered at read time.
+3. **Body in hand.** A metered platform answer is already fully buffered for the settle
+   (`_buffer_response` needs the provider's reported cost), so recording adds no latency. An
+   own-key catalog answer is read whole only when it fits the archive's size cap (see "Own-key
+   answers"); larger ones stream untouched. Own-tool calls (no catalog entry) are never touched.
+   Who an own-key answer may serve is decided at READ time by `origin_org_id`, not at write time.
 
 Gates 1+2 are `archive.policy(entry)`; gate 3 is the hook site's own context.
 
@@ -472,7 +533,9 @@ and credentials could not anyway: injection happens after the key is taken.
 `policy`, AIMD timer state (`ttl_s`, grow ×1.5 capped on stable refetch / shrink ×0.5 floored on
 change — the learner lands in PR 5), change statistics (`change_seen`/`stable_seen`/
 `last_changed_at`), legacy `volatile_paths` (retained for schema compatibility, no longer read or updated), and demand (`heat`, `last_requested_at`). Platform-scoped, no `org_id`:
-one team's fetch may warm another team's hit, and own-key traffic never enters.
+one team's fetch may warm another team's hit; an own-key answer's reach is the SNAPSHOT's
+`origin_org_id` (migration 0034), and `ArchiveKeyOrg` (same migration) is the per-(org, key)
+"has paid for this question" mark that prices a repeat hit — see "Pricing a hit".
 
 `ArchiveSnapshot` — one version: unique `(key_id, version)`, verbatim `body` bytes, `content_hash`
 (raw sha256) for dedup — an identical consecutive answer stores a version row with `body=NULL,

@@ -396,7 +396,7 @@ async def _spend_entries(clients):
     return (await clients.get(f"/orgs/{org_id}/balance")).json()["entries"]["items"]
 
 
-async def test_a_hit_serves_stored_bytes_and_bills_like_live(clients: AsyncClient, serve):
+async def test_a_repeat_hit_serves_stored_bytes_at_the_repeat_price(clients: AsyncClient, serve):
     r1 = await clients.get(f"/call/{EP}?aweme_id=7&count=5")
     assert r1.status_code == 200 and "x-treg-cache" not in r1.headers
     await archive.drain()
@@ -405,14 +405,250 @@ async def test_a_hit_serves_stored_bytes_and_bills_like_live(clients: AsyncClien
     assert r2.headers["X-Treg-Cache"] == "hit"
     assert int(r2.headers["X-Treg-Age"]) >= 0 and r2.headers["X-Treg-Fetched-At"]
     assert r2.content == r1.content                      # verbatim stored bytes
-    # Money identical to live, ON PURPOSE: both calls reserved and settled at the same price.
-    assert r2.headers.get("X-Treg-Cost-Micro") == r1.headers.get("X-Treg-Cost-Micro")
-    kinds = [e["kind"] for e in await _spend_entries(clients)]
-    assert kinds[:4] == ["settle", "reserve", "settle", "reserve"]
-    # The audit rows disagree only on the tag.
+    # The team paid full price for this question once (the live call); its second call is a
+    # REPEAT and settles at archive_hit_repeat_price_percent (10) of the live price. Same
+    # reserve/settle shape - the settle just closes the hold for less and refunds the rest.
+    live, hit = int(r1.headers["X-Treg-Cost-Micro"]), int(r2.headers["X-Treg-Cost-Micro"])
+    assert live > 0 and hit == live * 10 // 100
+    entries = await _spend_entries(clients)
+    assert [e["kind"] for e in entries[:4]] == ["settle", "reserve", "settle", "reserve"]
+    assert entries[0]["meta"]["cached"] is True and entries[0]["meta"]["cache_price_percent"] == 10
+    assert "cached" not in entries[2]["meta"]
+    # The audit rows disagree on the tag and on the charge.
     await audit.drain()
     rows = (await clients.get("/calls")).json()
     assert [row.get("cached") for row in rows[:2]] == [True, False]
+
+
+async def test_each_team_pays_full_price_once_per_question(clients: AsyncClient, serve):
+    """"Second call per TEAM": another team's first call on a question already in the archive is
+    a hit at FULL price (the archive saved treg a vendor call, not the team its first price);
+    only that team's own second call is a repeat."""
+    from tests.conftest import verified_signup
+    r1 = await clients.get(f"/call/{EP}?aweme_id=7&count=5")
+    await archive.drain()
+    live = int(r1.headers["X-Treg-Cost-Micro"])
+    other = await verified_signup(clients, json={"email": "second-team@example.com"})
+    headers = {"X-Treg-Token": other.json()["token"]}
+    b1 = await clients.get(f"/call/{EP}?aweme_id=7&count=5", headers=headers)
+    assert b1.status_code == 200 and b1.headers["X-Treg-Cache"] == "hit"
+    assert int(b1.headers["X-Treg-Cost-Micro"]) == live          # B's first: full price
+    b2 = await clients.get(f"/call/{EP}?aweme_id=7&count=5", headers=headers)
+    assert b2.headers["X-Treg-Cache"] == "hit"
+    assert int(b2.headers["X-Treg-Cost-Micro"]) == live * 10 // 100   # B's second: repeat
+    a2 = await clients.get(f"/call/{EP}?aweme_id=7&count=5")
+    assert int(a2.headers["X-Treg-Cost-Micro"]) == live * 10 // 100   # A's second: repeat
+    # A different question starts A over at full price, hit or not.
+    await clients.get(f"/call/{EP}?aweme_id=8")
+    await archive.drain()
+    other_q = await clients.get(f"/call/{EP}?aweme_id=8", headers=headers)
+    assert other_q.headers["X-Treg-Cache"] == "hit"
+    assert int(other_q.headers["X-Treg-Cost-Micro"]) == live
+    from treg.models import ArchiveKeyOrg
+    async with session_maker() as s:
+        rows = (await s.execute(select(ArchiveKeyOrg))).scalars().all()
+    assert len(rows) == 4 and sorted(r.calls for r in rows) == [1, 1, 2, 2]
+
+
+async def test_repeat_price_at_100_percent_bills_like_live(clients: AsyncClient, serve, monkeypatch):
+    monkeypatch.setattr(get_settings(), "archive_hit_repeat_price_percent", 100)
+    r1 = await clients.get(f"/call/{EP}?aweme_id=7&count=5")
+    await archive.drain()
+    r2 = await clients.get(f"/call/{EP}?aweme_id=7&count=5")
+    assert r2.headers["X-Treg-Cache"] == "hit"
+    assert r2.headers["X-Treg-Cost-Micro"] == r1.headers["X-Treg-Cost-Micro"]
+    entries = await _spend_entries(clients)
+    assert entries[0]["meta"]["cache_price_percent"] == 100
+
+
+async def test_a_metered_repeat_hit_after_a_forced_live_call_is_still_a_repeat(clients, serve):
+    await clients.get(f"/call/{EP}?aweme_id=7")
+    await archive.drain()
+    live = await clients.get(f"/call/{EP}?aweme_id=7", headers={"Cache-Control": "no-cache"})
+    await archive.drain()
+    hit = await clients.get(f"/call/{EP}?aweme_id=7")
+    assert hit.headers["X-Treg-Cache"] == "hit"
+    assert int(hit.headers["X-Treg-Cost-Micro"]) == int(live.headers["X-Treg-Cost-Micro"]) * 10 // 100
+
+
+# ---------------------------------------------------------------------------------------------
+# Own-key calls: recorded for the team, served back free, crossing teams only where judged
+
+@pytest.fixture
+def own_key_serve(serve, monkeypatch):
+    """Serving on, EP storable by the UNJUDGED default (no `cache:` declaration on the entry) -
+    the case where an own-key answer must stay with its team."""
+    monkeypatch.delitem(catalog_store.load().by_id[EP], "cache")
+
+
+OWN = b'{"answer": "fetched on the team\'s own key", "n": 7}'
+PLAT = b'{"answer": "fetched on treg\'s platform key", "n": 7}'
+
+
+def _vendor_says(monkeypatch, body: bytes) -> None:
+    """The echo upstream quotes the Authorization header back, which is exactly what the archive
+    must refuse to store for an own key (see the echo test below) - so own-key recording tests
+    stand in a vendor that answers without echoing."""
+    from tests.test_marketplace_call import _fake_relay
+    monkeypatch.setattr(call_service, "relay", _fake_relay(200, body))
+
+
+async def _own_key(clients, headers=None):
+    r = await clients.post("/secrets", json={"name": "tikhub", "value": "MKKEY"}, headers=headers or {})
+    assert r.status_code == 200, r.text
+
+
+async def test_an_own_key_answer_is_recorded_and_served_back_free(
+        clients: AsyncClient, own_key_serve, monkeypatch):
+    _vendor_says(monkeypatch, OWN)
+    await _own_key(clients)
+    r1 = await clients.get(f"/call/{EP}?aweme_id=7&count=5")
+    assert r1.status_code == 200 and r1.content == OWN
+    assert "X-Treg-Cost-Micro" not in r1.headers               # own key: never metered
+    keys, snaps = await _rows()
+    org_id = (await clients.get("/orgs")).json()[0]["org_id"]
+    assert len(snaps) == 1 and snaps[0].origin_org_id == org_id and snaps[0].body
+    _vendor_says(monkeypatch, b'{"changed": true}')            # must not be asked
+    r2 = await clients.get(f"/call/{EP}?aweme_id=7&count=5")
+    assert r2.status_code == 200 and r2.headers["X-Treg-Cache"] == "hit"
+    assert r2.content == OWN
+    assert "X-Treg-Cost-Micro" not in r2.headers               # a hit on an own key is free
+    assert [e["kind"] for e in await _spend_entries(clients)] == ["grant"]  # no money moved
+    await audit.drain()
+    rows = (await clients.get("/calls")).json()
+    assert [row.get("cached") for row in rows[:2]] == [True, False]
+    assert all(row["has_result"] for row in rows[:2])
+    result = (await clients.get(f"/calls/{rows[1]['id']}/result")).json()
+    assert result["stored"] and result["response"]["body_text"] == OWN.decode()
+
+
+async def test_an_own_key_answer_stays_with_its_team_on_an_unjudged_provider(
+        clients: AsyncClient, own_key_serve, monkeypatch):
+    from tests.conftest import verified_signup
+    _vendor_says(monkeypatch, OWN)
+    await _own_key(clients)
+    await clients.get(f"/call/{EP}?aweme_id=7&count=5")
+    await archive.drain()
+    events = []
+    monkeypatch.setattr(call_service.analytics, "capture",
+                        lambda who, event, props, **kw: events.append((event, props)))
+    other = await verified_signup(clients, json={"email": "stranger@example.com"})
+    headers = {"X-Treg-Token": other.json()["token"]}
+    _vendor_says(monkeypatch, PLAT)
+    r = await clients.get(f"/call/{EP}?aweme_id=7&count=5", headers=headers)  # metered, tier 4
+    assert r.status_code == 200 and "x-treg-cache" not in r.headers
+    assert r.content == PLAT                                   # the vendor answered, on treg's key
+    props = [p for e, p in events if e == "tool_called"][-1]
+    assert props["cache_outcome"] == "own_key_scoped"
+    # Now the newest snapshot is treg's own: the stranger's next call is a hit - a REPEAT for
+    # them (their live call above was their first paid call on the question) - and the own-key
+    # team hits that platform answer too, free.
+    await archive.drain()
+    _vendor_says(monkeypatch, b'{"changed": true}')
+    r2 = await clients.get(f"/call/{EP}?aweme_id=7&count=5", headers=headers)
+    assert r2.headers["X-Treg-Cache"] == "hit" and r2.content == PLAT
+    assert int(r2.headers["X-Treg-Cost-Micro"]) == int(r.headers["X-Treg-Cost-Micro"]) * 10 // 100
+    mine = await clients.get(f"/call/{EP}?aweme_id=7&count=5")
+    assert mine.headers["X-Treg-Cache"] == "hit" and mine.content == PLAT
+    assert "X-Treg-Cost-Micro" not in mine.headers
+    mine_props = [p for e, p in events if e == "tool_called"][-1]
+    assert mine_props["cache_price"] == "free" and mine_props["cache_outcome"] == "hit"
+
+
+async def test_an_own_key_answer_crosses_teams_on_a_judged_provider(
+        clients: AsyncClient, own_key_serve, monkeypatch):
+    from tests.conftest import verified_signup
+    monkeypatch.setitem(catalog_store.load().by_id[EP], "cache",
+                        {"mode": "transient", "license_quote": "q", "source_url": "u",
+                         "checked": "2026-09-14"})
+    _vendor_says(monkeypatch, OWN)
+    await _own_key(clients)
+    await clients.get(f"/call/{EP}?aweme_id=7&count=5")
+    await archive.drain()
+    other = await verified_signup(clients, json={"email": "stranger@example.com"})
+    headers = {"X-Treg-Token": other.json()["token"]}
+    _vendor_says(monkeypatch, PLAT)                            # must not be asked
+    r = await clients.get(f"/call/{EP}?aweme_id=7&count=5", headers=headers)
+    assert r.headers["X-Treg-Cache"] == "hit" and r.content == OWN
+    assert int(r.headers["X-Treg-Cost-Micro"]) > 0             # metered caller: first = full
+
+
+async def test_a_platform_answer_serves_an_own_key_caller_free(
+        clients: AsyncClient, own_key_serve, monkeypatch):
+    from tests.conftest import verified_signup
+    other = await verified_signup(clients, json={"email": "stranger@example.com"})
+    headers = {"X-Treg-Token": other.json()["token"]}
+    _vendor_says(monkeypatch, PLAT)
+    r1 = await clients.get(f"/call/{EP}?aweme_id=7&count=5", headers=headers)   # tier 4, recorded
+    assert int(r1.headers["X-Treg-Cost-Micro"]) > 0
+    await archive.drain()
+    await _own_key(clients)
+    _vendor_says(monkeypatch, OWN)                             # must not be asked
+    r2 = await clients.get(f"/call/{EP}?aweme_id=7&count=5")
+    assert r2.headers["X-Treg-Cache"] == "hit" and r2.content == PLAT
+    assert "X-Treg-Cost-Micro" not in r2.headers
+
+
+async def test_an_own_key_answer_echoing_the_key_is_never_recorded(
+        clients: AsyncClient, own_key_serve):
+    """The echo upstream quotes `Authorization: Bearer MKKEY` back in the body. A team's own key
+    must never enter the archive - a judged provider would serve it to another team."""
+    await _own_key(clients)
+    r1 = await clients.get(f"/call/{EP}?aweme_id=7&count=5")
+    assert r1.status_code == 200 and r1.json()["auth"] == "Bearer MKKEY"
+    keys, snaps = await _rows()
+    assert keys == [] and snaps == []
+    r2 = await clients.get(f"/call/{EP}?aweme_id=7&count=5")
+    assert r2.status_code == 200 and "x-treg-cache" not in r2.headers
+    await audit.drain()
+    assert (await clients.get("/calls")).json()[0]["has_result"] is False
+
+
+async def test_an_own_key_answer_over_the_cap_streams_and_is_not_recorded(
+        clients: AsyncClient, own_key_serve, monkeypatch):
+    monkeypatch.setattr(get_settings(), "archive_max_body_bytes", 4)
+    _vendor_says(monkeypatch, OWN)
+    await _own_key(clients)
+    r = await clients.get(f"/call/{EP}?aweme_id=7&count=5")
+    assert r.status_code == 200 and r.content == OWN            # whole body, untouched
+    keys, snaps = await _rows()
+    assert keys == [] and snaps == []
+    await audit.drain()
+    assert (await clients.get("/calls")).json()[0]["has_result"] is False
+
+
+async def test_an_own_key_call_with_an_unread_body_never_touches_the_archive(
+        clients: AsyncClient, own_key_serve, monkeypatch):
+    """A streamed caller body (no Content-Length) is never read on the own-key path, so the
+    question cannot be keyed: no lookup, no recording - a wrong key would serve a wrong answer."""
+    _vendor_says(monkeypatch, OWN)
+    await _own_key(clients)
+    async def chunks():
+        yield b'{"a":'
+        yield b'1}'
+    r = await clients.request("GET", f"/call/{EP}?aweme_id=7", content=chunks(),
+                              headers={"content-type": "application/json"})
+    assert r.status_code == 200, r.text
+    keys, snaps = await _rows()
+    assert keys == [] and snaps == []
+    again = await clients.request("GET", f"/call/{EP}?aweme_id=7", content=chunks(),
+                                  headers={"content-type": "application/json"})
+    assert again.status_code == 200 and "x-treg-cache" not in again.headers
+
+
+async def test_own_key_recording_asks_for_identity_encoding(clients: AsyncClient, own_key_serve, monkeypatch):
+    seen = {}
+    original = call_service.relay
+    async def spy(*args, **kwargs):
+        seen["force_identity"] = kwargs.get("force_identity")
+        return await original(*args, **kwargs)
+    monkeypatch.setattr(call_service, "relay", spy)
+    await _own_key(clients)
+    await clients.get(f"/call/{EP}?aweme_id=7&count=5")
+    assert seen["force_identity"] is True
+    monkeypatch.setattr(get_settings(), "archive_mode", "off")
+    await clients.get(f"/call/{EP}?aweme_id=9")
+    assert seen["force_identity"] is False                      # nothing to record: untouched
 
 
 @pytest.mark.parametrize("cache_header", [True, False])
@@ -818,7 +1054,7 @@ async def test_an_own_tool_call_has_no_stored_result(clients: AsyncClient, shado
     assert row["has_result"] is False
     d = (await clients.get(f"/calls/{row['id']}/result")).json()
     assert d["stored"] is False and d["request"] is None and d["response"] is None
-    assert d["note"].startswith("not stored: calls on your own key")
+    assert d["note"].startswith("not stored: calls on your own tools")
 
 
 async def test_a_platform_call_made_while_recording_was_off(clients: AsyncClient, platform_on,
@@ -1231,6 +1467,20 @@ async def test_pending_bytes_released_when_task_completes(monkeypatch):
         await aio.gather(*archive._pending, return_exceptions=True)
         archive._pending.clear()
         monkeypatch.setattr(archive, "_pending_bytes", 0)
+
+
+def test_serving_defaults_to_every_endpoint_and_every_team(monkeypatch):
+    settings = get_settings()
+    assert settings.archive_serve_endpoints == "*" and settings.archive_serve_percent == 100
+    assert settings.archive_hit_repeat_price_percent == 10
+    assert archive.endpoint_served(EP) and archive.endpoint_served("anything.else")
+    assert archive.rollout_reason(EP, "42") == "selected"
+    monkeypatch.setattr(settings, "archive_serve_endpoints", "a.b, *")
+    assert archive.endpoint_served("c.d")
+    monkeypatch.setattr(settings, "archive_serve_endpoints", "a.b")
+    assert archive.endpoint_served("a.b") and not archive.endpoint_served("c.d")
+    monkeypatch.setattr(settings, "archive_serve_endpoints", "")
+    assert not archive.endpoint_served("a.b")                  # the rollback lever
 
 
 @pytest.mark.parametrize("endpoints,percent,reason", [

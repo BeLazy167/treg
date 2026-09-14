@@ -1368,10 +1368,13 @@ class ArchiveKey(SQLModel, table=True):
     refresh worker need about this question: when it was last fetched, how it has changed across
     refetches, how often callers ask (heat), and which JSON paths turned out to be noise.
 
-    **Scoped to the platform, not to an org.** Only metered platform-tier calls are recorded (the
-    module docstring's gate 3): those run on treg's own vendor account, so the answer belongs to
-    the platform and one team's fetch may warm another team's hit. Own-key responses never enter
-    this table — that is the privacy line, drawn at write time, not filtered at read time.
+    **Scoped to the platform, not to an org.** Every catalog answer the policy allows is recorded,
+    whichever credential made the call. A platform-key answer belongs to the platform and one
+    team's fetch may warm another team's hit. An own-key answer is recorded with its
+    `ArchiveSnapshot.origin_org_id` and is served back to that team; other teams see it only when
+    the provider's licence was JUDGED to allow storage (an explicit `cache: transient|archive`).
+    That line is drawn at read time in `archive.lookup`, and `ArchiveKeyOrg` remembers which
+    teams have paid for which question so a repeat hit can be priced.
 
     Timer state is AIMD (grow slowly on stability, shrink fast on change): `ttl_s` is the current
     per-key timer, adjusted by the learner on every refetch outcome. `change_seen` / `stable_seen`
@@ -1463,6 +1466,31 @@ class ArchiveSnapshot(SQLModel, table=True):
 
     # NULL is a legacy DB row. R2 objects are addressed directly by content_hash.
     body_storage: str | None = Field(default=None)
+    # The team whose OWN credential fetched this answer; NULL when treg's platform key did. Read
+    # by `archive.lookup`: an own-key answer serves its own team always, other teams only on a
+    # provider whose licence was judged to allow storage. Declared LAST (migration 0034).
+    origin_org_id: int | None = Field(default=None)
+
+
+class ArchiveKeyOrg(SQLModel, table=True):
+    """Which teams have paid for which archived question - the repeat-hit pricing ledger's index.
+
+    One row per (org, key): written inside the metered settle transaction the first time a team's
+    call on that question is billed, live or hit, and bumped on every later billed call. A hit
+    whose row already exists is a REPEAT for that team and settles at
+    `archive_hit_repeat_price_percent` of the live price (`archive.md`, "Pricing a hit"). Keyed by
+    `key_hash` rather than `ArchiveKey.id` because the hash is known on the call path before the
+    background recorder has created the key row. Written only by `archive`.
+    """
+
+    __table_args__ = (UniqueConstraint("org_id", "key_hash", name="uq_archive_key_org"),)
+
+    id: int | None = Field(default=None, primary_key=True)
+    org_id: int = Field(index=True)
+    key_hash: str = Field(index=True)
+    first_call_at: datetime = Field(default_factory=_now)
+    last_call_at: datetime = Field(default_factory=_now)
+    calls: int = Field(default=1)
 
 
 class ArenaRun(SQLModel, table=True):
