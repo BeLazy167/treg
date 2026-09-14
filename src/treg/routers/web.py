@@ -2102,9 +2102,21 @@ async def hub_page(request: Request, tool_id: str, db: AsyncSession = Depends(ge
     example = {k: v.get("example", v.get("default")) for k, v in inputs.items() if "example" in v or "default" in v}
     example = {k: v for k, v in example.items() if v not in ("", None, 0)}
     example_json = json.dumps(example)
-    price_usd = row.price_micro / 1_000_000
-    price_line = f"seller ${price_usd:.6g} + steps" if row.price_micro else "free + steps"
-    per_k = f"${price_usd * 1000:,.2f} per 1,000 runs" if row.price_micro else "no seller price"
+    pricing = m.get("pricing") or {"mode": "flat", "price_usd": row.price_micro / 1_000_000}
+    if pricing.get("mode") == "per_unit":
+        price_usd = pricing["max_price_usd"]                                  # the worst case, for the Offer
+        price_line = (f"seller ${pricing['per_unit_usd']:.6g} per unit, up to "
+                      f"${price_usd:.6g} per run + steps")
+        per_k = f"up to ${price_usd * 1000:,.2f} per 1,000 runs"
+    elif pricing.get("mode") == "cost_plus":
+        price_usd = pricing["max_price_usd"]
+        price_line = (f"seller: the step cost plus {pricing['markup_percent']:.6g}% markup, up to "
+                      f"${price_usd:.6g} per run")
+        per_k = f"up to ${price_usd * 1000:,.2f} per 1,000 runs"
+    else:
+        price_usd = pricing.get("price_usd", row.price_micro / 1_000_000)
+        price_line = f"seller ${price_usd:.6g} + steps" if price_usd else "free + steps"
+        per_k = f"${price_usd * 1000:,.2f} per 1,000 runs" if price_usd else "no seller price"
     chk = row.check_result or {}
     checked_at = str(chk.get("checked_at") or "")[:16].replace("T", " ")
     rel = await _hub_reliability(db, row.tool_id, row.org_id)

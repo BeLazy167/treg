@@ -16,7 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ...config import get_settings
 from ...domain.catalog import store as catalog_store
-from ...domain.hub import ManifestError, validate, validate_check, validate_readme
+from ...domain.hub import ManifestError, price_label, validate, validate_check, validate_readme
 from ...models import HubTool, Org, Tool
 
 HUB_ID_MIN_PARTS = 2
@@ -207,6 +207,8 @@ def view(row: HubTool) -> dict[str, Any]:
     return {
         "tool_id": row.tool_id, "version": row.version, "kind": row.kind, "status": row.status,
         "summary": row.summary, "writes": row.writes, "price_usd": row.price_micro / 1_000_000,
+        "pricing": row.manifest.get("pricing", {"mode": "flat", "price_usd": row.price_micro / 1_000_000}),
+        "price_label": price_label(row.manifest),
         "uses": row.manifest.get("uses", []), "inputs": row.manifest.get("inputs", {}),
         "output": row.manifest.get("output", {}), "limits": row.manifest.get("limits", {}),
         "created_by": row.created_by, "created_at": row.created_at.isoformat(),

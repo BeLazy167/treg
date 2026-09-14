@@ -5088,7 +5088,7 @@ _HUB_STEPS_SKELETON = {
     "steps": [{"name": "fetch", "call": "my-api/v1/items",
                "input": {"q": "$input.query", "limit": "$input.limit"}}],
     "output": {"items": "$fetch"},
-    "price_usd": 0,
+    "pricing": {"mode": "flat", "price_usd": 0},
 }
 _HUB_SCRIPT_SKELETON = {
     "name": None,
@@ -5098,7 +5098,7 @@ _HUB_SCRIPT_SKELETON = {
     "uses": ["my-api"],
     "script": "run.js",
     "output": {"fields": ["items", "count"]},
-    "price_usd": 0,
+    "pricing": {"mode": "flat", "price_usd": 0},
 }
 _HUB_RUN_JS = """// The whole surface a script gets:
 //   ctx.inputs                                  the caller's inputs, checked against recipe.json
@@ -5333,10 +5333,11 @@ def cmd_hub_ls(args, cfg) -> None:
     _section("Your hub tools")
     if not rows:
         _dim("  none yet — treg hub init <name>"); return
-    print(f"  {_M}{'TOOL':<44}{'VER':>3}  {'STATUS':<8}{'KIND':<7}{'PRICE':>7}  USES{_R}")
+    print(f"  {_M}{'TOOL':<44}{'VER':>3}  {'STATUS':<8}{'KIND':<7}{'PRICE':<26}USES{_R}")
     for t in rows:
         colour = _G if t["status"] == "live" else _AM if t["status"] == "failed" else _M
-        print(f"  {t['tool_id']:<44}{t['version']:>3}  {colour}{t['status']:<8}{_R}{t['kind']:<7}${t['price_usd']:<6g}  {', '.join(t['uses'])[:60]}")
+        price = t.get("price_label") or (f"${t['price_usd']:.6g}/run" if t.get("price_usd") else "free")
+        print(f"  {t['tool_id']:<44}{t['version']:>3}  {colour}{t['status']:<8}{_R}{t['kind']:<7}{price:<26}{', '.join(t['uses'])[:40]}")
 
 
 def cmd_feedback_get(args, cfg) -> None:

@@ -403,11 +403,20 @@ async def catalog_example(endpoint_id: str) -> Response:
     return Response(content=path.read_bytes(), media_type="application/json")
 
 
+def _hub_worst_usd(manifest: dict, price_micro: int) -> float:
+    """The most a run can cost for the seller's price: the flat price, or the declared max."""
+    p = manifest.get("pricing") or {"mode": "flat", "price_usd": price_micro / 1_000_000}
+    if p.get("mode") in ("per_unit", "cost_plus"):
+        return float(p["max_price_usd"])
+    return float(p.get("price_usd", price_micro / 1_000_000))
+
+
 async def _hub_endpoint_view(endpoint_id: str, db: AsyncSession) -> dict | None:
     """The public contract of one hub tool, in the shape `treg catalog get` and `catalog_get`
     already print: `endpoint` (with `kind: "hub"`), `provider` (the maker's team). Hides the
     script, the maker's tools and every key (docs/HUB-DECISIONS.md round 4 q4, round 5 q7)."""
     from ..application import hub as hub_app
+    from ..domain.hub import price_label as hub_price_label
     from ..models import Org
     if not hub_app.enabled() or not hub_app.is_hub_id_shape(endpoint_id):
         return None
@@ -432,9 +441,9 @@ async def _hub_endpoint_view(endpoint_id: str, db: AsyncSession) -> dict | None:
             "inputs": inputs, "output": m.get("output", {}), "writes": row.writes,
             "recipe": "script" if row.kind == "script" else "steps",
             "limits": m.get("limits", {}),
-            "cost": {"type": "per_success", "usd": row.price_micro / 1_000_000, "currency": "USD",
-                     "unit": "run", "note": "the maker's price per successful run; metered steps are billed on top, one trace line each"},
-            "price_line": f"seller ${row.price_micro / 1e6:.6g} + steps",
+            "cost": {"type": "per_success", "usd": _hub_worst_usd(m, row.price_micro), "currency": "USD",
+                     "unit": "run", "note": "the maker's price per successful run (the most a variable price can reach); metered steps are billed on top, one trace line each"},
+            "price_line": "seller " + hub_price_label(m) + " + steps",
             "made_of": len(m.get("uses", [])),
             "status": row.status,
             "health": health.state, "fails_in_a_row": health.fails_in_a_row,

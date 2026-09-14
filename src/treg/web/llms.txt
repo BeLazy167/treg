@@ -373,6 +373,12 @@ listed in search; the maker shares the id or the page `{BASE}/hub/<id>` (`.md` f
   README.md); `treg hub run . --input k=v` runs the folder for real, nothing stored; `treg hub
   publish .` validates, runs check.json once on your balance, and the tool is live on pass. Over
   MCP: `hub_create`, `hub_update`, `hub_mine`.
+- **Pricing** — a `pricing` block in recipe.json, or the flat `price_usd`. Three modes, one per
+  tool: `{"mode":"flat","price_usd":0.02}`; `{"mode":"per_unit","per_unit_usd":0.002,
+  "max_price_usd":0.5}` (price = per_unit times an integer `units` your code returns, declared as an
+  output field, capped at max); `{"mode":"cost_plus","markup_percent":30,"max_price_usd":0.5}` (that
+  percent of the run's catalog step cost, needs one catalog tool in `uses`, capped at max). The
+  caller pays your price plus the metered steps.
 - A script gets `ctx.inputs`, `ctx.call(target, {method, query, body, headers})`, `ctx.csv(text)`,
   `ctx.data` (the rows of the `data.csv` uploaded with the tool, ≤ 50 MB, read-only) and `ctx.log`;
   no network, no files, no `require`. `target` must be in the manifest's `uses`: a catalog id, one

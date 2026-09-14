@@ -214,7 +214,7 @@ search: you share the id or the page `{BASE}/hub/<id>`.
 **One folder, four files** — `treg hub init <name> --script` writes a neutral skeleton:
 
 ```
-recipe.json   the manifest: name, summary, inputs, uses, output, price_usd; steps OR "script": "run.js"
+recipe.json   the manifest: name, summary, inputs, uses, output, pricing; steps OR "script": "run.js"
 run.js        export default async function run(ctx) { ... }   (script recipes only)
 check.json    sample inputs + the output fields the check must find; run once for real at publish
 README.md     what it does, for a human
@@ -241,6 +241,14 @@ https://api.mine.com` (a secret is optional; a public Google Sheet needs none), 
 Caps: 120 s, 20 calls, 64 MB, four runs at a time per team. A steps recipe instead names its calls in
 `steps` and reads earlier answers with references (`$input.x`, `$step.path`, `$step[]`,
 `$step.length`); steps that do not depend on each other run four at a time.
+
+**Pricing — one mode per tool.** In `recipe.json`, either a flat `price_usd`, or a `pricing` block:
+- `{"mode": "flat", "price_usd": 0.02}` — a fixed price per successful run.
+- `{"mode": "per_unit", "per_unit_usd": 0.002, "max_price_usd": 0.5}` — `per_unit_usd` times an
+  integer `units` your code returns (declare `units` as an output field), capped at `max_price_usd`.
+- `{"mode": "cost_plus", "markup_percent": 30, "max_price_usd": 0.5}` — that percent of the run's
+  catalog step cost (the tool must call at least one catalog tool), capped at `max_price_usd`.
+The caller pays your price plus the metered steps; the caller's `X-Treg-Run-Max-Cost` caps the whole run.
 
 **The road:**
 
