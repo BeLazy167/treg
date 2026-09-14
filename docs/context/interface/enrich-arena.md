@@ -779,3 +779,9 @@ enrichment. Both Battle and Waterfall use the existing planner and ordinary call
 there are no Harvest branches in Arena. Name, company-domain and email inputs do not select
 these Harvest tools. Native LinkedIn routes remain available. Additional adapter categories
 also make the full and company tools candidates in the corresponding public enrichment routes.
+
+
+`_fresh_caller` carries the initiating managed key into each paid step. It rechecks that the key
+is active and still belongs to the same membership and team. A Default-key generation change
+also stops later steps. The snapshot retains key attribution; browser-session runs keep no key.
+This recheck happens before a new call and does not cancel a request already in flight.

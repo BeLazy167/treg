@@ -6,6 +6,9 @@ sources:
   - src/treg/__main__.py
   - src/treg/maintenance.py
   - src/treg/alembic/env.py
+  - src/treg/alembic/versions/0034_managed_api_keys.py
+  - src/treg/alembic/versions/0035_default_key_generation.py
+  - src/treg/alembic/versions/0036_activity_key_indexes.py
   - src/treg/worker.py
   - src/treg/web/selfhost.sh
   - src/treg/config.py
@@ -56,8 +59,11 @@ event loop therefore creates fresh pooled connections instead of receiving conne
 closed maintenance loop. Calling `maintenance.upgrade()` directly does not dispose the engine.
 
 ## Schema upgrade safety
-
-- **Alembic is authoritative.** Migration scripts ship inside `src/treg/alembic/` in the wheel.
+- **Managed-key rollback floor:** revision `0034` adds key controls, audit rows, Activity snapshots,
+  and a hash-only backfill for existing membership credentials. It is marked `contract = True`
+  because old code cannot enforce newly stored disable or revoke state. The migration is additive
+  and uses SQL that works on SQLite and Postgres.
+- **Alembic is authoritative:** migration scripts ship inside `src/treg/alembic/` in the wheel.
   `maintenance._alembic_config()` resolves that installed package resource, supplies the escaped
   configured URL, and runs Alembic in a worker thread.
 - **The adoption floor is final.** An unstamped existing database must pass through release 0.14.x.
@@ -223,3 +229,16 @@ without importing the heavy database stack into the light `treg` CLI.
 Workers call read-only `verify_db()` before work and must run against a compatible schema. They need
 only the credentials and configuration required by their job. Hosting schedules, service wiring and
 manual production procedures belong in the private deployment runbook.
+
+
+Managed-key rollout uses revisions `0034` through `0036`. Apply the key controls and generation
+before the separate concurrent Activity index build. The index migration allows 180 seconds for
+lock waits and 600 seconds per statement, then restores 5/120 seconds. A failed concurrent build
+can leave an invalid index; retrying `0036` removes and rebuilds only that invalid index.
+Do not deploy server code older than `0034` after key disable or revoke state has been recorded.
+The package version follows current main; this branch does not publish a release.
+
+For hosted rollout, release and verify the compatible CLI before deploying the managed-key server.
+The served installer installs from PyPI, so changing the server alone does not make `treg update`
+install the new client. Old browser login and saved-token calls remain usable; affected email and
+team-change requests receive an update instruction before their local state can be replaced.
