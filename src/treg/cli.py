@@ -5105,6 +5105,30 @@ def cmd_review(args, cfg) -> None:
     print(json.dumps(receipt, indent=2))
 
 
+def cmd_host(args, cfg) -> None:
+    """`treg host <file>`: host a reference image / audio / video so a vendor can fetch it by URL.
+    AIGC endpoints take references as public URLs; paste hosts fail vendor probes at random, and an
+    agent on a laptop has nothing better. Prints the URL alone so it drops straight into --data."""
+    import mimetypes
+    p = Path(args.file).expanduser()
+    if not p.is_file():
+        sys.exit(f"treg host: file not found: {p}")
+    ctype = args.content_type or mimetypes.guess_type(p.name)[0] or ""
+    if not ctype:
+        sys.exit(f"treg host: cannot guess the media type of {p.name}; pass --content-type image/png (or audio/*, video/*)")
+    with _client(cfg) as c:
+        r = c.post("/media", content=p.read_bytes(), headers={"content-type": ctype})
+    if r.status_code >= 400:
+        _show(r)
+        sys.exit(1)
+    body = r.json()
+    if _JSON_OVERRIDE:  # the global --json: main() pops it from argv before argparse sees it
+        print(json.dumps(body, indent=2))
+    else:
+        print(body["url"])
+        print(f"  {body['content_type']}, {body['size']} bytes, expires {body['expires_at']}", file=sys.stderr)
+
+
 def cmd_feedback(args, cfg) -> None:
     if args.message == "-" and sys.stdin.isatty():
         _feedback_error("stdin_required", "Pipe sanitized text or redirect a file into stdin when using '-'.")
@@ -5508,6 +5532,7 @@ HELP_GROUPS: list[tuple[str, list[tuple[str, str]]]] = [
     ("THE CATALOG — tools you don't have a key for", [
         ("catalog", "Find a tool by what you want to DO. ~2,600 endpoints, each with its price."),
         ("call", "Call a tool: a catalog endpoint by id, or one of your own by URL."),
+        ("host", "Host a reference image / audio / video at a public URL for a vendor to fetch."),
         ("balance", "Prepaid balance: credit left, calls in flight, recent spend."),
         ("topup", "Add funds, or set up automatic top-ups."),
         ("feedback", "Share a problem or suggestion about treg."),
@@ -5879,7 +5904,8 @@ def build_parser() -> argparse.ArgumentParser:
     # ---- calling ----
     cl = mk(sub, "call", "Call a tool through the proxy: `call <tool> <path>` or `call <full-url>`. Key injected server-side.",
             "treg call stripe v1/charges", "treg call https://api.stripe.com/v1/charges",
-            "treg call posthog api/events --query limit=5", "treg call slack chat.postMessage --method POST --data '{\"channel\":\"C1\"}'")
+            "treg call posthog api/events --query limit=5", "treg call slack chat.postMessage --method POST --data '{\"channel\":\"C1\"}'",
+            "treg call reapi.tasks.get --query id=task_01a09ddf   # a catalog id: path/query params go in --query, never in a path")
     cl.add_argument("target", help="a tool name, or a full upstream URL")
     cl.add_argument("path", nargs="?", default="", help="the path when using a tool name")
     cl.add_argument("--method", default=None,
@@ -6143,6 +6169,15 @@ def build_parser() -> argparse.ArgumentParser:
     review.add_argument("usefulness", choices=REVIEW_USEFULNESS, help="how the result helped your task")
     review.add_argument("--reason", help="optional sanitized reason, 1-200 characters")
     review.set_defaults(fn=cmd_review)
+
+    ho = mk(sub, "host", "Host a reference file (image / audio / video) at a public URL that a vendor can fetch: "
+            "the image_urls / audio_urls an AIGC endpoint takes. 30 MB per file, 7-day TTL, free.",
+            "treg host face.jpg", "treg host voice.mp3 --content-type audio/mpeg",
+            "treg host face.jpg --json   # the full response: url, token, content_type, size, expires_at",
+            "treg call reapi.video-gen.seedance-2-5 --data \"{\\\"image_urls\\\":[\\\"$(treg host face.jpg)\\\"], …}\"")
+    ho.add_argument("file", help="the local file to host")
+    ho.add_argument("--content-type", dest="content_type", metavar="TYPE", help="override the type guessed from the extension")
+    ho.set_defaults(fn=cmd_host)
 
     fb = mk(sub, "feedback", "Submit or retrieve private team feedback.",
             'treg feedback submit friction "The pagination example is unclear."',

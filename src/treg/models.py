@@ -1282,6 +1282,23 @@ class CallReview(SQLModel, table=True):
     created_at: datetime = Field(default_factory=_now)
 
 
+class Media(SQLModel, table=True):
+    """A reference file a member hosted for a vendor to fetch (`treg host`): the image, voice clip
+    or video an AIGC endpoint takes as a public URL. Bytes live in the row, expire by TTL, and are
+    served by an opaque token that names no org or file. See docs/context/architecture/media.md.
+    """
+
+    __table_args__ = (Index("ix_media_org_created", "org_id", "created_at"),)
+    id: int | None = Field(default=None, primary_key=True)
+    token: str = Field(unique=True, index=True)
+    org_id: int = Field(foreign_key="org.id")
+    content_type: str
+    size: int = Field(default=0)
+    body: bytes
+    created_at: datetime = Field(default_factory=_now)
+    expires_at: datetime = Field(index=True)
+
+
 class ToolRequest(SQLModel, table=True):
     """A "the catalog doesn't have X" report — filed from the catalog page, the CLI, or by an
     agent mid-search over MCP. Demand signal for which provider to key next; reviewed by querying
