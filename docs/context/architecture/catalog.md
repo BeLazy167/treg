@@ -85,6 +85,7 @@ sources:
   - src/treg/catalog/companyenrich.yaml
   - src/treg/catalog/oceanio.yaml
   - src/treg/catalog/akta.extended.yaml
+  - src/treg/catalog/dataforseo.yaml
   - src/treg/catalog/dataforseo.extended.yaml
   - src/treg/catalog/diffbot.yaml
   - src/treg/catalog/diffbot.extended.yaml
@@ -1307,6 +1308,18 @@ the core file's paths are relative to it (`/serp/google/organic/live/regular`). 
 **the ingester's core-wins dedup silently misses**, because it compares `(method, path)` across the
 two spellings — every DataForSEO route curated in core is also present in the extended file under
 a different id. Fixing that belongs in `catalog_ingest.py` and needs a regeneration.
+
+### DataForSEO Live routes accept one task, not a batch
+
+DataForSEO's generic POST is "an array of task objects", and Standard `/task_post` really does
+batch up to 100. Every **Live** route in `dataforseo.yaml` (and the vendor's Backlinks / SERP
+Live docs) does not: "each Live API call can contain only one task." Extra array elements come
+back as per-task status `40000` ("You can set only one task at a time") and `$0`. Feedback #102 /
+#103: `dataforseo.web.backlinks.summary` (`/backlinks/summary/live`) reused the generic note and
+the provider `limits` line "up to 100 tasks per POST array", so agents batched domains. The
+fix is documentation only — `input.note` and `limits` name the single-task cap; multi-target
+work is a `bulk_*` live route (many targets *inside* one task), e.g. `dataforseo.web.url.metrics`
+(`/backlinks/bulk_ranks/live`). Do not auto-split a multi-task array into billed calls.
 
 ## Choosing between providers (`domain/catalog/stats.py`)
 

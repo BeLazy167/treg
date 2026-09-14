@@ -1353,6 +1353,43 @@ async def test_catalog_get_dataforseo_related_keywords_omits_order_by(clients: A
     assert "order_by" in body["endpoint"]["input"]["note"]
 
 
+def test_dataforseo_backlinks_summary_is_single_task():
+    """Feedback #102 / #103: backlinks/summary/live accepts exactly one task.
+
+    catalog_get used to reuse the generic "array of task objects" wording (and
+    the provider-level "up to 100 tasks" limit), so agents batched domains and
+    got per-task 40000 "You can set only one task at a time" on the rest.
+    Vendor docs: each Live API call can contain only one task. Multi-target
+    work is dataforseo.web.url.metrics (bulk_ranks/live, many targets / one task).
+    """
+    cat = cs.load()
+    ep = cat.by_id["dataforseo.web.backlinks.summary"]
+    assert ep["path"] == "/backlinks/summary/live"
+    note = ep["input"]["note"]
+    assert "exactly one task" in note
+    assert "40000" in note
+    assert "dataforseo.web.url.metrics" in note
+    tasks = ep["test_request"]["body"]
+    assert isinstance(tasks, list) and len(tasks) == 1
+    limits = cat.provider_meta["dataforseo"]["limits"]
+    assert "exactly one task" in limits
+    assert "up to 100 tasks per POST array" not in limits
+
+
+async def test_catalog_get_dataforseo_backlinks_summary_names_the_single_task_limit(
+        clients: AsyncClient):
+    body = (await clients.get("/catalog/endpoints/dataforseo.web.backlinks.summary")).json()
+    note = body["endpoint"]["input"]["note"]
+    assert "exactly one task" in note
+    assert "40000" in note
+    assert "dataforseo.web.url.metrics" in note
+    assert "up to 100 tasks per POST array" not in body["provider"]["limits"]
+    assert "exactly one task" in body["provider"]["limits"]
+    tmpl = body["call_template"]
+    assert tmpl.startswith("treg call dataforseo.web.backlinks.summary --method POST")
+    assert "--data '[{\"target\":\"moz.com\"" in tmpl
+
+
 async def test_catalog_get_hunter_domain_search_quotes_the_credit(clients: AsyncClient):
     body = (await clients.get("/catalog/endpoints/hunter.companies.emails")).json()
     cost = body["endpoint"]["cost"]
