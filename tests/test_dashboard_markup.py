@@ -172,7 +172,7 @@ def test_the_tab_bar_is_all_plus_the_catalog_categories_plus_platform():
     order = INDEX[INDEX.index("platCategories(){") :][:900]
     assert (
         "['Enrichment','SEO/AEO','Social','Advertising','E-commerce','Reviews & Apps',"
-        "'Community']" in order
+        "'AI generation','Community']" in order
     )
 
 
@@ -540,7 +540,9 @@ def test_the_long_metered_phrasing_never_reaches_a_collapsed_line():
     collapsed line it wraps the row onto three lines. Collapsed surfaces say "credit-priced"."""
     short = INDEX[INDEX.index("costShort(c){") :][:400]
     assert "return 'credit-priced'" in short
-    assert "if(c.value==null) return 'credit-priced'" in short
+    # a price table has no scalar value but does have a range, so only an unpublished number is
+    # "credit-priced" — a video or image model shows its per-second rate or range instead
+    assert "if(c.value==null && !(c.table && typeof c.usd==='number')) return 'credit-priced'" in short
     assert "return this.costLabel(c)" in short  # ...a published number is short already
     block = _ledger()
     assert "costLabel" not in block, "the long form is a sentence, not a label — it belongs in the facts"
