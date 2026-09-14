@@ -12,9 +12,15 @@ source:
 # House rules for this provider (they apply to EVERY endpoint below, so they are stated once here
 # rather than repeated in each `input.note`):
 #
-#  1. Every data endpoint is POST and its body is an ARRAY of task objects. One array element = one
-#     billable task; the fields documented under `input.body` are the fields of a single element.
-#     Sending `{...}` instead of `[{...}]` yields status_code 40501 "Invalid Field".
+#  1. Every data endpoint is POST and its body is an ARRAY of task objects. The fields documented
+#     under `input.body` are the fields of a single element. Sending `{...}` instead of `[{...}]`
+#     yields status_code 40501 "Invalid Field".
+#     Live routes in this file accept exactly ONE task per request (vendor: "each Live API call
+#     can contain only one task"). Extra array elements get per-task status 40000
+#     "You can set only one task at a time" and $0 — do not batch domains as multiple tasks.
+#     Multi-target work goes on a bulk_* live route (many targets inside one task), not a
+#     multi-element array. The "up to 100 tasks" batch is Standard /task_post, which this
+#     core file does not list.
 #  2. The HTTP status is 200 even when the call failed. Two status codes matter:
 #       - the envelope `status_code` (20000 = OK)
 #       - the per-task `tasks[0].status_code` (20000 = OK; 40501/40400/... = this task failed)
@@ -60,7 +66,7 @@ source:
 # ============================================================================================
 
 
-limits: "2000 requests/min; up to 100 tasks per POST array"
+limits: "2000 requests/min; Live routes (every core endpoint here): exactly one task per POST — extra tasks return status 40000. Standard /task_post (extended catalog only) batches up to 100."
 pricing_url: https://dataforseo.com/pricing  # A billable 'SERP' is 10 results, not a whole page. Credits never expire; pay-as-you-go after the minimum top-up. Live mode is ~3x Standard.; free tier: 1 USD trial credit on si
 endpoints:
   # --- Backlinks (the Moz overlap group) --------------------------------------------------------
@@ -84,7 +90,7 @@ endpoints:
         internal_list_limit: {type: integer, required: false, note: "max elements per internal breakdown array, 10-1000; default 10", example: 10}
         rank_scale: {type: string, required: false, note: "one_hundred | one_thousand; default one_thousand"}
         backlinks_filters: {type: array, required: false, note: "narrow the backlink set the aggregates are computed over"}
-      note: "POST body is an array of these task objects; one element = one billable task"
+      note: "POST body is a JSON array that must contain exactly one task object. This live route rejects extra elements with per-task status 40000 \"You can set only one task at a time\" ($0 on the rejected tasks) — one domain per call. For many targets in one request use dataforseo.web.url.metrics (/backlinks/bulk_ranks/live), which takes up to 1000 targets inside a single task."
     test_request:
       body:
         - {target: "moz.com", internal_list_limit: 10}
