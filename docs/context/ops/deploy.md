@@ -78,9 +78,19 @@ closed maintenance loop. Calling `maintenance.upgrade()` directly does not dispo
   `database_url` is not SQLite, `verify_db()` raises. On SQLite development it logs a warning.
 
 For PostgreSQL, migrations set bounded lock and statement timeouts. A contended ordinary DDL
-migration must fail cleanly rather than queue production traffic behind an exclusive lock. The one
-sanctioned exception is `CREATE INDEX CONCURRENTLY` in its own revision. Such a revision owns its
-longer timeouts and must detect and rebuild an invalid index left by interruption.
+migration must fail cleanly rather than queue production traffic behind an exclusive lock: while an
+`ALTER TABLE` waits for its `ACCESS EXCLUSIVE` lock, every later query on that table queues behind
+it, so the 5 s `lock_timeout` is the longest stall a deploy may inflict and no revision may raise it
+for an `ALTER`. A deploy waits longer by retrying instead: `maintenance` re-runs `alembic upgrade
+head` up to `LOCK_RETRY_ATTEMPTS` times after a lock timeout, pausing a jittered few seconds between
+attempts so the table's short transactions can drain, and `env.py` commits each revision on its own
+(`transaction_per_migration`) so a retry resumes at the revision that timed out. Any other error
+fails the deploy at once. The one sanctioned exception to the 5 s cap is `CREATE INDEX CONCURRENTLY`
+in its own revision: its lock blocks nobody while it waits, so such a revision owns its longer
+timeouts and must detect and rebuild an invalid index left by interruption.
+
+Hot-table ALTERs stay cheap to retry when they sit in their own revision, add only nullable columns
+without defaults (metadata-only in PostgreSQL) and leave backfills and `NOT NULL` to later steps.
 
 Deploy schema changes before starting application or worker code that expects the new revision. A
 platform whose scheduled workers update independently must sequence them accordingly.
