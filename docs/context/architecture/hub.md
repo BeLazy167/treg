@@ -1,6 +1,6 @@
 ---
 title: The tool hub — tools a maker publishes, made of other tools
-status: built (phases 1–7, 2026-09-09/10); behind `hub_enabled` (TREG_HUB_ENABLED), off in production until the final merge
+status: built (phases 1–9, 2026-09-09/14; pricing flexibility 9.1–9.5, decisions in `docs/hub-pricing-decisions.md`); behind `hub_enabled` (TREG_HUB_ENABLED), off in production until the final merge
 sources:
   - src/treg/domain/hub/__init__.py
   - src/treg/domain/hub/manifest.py
@@ -73,14 +73,22 @@ optionally `data.csv`. `treg hub init <name> [--script]` writes a vendor-neutral
 **The manifest** (`domain/hub/manifest.py`) is validated by pure rules; every refusal is
 `ManifestError(field, rule)`, a dotted path into the file plus the rule it broke, because the
 maker is usually an agent fixing a file. Fields: `name` (`<team-slug>.<name>` becomes the id),
-`summary` (≤200), `writes`, `inputs`, `uses`, `limits`, `price_usd`, exactly one of `steps` |
-`script: "run.js"`, `output`. Rules carried from Crawl4AI's recipes: an input is required by
+`summary` (≤200), `writes`, `inputs`, `uses`, `limits`, `pricing` (or a flat `price_usd`), exactly
+one of `steps` | `script: "run.js"`, `output`. Rules carried from Crawl4AI's recipes: an input is required by
 having no `default` (a `required` key is refused); every non-secret input carries an `example`
 or a `default`; an `int` input names a `max`. `uses` is the security boundary: each entry is a
 catalog id or one of the maker's own tool names; a hub id is refused (depth one); a script that
 serves only its data may leave it empty. Every step's `call` must be in `uses` (`<tool>/<path>`
 for an own tool, optional `method`, `allow_fail`). Limits: `steps` ≤ 20, `wall_s` ≤ 120,
-`price_usd` 0–100 with at most six decimals. References must parse and the graph is built at
+the money fields 0–100 dollars with at most six decimals. **Pricing** (`docs/hub-pricing-decisions.md`,
+2026-09-14): a `pricing` block with one `mode` per version. `flat` (`price_usd`, a fixed price per
+successful run; a file with only a top-level `price_usd` still means flat, both together is refused);
+`per_unit` (`per_unit_usd`, `max_price_usd`: the price is `per_unit_usd` times an integer `units` the
+run returns, so `units` must be a declared output field); `cost_plus` (`markup_percent`,
+`max_price_usd`: that percent of the run's catalog step cost, so `uses` must name at least one
+catalog id). Only the mode's fields are read; `max_price_usd` is at least `per_unit_usd`. The
+validator normalizes the block to micro-integers (`Validated.pricing`; `pricing_micro(manifest)` and
+`price_label(manifest)` read a stored one). References must parse and the graph is built at
 publish, so a cycle or an unknown step is refused before anyone pays. `validate_check` pins
 `check.json` to the manifest; `validate_data` checks `data.csv` (≤ 5 MB, a header and one row; the rows travel into the engine on every run).
 
@@ -203,17 +211,27 @@ check never retires a tool by itself.
 
 ## The seller's money (`domain/money/__init__.py`)
 
-A maker's `price_usd` rides the same primitives as a step: one extra hold `{run}:price` on the
-caller at run start (402 `hub_price_unaffordable` with the amount before any step), settled on
-success, released on any failure or stop. The settle is the one cross-team money movement in
-treg: `settle_to_in_transaction(db, call_id, payee_org_id)` closes the caller's hold at its full
-amount, consumes the caller's blocks, and in the same transaction credits the maker's team with an
-`earned` block of the same amount (a `settle` entry on the payer naming the payee, a `grant`
-entry on the payee naming the payer's run). The invariant holds on both teams at every instant.
+A maker's price rides the same primitives as a step: one extra hold `{run}:price` on the caller
+at run start (402 `hub_price_unaffordable` with the amount before any step), settled on success,
+released on any failure or stop. **What is held:** the flat price, or for `per_unit` and
+`cost_plus` the declared `max_price_usd` (the worst case, so the caller knows it before the run and
+the ceiling counts it). **What is settled:** `_final_price(pricing, output, spent)` after a
+successful run: flat, the price; `per_unit`, `units × per_unit_usd` capped at the max; `cost_plus`,
+`markup_percent` of the run's catalog step cost (`spent`) capped at the max. A `per_unit` run whose
+`units` is missing or not an integer of 0 or more fails 424 `hub_units_invalid` (so the publish
+check rejects such a tool). The settle is the one cross-team money movement in treg:
+`settle_to_in_transaction(db, call_id, payee_org_id, actual_micro=)` consumes the settled amount
+from the caller's hold, refunds the rest of the hold to the caller, and in the same transaction
+credits the maker's team with an `earned` block of the settled amount (a `settle` entry on the
+payer naming the payee, a `grant` entry on the payee naming the payer's run); `actual_micro=None`
+settles the full hold, which is the flat case. The invariant holds on both teams at every instant.
 No margin, no platform share in the MVP. Not charged when the caller is the maker (their own
 runs, the check). `earned` spends after the free kinds and before purchased money
 (`_KIND_ORDER`). Withdrawal is backlog. The earnings view is sales only (the maker's own runs
-excluded), counts and amounts, never who called.
+excluded), counts and amounts, never who called; `avg_price_micro` (earned ÷ successful runs, per
+day and overall; `avg_price_usd` in the CSV) is how a maker sees where a variable price lands.
+`treg hub price` sets one flat number and normalizes the tool to `flat`; a variable price is set by
+publishing a version with a `pricing` block.
 
 ## The surfaces
 
@@ -222,16 +240,21 @@ excluded), counts and amounts, never who called.
   strips the routed-discovery blocks); `scripts/build_plugin.py` drops the block the same way and
   `--with-hub` keeps it at the final merge. `GET /catalog/endpoints/<id>` (behind `catalog_get`,
   `treg catalog get`) answers for a hub id with the public contract (`kind: "hub"`, summary,
-  inputs, output, the price line, health, version, `call_template`, the page URL, the readme);
+  inputs, output, the price line (`price_label`: the mode and the worst case; `cost.usd` is the
+  worst case), health, version, `call_template`, the page URL, the readme);
   never the script, the maker's tools or a key. Search never lists a hub tool.
 - **The public share page** `GET /hub/<id>` (and `.md`; `@N`): the contract for a person or an
-  agent on the public stylesheet; the check trace as shape only (never what each step called);
+  agent on the public stylesheet; the price as the mode and the worst case ("seller $X per unit,
+  up to $Y per run"; the schema.org Offer carries the worst case); the check trace as shape only
+  (never what each step called);
   "made of N tools (names and keys hidden)"; reliability over 30 days; older versions still
   callable; readable without sign-in; `noindex`, not in the sitemap.
 - **The dashboard** (`web/index.html`): a Hub view for the maker (the list; a detail with
   Overview, Versions, Price, Earnings, Runs & log, Health; copy call line, copy share URL, retire)
   and the run page `/app/runs/<run_id>`, opened on load in both sign-in modes. Files are
   read-only in the dashboard: a new version comes from the terminal or the agent.
+- **The CLI:** `treg hub init` scaffolds a `pricing` block (`flat`, 0); `treg hub ls` shows the price
+  label; `treg hub earnings` prints the average price per successful run.
 
 ## The case study (2026-09-09) and what it taught
 

@@ -855,8 +855,11 @@ Own keys are unmetered; see [ContactOut](contactout.md) for prices, free verific
 The tool hub (architecture/hub.md) adds one block kind and one primitive, and nothing else to
 the five entries. `earned` is a block kind like `promotional`: credit a maker's team received as a
 hub seller's price. It spends after the free kinds and before `purchased`. `settle_to_in_transaction`
-closes a hold at its full reserved amount on the payer and, in the same transaction, grants the
-same amount to the payee as an `earned` block: a `settle` entry on the payer whose meta names
+closes a hold on the payer and, in the same transaction, grants the settled amount to the payee as
+an `earned` block. `actual_micro=None` settles the full reserved amount (a flat price); a given
+`actual_micro` settles that much and refunds the rest of the hold to the payer (a variable hub
+price: the runner reserved the declared maximum and pays the real price, `docs/hub-pricing-decisions.md`).
+The entries: a `settle` entry on the payer whose meta names
 `payee_org_id`, and a `grant` entry on the payee whose meta names `payer_org_id` and the run. The
 invariant holds on both teams at every instant. It does not commit; the hub runner owns the
 transaction. It is the only cross-team money movement in treg.
