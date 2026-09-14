@@ -87,6 +87,7 @@ sources:
   - src/treg/catalog/akta.extended.yaml
   - src/treg/catalog/dataforseo.yaml
   - src/treg/catalog/dataforseo.extended.yaml
+  - tests/test_dataforseo_constraints.py
   - src/treg/catalog/diffbot.yaml
   - src/treg/catalog/diffbot.extended.yaml
   - src/treg/catalog/tikhub.extended.yaml
@@ -1366,6 +1367,20 @@ the provider `limits` line "up to 100 tasks per POST array", so agents batched d
 fix is documentation only — `input.note` and `limits` name the single-task cap; multi-target
 work is a `bulk_*` live route (many targets *inside* one task), e.g. `dataforseo.web.url.metrics`
 (`/backlinks/bulk_ranks/live`). Do not auto-split a multi-task array into billed calls.
+
+### DataForSEO Google Trends explore/live rejects `item_types`
+
+Vendor docs still list `item_types` (`google_trends_graph`, `google_trends_map`,
+`google_trends_topics_list`, `google_trends_queries_list`) on
+`/keywords_data/google_trends/explore/live`. A live POST with that field returns HTTP 200 +
+task status `40501 Invalid Field: 'item_types'` and `$0`. Feedback #125 / #127:
+`dataforseo.x.keywords-data-google-trends-explore-live` documented the field, so agents sent
+`google_trends_queries_list` then switched to SerpAPI. The catalog omits the field;
+`input.note` says not to send it. Related-query discovery is `serpapi.x.google-trends` with
+`data_type: RELATED_QUERIES`. The neighboring DataForSEO Trends explore live route
+(`dataforseo.x.keywords-data-dataforseo-trends-explore-live`) never listed `item_types`; no
+DataForSEO sibling in the catalog answers related queries. Enforced by
+`test_google_trends_explore_live_omits_item_types`.
 
 ## Choosing between providers (`domain/catalog/stats.py`)
 
