@@ -137,7 +137,7 @@ def test_limits_doc_mentions_single_task_for_live():
     limits = data.get("limits", "")
 
     assert "Live" in limits, "limits should mention Live endpoint behavior"
-    assert "1 task" in limits or "exactly 1" in limits, (
+    assert "1 task" in limits or "exactly 1" in limits or "exactly one task" in limits.lower(), (
         "limits should state that Live endpoints accept exactly 1 task per POST"
     )
 
@@ -171,6 +171,6 @@ def test_core_live_endpoints_document_single_task_constraint(endpoint_id):
     input_spec = endpoint.get("input", {})
     note = input_spec.get("note", "")
 
-    assert "exactly 1" in note.lower() or "do not support multi-task" in note.lower(), (
+    assert "exactly 1" in note.lower() or "exactly one task" in note.lower() or "do not support multi-task" in note.lower(), (
         f"{endpoint_id}: input.note should clarify Live endpoints accept exactly 1 task"
     )
