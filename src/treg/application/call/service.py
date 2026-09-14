@@ -1117,9 +1117,15 @@ async def _execute_call(request: _ApplicationRequest, upstream_client: httpx.Asy
                     mk, response.status, body, headers=httpx.Headers(response.raw_headers),
                     observed_override=0 if streaming_free_result else None,
                     # The archived question this charge is for (live or hit), so the settle can
-                    # mark the team as having paid for it; and whether this hit is a repeat.
+                    # mark the team as having paid for it; and whether this hit is a repeat. Only
+                    # for a question that CAN be served: `record()` hands back a hash for every
+                    # metered 2xx (the phase-0 statistics count actions and forbidden providers
+                    # too), and a mark for an answer that can never be a hit is a wasted write on
+                    # the money path.
                     archive_use=((caller.org_id, archive_key_hash)
-                                 if archive_key_hash and 200 <= response.status < 300 else None),
+                                 if archive_key_hash and 200 <= response.status < 300
+                                 and archive.storable(catalog_store.load().by_id.get(mk.endpoint_id))
+                                 else None),
                     cached_hit=served_hit, cached_repeat=served_repeat,
                     # `provider_failed_`, not `call_failed_`: the latter is the branch above, where treg
                     # never got an answer (timeout, SSRF refusal, a failed oauth refresh). Both release a

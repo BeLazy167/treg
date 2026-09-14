@@ -1388,7 +1388,9 @@ async def note_org_use_in_transaction(db, org_id: int, key_hash: str) -> None:
     """Remember that `org_id` has now paid for the question `key_hash` - staged in the CALLER's
     transaction (the metered settle's), so the row lands with the charge or not at all. First
     write inserts; a later one bumps the counter. Two first calls racing on the same (org, key)
-    are confined to a savepoint: the loser updates instead of failing the settle."""
+    are confined to a savepoint: the loser updates instead of failing the settle. An
+    IntegrityError that is NOT that race (nothing to update afterwards) is re-raised: a mark
+    must never be lost silently."""
     from sqlalchemy import select, update
     from sqlalchemy.exc import IntegrityError
 
@@ -1398,6 +1400,7 @@ async def note_org_use_in_transaction(db, org_id: int, key_hash: str) -> None:
     existing = (await db.execute(
         select(ArchiveKeyOrg.id).where(ArchiveKeyOrg.org_id == org_id,
                                        ArchiveKeyOrg.key_hash == key_hash).limit(1))).first()
+    lost_race: IntegrityError | None = None
     if existing is None:
         try:
             async with db.begin_nested():
@@ -1405,11 +1408,14 @@ async def note_org_use_in_transaction(db, org_id: int, key_hash: str) -> None:
                                      first_call_at=now, last_call_at=now, calls=1))
                 await db.flush()
             return
-        except IntegrityError:
-            pass  # the other first call won the race; count this one below
-    await db.execute(update(ArchiveKeyOrg)
-                     .where(ArchiveKeyOrg.org_id == org_id, ArchiveKeyOrg.key_hash == key_hash)
-                     .values(calls=ArchiveKeyOrg.calls + 1, last_call_at=now))
+        except IntegrityError as exc:
+            lost_race = exc  # presumably the other first call won; count this one below
+    bumped = await db.execute(
+        update(ArchiveKeyOrg)
+        .where(ArchiveKeyOrg.org_id == org_id, ArchiveKeyOrg.key_hash == key_hash)
+        .values(calls=ArchiveKeyOrg.calls + 1, last_call_at=now))
+    if bumped.rowcount == 0 and lost_race is not None:
+        raise lost_race  # not the race after all: no row to count, so the failure is real
 
 
 def _touch(key_hash: str) -> None:

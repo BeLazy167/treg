@@ -103,7 +103,10 @@ a billed call like any other and counts.
 The evidence is `ArchiveKeyOrg` — one row per (org, key_hash), written by
 `archive.note_org_use_in_transaction` INSIDE the settle transaction (`_platform_settle`, the
 allowlisted write `archive_org_use_in_settle`), so the mark lands with the charge or not at all;
-a racing pair of first calls is confined to a savepoint. `lookup` reads it on a hit
+a racing pair of first calls is confined to a savepoint, and an IntegrityError that leaves no row
+to count is re-raised rather than swallowed. Only a STORABLE question is marked: `record()` hands
+back a hash for every metered 2xx (the phase-0 statistics count actions and forbidden providers
+too), and a mark for an answer that can never be a hit is a wasted write on the money path. `lookup` reads it on a hit
 (`repeat_for_org`), the call service hands `cached_hit`/`cached_repeat` to the settle, which
 scales the RAW amount (floor division) before the ledger applies the margin. The settle entry's
 meta carries `cached: true` and `cache_price_percent`; `tool_called` carries `cache_price`
