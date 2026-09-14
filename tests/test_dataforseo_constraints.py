@@ -21,7 +21,11 @@ CATALOG = Path("src/treg/catalog")
 
 
 def load_dataforseo_endpoints():
-    """Load all DataForSEO endpoints from core and extended catalogs."""
+    """Load all DataForSEO endpoints from core and extended catalogs.
+
+    Core is a provider document (`endpoints:` list). Extended is the same
+    shape after ingest; a bare list is still accepted.
+    """
     endpoints = []
 
     core_path = CATALOG / "dataforseo.yaml"
@@ -35,9 +39,14 @@ def load_dataforseo_endpoints():
     if extended_path.exists():
         data = yaml.safe_load(extended_path.read_text())
         if isinstance(data, list):
-            for ep in data:
-                ep["_source"] = "dataforseo.extended.yaml"
-                endpoints.append(ep)
+            items = data
+        elif isinstance(data, dict):
+            items = data.get("endpoints", [])
+        else:
+            items = []
+        for ep in items:
+            ep["_source"] = "dataforseo.extended.yaml"
+            endpoints.append(ep)
 
     return endpoints
 
