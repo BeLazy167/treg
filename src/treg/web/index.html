@@ -5694,7 +5694,9 @@ createApp({
     costShort(c){
       if(!c || !c.type) return '—';
       if(c.type==='free') return 'free';
-      if(c.value==null) return 'credit-priced';
+      // A price table has no scalar value but does have a range (and, for video, a per-second
+      // rate); only a truly unpublished number is "credit-priced".
+      if(c.value==null && !(c.table && typeof c.usd==='number')) return 'credit-priced';
       return this.costLabel(c); },
     // `providers` needs a session. Publicly, "is this a provider treg knows" is answered by the
     // open catalog response instead — otherwise the whole action chain collapses and a signed-out
