@@ -100,6 +100,18 @@ sources:
   - src/treg/catalog/replicate.extended.yaml
   - src/treg/catalog/reapi.yaml
   - src/treg/catalog/piapi.yaml
+  - src/treg/catalog/examples/reapi.tasks.get.json
+  - src/treg/catalog/examples/reapi.video-gen.seedance-2-5.json
+  - src/treg/catalog/examples/reapi.video-gen.seedance-2-5.unrestricted.json
+  - src/treg/catalog/examples/reapi.image-gen.gpt-image-2-5.json
+  - src/treg/catalog/examples/reapi.image-gen.gpt-image-2.json
+  - src/treg/catalog/examples/reapi.image-gen.gemini-3-pro-image.json
+  - src/treg/catalog/examples/piapi.task.get.json
+  - src/treg/catalog/examples/piapi.video-gen.seedance-2-5.json
+  - src/treg/catalog/examples/piapi.video-gen.seedance-2-5.less-restriction.json
+  - src/treg/catalog/examples/piapi.image-gen.gemini-3-pro-image.json
+  - src/treg/catalog/examples/piapi.image-gen.gpt-image-2-5.json
+  - src/treg/catalog/examples/piapi.image-gen.gpt-image-2.json
   - src/treg/catalog/examples/replicate.image-gen.flux-schnell.json
   - src/treg/domain/catalog/__init__.py
   - src/treg/domain/catalog/store.py
