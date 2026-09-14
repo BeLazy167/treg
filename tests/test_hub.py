@@ -111,6 +111,78 @@ def test_refusals_name_field_and_rule(change, field, rule_words):
     assert rule_words in err.rule
 
 
+# ---------------------------------------------------------------------------------------------
+# Pricing flexibility (9.1): the `pricing` block, three modes, back-compat, the refusals.
+# Decisions in docs/hub-pricing-decisions.md (2026-09-14).
+
+def _no_price(m):
+    m.pop("price_usd", None)
+    return m
+
+
+def test_pricing_flat_block_normalizes():
+    v = validate(_no_price(_steps_manifest(pricing={"mode": "flat", "price_usd": 0.03})),
+                 catalog_ids=CATALOG, own_tools=OWN)
+    assert v.price_micro == 30_000
+    assert v.pricing == {"mode": "flat", "price_micro": 30_000, "per_unit_micro": 0,
+                         "markup_micro": 0, "max_price_micro": 0}
+    assert v.manifest["pricing"] == {"mode": "flat", "price_usd": 0.03}
+
+
+def test_pricing_per_unit_block():
+    m = _script_manifest(output={"fields": ["rows", "count", "units"]},
+                         pricing={"mode": "per_unit", "per_unit_usd": 0.002, "max_price_usd": 0.5})
+    v = validate(m, catalog_ids=CATALOG, own_tools=OWN)
+    assert v.price_micro == 0
+    assert v.pricing == {"mode": "per_unit", "price_micro": 0, "per_unit_micro": 2_000,
+                         "markup_micro": 0, "max_price_micro": 500_000}
+    assert v.manifest["pricing"] == {"mode": "per_unit", "per_unit_usd": 0.002, "max_price_usd": 0.5}
+
+
+def test_pricing_cost_plus_block():
+    v = validate(_no_price(_steps_manifest(pricing={"mode": "cost_plus", "markup_percent": 30,
+                                                    "max_price_usd": 1.0})),
+                 catalog_ids=CATALOG, own_tools=OWN)
+    assert v.price_micro == 0
+    assert v.pricing == {"mode": "cost_plus", "price_micro": 0, "per_unit_micro": 0,
+                         "markup_micro": 300_000, "max_price_micro": 1_000_000}
+
+
+def test_legacy_flat_price_still_works():
+    v = validate(_steps_manifest(price_usd=0.02), catalog_ids=CATALOG, own_tools=OWN)
+    assert v.price_micro == 20_000 and v.pricing["mode"] == "flat"
+    assert v.manifest["pricing"] == {"mode": "flat", "price_usd": 0.02}
+
+
+@pytest.mark.parametrize("m,field,words", [
+    (_steps_manifest(pricing={"mode": "flat", "price_usd": 0.01}), "price_usd", "not a top-level"),
+    (_no_price(_steps_manifest(pricing={"mode": "weird"})), "pricing.mode", "one of"),
+    (_script_manifest(output={"fields": ["rows", "units"]},
+                      pricing={"mode": "per_unit", "per_unit_usd": 0.001}), "pricing.max_price_usd", "finite"),
+    (_script_manifest(output={"fields": ["rows", "units"]},
+                      pricing={"mode": "per_unit", "per_unit_usd": 0, "max_price_usd": 0.5}),
+     "pricing.per_unit_usd", "above 0"),
+    (_script_manifest(output={"fields": ["rows", "units"]},
+                      pricing={"mode": "per_unit", "per_unit_usd": 0.5, "max_price_usd": 0.1}),
+     "pricing.max_price_usd", "at least"),
+    (_script_manifest(output={"fields": ["rows", "count"]},
+                      pricing={"mode": "per_unit", "per_unit_usd": 0.001, "max_price_usd": 0.5}),
+     "output", "units"),
+    (_script_manifest(uses=["supabase"],
+                      pricing={"mode": "cost_plus", "markup_percent": 20, "max_price_usd": 1.0}),
+     "pricing.mode", "catalog"),
+    (_no_price(_steps_manifest(pricing={"mode": "cost_plus", "markup_percent": 0, "max_price_usd": 1.0})),
+     "pricing.markup_percent", "above 0"),
+    (_no_price(_steps_manifest(pricing={"mode": "flat", "price_usd": 0.01, "per_unit_usd": 0.001})),
+     "pricing.per_unit_usd", "not used by this mode"),
+    (_no_price(_steps_manifest(pricing={"mode": "flat", "nope": 1})), "pricing.nope", "unknown key"),
+])
+def test_pricing_refusals(m, field, words):
+    err = _refused(m)
+    assert err.field == field, (err.field, err.rule)
+    assert words in err.rule
+
+
 @pytest.mark.parametrize("spec,field,rule_words", [
     ({"type": "string", "required": True, "example": "x"}, "inputs.q.required", "no `default`"),
     ({"type": "string"}, "inputs.q", "example"),

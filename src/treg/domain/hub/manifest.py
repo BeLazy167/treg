@@ -28,13 +28,17 @@ MAX_SUMMARY = 200
 MAX_README = 4000
 MAX_PRICE_USD = 100.0
 MAX_COST_USD = 100.0
+MAX_MARKUP_PERCENT = 100000.0     # cost_plus: a sane cap; the earned amount is bounded by max_price_usd
+
+PRICING_MODES = ("flat", "per_unit", "cost_plus")
+PRICING_KEYS = frozenset({"mode", "price_usd", "per_unit_usd", "markup_percent", "max_price_usd"})
 
 INPUT_TYPES = ("string", "int", "float", "bool", "list", "object")
 INPUT_KEYS = frozenset({"type", "default", "max", "min", "secret", "example", "note"})
 STEP_KEYS = frozenset({"name", "call", "method", "input", "for_each", "as", "skip_if_empty", "writes", "allow_fail"})
 LIMIT_KEYS = frozenset({"steps", "wall_s", "cost_usd"})
 MANIFEST_KEYS = frozenset({
-    "name", "version", "summary", "writes", "inputs", "uses", "limits", "price_usd",
+    "name", "version", "summary", "writes", "inputs", "uses", "limits", "price_usd", "pricing",
     "steps", "script", "output",
 })
 
@@ -64,7 +68,8 @@ class Validated:
     inputs: dict[str, dict[str, Any]]
     uses: list[str]
     limits: dict[str, Any]    # steps, wall_s, cost_usd (cost_usd may be None)
-    price_micro: int
+    price_micro: int          # the flat reserve price; 0 for per_unit and cost_plus
+    pricing: dict[str, Any]   # normalized money as micro ints: mode + per_unit/markup/max_price
     steps: list[dict[str, Any]] | None
     script: str | None
     output: dict[str, Any]
@@ -122,7 +127,6 @@ def validate(
     # A script may use nothing: a tool that serves its uploaded CSV (ctx.data) makes no call.
     uses = _validate_uses(raw.get("uses", []), catalog_ids, own_tools, hub_ids, allow_empty=has_script)
     limits = _validate_limits(raw.get("limits", {}))
-    price_micro = _validate_price(raw.get("price_usd", 0))
 
     if has_script:
         kind = "script"
@@ -131,21 +135,26 @@ def validate(
             raise _fail("script", f"must be {SCRIPT_FILE!r}, the file beside the manifest")
         steps = None
         output = _validate_output_script(raw.get("output"))
+        output_fields = set(output["fields"])
     else:
         kind = "steps"
         script = None
         steps = _validate_steps(raw["steps"], uses, limits["steps"])
         output = _validate_output_steps(raw.get("output"))
+        output_fields = set(output)
+
+    pricing_public, pricing_micro = _validate_pricing(raw, uses, output_fields)
+    price_micro = pricing_micro["price_micro"]
 
     manifest = {
         "name": name, "summary": summary, "writes": writes, "inputs": inputs, "uses": uses,
-        "limits": limits, "price_usd": price_micro / 1_000_000,
+        "limits": limits, "price_usd": price_micro / 1_000_000, "pricing": pricing_public,
         **({"steps": steps} if steps is not None else {"script": script}),
         "output": output,
     }
     return Validated(name=name, kind=kind, summary=summary, writes=writes, inputs=inputs,
-                     uses=uses, limits=limits, price_micro=price_micro, steps=steps,
-                     script=script, output=output, manifest=manifest)
+                     uses=uses, limits=limits, price_micro=price_micro, pricing=pricing_micro,
+                     steps=steps, script=script, output=output, manifest=manifest)
 
 
 def _validate_inputs(raw: Any) -> dict[str, dict[str, Any]]:
@@ -253,6 +262,89 @@ def _validate_price(raw: Any) -> int:
     if abs(micro - float(raw) * 1_000_000) > 1e-6:
         raise _fail("price_usd", "at most 6 decimal places (treg prices in micro-dollars)")
     return int(micro)
+
+
+def _money_micro(field: str, raw: Any, *, allow_zero: bool) -> int:
+    """A dollar amount in the range 0..MAX_PRICE_USD, at most 6 decimals, as a micro-dollar int."""
+    import math
+    if not _is_number(raw) or not math.isfinite(float(raw)):
+        raise _fail(field, "a finite number")
+    if raw < 0 or raw > MAX_PRICE_USD:
+        raise _fail(field, f"a number from 0 to {MAX_PRICE_USD} (dollars)")
+    micro = round(float(raw) * 1_000_000)
+    if abs(micro - float(raw) * 1_000_000) > 1e-6:
+        raise _fail(field, "at most 6 decimal places (treg prices in micro-dollars)")
+    if not allow_zero and micro <= 0:
+        raise _fail(field, "a number above 0")
+    return int(micro)
+
+
+def _only(block: dict[str, Any], allowed: set[str], path: str) -> None:
+    """Refuse a field that this pricing mode does not use, by name."""
+    bad = sorted(set(block) - allowed)
+    if bad:
+        raise _fail(f"{path}.{bad[0]}", "not used by this mode (allowed: " + ", ".join(sorted(allowed)) + ")")
+
+
+def _validate_pricing(raw: dict[str, Any], uses: list[str],
+                      output_fields: set[str]) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Return (public, micro): the normalized `pricing` block for the stored manifest, and the same
+    numbers as micro-dollar integers for the runner. Three modes, one per tool version, decided in
+    docs/hub-pricing-decisions.md (2026-09-14). A manifest with a top-level `price_usd` and no
+    `pricing` block stays flat, exactly as before."""
+    import math
+    if "pricing" not in raw:
+        micro = _validate_price(raw.get("price_usd", 0))          # legacy: a flat price, or free
+        return ({"mode": "flat", "price_usd": micro / 1_000_000},
+                {"mode": "flat", "price_micro": micro, "per_unit_micro": 0,
+                 "markup_micro": 0, "max_price_micro": 0})
+    if "price_usd" in raw:
+        raise _fail("price_usd", "not a top-level field when `pricing` is present; put it inside `pricing`")
+    block = raw["pricing"]
+    if not isinstance(block, dict):
+        raise _fail("pricing", "an object with `mode` and the numbers that mode needs")
+    extra = sorted(set(block) - PRICING_KEYS)
+    if extra:
+        raise _fail(f"pricing.{extra[0]}", "unknown key (allowed: " + ", ".join(sorted(PRICING_KEYS)) + ")")
+    mode = block.get("mode")
+    if mode not in PRICING_MODES:
+        raise _fail("pricing.mode", "one of " + ", ".join(PRICING_MODES))
+
+    if mode == "flat":
+        _only(block, {"mode", "price_usd"}, "pricing")
+        micro = _money_micro("pricing.price_usd", block.get("price_usd", 0), allow_zero=True)
+        return ({"mode": "flat", "price_usd": micro / 1_000_000},
+                {"mode": "flat", "price_micro": micro, "per_unit_micro": 0,
+                 "markup_micro": 0, "max_price_micro": 0})
+
+    max_micro = _money_micro("pricing.max_price_usd", block.get("max_price_usd"), allow_zero=False)
+
+    if mode == "per_unit":
+        _only(block, {"mode", "per_unit_usd", "max_price_usd"}, "pricing")
+        unit_micro = _money_micro("pricing.per_unit_usd", block.get("per_unit_usd"), allow_zero=False)
+        if max_micro < unit_micro:
+            raise _fail("pricing.max_price_usd", "at least `per_unit_usd`")
+        if "units" not in output_fields:
+            raise _fail("output", "a per_unit tool must return an integer `units` field (the count to bill)")
+        return ({"mode": "per_unit", "per_unit_usd": unit_micro / 1_000_000,
+                 "max_price_usd": max_micro / 1_000_000},
+                {"mode": "per_unit", "price_micro": 0, "per_unit_micro": unit_micro,
+                 "markup_micro": 0, "max_price_micro": max_micro})
+
+    # cost_plus: the maker earns markup_percent of the run's catalog step cost, capped at max_price.
+    _only(block, {"mode", "markup_percent", "max_price_usd"}, "pricing")
+    mp: Any = block.get("markup_percent")
+    if not _is_number(mp) or not math.isfinite(float(mp)) or mp <= 0 or mp > MAX_MARKUP_PERCENT:
+        raise _fail("pricing.markup_percent", f"a number above 0 and at most {MAX_MARKUP_PERCENT}")
+    markup_micro = round(float(mp) / 100 * 1_000_000)             # 30 percent -> 300000
+    if abs(markup_micro - float(mp) / 100 * 1_000_000) > 1e-6:
+        raise _fail("pricing.markup_percent", "at most 4 decimal places")
+    if not any("." in u for u in uses):
+        raise _fail("pricing.mode",
+                    "cost_plus needs at least one catalog tool in `uses` (an own-tool run has no catalog cost)")
+    return ({"mode": "cost_plus", "markup_percent": float(mp), "max_price_usd": max_micro / 1_000_000},
+            {"mode": "cost_plus", "price_micro": 0, "per_unit_micro": 0,
+             "markup_micro": markup_micro, "max_price_micro": max_micro})
 
 
 def _validate_steps(raw: Any, uses: list[str], max_steps: int) -> list[dict[str, Any]]:
