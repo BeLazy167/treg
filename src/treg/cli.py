@@ -5122,7 +5122,7 @@ def cmd_host(args, cfg) -> None:
         _show(r)
         sys.exit(1)
     body = r.json()
-    if getattr(args, "json", False):
+    if _JSON_OVERRIDE:  # the global --json: main() pops it from argv before argparse sees it
         print(json.dumps(body, indent=2))
     else:
         print(body["url"])
@@ -6173,10 +6173,10 @@ def build_parser() -> argparse.ArgumentParser:
     ho = mk(sub, "host", "Host a reference file (image / audio / video) at a public URL that a vendor can fetch: "
             "the image_urls / audio_urls an AIGC endpoint takes. 30 MB per file, 7-day TTL, free.",
             "treg host face.jpg", "treg host voice.mp3 --content-type audio/mpeg",
+            "treg host face.jpg --json   # the full response: url, token, content_type, size, expires_at",
             "treg call reapi.video-gen.seedance-2-5 --data \"{\\\"image_urls\\\":[\\\"$(treg host face.jpg)\\\"], …}\"")
     ho.add_argument("file", help="the local file to host")
     ho.add_argument("--content-type", dest="content_type", metavar="TYPE", help="override the type guessed from the extension")
-    ho.add_argument("--json", action="store_true", help="print the full response (url, token, size, expires_at)")
     ho.set_defaults(fn=cmd_host)
 
     fb = mk(sub, "feedback", "Submit or retrieve private team feedback.",
