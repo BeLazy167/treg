@@ -425,22 +425,27 @@ async def _settle_in_transaction(
 
 
 async def settle_to_in_transaction(
-    db: AsyncSession, call_id: str, payee_org_id: int, *, meta: dict | None = None,
+    db: AsyncSession, call_id: str, payee_org_id: int, *, actual_micro: int | None = None,
+    meta: dict | None = None,
 ) -> int:
-    """Close a hold at its FULL reserved amount and credit that amount to `payee_org_id` as an
-    `earned` block — a hub seller's price (docs/HUB-DECISIONS.md round 3 q5, q7). One
-    transaction, two ledger entries: a `settle` on the payer (meta names the payee) and a `grant`
-    on the payee (block kind `earned`, meta names the payer's run). The invariant holds on BOTH
-    teams at every instant: the payer's balance was debited at reserve, its blocks are consumed
-    here; the payee's balance and blocks rise together. No margin: the seller's price is the
-    seller's, whole (round 3 q4). Returns the amount moved; 0 when the hold was already closed
-    (a double settle moves nothing twice). Does not commit."""
+    """Close a hold and credit the settled amount to `payee_org_id` as an `earned` block — a hub
+    seller's price (docs/HUB-DECISIONS.md round 3 q5, q7). `actual_micro` is the real price for a
+    variable-price tool (per_unit or cost_plus, docs/hub-pricing-decisions.md 2026-09-14): that much
+    is settled, and the rest of the reserved hold is refunded to the payer. `None` settles the FULL
+    reserved hold (a flat price). One transaction, two ledger entries: a `settle` on the payer (meta
+    names the payee) and a `grant` on the payee (block kind `earned`, meta names the payer's run).
+    The invariant holds on BOTH teams at every instant: the payer's balance was debited at reserve,
+    only the settled part is consumed here and the rest is refunded; the payee's balance and blocks
+    rise together. No margin: the seller's price is the seller's, whole (round 3 q4). Returns the
+    amount moved; 0 when the hold was already closed (a double settle moves nothing twice). Does not
+    commit."""
     hold = await _claim_hold(db, call_id)
     if hold is None:
         return 0
     amount = hold.amount_micro
+    pay = amount if actual_micro is None else min(amount, max(0, int(actual_micro)))
     settled_at = _now()
-    consumed, shortfall = await _consume_blocks(db, hold.org_id, amount, call_id, hold.endpoint_id)
+    consumed, shortfall = await _consume_blocks(db, hold.org_id, pay, call_id, hold.endpoint_id)
     spent_delta = consumed - (amount if hold.created_at >= _day_start() else 0)
     if amount != consumed or spent_delta:
         await _add_balance(db, hold.org_id, amount - consumed, spent_delta_micro=spent_delta)
@@ -448,7 +453,7 @@ async def settle_to_in_transaction(
         db, org_id=hold.org_id, kind="settle", amount_micro=-consumed, call_id=call_id,
         endpoint_id=hold.endpoint_id, created_at=settled_at,
         meta={**(meta or {}), "payee_org_id": payee_org_id, "reserved_micro": amount,
-              "settled_micro": amount, "consumed_micro": consumed, "refunded_micro": amount - consumed,
+              "settled_micro": pay, "consumed_micro": consumed, "refunded_micro": amount - consumed,
               "margin": 0.0, "block_shortfall_micro": shortfall})
     await db.execute(update(TagSpend).where(TagSpend.hold_id == call_id)
                      .values(amount_micro=consumed, settled=True, created_at=settled_at))

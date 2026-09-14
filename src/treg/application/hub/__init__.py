@@ -256,7 +256,10 @@ async def set_price(db: AsyncSession, *, org_id: int, tool_id: str, price_usd: f
         .order_by(HubTool.version.desc()).limit(1))).scalars().first()
     if row is None:
         return None
+    # `treg hub price` sets one flat price, so the pricing block is normalized to flat (a maker who
+    # wants a variable price publishes a new version with a `pricing` block).
     row.price_micro = micro
-    row.manifest = {**row.manifest, "price_usd": micro / 1_000_000}
+    row.manifest = {**row.manifest, "price_usd": micro / 1_000_000,
+                    "pricing": {"mode": "flat", "price_usd": micro / 1_000_000}}
     db.add(row)
     return row
