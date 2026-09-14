@@ -965,3 +965,18 @@ async def test_the_mine_list_carries_the_price_label(clients: AsyncClient, hub_o
                                     {"mode": "cost_plus", "markup_percent": 30, "max_price_usd": 0.5}, n=3)
     row = [t for t in (await clients.get("/hub/tools/mine")).json() if t["tool_id"] == tool_id][0]
     assert row["pricing"]["mode"] == "cost_plus" and "+30%" in row["price_label"]
+
+
+async def test_earnings_report_carries_the_average_price(clients: AsyncClient, hub_on, platform_on, monkeypatch):
+    """9.4: avg_price_micro = earned / successful runs, per day and overall, and in the CSV."""
+    tool_id = await _publish_priced(clients, monkeypatch,
+                                    {"mode": "per_unit", "per_unit_usd": 0.002, "max_price_usd": 0.5}, n=5)
+    hdr = {"X-Treg-Token": (await clients.post("/users", json={"email": "b7@example.com"})).json()["token"]}
+    for _ in range(2):                                             # two sales at 5 units x $0.002
+        assert (await clients.post(f"/call/{tool_id}", json={"domain": "x"}, headers=hdr)).status_code == 200
+    d = (await clients.get(f"/hub/tools/{tool_id}/earnings")).json()
+    assert d["earned_micro"] == 20_000 and d["runs"] == 2 and d["avg_price_micro"] == 10_000
+    assert d["by_day"][0]["ok"] == 2 and d["by_day"][0]["avg_price_micro"] == 10_000
+    csv = (await clients.get(f"/hub/tools/{tool_id}/earnings", params={"format": "csv"})).text
+    assert csv.splitlines()[0] == "day,runs,ok,failed,earned_usd,avg_price_usd"
+    assert csv.splitlines()[1].endswith(",0.020000,0.010000")
