@@ -3,7 +3,7 @@
 ![treg — the tool catalog for your agent](docs/assets/treg-hero.png)
 
 **OpenRouter, but for agent tools instead of models.** Point an agent at one base URL with one token
-and it can do the job: **2,896 catalogued endpoints across 60 providers** — SEO and backlinks,
+and it can do the job: **3,000+ catalogued endpoints across 60+ providers** — SEO and backlinks,
 social and trends, people and company enrichment, ads, scraping — **priced per call, from a cent**,
 with no provider signup. Plus your own team's keys, skills and CLIs, callable by every teammate's
 agent without the credential ever leaving the server.
@@ -23,7 +23,7 @@ bills fractions of a cent per call.
 ## Two kinds of tool, one token
 
 - **The catalog** — external endpoints treg can serve **on its own key**, metered against your
-  team's prepaid balance (**$1.00 free** on every new team). No account with the provider needed.
+  team's prepaid balance (**$1.00 free** once per new verified account, on an eligible team). No account with the provider needed.
 - **Your own tools** — anything a teammate registered: a paid API account, an OAuth connection, a
   vendor CLI, a `SKILL.md`. **Your own key always wins over treg's, and those calls are never
   metered.**
@@ -65,6 +65,8 @@ treg balance                                     # exactly what that cost
 
 # (or `treg onboard` for the guided walkthrough)
 ```
+
+Catalog tool inputs are described by `treg catalog get <id>`. Tools marked `strict_query` reject undeclared or repeated query parameters, unsupported values and request bodies.
 
 Your token identifies you on every call (`X-Treg-Token` header) and is the same for all tools.
 Discover what your team has shared: `treg tool ls` · check credential health: `treg health`.
@@ -126,6 +128,11 @@ treg topup            # add funds, or set up automatic top-ups
 
 Out of balance is an HTTP **402** carrying `balance_micro`, `estimated_cost_micro` and a `topup_url`,
 so an agent can act on it without reading prose.
+
+**Enrich Arena** lives at `/enrich-arena`, outside the dashboard. Compare enrichment answers with each vendor’s cost and speed,
+vote for the best answer in one click, or watch a sequential waterfall. Browsing is
+public; submitting requires login, and billable attempts use your team's credits. See the
+[Arena guide](docs/context/interface/enrich-arena.md).
 
 ## Share & use your own tools
 
@@ -221,7 +228,13 @@ treg oauth connect gsc --client-secret client_secret.json \
 
 Full options for every command: [`USAGE.md`](USAGE.md).
 
+The CLI sends anonymous command usage to PostHog when using treg.to (no arguments or credentials).
+Disable with `TREG_TELEMETRY=0` or `DO_NOT_TRACK=1`.
+See [analytics details](USAGE.md#anonymous-usage-analytics).
+
 ## Teams
+
+An account can own up to 10 teams. Joining other teams as a member does not count toward this limit.
 
 Everything is scoped to an **org**: a token = a `(user, org)` membership, and every secret, tool,
 and skill belongs to the active org. Roles: **owner / admin / member / viewer**.
@@ -238,6 +251,8 @@ treg org access <member> --tools a,b          # per-member tool access (admin+)
 
 - **Feedback:** `treg feedback submit friction "The pagination example is unclear."`
   Share problems or suggestions without private information. See [feedback instructions](https://treg.to/feedback.md).
+- **Review:** `treg review CALL_ID useful`
+  Rate an invited catalog call after using its result; `not_sure` is fine. Omit private data and continue the task.
 
 - [`USAGE.md`](USAGE.md) — the full `treg` CLI reference.
 - [`/llms.txt`](https://treg.to/llms.txt) — the agent-onboarding file: call
@@ -282,7 +297,8 @@ uv run python -m treg keygen   # print a fresh Fernet key for TREG_SECRET_KEY
 > database drivers, and encryption. `pip install tools-registry` alone gives just the `treg` command for
 > talking to an existing registry.
 
-The team instance is hosted on **Render** (web service + Postgres) at `treg.to`.
+The official hosted service is available at `treg.to`. Its production topology and live settings are
+maintained in the private [operator runbook](https://github.com/superdesigndev/treg-internal/blob/main/docs/production/deploy.md).
 
 ## Configuration
 
@@ -299,11 +315,12 @@ Environment variables (prefix `TREG_`, read from `.env`):
 | `TREG_GOOGLE_CLIENT_ID` / `_SECRET`       | *(empty)*                       | Google OAuth sign-in (redirect `<public_url>/auth/google/callback`); empty hides the button                                                                                |
 | `TREG_INSTAGRAM_CLIENT_ID` / `_SECRET`    | *(empty)*                       | Instagram App ID and secret for direct Instagram Login (redirect `<public_url>/oauth/callback`)                                                                           |
 | `TREG_META_CLIENT_ID` / `_SECRET`         | *(empty)*                       | Meta app credentials for Facebook Pages, Meta Ads, and optional Instagram `page-tools`                                                                                     |
-| `TREG_OAUTH_REVIEW_PENDING`               | `instagram-login,page-messages` | Registry review keys awaiting production access. Remove `page-messages` after Page messaging approval; set empty after direct Instagram approval.                         |
+| `TREG_OAUTH_REVIEW_PENDING`               | `instagram-login,page-messages` | Comma-separated registry review keys whose capabilities must remain gated; hosted review state is maintained privately.                                                   |
 | `TREG_RESEND_API_KEY` / `TREG_EMAIL_FROM` | *(empty)*                       | transactional email via Resend (OTP codes + invites); From must be a Resend-verified sender                                                                                |
 | `TREG_BLOCKED_EMAIL_DOMAINS`              | *(empty)*                       | comma-separated email domains refused at every sign-up/sign-in door and at team creation (subdomains included, case-insensitive). Empty blocks nothing — no list ships in the code |
 | `TREG_ADMIN_TOKEN`                        | *(empty)*                       | cross-tenant **super-admin** bearer; authorizes every `/admin/*` endpoint. Empty disables the env path (only `is_superadmin` users reach `/admin`). Keep it long + secret. |
 | `TREG_EMAIL_DEV_MODE`                     | `false`                         | when true, `/auth/email/start` returns the OTP in its response (no mail sender needed) — **dev/local only**, never in prod.                                                |
+| `TREG_KV_URL`                             | *(empty)*                       | shared key-value store (Redis protocol) for counters every worker must agree on, today the per-team review-invitation budget. Empty = an in-process fallback, fine for one worker |
 
 
 No `.env` is needed for local dev — every setting has a working default (ephemeral key, sqlite).
@@ -316,7 +333,10 @@ No `.env` is needed for local dev — every setting has a working default (ephem
 
 **Request flow for `/call`:** resolve tool (by URL host + longest `base_url` prefix, or by name) →
 decrypt its secret(s) → apply each binding's injector → stream to the upstream → fire-and-forget
-audit record. The proxy does no business logic and never buffers the body.
+audit record. The infra relay streams bytes without business logic. The call application buffers
+responses needing settlement or ownership evidence up to 8 MiB; larger responses return a 502
+without charging instead of a truncated success. Authorized free final downloads needing no body
+evidence stream in full, as do own-key and own-tool responses.
 
 **Module map** (`src/treg/`):
 

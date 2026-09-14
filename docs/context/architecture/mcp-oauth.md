@@ -32,7 +32,9 @@ related:
 Both transports expose `feedback(category, message, call_ids?, endpoint_id?)`, using a four-value
 category enum and the shared HTTP intake. This is an additive, non-destructive write on treg,
 not an upstream call. It requires the existing transport identity and spends no balance.
-See [feedback](feedback.md). V2 retains its catalog-only calling boundary.
+Both also expose `review(call_id, usefulness, reason?)` as a non-destructive, non-idempotent local
+write relayed to `/reviews`, using the shared usefulness enum and description.
+See [feedback](feedback.md) for invitation sampling and hint priority. V2 retains its catalog-only calling boundary.
 
 ## Managed bearer keys
 
@@ -223,6 +225,16 @@ Optional, and it is the caller's. Pass the same key when repeating a call whose 
 treg replays the stored response, does not reach the provider, and charges nothing, with
 `replayed: true` on the result.
 
+## `call` says when the overflow relay served it
+
+`/call/` discloses a relayed answer in `X-Treg-Served-Via`; an MCP client never sees headers, so
+`_call_impl` lifts it into `served_via` on the result with a one-line `hint` naming the relay and
+the exhausted provider (`cost_usd` is then the relay's real price, not the catalog's direct one).
+Both surfaces share the impl, so `/mcp/` and `/mcp/v2/` say it identically. `catalog_get` carries
+`overflow_price_usd` / `overflow_price_unit` / `overflow_via` for the same reason - the price to
+tell the human BEFORE the call includes the one the relay may bill (`architecture/money.md`
+§ Overflow money).
+
 It exists because the feature was built for agents and MCP is the agent path. Without it the whole
 thing was unreachable from the surface it was for.
 
@@ -259,14 +271,14 @@ server's own outbound validation refuse the whole catalog entry.
 
 ## Responses are gzip-compressed at the origin — the edge must find nothing to do
 
-Production sits behind Render's managed edge — no account or dashboard of ours — which
-Brotli-compresses large responses on the way out. At least one real client stack (httpx +
+The hosted service sits behind a managed edge which can Brotli-compress large responses on the way
+out. At least one real client stack (httpx +
 brotlicffi, issue #93) dies mid-decode on that output and then hangs to its own timeout, minutes
 after the upstream answered in seconds.
 
 The first fix was `Cache-Control: no-store, no-transform` (the `NoTransformResponses` wrapper,
 outermost so 401 challenges carry it too) — the origin's standard "do not re-encode" (RFC 9111).
-**Render's edge ignores it** (issue #100: `content-encoding: br` arrived in production right next to
+**The managed edge ignores it** (issue #100: `content-encoding: br` arrived in production next to
 the header). The header stays because it is correct and free, but the working fix is different: the
 MCP app gzips its own responses (`GZipMiddleware` inside `build_mcp_app`, ≥1KB). An edge only
 compresses what arrives uncompressed — a response already carrying `Content-Encoding: gzip` passes
@@ -395,11 +407,9 @@ happened before the balances were added.
 
 ### …but the choice must stay visible and reversible afterwards
 
-Decided-once became **invisible and permanent**, and that combination cost a user real money
-(2026-08-17). `balance` reported the slug `superdesign-7`; `treg org ls` on their machine listed
-`superdesign` and `ai-jason` and nothing else, because the CLI was signed in as a *different account*
-from the one that had clicked Allow. Nothing in the agent could tell a plausible slug from the wrong
-team, and the first signal was spend on a balance nobody had opened. Two halves to the fix:
+Decided-once became **invisible and permanent**, and that combination caused spend against the wrong
+team when the CLI and OAuth client used different identities. Nothing in the agent could tell a
+plausible slug from the intended team. Two halves to the fix:
 
 - **`balance` and `my_tools` label the grant**: `team_name` (a slug alone cannot be sanity-checked)
   and `identity` — the account the grant belongs to, which is usually the half that differs. If the

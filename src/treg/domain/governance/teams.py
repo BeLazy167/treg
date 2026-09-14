@@ -10,6 +10,8 @@ from ...models import (
     AdConversion,
     ApiKey,
     ApiKeyEvent,
+    ArenaEvaluation,
+    ArenaRun,
     AsyncResourceRecord,
     AsyncTaskRecord,
     Bundle,
@@ -18,6 +20,7 @@ from ...models import (
     CreditBlock,
     DenyRule,
     Feedback,
+    CallReview,
     Hold,
     IdempotentCall,
     Invite,
@@ -40,7 +43,24 @@ from ...models import (
 )
 from ..identity import session as sess
 from ..identity import api_keys as managed_keys
-from ..identity.access import _membership_by_token, _resolve_org
+from ..identity.access import _membership_by_token, _resolve_org, lock_user
+
+
+MAX_OWNED_TEAMS = 10
+
+
+class OwnedTeamLimitReached(Exception):
+    """The account already owns the maximum number of teams."""
+
+
+async def require_owned_team_slot(db: AsyncSession, user_id: int) -> None:
+    """Hold the user lock through the ownership insert and its commit. No reservation counter."""
+    await lock_user(db, user_id)
+    owned = (await db.execute(select(Membership.id).where(
+        Membership.user_id == user_id, Membership.role == "owner",
+    ).limit(MAX_OWNED_TEAMS))).scalars().all()
+    if len(owned) >= MAX_OWNED_TEAMS:
+        raise OwnedTeamLimitReached
 
 
 def _slugify(text: str) -> str:
@@ -63,6 +83,8 @@ async def _make_org_membership(
     identity token preserves the existing create-org response contract without manufacturing a
     second, hash-backed ``legacy_human`` key for a brand-new membership. Caller commits.
     """
+    if role == "owner":
+        await require_owned_team_slot(db, user.id)
     org = Org(name=name, slug=await _unique_slug(slug_base, db))
     db.add(org)
     await db.flush()
@@ -140,6 +162,7 @@ async def list_user_orgs(
 # Order matters: LedgerEntry references a CreditBlock, so it goes first; `IdempotentCall.membership_id`
 # points at Membership, so Membership stays last and IdempotentCall sits above it.
 ORG_SCOPED_MODELS = (
+    ArenaEvaluation, ArenaRun,
     Tool, Secret, Bundle, PendingOAuth, CallRecord, RunRecord, Invite, DenyRule, Project,
     ApiKeyEvent, ApiKey,
     CapabilityPin,
@@ -150,6 +173,7 @@ ORG_SCOPED_MODELS = (
     IdempotentCall,            # a remembered answer belongs to the team that paid for it
     ToolRequest,  # attribution rows go with the team; anonymous filings carry no org_id and stay
     Feedback,
+    CallReview,
     AdConversion,  # pending Google Ads conversions belong to the team they'd be attributed to
     Membership,   # last: it is what makes the caller a member of the org being deleted
 )

@@ -82,6 +82,9 @@ def _price_label(cost: dict | None) -> str:
     whole CLI in for one string (see `_treg_version`)."""
     if not isinstance(cost, dict):
         return ""
+    if cost.get("display_unit") and cost.get("display_usd") is not None:
+        return (_usd_short(cost["display_usd"]) + cost.get("display_suffix", "")
+                + "/" + cost["display_unit"])
     usd = cost.get("usd")
     if usd is None:
         return "own account"     # no rate published — never invent a dollar figure
@@ -470,7 +473,7 @@ async def catalog_page(slug: str):
 # --------------------------------------------------------------------------- /agents/<agent>
 
 def _hosted() -> bool:
-    """True on the reference deployment only. The agent pages describe treg.to's own listings (the
+    """True on the hosted service only. The agent pages describe treg.to's own listings (the
     ChatGPT Connector, the OAuth connector, the free grant), none of which is true of a self-hosted
     registry, so off these hosts the pages do not exist rather than lie."""
     host = (urlsplit(get_settings().public_url).hostname or "").lower()
@@ -650,8 +653,11 @@ async def agents_hub():
         if head == defn and len(defn) > 140:  # a future definition without the clause still fits
             head = defn[:140].rsplit(" ", 1)[0]
         return head.rstrip(".") + "."
+    def _agent_href(slug: str) -> str:
+        # grok-bot links to the launch page at /grokbot
+        return "/grokbot" if slug == "grok-bot" else f"/agents/{slug}"
     cards = "".join(
-        f'<a class="pcard" href="/agents/{slug}"><h3>{_esc_html(spec["name"])}</h3>'
+        f'<a class="pcard" href="{_agent_href(slug)}"><h3>{_esc_html(spec["name"])}</h3>'
         f'<p>{_esc_html(_blurb(spec["definition"].format(n=n, p=p)))}</p>'
         f'<div class="meta">{n} tools &middot; {p} platforms</div></a>'
         for slug, spec in agent_pages.AGENTS.items())
@@ -687,6 +693,10 @@ async def agent_page(request: Request, agent: str):
     `/agents/<agent>.md` is the same page as Markdown, for agents and answer engines."""
     as_md = request.url.path.endswith(".md")
     raw = agent[:-3] if agent.endswith(".md") else agent
+    # grok-bot redirects to the launch page at /grokbot: the launch page is what people expect
+    # when they click "Grok Bot", and the /agents/grok-bot URL was never the primary destination.
+    if raw.lower() == "grok-bot":
+        return RedirectResponse("/grokbot", status_code=301)
     # Resolve to the dict's OWN key, never the request's bytes: `agent` is interpolated into the
     # canonical, the rel=alternate href and the JSON-LD breadcrumb below, and a path parameter
     # must not reach those unescaped (CodeQL py/reflective-xss). The lookup is case-insensitive,
@@ -838,7 +848,7 @@ async def agent_page(request: Request, agent: str):
         '<div class="ctas">'
         f'<a class="candy" href="/app?ref=agents-{_esc_html(agent)}">Start free</a>'
         '<a class="ghostbtn" href="#use-cases">See what it can do</a></div>'
-        '<div class="trust">$1.00 of free credit on every new team &middot; no provider signup &middot; no card</div>'
+        '<div class="trust">$1.00 of free credit once per new verified account &middot; no provider signup &middot; no card</div>'
         f'<div class="subline">Your own keys always win and are never metered. '
         f'{_esc_html(name)} sees the price before it spends.</div>'
         + (f'<div class="provstrip"><div class="pl">a few of the {p} platforms</div>'
@@ -1411,7 +1421,13 @@ async def use_case_job_page(request: Request, job: str,
         return (f'<a class="card" href="{href}"><h4>{_esc_html(lbl)}</h4>'
                 f'<p>Another job in {_esc_html((owner or cat_label).lower())}.</p></a>')
 
+    def _extra_link_card(lbl: str, href: str, desc: str) -> str:
+        return (f'<a class="card" href="{_esc_html(href)}"><h4>{_esc_html(lbl)}</h4>'
+                f'<p>{_esc_html(desc)}</p></a>')
+
     related = "".join(_related_card(lbl) for lbl in spec.get("related", ()))
+    related += "".join(_extra_link_card(lbl, href, desc)
+                       for lbl, href, desc in spec.get("extra_links", ()))
     faq_html = "".join(f'<h3>{_esc_html(q)}</h3><p>{_esc_html(a)}</p>' for q, a in spec["faq"])
 
     # The "instead of" anchor: what the same job costs on subscriptions from the providers on this
@@ -1457,7 +1473,7 @@ async def use_case_job_page(request: Request, job: str,
         '<div class="ctas">'
         f'<a class="candy" href="/app?ref=uc-{_esc_html(job_slug)}">Start free</a>'
         '<a class="ghostbtn" href="#bts">See the comparison</a></div>'
-        f'<div class="trust">$1.00 of free credit on every new team &middot; no provider signup &middot; no card</div>'
+        f'<div class="trust">$1.00 of free credit once per new verified account &middot; no provider signup &middot; no card</div>'
         f'<div class="subline">{n_ver} of {len(eps)} endpoints on this page are live-verified against the provider.</div>'
         f'{provstrip}</div></div>'
 
@@ -1773,7 +1789,14 @@ async def workflow_page(request: Request, slug: str,
         href, owner = _related_link(lbl, agent_slug)
         return (f'<a class="card" href="{href}"><h4>{_esc_html(lbl)}</h4>'
                 f'<p>One step of this workflow, on its own{(", in " + _esc_html(owner.lower())) if owner else ""}.</p></a>')
+
+    def _extra_link_card(lbl: str, href: str, desc: str) -> str:
+        return (f'<a class="card" href="{_esc_html(href)}"><h4>{_esc_html(lbl)}</h4>'
+                f'<p>{_esc_html(desc)}</p></a>')
+
     related = "".join(_related_card(lbl) for lbl in spec.get("related", ()))
+    related += "".join(_extra_link_card(lbl, href, desc)
+                       for lbl, href, desc in spec.get("extra_links", ()))
 
     body = (
         '<div class="hero"><div class="wrap">'
@@ -1785,7 +1808,7 @@ async def workflow_page(request: Request, slug: str,
         '<div class="ctas">'
         f'<a class="candy" href="/app?ref=wf-{_esc_html(wf_slug)}">Start free</a>'
         '<a class="ghostbtn" href="#run">See the receipt</a></div>'
-        '<div class="trust">$1.00 of free credit on every new team &middot; no provider signup &middot; no card</div>'
+        '<div class="trust">$1.00 of free credit once per new verified account &middot; no provider signup &middot; no card</div>'
         f'{provstrip}</div></div>'
 
         '<section id="ask"><div class="wrap"><div class="seclab">Try it</div>'
@@ -1806,7 +1829,7 @@ async def workflow_page(request: Request, slug: str,
 
         + '<section id="run"><div class="wrap"><div class="seclab">The receipt</div>'
           '<h2>What it actually cost</h2>'
-          f'<p style="color:var(--muted)">Run on {_esc_html(run["date"])}, {rows_in} companies in.</p>'
+          f'<p style="color:var(--muted)">Run on {_esc_html(run["date"])}, {rows_in} {_esc_html(run.get("rows_noun", "companies"))} in.</p>'
           f'<dl class="receipt">{receipt}</dl>{narrative}'
           f'<p><a class="ghostbtn" href="{_esc_html(run["csv"])}">Download the CSV of this run</a></p>'
           '</div></section>'
@@ -1984,11 +2007,13 @@ async def tools_provider(service: str, db: AsyncSession = Depends(get_session),
     all_eps = cat.for_provider(service)
     if not all_eps:
         raise HTTPException(status_code=404, detail=f"unknown provider {service!r}")
+    # Full provider inventory includes helpers and account management; the browse census
+    # deliberately excludes them. Access labels below distinguish platform offers from BYOK.
     # Fresh name on purpose: from here on the page prints the CATALOG's spelling of the provider,
     # never the request's. (Same idiom as the use-case pages; it is also what reads as a taint
     # kill to CodeQL, which cannot see _esc_html as a sanitizer.)
     svc = all_eps[0]["provider"]
-    eps = [e for e in all_eps if _pub(e)] or [e for e in all_eps if e.get("kind") != "routed"]
+    eps = [e for e in all_eps if e.get("kind") != "routed" and not e.get("status")]
     if not eps:
         # The first-party "treg" pseudo-provider is nothing but routed meta-rows. Without this a
         # self-referential /tools/treg page rendered (and reached the sitemap) — the fallback above
@@ -2002,11 +2027,14 @@ async def tools_provider(service: str, db: AsyncSession = Depends(get_session),
     blurb = (getattr(reg, "summary", "") or "") if reg else ""
     base_api = (getattr(reg, "base_url", "") or "") if reg else ""
     docs_url = (getattr(reg, "docs_url", "") or "") if reg else ""
-    prices = [c for e in eps if (c := cat.cost_view(e.get("cost"), e.get("provider"))) and c["usd"]]
-    # Own-account vs metered is read off the INVENTORY, not the credential registry: nearly every
-    # provider is in oauth_providers (that is how a team registers its own key), but only a
-    # provider with no priced endpoint at all is genuinely connect-your-own-account.
-    is_oauth = not prices
+    platform_eps = [e for e in eps if cat.platform_eligible(e)]
+    byok_only = len(eps) - len(platform_eps)
+    key_auth = bool(reg and reg.auth_kind == "key")
+    oauth_metered = bool(reg and reg.platform_billed and svc in get_settings().oauth_billed_set)
+    mixed = bool(platform_eps and byok_only and key_auth)
+    prices = [c for e in platform_eps if (c := cat.cost_view(e.get("cost"), e.get("provider"))) and c["usd"]]
+    # Published prices do not remove the OAuth account-connection requirement.
+    is_oauth = bool(reg and reg.auth_kind == "oauth") or not platform_eps
     cheapest = _price_label(min(prices, key=lambda c: c["usd"])) if prices else ""
     verified = len([e for e in eps if e["verified"]])
     plat_label = {sl: pl["label"] for sl, pl in cat.platforms.items()}
@@ -2029,9 +2057,9 @@ async def tools_provider(service: str, db: AsyncSession = Depends(get_session),
         task_lines.append(d[0].lower() + d[1:])
         if len(task_lines) == 3:
             break
-    sample_eps = sorted([e for e in eps if e["verified"]], key=lambda e: len(e["id"])) or eps
+    sample_eps = sorted([e for e in (platform_eps or eps) if e["verified"]], key=lambda e: len(e["id"])) or platform_eps or eps
     sample_id = sample_eps[0]["id"]
-    badge = "YOUR ACCOUNT" if is_oauth else "NO SIGNUP"
+    badge = "PLATFORM + BYOK" if mixed else ("YOUR ACCOUNT" if is_oauth else "NO SIGNUP")
     # The measured line: what treg.to has actually observed calling this provider. It is the one
     # thing a vendor's own pricing page cannot print, and it goes above the fold for that reason.
     obs = await _observed_or_empty(observations, [e["id"] for e in eps])
@@ -2074,6 +2102,16 @@ async def tools_provider(service: str, db: AsyncSession = Depends(get_session),
     h1_text = (f"{esc_d}: connect your own account" if is_oauth
                else (f"{esc_d}: {len(eps)} tools from {_esc_html(cheapest)}" if cheapest
                      else f"{esc_d}: {len(eps)} tools"))
+    if mixed:
+        kicker = f"{len(eps)} tools · {len(platform_eps)} platform + BYOK · {byok_only} BYOK only"
+        h1_text = f"{esc_d}: {len(eps)} tools, platform or your own key"
+        lede = (f"{_esc_html(blurb)} {len(platform_eps)} tools support treg's platform key. "
+                f"All {len(eps)} support your own {esc_d} key; {byok_only} require it. "
+                "Your own key always wins and treg does not meter those calls.")
+    if oauth_metered:
+        kicker = f"{len(eps)} tools · OAuth connection · metered"
+        lede = (f"{_esc_html(blurb)} Connect your own {esc_d} account. "
+                "Calls through treg's OAuth app are metered under this server's billing policy.")
     hero = (
         '<div class="hero"><div class="wrap">'
         '<div class="trust" style="margin:0 0 18px"><a href="/">treg.to</a> / '
@@ -2085,7 +2123,7 @@ async def tools_provider(service: str, db: AsyncSession = Depends(get_session),
         f'<a class="ghostbtn" href="#tools">See all {len(eps)} tools</a>'
         + (f'<a class="ghostbtn" href="{_esc_html(docs_url)}" target="_blank" rel="noopener">API docs ↗</a>'
            if docs_url else "") + "</div>"
-        '<div class="trust">$1.00 of free credit on every new team · no provider signup · no card</div>'
+        '<div class="trust">$1.00 of free credit once per new verified account · no card · platform tools need no provider signup</div>'
         + (f'<div class="subline">{verified} of {len(eps)} tools on this page are live-verified '
            "against the provider.</div>" if verified else "")
         + f'<div class="provstrip"><div class="pl">works in</div><div class="ptiles">{_agent_ptiles()}</div></div>'
@@ -2116,7 +2154,7 @@ async def tools_provider(service: str, db: AsyncSession = Depends(get_session),
         f'<b>{esc_d}</b><span class="bdg">{badge}</span></div>'
         f'<div class="sm">{_esc_html(blurb) or esc_d + " through one treg.to token."}</div>'
         f'<div class="ct">⚒ {len(eps)} TOOLS'
-        + ("" if is_oauth else " · metered per call") + "</div></div>"
+        + (" · platform + BYOK" if mixed else ("" if is_oauth else " · metered per call")) + "</div></div>"
         "</div>"
         + (f'<p style="font-size:12.5px;color:var(--muted);margin-top:12px">{_esc_html(category)}'
            f"{' · ' if category and base_api else ''}<code>{_esc_html(base_api)}</code></p>"
@@ -2159,8 +2197,7 @@ async def tools_provider(service: str, db: AsyncSession = Depends(get_session),
         '<h3>Run one directly</h3>'
         '<div class="sample"><div class="sbar">'
         + ("a live-verified call" if sample_eps[0]["verified"] else "a call") + "</div>"
-        "<pre>curl -H \"Authorization: Bearer $TREG_TOKEN\" \\\n"
-        f"  \"{_esc_html(base)}/call/{_esc_html(sample_id)}\"</pre></div>"
+        f"<pre>{_esc_html(catalog_store.call_template(sample_eps[0]).replace('https://treg.to', base))}</pre></div>"
         "</div></section>")
 
     alt_names = sorted({e["provider"] for e in cat.endpoints
@@ -2176,30 +2213,50 @@ async def tools_provider(service: str, db: AsyncSession = Depends(get_session),
            "metered per call from a prepaid balance.</p></div>")
         + '<div class="card"><h4>Price before the call</h4><p>The provider&#x27;s own rate, $0.000 '
         'markup. <a href="/pricing">How billing works</a>.</p></div>'
-        '<div class="card"><h4>No subscription, no seats</h4><p>Charged per call. $1.00 free per '
-        "new team, no card to start.</p></div>"
-        f'<div class="card"><h4>Your own {esc_d} key is free</h4><p>Register it and those calls are '
-        "never metered. Your key always wins.</p></div>"
-        '<div class="card"><h4>Switch by changing a word</h4><p>Another provider is a different '
+        + ('<div class="card"><h4>Account billing</h4><p>'
+           + ("Calls through treg's OAuth app are metered under this server's billing policy."
+              if oauth_metered else "Calls through your own connection are not metered by treg.")
+           + '</p></div>' if is_oauth else
+           '<div class="card"><h4>No subscription, no seats</h4><p>Platform calls are charged per call. '
+           '$1.00 free per new team, no card to start.</p></div>')
+        + (f'<div class="card"><h4>Your own {esc_d} key is free</h4><p>Register it and those calls are '
+           "never metered. Your key always wins.</p></div>" if key_auth else
+           '<div class="card"><h4>Your account connection</h4><p>'
+           + ("Calls through treg's OAuth app are metered under this server's billing policy."
+              if oauth_metered else "Connect your account with the provider's supported authentication method.")
+           + '</p></div>')
+        + '<div class="card"><h4>Switch by changing a word</h4><p>Another provider is a different '
         "word in the prompt, not a new integration.</p></div>"
         '<div class="card"><h4>One key, the whole catalog</h4><p>The same token calls '
         + (_esc_html(", ".join(_provider_display(a) for a in alt_names[:3])) if alt_names
            else "every provider in the catalog")
-        + f" and {_catalog_census()[0] - len(eps):,} other tools.</p></div>"
+        + f" and {_catalog_census()[0] - sum(_pub(e) for e in eps):,} other tools.</p></div>"
         "</div></div></section>")
 
     tool_blocks = []
-    max_shown = 8
+    max_shown = len(eps) if len(eps) <= 50 else 8
     for i, (slug, items) in enumerate(sorted(groups.items(), key=lambda kv: (-len(kv[1]), kv[0]))):
         lis = []
         shown = sorted(items, key=lambda e: (not e.get("verified"), e["id"]))[:max_shown]
         for e in shown:
             price = _price_label(cat.cost_view(e.get("cost"), e.get("provider")))
-            bits = [b for b in ("live-verified" if e.get("verified") else "", _esc_html(price)) if b]
+            eligible = cat.platform_eligible(e)
+            if reg and reg.auth_kind == "oauth":
+                access = "OAuth connection · metered" if oauth_metered else "OAuth connection"
+            elif key_auth:
+                access = "Platform + BYOK" if eligible else "BYOK only"
+                if not eligible:
+                    price = "No treg charge; upstream " + price
+            else:
+                access = "Platform access" if eligible else "Own connection required"
+            kind = "account management" if e.get("kind") == "account" else ("helper" if e.get("kind") == "utility" else "")
+            bits = [b for b in (access, kind, "live-verified" if e.get("verified") else "", _esc_html(price)) if b]
             lis.append(f"<li><b>{_esc_html(e['name'])}</b>"
                        + (f" · <small>{' · '.join(bits)}</small>" if bits else "")
                        + f"<br/><small>{_esc_html(e.get('summary') or '')} "
-                         f"<code>{_esc_html(e['id'])}</code></small></li>")
+                         f"<code>{_esc_html(e['id'])}</code></small>"
+                       + (f"<br/><small>{_esc_html(e['cost']['note'])}</small>"
+                          if (e.get("cost") or {}).get("note") else "") + "</li>")
         if len(items) > max_shown:
             lis.append(f'<li class="more"><a href="/catalog/{_esc_html(slug)}">See all {len(items)} '
                        f'{_esc_html(plat_label.get(slug, slug))} tools on the catalog →</a></li>')
@@ -2211,7 +2268,7 @@ async def tools_provider(service: str, db: AsyncSession = Depends(get_session),
         '<section id="tools"><div class="wrap"><div class="seclab">The shelf</div>'
         f"<h2>All {len(eps)} {esc_d} tools</h2>{''.join(tool_blocks)}"
         '<p style="font-size:12.5px;color:var(--muted)">Reliability badges come from live traffic '
-        "through treg.to, not a controlled benchmark.</p></div></section>")
+        "through treg.to. Live-verified means a successful provider check; it does not verify every request variant.</p></div></section>")
 
     alt_sec = ""
     if alt_names:
@@ -2247,6 +2304,14 @@ async def tools_provider(service: str, db: AsyncSession = Depends(get_session),
              f"from a prepaid balance. It is not {display}'s subscription pricing, which is on "
              "their own site. New teams start with $1.00 of free credit."),
         ]
+    if oauth_metered:
+        faq_items[0] = (f"Do I need a {display} account?",
+                        f"Yes. Connect your {display} account through OAuth. Calls through treg's "
+                        "OAuth app are metered under this server's billing policy.")
+    if mixed:
+        faq_items[0] = (f"Do I need a {display} account?",
+                        f"For {len(platform_eps)} platform tools, no. The other {byok_only} require your own "
+                        f"{display} key. All {len(eps)} accept your own key, and treg never meters BYOK calls.")
     faq_items += [
         (f"How do I add {display} to Claude Code?",
          f"Run: claude mcp add --transport http treg {base}/mcp. One MCP server carries "
@@ -2304,6 +2369,17 @@ async def tools_provider(service: str, db: AsyncSession = Depends(get_session),
                 f"{'from ' + cheapest + ' ' if cheapest else ''}through one treg.to key or MCP server"
                 f"{', ' + measured if measured else ''}. Use it from Claude Code, ChatGPT or any agent.")
 
+    if mixed:
+        title = f"{display} API pricing: {cheapest}, platform + BYOK | treg.to"
+        if len(title) > _TITLE_MAX:
+            title = f"{display} API pricing: {cheapest} | treg.to"
+        if len(title) > _TITLE_MAX:
+            title = f"{display} API pricing: platform + BYOK | treg.to"
+        desc = (f"{display} on treg: {len(platform_eps)} tools with platform or your own key, "
+                f"{byok_only} BYOK only. Compare access, billing units and live verification for every tool.")
+    if oauth_metered:
+        desc = (f"Use {display} through your OAuth connection. Calls through treg's OAuth app "
+                "are metered under this server's billing policy.")
     ld = [
         {"@context": "https://schema.org", "@type": "BreadcrumbList", "itemListElement": [
             {"@type": "ListItem", "position": 1, "name": "treg.to", "item": base + "/"},
@@ -2683,7 +2759,7 @@ async def llms_txt():
     if not f.exists():
         raise HTTPException(status_code=404, detail="llms.txt not bundled")
     base = get_settings().public_url.rstrip("/")
-    return PlainTextResponse(_strip_routed(f.read_text(encoding="utf-8")).replace("{BASE}", base),
+    return PlainTextResponse(_fill_headline(_strip_routed(f.read_text(encoding="utf-8"))).replace("{BASE}", base),
                              media_type="text/plain; charset=utf-8")
 
 
@@ -2727,13 +2803,15 @@ _SITEMAP_PAGES: tuple[tuple[str, str, str], ...] = (
     ("/tutorial", "tutorial.html", "0.8"),
     ("/docs", "", "0.7"),
     ("/resources", "resources.html", "0.8"),
+    ("/blog", "", "0.7"),
+    ("/blog/people-search-bench", "", "0.6"),
     ("/vendor-listing", "vendor-listing.md", "0.5"),
     ("/support", "support.html", "0.4"),
     ("/connectors/claude", "claude-connector.html", "0.6"),
     ("/people-search", "people-search.html", "0.8"),
     ("/grokbot", "grokbot.html", "0.8"),
     ("/fable", "fable-gtm.html", "0.8"),
-    ("/astra", "astra.html", "0.8"),
+    ("/gpt6", "astra.html", "0.8"),
     ("/terms", "terms.html", "0.2"),
     ("/privacy", "privacy.html", "0.2"),
     # The outcome pages. Listed WITHOUT a trailing slash on purpose: `/use-cases/<slug>/` 307s to
@@ -2798,6 +2876,8 @@ async def sitemap_xml():
         copy_day = _iso_day(Path(agent_pages.__file__).stat().st_mtime)
         add("/agents", copy_day, "0.8")
         for slug in agent_pages.AGENTS:
+            if slug == "grok-bot":
+                continue  # redirects to /grokbot; list only the canonical
             add(f"/agents/{slug}", copy_day, "0.8")
         add("/use-cases", copy_day, "0.8")
         for j in agent_pages.USE_CASE_PAGES:
@@ -2864,6 +2944,14 @@ def _strip_routed(text: str) -> str:
     return re.sub(r"<!--routed-->.*?<!--/routed-->\n?", "", text, flags=re.S)
 
 
+def _fill_headline(text: str) -> str:
+    """`{ENDPOINTS}` and `{PROVIDERS}` in a served document come from the loaded catalog, like
+    `{BASE}` comes from settings: the front-door files quote the catalog's size and a typed number
+    was always stale (see `catalog_store.headline_counts`)."""
+    endpoints, providers = catalog_store.headline_counts(catalog_store.load())
+    return text.replace("{ENDPOINTS}", endpoints).replace("{PROVIDERS}", str(providers))
+
+
 def _serve_md(name: str) -> PlainTextResponse:
     """Serve a bundled markdown file as inline text (so "open in new tab" shows it, not a download),
     with the serving domain templated in. Backs the 'copy markdown' buttons on the docs pages."""
@@ -2871,7 +2959,7 @@ def _serve_md(name: str) -> PlainTextResponse:
     if not f.exists():
         raise HTTPException(status_code=404, detail=f"{name} not bundled")
     base = get_settings().public_url.rstrip("/")
-    return PlainTextResponse(_strip_routed(f.read_text(encoding="utf-8")).replace("{BASE}", base),
+    return PlainTextResponse(_fill_headline(_strip_routed(f.read_text(encoding="utf-8"))).replace("{BASE}", base),
                              media_type="text/plain; charset=utf-8")
 
 
@@ -3004,6 +3092,12 @@ async def claude_connector_page():
     return _legal_page("claude-connector.html")
 
 
+@app.get("/agent-setup.js", include_in_schema=False)
+async def agent_setup_js():
+    return FileResponse(_WEB_DIR / "agent-setup.js", media_type="application/javascript",
+                        headers={"Cache-Control": "no-cache"})
+
+
 @app.get("/adtrack.js", include_in_schema=False)
 async def adtrack_js():
     """First-party ad-click capture (see the file itself): sets the `treg_ad` cookie that
@@ -3078,8 +3172,15 @@ async def fable_page():
 
 
 @app.get("/astra", include_in_schema=False)
-async def astra_page():
-    """Astra + treg launch destination, with the Codex demo and direct plugin listing."""
+async def astra_page(request: Request):
+    """Keep launch links and their campaign attribution when moving to /gpt6."""
+    query = request.url.query
+    return RedirectResponse("/gpt6" + (f"?{query}" if query else ""), status_code=301)
+
+
+@app.get("/gpt6", include_in_schema=False)
+async def gpt6_page():
+    """GPT-6 launch destination, with the Codex demo and direct plugin listing."""
     page = _WEB_DIR / "astra.html"
     if not page.exists():
         raise HTTPException(status_code=404, detail="astra.html not bundled")
@@ -3096,6 +3197,140 @@ async def people_search_page():
     if not page.exists():
         raise HTTPException(status_code=404, detail="people-search.html not bundled")
     return FileResponse(page, headers={"Cache-Control": "no-cache"})
+
+
+# The launch pages grouped into a thin index. Routes stay where they are; this is a directory, not
+# a move. The list is hand-maintained because each launch has its own framing and the order is
+# chronological (newest first), not alphabetical.
+_BLOG_LAUNCHES: list[tuple[str, str, str, str]] = [
+    # (slug, title, date, one-line blurb)
+    ("/gpt6", "GPT-6 and treg.to", "2026-09-08",
+     "Codex demo: one prompt, the market read, and the catalog of tools it called."),
+    ("/fable", "Claude Fable 5.1 + treg.to", "2026-09-02",
+     "Run your GTM from the terminal: one prompt, four agents, four results."),
+    ("/grokbot", "Grok Bot for Outreach", "2026-09-01",
+     "A scroll animatic of Grok Bot working a lead list through treg.to."),
+    ("/people-search", "People Search Launch", "2026-09-01",
+     "Give your agent 1B+ contacts. The destination the launch film points at."),
+]
+
+# Identity/receipt posts: thin announcements that live under /blog/. These are not launches (which
+# have their own top-level routes), but they sit prominently on the /blog index above launches.
+_BLOG_POSTS: list[tuple[str, str, str, str]] = [
+    # (slug under /blog/, title, date, one-line blurb)
+    ("people-search-bench", "#1 on People Search Bench", "2026-09-14",
+     "treg.to scores 80.0% on recruiting, 78.2% on B2B prospecting. 119 real tasks, same agent."),
+]
+
+
+@app.get("/blog", include_in_schema=False)
+async def blog_index():
+    """Thin index of launch pages and notes. The launches stay at their existing routes; this page
+    links to them without moving files or creating /blog/grokbot clones. Indexed, canonical, in
+    the sitemap. Blog posts (identity/receipt announcements) sit above launches."""
+    if not _hosted():
+        raise HTTPException(status_code=404, detail="not found")
+    base = get_settings().public_url.rstrip("/")
+
+    # Blog posts (identity/receipt announcements) come first, prominently
+    post_cards = "".join(
+        f'<a class="pcard" href="/blog/{_esc_html(slug)}">'
+        f'<h3>{_esc_html(title)}</h3>'
+        f'<p>{_esc_html(blurb)}</p>'
+        f'<div class="meta">{_esc_html(date)}</div></a>'
+        for slug, title, date, blurb in _BLOG_POSTS
+    )
+
+    launch_cards = "".join(
+        f'<a class="pcard" href="{_esc_html(slug)}">'
+        f'<h3>{_esc_html(title)}</h3>'
+        f'<p>{_esc_html(blurb)}</p>'
+        f'<div class="meta">{_esc_html(date)}</div></a>'
+        for slug, title, date, blurb in _BLOG_LAUNCHES
+    )
+
+    body = (
+        '<main class="wrap"><div class="phead">'
+        '<div class="crumbs"><a href="/">treg.to</a> / <a href="/blog">Blog</a></div>'
+        '<h1>Launches and Notes</h1>'
+        '<p class="lede">Product launches, partner posts and notes from the treg.to team. '
+        'Each launch page shows a real run with the catalog and the bill.</p>'
+        '</div>'
+        + (f'<section class="cat"><h2>Posts</h2><div class="grid">{post_cards}</div></section>'
+           if _BLOG_POSTS else '')
+        + '<section class="cat"><h2>Launches</h2>'
+        f'<div class="grid">{launch_cards}</div></section>'
+        '</main>'
+    )
+
+    ld = [{"@context": "https://schema.org", "@type": "BreadcrumbList", "itemListElement": [
+        {"@type": "ListItem", "position": 1, "name": "treg.to", "item": base + "/"},
+        {"@type": "ListItem", "position": 2, "name": "Blog", "item": base + "/blog"}]}]
+
+    return _page("Launches and Notes | treg.to",
+                 "Product launches, partner posts and notes from the treg.to team. "
+                 "Each launch page shows a real run with the catalog and the bill.",
+                 "/blog", body, ld)
+
+
+@app.get("/blog/people-search-bench", include_in_schema=False)
+async def blog_people_search_bench():
+    """Identity/receipt post: treg.to is #1 on People Search Bench by LessieAI. Links to /grokbot#bench
+    for the interactive chart. Numbers from the benchmark: 119 real tasks, % answered correctly."""
+    if not _hosted():
+        raise HTTPException(status_code=404, detail="not found")
+    base = get_settings().public_url.rstrip("/")
+
+    # The benchmark numbers (from /grokbot#bench and the LessieAI chart)
+    scores = [
+        ("Recruiting", "80.0%"),
+        ("B2B prospecting", "78.2%"),
+        ("Deterministic", "76.3%"),
+        ("Influencer", "62.9%"),
+    ]
+    score_rows = "".join(
+        f'<tr><td>{_esc_html(cat)}</td><td style="text-align:right;font-weight:600">{_esc_html(pct)}</td></tr>'
+        for cat, pct in scores
+    )
+
+    body = (
+        '<main class="wrap" style="max-width:680px">'
+        '<div class="phead">'
+        '<div class="crumbs"><a href="/">treg.to</a> / <a href="/blog">Blog</a> / '
+        '<a href="/blog/people-search-bench">#1 on People Search Bench</a></div>'
+        '<h1>#1 on People Search Bench</h1>'
+        '<p class="lede">treg.to scores highest on People Search Bench by LessieAI: '
+        '119 real tasks, same agent, with and without the plugin.</p>'
+        '</div>'
+        '<section class="cat">'
+        '<p>People Search Bench tests whether an agent can answer real recruiting, B2B prospecting, '
+        'deterministic lookup and influencer discovery questions. The benchmark runs the same agent '
+        'with and without the treg.to plugin, measuring % answered correctly across 119 tasks.</p>'
+        '<table style="width:100%;margin:24px 0;border-collapse:collapse">'
+        '<thead><tr style="border-bottom:1px solid var(--border)">'
+        '<th style="text-align:left;padding:8px 0">Category</th>'
+        '<th style="text-align:right;padding:8px 0">treg.to score</th>'
+        '</tr></thead>'
+        f'<tbody style="font-size:1.1em">{score_rows}</tbody>'
+        '</table>'
+        '<p style="color:var(--muted);font-size:0.9em">Source: People Search Bench by LessieAI, 119 real tasks, '
+        '% answered correctly. Same agent, with and without the plugin.</p>'
+        '<p style="margin-top:24px"><a href="/grokbot#bench" style="font-weight:600">'
+        'See the interactive chart on the Grok Bot launch page &rarr;</a></p>'
+        '</section>'
+        '</main>'
+    )
+
+    ld = [{"@context": "https://schema.org", "@type": "BreadcrumbList", "itemListElement": [
+        {"@type": "ListItem", "position": 1, "name": "treg.to", "item": base + "/"},
+        {"@type": "ListItem", "position": 2, "name": "Blog", "item": base + "/blog"},
+        {"@type": "ListItem", "position": 3, "name": "#1 on People Search Bench",
+         "item": base + "/blog/people-search-bench"}]}]
+
+    return _page("#1 on People Search Bench | treg.to",
+                 "treg.to scores 80.0% on recruiting, 78.2% on B2B prospecting on People Search Bench "
+                 "by LessieAI. 119 real tasks, same agent with and without the plugin.",
+                 "/blog/people-search-bench", body, ld)
 
 
 @app.get("/resources", include_in_schema=False)
@@ -3133,7 +3368,7 @@ def _skill_frontmatter() -> dict[str, str]:
     f = _WEB_DIR / "skill.md"
     if not f.exists():
         raise HTTPException(status_code=404, detail="skill.md not bundled")
-    text = f.read_text(encoding="utf-8")
+    text = _fill_headline(f.read_text(encoding="utf-8"))
     if not text.startswith("---"):
         raise HTTPException(status_code=404, detail="skill.md has no frontmatter")
     out: dict[str, str] = {}

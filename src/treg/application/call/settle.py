@@ -5,10 +5,11 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from collections.abc import Callable
 
 from sqlalchemy import update
-from sqlalchemy.exc import TimeoutError as PoolTimeoutError
+from sqlalchemy.exc import DBAPIError, TimeoutError as PoolTimeoutError
 
 from ... import adsconv
 from ...domain.capacity import marks as capacity_marks
@@ -24,7 +25,7 @@ from ...models import Org
 from ...timeutil import utcnow_naive as _utcnow_naive
 from .idempotency import _release_idempotent_claim
 from .resolve import MarketplaceCall, _usd_to_micro
-from .types import UpstreamResponse
+from .types import GatewayFailed, UpstreamResponse
 
 
 # 4xx statuses that mean "the provider did not serve this, and it is NOT the caller's input" — our
@@ -62,7 +63,7 @@ def _platform_billable(status_code: int, cost_type: str) -> bool:
     return False
 
 
-_PLATFORM_BODY_MAX = 8 * 1024 * 1024  # buffer ceiling for a metered response (API JSON, not downloads)
+_PLATFORM_BODY_MAX = 8 * 1024 * 1024  # complete response evidence ceiling; free final downloads stream
 def _brightdata_record_count(body: bytes) -> int | None:
     """How many RECORDS a Bright Data Web Scraper response delivered, or None for "settle at the
     estimate". Bright Data bills $1.50/1000 records *delivered* and reports no charge field, so the
@@ -77,9 +78,8 @@ def _brightdata_record_count(body: bytes) -> int | None:
         HERE; the job's records bill when the snapshot is downloaded (its catalog entry is priced
         per_result for exactly that reason);
       - format=ndjson → one JSON object per line; format=csv → header line + one line per record.
-    A body that STARTS like JSON but does not parse is treated as truncated (the metered buffer
-    caps at _PLATFORM_BODY_MAX and drops the tail) → None, settle at the estimate, never a
-    line-count guess over a partial payload. Any other unrecognised shape → None for the same
+    A body that STARTS like JSON but does not parse is invalid or incomplete evidence:
+    return None and settle at the estimate, never a line-count guess over a partial payload. Any other unrecognised shape → None for the same
     reason: when we cannot count, the estimate is the honest number."""
     if body[:2] == b"\x1f\x8b":  # compress=true gzips the download — we can't count, estimate wins
         return None
@@ -96,7 +96,7 @@ def _brightdata_record_count(body: bytes) -> int | None:
             return len(lines)
         except ValueError:
             pass
-        if text[0] in "[{":  # JSON that broke mid-stream: the 8MB buffer truncated it
+        if text[0] in "[{":  # Invalid JSON must never be guessed as CSV
             return None
         return len(lines) - 1 if len(lines) > 1 else None  # csv: header + rows
     if isinstance(doc, list):
@@ -107,6 +107,50 @@ def _brightdata_record_count(body: bytes) -> int | None:
         # other envelope. Pay-per-success means an answer with no records costs nothing.
         return 0
     return None
+
+
+def _quickenrich_cost_micro(mk: MarketplaceCall, doc: dict) -> int | None:
+    """Subscription credits at the frozen list rate, independent of the upstream plan fee."""
+    if mk.cost_type == "free":
+        return 0
+    meta = doc.get("meta")
+    if isinstance(meta, dict) and "credits_used" in meta:
+        credits = meta["credits_used"]
+        # The documented meter is whole credits. Reject booleans, negative and malformed usage.
+        return credits * mk.unit_micro if type(credits) is int and credits >= 0 else None
+    if "data" not in doc or doc.get("success") is not True:
+        return None
+    data = doc["data"]
+    if data is None or data == [] or data == {}:
+        return 0
+
+    def present(value):
+        return isinstance(value, str) and value.strip().lower() not in ("", "n/a", "null", "none")
+
+    if mk.endpoint_id == "quickenrich.people.search.domain" and isinstance(data, list):
+        if not all(isinstance(row, dict) for row in data):
+            return None
+        title = (mk.request_data.get("queryParams") or {}).get("title", "")
+        credits = (sum(present(row.get("email")) or present(row.get("employee_phone")) for row in data)
+                   if title else 1)
+        return credits * mk.unit_micro
+    if mk.endpoint_id == "quickenrich.companies.search" and isinstance(data, list):
+        return len(data) * mk.unit_micro if all(isinstance(row, dict) for row in data) else None
+    if isinstance(data, dict):
+        if mk.endpoint_id == "quickenrich.people.email.find":
+            if "email" not in data and "employee_phone" not in data:
+                return None
+            return int(present(data.get("email")) or present(data.get("employee_phone"))) * mk.unit_micro
+        if mk.endpoint_id == "quickenrich.people.phone.find" and "employee_phone" in data:
+            return int(present(data["employee_phone"])) * mk.unit_micro
+        if mk.endpoint_id == "quickenrich.people.enrich":
+            return mk.unit_micro
+    return None
+
+
+# Providers whose exact charge rides a response header, in provider credits (fx.yaml rate).
+_CREDIT_HEADERS = {"crustdata": "x-credits-used", "cloro": "x-credits-charged"}
+
 
 def _observed_cost_micro(mk: MarketplaceCall, body: bytes, headers=None) -> int | None:
     """The provider's OWN reported charge for this call, in micro-USD, or None when it doesn't say.
@@ -147,6 +191,9 @@ def _observed_cost_micro(mk: MarketplaceCall, body: bytes, headers=None) -> int 
         charge for a 2xx whose payload is an embedded error (verified live 2026-07-30 — see
         docs/context/architecture/catalog.md, "the provider decides what counts as success").
 
+      - crustdata / cloro: REPORTED in credits in a response HEADER (`_CREDIT_HEADERS`), the only
+        place the charge exists — cloro's ChatGPT/Google routes price their include flags and US
+        state targeting per request, so the catalog value is an upper bound and the header is the bill.
       - exa: REPORTED in dollars, `costDollars.total` on every 2xx body (same contract as
         dataforseo's `cost`) — the only place the per-result and per-content riders exist.
       - fiber-ai: REPORTED in credits, `chargeInfo.creditsCharged` on every envelope, honoured
@@ -164,9 +211,14 @@ def _observed_cost_micro(mk: MarketplaceCall, body: bytes, headers=None) -> int 
         # the catalog base. Aviato simple search earned this rule from two multi-row live probes:
         # enrich=true returned only id rows and charged the same 0.25-credit base both times.
         return _usd_to_micro(float(cost["usd"]))
-    if provider == "crustdata" and headers is not None:
-        raw = headers.get("x-credits-used")
-        rate = catalog_store.load().credit_rates.get("crustdata")
+    header_name = _CREDIT_HEADERS.get(provider)
+    if header_name and headers is not None:
+        # REPORTED in a response HEADER rather than the body: Crustdata's X-Credits-Used and
+        # cloro's X-Credits-Charged are the exact per-call charge (cloro omits the header on its
+        # free routes and on a failed extraction, both of which it does not bill — an absent header
+        # therefore settles as unreported, at the estimate, not at zero).
+        raw = headers.get(header_name)
+        rate = catalog_store.load().credit_rates.get(provider)
         try:
             credits = float(raw)
         except (TypeError, ValueError):
@@ -174,7 +226,7 @@ def _observed_cost_micro(mk: MarketplaceCall, body: bytes, headers=None) -> int 
         if credits >= 0 and rate:
             return _usd_to_micro(credits * rate)
     if not body:
-        return None
+        return 0 if provider == "contactout" else None
     if provider == "brightdata" and mk.cost_type == "per_result" and mk.unit_micro > 0:
         # DERIVED by counting records — Bright Data's bill is per record delivered and the body is
         # the only place that number exists (see _brightdata_record_count for the shapes).
@@ -183,13 +235,32 @@ def _observed_cost_micro(mk: MarketplaceCall, body: bytes, headers=None) -> int 
     try:
         doc = json.loads(body)
     except (ValueError, UnicodeDecodeError):
-        return None
+        return 0 if provider == "contactout" else None
     if provider == "aviato" and mk.endpoint_id == "aviato.people.enrich.bulk":
         if isinstance(doc, list) and mk.unit_micro > 0:
             return sum(item is not None for item in doc) * mk.unit_micro
         return None
     if not isinstance(doc, dict):
+        return 0 if provider == "contactout" else None
+    reported = (ep.get("cost") or {}).get("reported_charge") if ep else None
+    if reported:
+        amount = _dig(doc, reported["path"])
+        if isinstance(amount, (int, float, str)) and not isinstance(amount, bool):
+            try:
+                dollars = Decimal(str(amount))
+                if dollars.is_finite() and dollars >= 0:
+                    return int((dollars * 1_000_000).quantize(Decimal("1"), rounding=ROUND_HALF_UP))
+            except (InvalidOperation, ValueError, OverflowError):
+                pass
+        # Missing or invalid charge evidence leaves the normal miss/base rules in force.
+    if provider == "sumble":
+        credits = doc.get("credits_used")
+        # The request-time unit freezes the credit rate, including legitimate zero usage.
+        if type(credits) is int and credits >= 0:
+            return credits * mk.unit_micro
         return None
+    if provider == "quickenrich":
+        return _quickenrich_cost_micro(mk, doc)
     if provider == "aviato" and mk.endpoint_id == "aviato.companies.enrich.bulk":
         rows = doc.get("companies")
         if isinstance(rows, list) and mk.unit_micro > 0:
@@ -216,6 +287,17 @@ def _observed_cost_micro(mk: MarketplaceCall, body: bytes, headers=None) -> int 
         if isinstance(cost, (int, float)) and not isinstance(cost, bool) and cost >= 0:
             return int(cost * 1_000_000 + 0.5)
         return None
+    if provider == "contactout" and cost:
+        from . import contactout
+        return contactout.observed(cost, mk.request_data, doc)
+    if provider == "millionverifier" and mk.endpoint_id == "millionverifier.people.email.verify":
+        # Risky results receive automatic credit returns for eligible accounts. Keep the verdict
+        # as a routed answer, but never bill the caller for unknown/catch-all. `free` is the email
+        # service type, NOT a charge flag; `credits` is a delayed account balance, NOT usage.
+        # Misuse-flagged upstream accounts may lose credit-return eligibility; treg absorbs that
+        # exception instead of charging callers for a result advertised as free.
+        if doc.get("result") in ("unknown", "catch_all"):
+            return 0
     if provider == "exa":
         # REPORTED in dollars: every Exa response carries `costDollars.total` — the search base,
         # the per-result rider beyond 10, deep-mode uplifts and each contents type summed (verified
@@ -252,6 +334,19 @@ def _observed_cost_micro(mk: MarketplaceCall, body: bytes, headers=None) -> int 
         if (isinstance(info, dict) and info.get("method") == "charged-now" and rate
                 and isinstance(credits, (int, float)) and not isinstance(credits, bool) and credits >= 0):
             return int(credits * rate * 1_000_000 + 0.5)
+        return None
+    if provider == "tomba" and mk.endpoint_id == "tomba.companies.emails.list":
+        # Live billing evidence: a non-empty page costs ceil(pageSize / 10) credits,
+        # even when fewer emails are returned. The catalog supplies the frozen credit price.
+        data = doc.get("data")
+        emails = data.get("emails") if isinstance(data, dict) else None
+        if isinstance(emails, list):
+            if not emails:
+                return 0
+            meta = doc.get("meta")
+            size = meta.get("pageSize") if isinstance(meta, dict) else None
+            if type(size) is int and size > 0 and mk.unit_micro > 0:
+                return ((size + 9) // 10) * mk.unit_micro
         return None
     if provider == "hunter" and mk.endpoint_id == "hunter.companies.emails":
         # DERIVED, like apollo. Hunter's domain search does not bill per row at all: it takes ONE
@@ -340,21 +435,26 @@ def _dig(doc, dotted: str):
 
 
 async def _buffer_response(response: UpstreamResponse) -> tuple[UpstreamResponse, bytes]:
-    """Drain a relayed streaming response into memory and return an equivalent plain Response.
+    """Read complete settlement evidence before sending headers; never return a prefix.
 
-    Metered calls give up streaming on purpose: settling needs the provider's own reported cost (which
-    lives in the body) and the telemetry row wants the response size, and neither can be known while
-    the bytes are still in flight. These are JSON API answers — the same payloads the catalog stores as
-    examples — so the memory cost is a few KB, and buffering happens BEFORE anything is sent to the
-    caller, which is what lets a mid-stream upstream failure still become a clean 502 + release."""
+    Oversized evidence is a gateway failure, so the caller's hold and idempotency claim
+    are released instead of charging from partial evidence or storing a corrupt success.
+    """
     chunks, size = [], 0
-    async for chunk in response.body_stream:
-        raw = chunk if isinstance(chunk, bytes) else str(chunk).encode("utf-8", "replace")
-        size += len(raw)
-        if size <= _PLATFORM_BODY_MAX:
+    try:
+        async for chunk in response.body_stream:
+            raw = chunk if isinstance(chunk, bytes) else str(chunk).encode("utf-8", "replace")
+            size += len(raw)
+            if size > _PLATFORM_BODY_MAX:
+                raise GatewayFailed(
+                    "response_buffer_limit", status_code=502,
+                    detail={"error": "response_buffer_limit",
+                            "message": "upstream response exceeds treg's 8 MiB settlement buffer; "
+                                       "no response was delivered and this call was not charged"})
             chunks.append(raw)
-    body = b"".join(chunks)
-    await response.close()
+        body = b"".join(chunks)
+    finally:
+        await response.close()
 
     async def buffered_body():
         yield body
@@ -477,10 +577,14 @@ async def _platform_settle(
     try:
         try:
             charged = await _close()
-        except PoolTimeoutError:
-            # No pool slot within `pool_timeout`: a transient wait, not a broken ledger. A settle that
-            # gives up here forfeits the charge (the hold is reaped in the org's favour) — real revenue,
-            # so one short retry is worth it. Anything else falls straight through to the log.
+        except (PoolTimeoutError, DBAPIError) as exc:
+            # asyncpg deadlocks arrive as SQLAlchemy DBAPIError with SQLSTATE on its orig wrapper.
+            # Retry only 40P01, never an error-message match or an arbitrary database failure.
+            if isinstance(exc, DBAPIError) and getattr(exc.orig, "sqlstate", None) != "40P01":
+                raise
+            # _close has exited its session, rolling back all staged money/overflow writes.
+            # One fresh transaction gets the same bounded retry as a pool timeout; another failure
+            # goes to the log and leaves the hold for the reaper. No upstream call is repeated.
             await asyncio.sleep(0.5)
             charged = await _close()
     except Exception as exc:  # noqa: BLE001 — loudly, but never into the caller's response

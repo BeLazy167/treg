@@ -16,7 +16,8 @@ the user, and it asks for authority the capability doesn't need.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
+from urllib.parse import urlsplit
 
 from .config import platform_setting_name, get_settings
 from .domain.connections import authorization as connection_authorization
@@ -24,6 +25,22 @@ from .domain.connections import authorization as connection_authorization
 
 # Compatibility name for callers that still import provider definitions from this legacy module.
 OAuthAuthorizationMethod = connection_authorization.AuthorizationMethod
+
+
+@dataclass(frozen=True)
+class CatalogTarget:
+    """An additional approved upstream root for this provider's catalog endpoints.
+
+    Catalog YAML may select one by exact hostname, but cannot introduce a new credential target.
+    Empty auth fields inherit the provider's normal injection profile.
+    """
+
+    host: str
+    base_url: str
+    token_location: str = ""
+    token_header: str = ""
+    token_param: str = ""
+    token_format: str = ""
 
 
 @dataclass(frozen=True)
@@ -88,6 +105,10 @@ class OAuthProvider:
     # perfectly well-scoped token.
     token_scopes_header: str = ""
     base_url: str = ""  # upstream API root, so a successful connect can auto-provision the tool
+    # A provider's catalog can span additional API roots. These roots are executable policy, not
+    # catalog data: a YAML `host` only selects an exact entry from this allow-list, so a catalog
+    # edit cannot redirect an injected team or platform credential to an arbitrary host.
+    catalog_targets: tuple[CatalogTarget, ...] = ()
     # Copy-paste sample calls stamped onto the provisioned tool's `examples`, surfaced by
     # `tool ls`. The single most useful thing to carry here is the API VERSION: Google's REST APIs
     # version the URL path (v25/...) and a wrong guess returns an HTML 404, not a hint — agents
@@ -363,6 +384,23 @@ class OAuthProvider:
 
     def profile_for_authorization(self, method: str) -> "OAuthProvider":
         return connection_authorization.provider_profile(self, method)
+
+    def profile_for_catalog_host(self, host: str) -> "OAuthProvider":
+        """Select an explicitly approved catalog target and its credential injection profile."""
+        wanted = str(host or "").strip().lower()
+        matches = [target for target in self.catalog_targets if target.host == wanted]
+        if len(matches) != 1:
+            raise ValueError(f"catalog host {wanted!r} is not uniquely approved for {self.service}")
+        target = matches[0]
+        parsed = urlsplit(target.base_url)
+        if (parsed.scheme != "https" or parsed.netloc != wanted or parsed.hostname != wanted
+                or parsed.username or parsed.password or parsed.query or parsed.fragment):
+            raise ValueError(f"catalog target for {wanted!r} is not a safe HTTPS base URL")
+        overrides = {"base_url": target.base_url}
+        for field in ("token_location", "token_header", "token_param", "token_format"):
+            if value := getattr(target, field):
+                overrides[field] = value
+        return replace(self, **overrides)
 
     def authorization_method_name(self, stored: str) -> str:
         return connection_authorization.method_name(self, stored)
@@ -1256,6 +1294,124 @@ HUNTER = OAuthProvider(
     probe_path="/account",  # free — consumes no search/verification/enrichment credits
 )
 
+SUMBLE = OAuthProvider(
+    service="sumble", display_name="Sumble", auth_kind="key",
+    token_label="API key", token_placeholder="your Sumble API key",
+    token_header="Authorization", token_format="Bearer {secret}",
+    setup_url="https://sumble.com/account/api-keys",
+    setup_action_label="Get your Sumble API key",
+    setup_steps=("Sign in to Sumble and open Account → API keys.",
+                 "Create an API key and copy it before closing the dialog."),
+    setup_note="Connect your own key for the full API, including workspace lists, signals and asynchronous people requests. Connection verification uses a free technology-search miss.",
+    auth_uri="", token_uri="", scopes={}, client_id_setting="", client_secret_setting="",
+    category="Enrichment",
+    summary="Find organizations, people, jobs and teams, and explore company technologies and signals.",
+    base_url="https://api.sumble.com/v9", docs_url="https://docs.sumble.com/api/api",
+    probe_path="/technologies/find", probe_method="POST",
+    probe_json={"query": "treg-nonexistent-probe-20260909"},
+    # Live 2026-09-09: bogus Bearer 401; valid key 200 with credits_used=0.
+)
+
+HARVESTAPI = OAuthProvider(
+    service="harvestapi", display_name="HarvestAPI", auth_kind="key",
+    token_label="API key", token_placeholder="your HarvestAPI API key",
+    token_header="X-API-Key", token_format="{secret}",
+    setup_url="https://harvestapi.io/",
+    setup_action_label="Get your HarvestAPI API key",
+    setup_steps=("Sign in to HarvestAPI and open Dashboard → API keys.",
+                 "Create an API key and paste it here."),
+    setup_note="LinkedIn data and enrichment using an API key. Connection verification is free.",
+    auth_uri="", token_uri="", scopes={}, client_id_setting="", client_secret_setting="",
+    category="Enrichment",
+    summary="Retrieve LinkedIn profiles, companies, jobs, posts and ads, and find leads and emails.",
+    base_url="https://api.harvestapi.io", docs_url="https://docs.harvestapi.io",
+    probe_path="/users/my-api-user",  # Internal only; live bad key 401, valid key 200.
+)
+
+QUICKENRICH = OAuthProvider(
+    service="quickenrich", display_name="QuickEnrich", auth_kind="key",
+    token_label="API key", token_placeholder="your QuickEnrich API key",
+    token_header="Authorization", token_format="Bearer {secret}",
+    setup_url="https://app.quickenrich.io/docs",
+    setup_action_label="Get your QuickEnrich API key",
+    setup_steps=("Sign in to QuickEnrich and copy your API key.",
+                 "If no key is available, contact QuickEnrich support as described in its API docs."),
+    setup_note="Free contact discovery, then selective email or phone enrichment. Free, Starter and Growth API credits reset monthly; GTM Unlimited includes unlimited API credits. Connection verification is free.",
+    auth_uri="", token_uri="", scopes={}, client_id_setting="", client_secret_setting="",
+    category="Enrichment",
+    summary="Discover business contacts for free, find emails and phones, and search companies.",
+    base_url="https://app.quickenrich.io", docs_url="https://app.quickenrich.io/docs",
+    probe_path="/api/employees/contact-finder", probe_method="POST",
+    probe_json={"company_url": {"include": ["treg-probe-nonexistent.invalid"], "exclude": []}, "per_page": 1},
+    # Live 2026-09-08: bad key 401; valid free key 200, credits_used=0.
+)
+
+TRYKITT = OAuthProvider(
+    service="trykitt",
+    display_name="Kitt AI",
+    auth_kind="key",
+    token_label="API key",
+    token_placeholder="your Kitt AI API key",
+    token_header="x-api-key",
+    token_format="{secret}",
+    setup_url="https://admin.trykitt.ai/",
+    setup_action_label="Get your Kitt AI API key",
+    setup_steps=("Sign in to Kitt AI and open API Key in the sidebar.", "Copy your API key."),
+    setup_note="Find verified work emails or verify an existing address. Free API access has variable capacity; PAYG charges per found email and per verification, including unknown/catchall results.",
+    auth_uri="", token_uri="", scopes={},
+    client_id_setting="", client_secret_setting="",
+    category="Enrichment",
+    summary="Find verified work emails and verify email deliverability, including catch-all addresses.",
+    base_url="https://api.trykitt.ai",
+    docs_url="https://documenter.getpostman.com/view/479833/2s93m62NHf",
+    probe_path="/credit",  # Live: valid zero balance is 200; garbage key is 401.
+)
+
+CONTACTOUT = OAuthProvider(
+    service="contactout", display_name="ContactOut", auth_kind="key",
+    token_label="API token", token_placeholder="your ContactOut API token",
+    token_header="token", token_format="{secret}",
+    setup_url="https://contactout.com/meeting",
+    setup_action_label="Get your ContactOut API token",
+    setup_steps=("Request API access from ContactOut and copy your API token.",),
+    setup_note="Your own key is billed by ContactOut, never metered by treg. Connection checks use the account stats endpoint.",
+    auth_uri="", token_uri="", scopes={}, client_id_setting="", client_secret_setting="",
+    category="Enrichment",
+    summary="Find work emails, personal emails and phones from LinkedIn; search people and companies.",
+    base_url="https://api.contactout.com", docs_url="https://api.contactout.com/",
+    probe_path="/v1/stats", token_ok_field="status_code", token_ok_value="200",
+    # Live: garbage token returns HTTP 401; the supplied platform token returns 200.
+)
+
+MILLIONVERIFIER = OAuthProvider(
+    service="millionverifier",
+    display_name="MillionVerifier",
+    auth_kind="key",
+    token_label="API key",
+    token_placeholder="your MillionVerifier API key",
+    token_location="query",
+    token_param="api",
+    token_format="{secret}",
+    setup_url="https://app.millionverifier.com/api",
+    setup_action_label="Get your MillionVerifier API key",
+    setup_steps=(
+        "Sign in to MillionVerifier and open Account settings → API Keys.",
+        "Add an API key if needed, make sure it is active, and copy it.",
+    ),
+    setup_note="Prepaid credits never expire. Risky (unknown and catch-all) results receive automatic credit returns for eligible accounts; the credits check is free.",
+    auth_uri="", token_uri="",
+    scopes={},
+    client_id_setting="", client_secret_setting="",
+    category="Enrichment",
+    summary="Verify email deliverability and identify catch-all, disposable and role addresses.",
+    base_url="https://api.millionverifier.com",
+    docs_url="https://developer.millionverifier.com/",
+    probe_path="/api/v3/credits",
+    # Live 2026-09-08: HTTP 200 {result: error, error: apikey_not_found} for a garbage key.
+    # Do not require a truthy credits balance: a valid exhausted account can still connect.
+    token_reject_field="error",
+)
+
 MINIMAX = OAuthProvider(
     service="minimax",
     display_name="MiniMax",
@@ -1323,6 +1479,55 @@ REPLICATE = OAuthProvider(
     base_url="https://api.replicate.com/v1",
     docs_url="https://replicate.com/docs/reference/http",
     probe_path="/account",
+)
+
+REAPI = OAuthProvider(
+    service="reapi",
+    display_name="reAPI",
+    auth_kind="token",
+    token_label="API key",
+    token_placeholder="your reAPI API key",
+    setup_url="https://reapi.ai/dashboard/api-keys",
+    setup_action_label="Get your reAPI API key",
+    setup_steps=(
+        "Sign in to reAPI and open Dashboard → API Keys.",
+        "Create a key and copy it (it is shown once).",
+    ),
+    setup_note="Generations spend prepaid credits (1 credit = $0.001); the task probe is free.",
+    auth_uri="", token_uri="", scopes={},
+    client_id_setting="", client_secret_setting="",
+    category="AI generation",
+    summary="Generate Seedance 2.5 video (with a relaxed content filter) and GPT Image / Gemini images through one async API.",
+    base_url="https://reapi.ai/api/v1",
+    docs_url="https://reapi.ai/docs",
+    # No free account route: a valid key answers the unknown task id with 404, a bad one with 401
+    # ({"error":{"code":10003,"message":"Invalid API key."}}, observed 2026-09-14).
+    probe_path="/tasks/probe",
+    probe_reject_statuses=(401, 403),
+)
+
+PIAPI = OAuthProvider(
+    service="piapi",
+    display_name="PiAPI",
+    auth_kind="key",
+    token_label="API key",
+    token_placeholder="your PiAPI API key",
+    token_header="X-API-Key",
+    token_format="{secret}",
+    setup_url="https://piapi.ai/workspace/key",
+    setup_action_label="Get your PiAPI API key",
+    setup_steps=(
+        "Sign in to PiAPI and open the workspace API key page.",
+        "Copy your API key.",
+    ),
+    setup_note="Generations are paid per task; the account-info probe is free.",
+    auth_uri="", token_uri="", scopes={},
+    client_id_setting="", client_secret_setting="",
+    category="AI generation",
+    summary="Generate Seedance 2.5 video (default or less-restriction) and Nano Banana Pro / GPT Image images through one task API.",
+    base_url="https://api.piapi.ai",
+    docs_url="https://piapi.ai/docs/overview",
+    probe_path="/account/info",  # free; a bad key answers 401 {"message":"Failed to verify api key"}
 )
 
 TIKHUB = OAuthProvider(
@@ -1690,7 +1895,7 @@ DIFFBOT = OAuthProvider(
     auth_kind="key",
     token_label="API token",
     token_placeholder="your Diffbot token",
-    token_location="query",  # token is a query param on every call
+    token_location="query",  # normal Diffbot calls use ?token=; Web Search overrides this below
     token_param="token",
     token_format="{secret}",
     setup_url="https://app.diffbot.com/get-started/",
@@ -1704,6 +1909,14 @@ DIFFBOT = OAuthProvider(
     # Enhance/enrich + DQL live on the KG host; the free account probe lives on the api host, so verify
     # off-host. The provisioned tool points at the KG host (the enrichment value).
     base_url="https://kg.diffbot.com/kg/v3",
+    catalog_targets=(
+        CatalogTarget(host="api.diffbot.com", base_url="https://api.diffbot.com"),
+        CatalogTarget(
+            host="llm.diffbot.com", base_url="https://llm.diffbot.com",
+            token_location="header", token_header="Authorization", token_format="Bearer {secret}",
+        ),
+        CatalogTarget(host="nl.diffbot.com", base_url="https://nl.diffbot.com"),
+    ),
     docs_url="https://docs.diffbot.com/reference/authentication",
     probe_url="https://api.diffbot.com/v4/account",  # token injected as ?token=…
 )
@@ -2711,7 +2924,8 @@ REGISTRY: dict[str, OAuthProvider] = {
         GOOGLE_ADS, YOUTUBE,
         LINKEDIN, SLACK, X, TIKTOK, FACEBOOK, INSTAGRAM, META_ADS,
         # API-key providers
-        APOLLO, PDL, AKTA, HUNTER, CRUNCHBASE, MINIMAX, OPENROUTER, REPLICATE,
+        APOLLO, PDL, AKTA, HUNTER, SUMBLE, HARVESTAPI, QUICKENRICH, TRYKITT, CONTACTOUT, MILLIONVERIFIER, CRUNCHBASE, MINIMAX, OPENROUTER, REPLICATE,
+        REAPI, PIAPI,
         TIKHUB, BRIGHTDATA, SEMRUSH, JUSTONEAPI,
         SCRAPECREATORS,
         # SEO API-key providers

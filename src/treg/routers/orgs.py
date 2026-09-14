@@ -68,7 +68,7 @@ _day_start_utc = usage_policy._day_start_utc
 count_today = usage_policy.count_today
 _deny_match = access_policy._deny_match
 _org_deny_rules = access_policy._org_deny_rules
-from .auth_helpers import _is_https
+from .auth_helpers import _is_https, require_managed_cli
 from .signup_cookies import REFERRAL_COOKIE
 
 
@@ -358,6 +358,13 @@ _SIGNUP_HTTP_ERRORS = {
 }
 
 
+def _owned_team_limit_error() -> HTTPException:
+    return HTTPException(status_code=403, detail=(
+        f"You can own at most {teams.MAX_OWNED_TEAMS} teams. "
+        "Delete a team or transfer ownership before creating or owning another."
+    ))
+
+
 def _signup_http_error(exc: signup_use_cases.SignupError) -> HTTPException:
     status_code, detail = _SIGNUP_HTTP_ERRORS[exc.kind]
     return HTTPException(status_code=status_code, detail=detail)
@@ -382,6 +389,8 @@ async def register_user(body: UserIn, request: Request, response: Response) -> d
         return result
     except signup_use_cases.SignupError as exc:
         raise _signup_http_error(exc) from exc
+    except teams.OwnedTeamLimitReached as exc:
+        raise _owned_team_limit_error() from exc
 
 
 @app.post("/orgs")
@@ -389,6 +398,7 @@ async def create_org(
     body: OrgIn, request: Request, response: Response,
     user: User = Depends(require_identity),
 ) -> dict:
+    require_managed_cli(request, team_change=True)
     try:
         result = await signup_use_cases.create_org(
             user=user,
@@ -401,6 +411,8 @@ async def create_org(
         return result
     except signup_use_cases.SignupError as exc:
         raise _signup_http_error(exc) from exc
+    except teams.OwnedTeamLimitReached as exc:
+        raise _owned_team_limit_error() from exc
 
 
 app = APIRouter()
@@ -491,8 +503,9 @@ async def create_invite(
 
 @app.post("/invites/accept")
 async def accept_invite(
-    body: AcceptIn, response: Response, db: AsyncSession = Depends(get_session),
+    body: AcceptIn, request: Request, response: Response, db: AsyncSession = Depends(get_session),
 ) -> dict:
+    require_managed_cli(request, team_change=True)
     # Open endpoint, protected by the unguessable one-time code. Registers the user if new,
     # joins them to the org, and mints their own org-scoped token (the admin never sees it).
     invite = (
@@ -558,7 +571,7 @@ async def my_invites(
     login method) is enough to see these; the invite code becomes a shortcut, not a requirement."""
     rows = (
         await db.execute(select(Invite).where(Invite.email == user.email, Invite.status == "pending")
-                         .order_by(Invite.created_at.desc()))  # newest first — the invite you just clicked
+                         .order_by(Invite.created_at.desc(), Invite.id.desc()))  # stable newest-first order
     ).scalars().all()
     now = _utcnow_naive()
     orgs = {  # batch the org lookup (was one db.get per invite)
@@ -607,11 +620,12 @@ invite_management_router = app
 
 @app.post("/invites/{invite_id}/accept")
 async def accept_my_invite(
-    invite_id: int, response: Response, user: User = Depends(require_identity),
+    invite_id: int, request: Request, response: Response, user: User = Depends(require_identity),
     db: AsyncSession = Depends(get_session),
 ) -> dict:
     """Accept an invite addressed to my already-proven email — no code needed (the identity token
     proves the email). The code path (`POST /invites/accept`) stays for out-of-band joins."""
+    require_managed_cli(request, team_change=True)
     invite = await db.get(Invite, invite_id)
     if invite is None or invite.status != "pending":
         raise HTTPException(status_code=404, detail="invalid or already-used invite")
@@ -827,6 +841,11 @@ async def set_member_role(
         target = await db.get(User, user_id)
         if target is not None and _is_machine_email(target.email):
             raise HTTPException(status_code=422, detail="a machine identity cannot be an owner")
+    if body.role == "owner" and membership.role != "owner":
+        try:
+            await teams.require_owned_team_slot(db, user_id)
+        except teams.OwnedTeamLimitReached as exc:
+            raise _owned_team_limit_error() from exc
     if membership.role == "owner" and body.role != "owner" and await _count_owners(org_id, db) <= 1:
         raise HTTPException(status_code=409, detail="cannot demote the last owner — promote another owner first")
     membership.role = body.role

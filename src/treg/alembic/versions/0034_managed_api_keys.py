@@ -1,7 +1,7 @@
 """managed API-key controls, audit, Activity attribution, and legacy-token backfill
 
-Revision ID: 0026
-Revises: 0025
+Revision ID: 0034
+Revises: 0033
 Create Date: 2026-09-04
 
 This additive revision is a rollback floor because new code can record key disable and revoke state
@@ -14,8 +14,8 @@ import sqlalchemy as sa
 import sqlmodel
 
 
-revision: str = "0026"
-down_revision: str | Sequence[str] | None = "0025"
+revision: str = "0034"
+down_revision: str | Sequence[str] | None = "0033"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 contract = True
@@ -83,7 +83,6 @@ def upgrade() -> None:
         op.add_column(table, sa.Column("api_key_id", sa.Integer(), nullable=True))
         op.add_column(table, sa.Column("api_key_name", sqlmodel.sql.sqltypes.AutoString(), nullable=True))
         op.add_column(table, sa.Column("api_key_prefix", sqlmodel.sql.sqltypes.AutoString(), nullable=True))
-        op.create_index(f"ix_{table}_api_key_id", table, ["api_key_id"])
 
     # One signed default-key control per real human membership. Machine identities cannot sign in.
     bind = op.get_bind()
@@ -123,7 +122,6 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     for table in ("runrecord", "callrecord"):
-        op.drop_index(f"ix_{table}_api_key_id", table_name=table)
         op.drop_column(table, "api_key_prefix")
         op.drop_column(table, "api_key_name")
         op.drop_column(table, "api_key_id")

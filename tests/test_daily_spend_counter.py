@@ -5,7 +5,7 @@ instead of an aggregate over the platform's whole day (revision 0022). These tes
 semantics the journal view (`spent_today_from_ledger`) has always had: settled today plus still
 held from today, reset at the UTC day boundary, with a hold opened yesterday belonging to yesterday.
 """
-from datetime import date, timedelta
+from datetime import timedelta
 
 import pytest
 from httpx import ASGITransport, AsyncClient
@@ -15,7 +15,8 @@ from treg.api import app
 from treg.domain import money as ledger
 from treg.infra.db import reset_db, session_maker
 from treg.models import Hold, Org
-from conftest import make_upstream
+from treg.timeutil import utcnow_naive
+from conftest import make_upstream, verified_signup
 
 EP = "acme.thing.get"
 
@@ -30,7 +31,7 @@ async def c():
 
 
 async def _org(c: AsyncClient) -> int:
-    r = await c.post("/users", json={"email": "counter@superdesign.dev"})
+    r = await verified_signup(c, json={"email": "counter@superdesign.dev"})
     assert r.status_code == 200, r.text
     return r.json()["org_id"]
 
@@ -86,7 +87,7 @@ async def test_counter_resets_on_a_new_utc_day(c: AsyncClient):
     assert await _both(org_id) == (spent, spent)
 
     # Move the counter to "yesterday" - as the day rolling over would leave it - and it reads 0.
-    yesterday = date.today() - timedelta(days=1)
+    yesterday = utcnow_naive().date() - timedelta(days=1)
     async with session_maker() as db:
         await db.execute(update(Org).where(Org.id == org_id).values(spent_today_day=yesterday))
         await db.commit()

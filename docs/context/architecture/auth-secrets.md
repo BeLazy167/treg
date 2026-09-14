@@ -34,7 +34,14 @@ related:
 
 # Auth & secrets
 
-Tier 4 has explicit platform-key slots for MiniMax, OpenRouter and Replicate. The web and async cron
+`SUMBLE` uses the standard pasted Bearer-key path and a free technology-search miss probe; garbage-key rejection was verified through the local connection API. See [Sumble](sumble.md).
+
+QuickEnrich uses `QUICKENRICH`, a pasted Bearer key on `app.quickenrich.io`. The free
+POST Contact Finder probe rejects invalid keys with HTTP 401 and does not require a positive credit
+balance to accept a successful probe. `platform_key_quickenrich` supplies the separate server-held platform credential.
+No OAuth app or special injector is needed. See the QuickEnrich section in [catalog](catalog.md).
+
+Tier 4 has explicit platform-key slots for MiniMax, OpenRouter, Replicate, reAPI and PiAPI. The web and async cron
 receive them as environment secrets, and the worker constructs the same platform bindings as the call
 path. Key values are never copied into task records, logs or archive evidence.
 
@@ -73,6 +80,12 @@ Every response that returns a complete caller credential uses `Cache-Control: no
 admins can list, inspect Activity, disable, and enable another human's key, and revoke hash-backed
 human keys. Only the assigned human can rotate a Default or additional human key. Admins can rename,
 rotate, revoke, and hide agent keys.
+
+`MILLIONVERIFIER` is a pasted-key Enrichment provider. Both own keys and platform bindings inject
+`api` into the query at `https://api.millionverifier.com`. Its free `/api/v3/credits` probe returns
+HTTP 200 with `error: apikey_not_found` for a garbage key; `token_reject_field="error"` rejects
+that body while allowing valid zero-credit accounts. `platform_key_millionverifier` reads
+`TREG_PLATFORM_KEY_MILLIONVERIFIER`; platform access also requires the existing allow-list.
 
 ## Instagram grant methods (2026-09-01)
 
@@ -235,6 +248,12 @@ module symbols:
   their display label, connect description, and their own configured state. The dashboard and CLI
   consume this metadata instead of mapping provider or method ids themselves. A multi-method
   provider's top-level `configured` value is true when any declared method is configured.
+- `CatalogTarget` and `profile_for_catalog_host()` let a provider opt in to binding a catalog
+  endpoint's optional `host` to an exact provider-approved HTTPS base URL. A target may override
+  the provider's token placement and
+  format, as Diffbot Web Search does for Bearer auth. Catalog data cannot add credential destinations;
+  opted-in provider's resolution rejects an unapproved host before any secret reaches relay or
+  money is reserved. Providers without targets retain their prior primary-base behavior.
 - `consent_notice` — one line the dashboard shows **before** the consent popup opens, for a provider
   whose consent screen names something the user has not seen on treg. Only the Meta family carries one:
   the shared Meta app is registered as **Crewlet**, a sibling product of the same company (Superdesign
@@ -266,7 +285,8 @@ module symbols:
   display can stop calling a connected account free (`catMetered`, [dashboard](../interface/dashboard.md)). A **BYO connect is never metered** — the callback
   stamps `secret.provider` only in registry mode, and that attribution is the whole detection.
 - `auth_kind` = `"oauth"` (treg's app), `"token"` (a user-pasted Bearer token: Slack plus the
-  MiniMax, OpenRouter, and Replicate AI-generation providers),
+  MiniMax, OpenRouter, Replicate and reAPI AI-generation providers; PiAPI pastes an `X-API-Key`
+  and is a `"key"` provider),
   or `"key"` (an **API-key provider** connected by pasting a key: Apollo, PDL,
   Akta, Hunter, Crunchbase, Lusha, Coresignal, Diffbot, The Companies API, LeadMagic on a new
   **Enrichment** shelf, TikHub + Bright Data + Just One API under
@@ -341,8 +361,8 @@ module symbols:
   this. No commit changed, no test failed (nothing in the suite makes a live call), and the two failure
   modes read differently: a version that **never existed** returns an HTML 404, a **sunset** one returns
   a JSON 400 `UNSUPPORTED_VERSION`. `POST /health/run` would surface it on the day it breaks — it probes
-  every credential through the same versioned `probe_path` — but nothing schedules it; `render.yaml`
-  carries only Render's own `healthCheckPath: /meta`. Bump the version in all four places together:
+  every credential through the same versioned `probe_path`, but nothing schedules it by default.
+  Operators may add a health worker to their own deployment. Bump the version in all four places together:
   `oauth_providers.GOOGLE_ADS`, `catalog/google-ads.yaml`, `catalog/google-ads.extended.yaml`, and
   `scripts/catalog_ingest.py:GADS_VERSION`.
 
@@ -362,6 +382,12 @@ never alert), then falling back to a current org-owner's webhook if the owner ha
 unauthenticated `register_user`), so non-http(s) / loopback / private / link-local hosts are rejected at
 set-time and re-checked before POST (blind-SSRF guard). Triggered on demand or by a cron hitting
 `POST /health/run` (a super-admin may pass `?all_orgs=1` so one cron token sweeps the whole platform).
+Webhook targets follow the same globally routable unicast rule as upstream calls. Rejecting
+CGNAT `100.64.0.0/10` protects overlay-network services and metadata endpoints such as Alibaba
+Cloud's `100.100.100.200`, even though the range is not ordinary private IPv4 space. NAT64
+translation prefixes mapping non-global IPv4 targets are also internal, not a route around this
+rule. See [proxy target guards](proxy-model.md#resolution-and-relay-guards) for the address-space rationale.
+
 Verdicts follow **worst-status-wins** within a run (a no-probe tool can't downgrade a secret a real
 probe just marked `invalid`), a transport error / `5xx` / `429` maps to `unknown` (not a false `invalid`
 + webhook spam), an injection failure maps to `invalid`, and only secrets **evaluated this run** are
@@ -407,3 +433,22 @@ someone else's key value. A tool's `base_url` is validated against the internal-
 metadata, incl. numeric IP encodings) at registration AND the proxy re-resolves the host at call time
 (`infra.upstream.ssrf.host_is_public`, also re-exported by `health`, gated by `proxy_ssrf_check`) — no
 SSRF, even via DNS rebinding.
+
+## Kitt AI key connection
+
+`TRYKITT` registers Kitt AI under `trykitt`, with `x-api-key` header injection at
+`https://api.trykitt.ai`. `/credit` returns 200 even with a valid zero balance and 401
+for a bogus key. `platform_key_trykitt` loads `TREG_PLATFORM_KEY_TRYKITT`; the normal
+platform-provider allow-list is also required. Own keys always take precedence.
+
+
+## ContactOut pasted API tokens
+
+`oauth_providers.CONTACTOUT` verifies against `/v1/stats` and requires `status_code: 200` as well
+as HTTP success. Its binding injects the raw `token` header. Both garbage rejection and valid
+connection creation were tested live; see [ContactOut](contactout.md).
+
+
+## HarvestAPI integration
+
+`HARVESTAPI` uses a pasted `X-API-Key` and internal `/users/my-api-user` probe. The wallet endpoint is not a catalog tool. See [HarvestAPI](harvestapi.md) for own-key priority and platform configuration.

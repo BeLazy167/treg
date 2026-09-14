@@ -6,6 +6,7 @@ import hmac
 from dataclasses import dataclass
 
 from fastapi import Cookie, Depends, Header, HTTPException, Request
+from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 
@@ -15,6 +16,16 @@ from ...infra.db import get_admin_session, get_session
 from ...models import ROLE_RANK, ApiKey, Membership, Org, User
 from . import api_keys as managed_keys
 from . import session as sess
+
+
+async def lock_user(db: AsyncSession, user_id: int) -> None:
+    """Serialize identity-scoped mutations until the caller commits or rolls back.
+
+    A no-op UPDATE takes a row lock on Postgres and a write lock on SQLite, where
+    SELECT FOR UPDATE is ignored. Identity fields and token validity stay unchanged.
+    """
+    await db.execute(update(User).where(User.id == user_id).values(id=User.id)
+                     .execution_options(synchronize_session=False))
 
 
 @dataclass

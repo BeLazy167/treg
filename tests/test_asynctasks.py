@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from conftest import verified_signup
+
 import asyncio
 import json
 import re
@@ -98,6 +100,8 @@ async def test_generation_is_never_replayed_across_orgs(
     clients: AsyncClient, monkeypatch, replicate_platform, legacy_cache,
 ):
     monkeypatch.setattr(get_settings(), "archive_mode", "serve")
+    monkeypatch.setattr(get_settings(), "archive_serve_endpoints", EP)
+    monkeypatch.setattr(get_settings(), "archive_serve_percent", 100)
     entry = catalog_store.load().by_id[EP]
     if legacy_cache:
         monkeypatch.setitem(entry, "cache", "transient")
@@ -105,7 +109,7 @@ async def test_generation_is_never_replayed_across_orgs(
     assert first.status_code == 201
     await archive.drain()
     monkeypatch.setitem(entry, "cache", "forbidden")
-    other = await clients.post("/users", json={"email": "cache-stranger@example.com"})
+    other = await verified_signup(clients, json={"email": "cache-stranger@example.com"})
     async def live(*args, **kwargs):
         return _response(201, {"id": "private-second-task"})
     monkeypatch.setattr(call_service, "relay", live)
@@ -1247,6 +1251,14 @@ def test_price_floor_reads_nested_input_fields():
     cat = store.load()
     seedance = cat.cost_view(cat.by_id["replicate.video-gen.seedance-1-lite"]["cost"], "replicate")
     assert seedance["usd_min"] == 0.072  # 480p at the declared 4-second minimum, not 1 second
+    # A duration-priced table is advertised per second (the way the model is sold), cheapest to
+    # dearest resolution; the whole-call floor and ceiling stay for reserve and eligibility.
+    assert (seedance["rate_usd_min"], seedance["rate_usd"], seedance["rate_unit"]) == (0.018, 0.072, "s")
+    reapi = cat.cost_view(cat.by_id["reapi.video-gen.seedance-2-5"]["cost"], "reapi")
+    assert (reapi["rate_usd_min"], reapi["rate_usd"]) == (0.1186, 0.462) and reapi["usd"] == 13.87
+    # An image table multiplies by `n`, not a duration: no per-second rate, the range stays.
+    images = cat.cost_view(cat.by_id["reapi.image-gen.gpt-image-2-5"]["cost"], "reapi")
+    assert "rate_usd" not in images and images["usd_min"] < images["usd"]
 
 
 async def test_idempotent_replay_of_an_async_submission_keeps_the_descriptor(
@@ -1360,3 +1372,53 @@ async def test_another_org_cannot_read_a_task_by_its_call_ref(
     stranger = {"X-Treg-Token": other.json()["token"]}
     assert (await clients.get(f"/calls/{call_id}", headers=stranger)).status_code == 404
     assert call_id not in {r.get("call_ref") for r in (await clients.get("/calls", headers=stranger)).json()}
+
+
+def _upstream_idempotency_keys(relayed: list) -> list[str]:
+    return [v.decode() for req in relayed for k, v in req.raw_headers if k.lower() == b"idempotency-key"]
+
+
+async def test_shared_key_idempotency_label_is_partitioned_per_org(
+    clients: AsyncClient, monkeypatch, replicate_platform,
+):
+    """Two orgs sending one Idempotency-Key on treg's key must not collide on the provider account.
+
+    Reproduced live against LeadsForge (2026-09-09): the provider returned org A's job to org B under
+    the shared label, and `resource_ownership.produces` then made B its owner.
+    """
+    relayed = []
+
+    async def fake_relay(request, *args, **kwargs):
+        relayed.append(request)
+        return _response(201, {"id": f"prediction-{len(relayed)}", "status": "starting"})
+
+    monkeypatch.setattr(call_service, "relay", fake_relay)
+    body = {"input": {"prompt": "A red kite over a beach.", "num_outputs": 1,
+                      "aspect_ratio": "1:1", "output_format": "webp"}}
+    label = {"Idempotency-Key": "retry-1"}
+    other = await verified_signup(clients, json={"email": "idem-stranger@example.com"})
+    stranger = {"X-Treg-Token": other.json()["token"], **label}
+
+    assert (await clients.post(f"/call/{EP}", json=body, headers=label)).status_code == 201
+    assert (await clients.post(f"/call/{EP}", json=body, headers=stranger)).status_code == 201
+    keys = _upstream_idempotency_keys(relayed)
+    assert len(keys) == 2 and keys[0] != keys[1], "the two orgs reached the provider under one label"
+    assert "retry-1" not in keys, "the caller's raw label reached the shared provider account"
+    # The same org retrying the same label is still served by treg's own replay, not the provider.
+    assert (await clients.post(f"/call/{EP}", json=body, headers=label)).status_code == 201
+    assert len(relayed) == 2
+
+
+async def test_own_key_relays_idempotency_label_verbatim(clients: AsyncClient, monkeypatch):
+    await clients.post("/secrets", json={"name": "replicate", "value": "own-token"})
+    relayed = []
+
+    async def fake_relay(request, *args, **kwargs):
+        relayed.append(request)
+        return _response(201, {"id": "own-account-prediction", "status": "starting"})
+
+    monkeypatch.setattr(call_service, "relay", fake_relay)
+    response = await clients.post(f"/call/{EP}", json={"input": {"prompt": "x"}},
+                                  headers={"Idempotency-Key": "retry-1"})
+    assert response.status_code == 201
+    assert _upstream_idempotency_keys(relayed) == ["retry-1"]

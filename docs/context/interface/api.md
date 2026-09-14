@@ -156,6 +156,12 @@ verified for that), the caller paid the aggregator's real price (`X-Treg-Cost-Mi
 `X-Treg-Call-Id` is the parent call's. Absent on every direct call. Off by default
 (`TREG_OVERFLOW_MODE`). See `architecture/proxy-model.md` § Overflow.
 
+The same fact reaches surfaces that cannot read headers: the MCP `call` result (team and directory
+servers alike) carries `served_via: "overflow:<aggregator>"` and a one-line `hint` naming the relay
+and the exhausted provider, and `GET /catalog/endpoints/{id}` / `catalog_get` carry
+`overflow_price_usd`, `overflow_price_unit` and `overflow_via` on a platform-eligible endpoint the
+deployment can relay - the price a "free" endpoint may actually bill, stated before the call.
+
 ## `X-Treg-Smoothed` - the call waited for treg's own rate limit
 
 On platform calls, including owned free polling: `wait=<ms>` when the call was spaced behind other callers on the
@@ -171,6 +177,12 @@ tell treg's 404 ("no tool registered for that host") from the vendor's own 404: 
 some JSON. The [local proxy](../architecture/local-proxy.md) needs that distinction to explain a failure
 without ever rewriting a real vendor response. `application.call` failures carry a mechanism `kind`
 and separately mapped `blame`; the compatibility header remains the literal `1`.
+
+`response_buffer_limit` is a treg-attributed 502 with a structured `detail.error` of the same
+name. It means response evidence exceeded the 8 MiB settlement buffer before delivery; the new
+call is not charged and its hold/idempotency claim is released. Authorized free final GET fetches
+needing no body evidence stream without that limit and return zero cost; their retries read the
+provider again. See `proxy-model.md` for the eligibility and close-once lifecycle.
 
 Resolution refusals are actionable: a named miss that resembles one of the caller's usable own tools
 returns a structured `detail` with `hint` and `did_you_mean`, including after a real catalog endpoint
@@ -212,14 +224,17 @@ validated before resolving the shared HTTP client. `/auth/logout` remains an HTT
 
 ## Endpoints
 
-- **Users / orgs:** `register_user` (`POST /users`, open, legacy - used by the test fixture) creates the
-  user + an org + owner membership and returns a token **once**; the dashboard/CLI login doors do NOT go
+- **Users / orgs:** `register_user` (`POST /users`, open, legacy, unverified) creates the
+  user + an org + owner membership with **zero signup credit** and returns a token **once**.
+  Email OTP, Google/GitHub or an inbox-only invite link establishes verification. A new verified
+  account can claim credit once when creating an eligible team; old accounts cannot reclaim it.
+  The dashboard/CLI login doors do NOT go
   through it (they create the user only, no auto org). Both this door and `create_org` read the
   first-party `treg_ad` cookie (`_ad_attribution_from`) and, when conversion tracking is enabled,
   stamp `Org.ad_gclid`/`ad_click_id_type`/`ad_landing`/`ad_click_at` on the new org when present - see
   [ads-conversions](../architecture/ads-conversions.md).
   `create_org` (`POST /orgs`, `require_identity` so a
-  zero-org user can make their first team) + `list_orgs` (`GET /orgs`,
+  zero-org user can make their first team; HTTP 403 when already owning 10 teams) + `list_orgs` (`GET /orgs`,
   each org carries a `tool_count` - one grouped query - so the dashboard can land on the org with tools;
   its `active` flag follows `require_member`'s precedence - per-org membership token, else `X-Treg-Org`,
   else a team-pinned identity token's own `org` claim - so `treg login --token <pinned key>` lands on the
@@ -363,7 +378,7 @@ validated before resolving the shared HTTP client. `/auth/logout` remains an HTT
   | `GET /catalog/platforms` | Non-empty platforms with capability/endpoint counts and providers, ordered by endpoint count |
   | `GET /catalog/platforms/{slug}` | Capabilities, extended endpoints, dashboard domain rows and provider metadata; unknown slug is 404 |
   | `GET /catalog/search?q=&limit=` | Ranked endpoint views, count/total and hints; default 25, maximum 100 |
-  | `GET /catalog/endpoints/{id}` | Endpoint, provider, capability siblings, call template, inline example and next-step hints |
+  | `GET /catalog/endpoints/{id}` | Endpoint, provider, capability siblings, call template, inline example and next-step hints; `overflow_price_usd` / `overflow_price_unit` / `overflow_via` on the endpoint when the deployment can relay it |
   | `GET /catalog/examples/{id}` | Captured JSON, resolved through the catalog before constructing a file path |
   | `POST /tool-requests` | Open, rate-limited demand report with capped fields and optional caller attribution |
 
@@ -792,12 +807,14 @@ The response has no id because Starlette owns it, but treg records the row and o
 the handler returns its `StreamingResponse`, are not covered by that compensation path.
 
 A direct metered `/call/` honours **`X-Treg-Route-Max-Cost: <usd>`** as a hard per-call ceiling
-(`service._enforce_caller_max_cost`, 2026-09-05): when the reserve with margin would exceed it the
+(`service._set_caller_max_cost` and `reserve._platform_reserve`): when the reserve with margin would exceed it the
 call is refused **402** `error: route_max_cost` (`max_cost_micro`, `estimated_cost_micro`, no charge,
 audited `refused_by=balance` like every 402) — the same header and body shape the routed path uses,
 so one agent-side handler covers both. Unlike `/do/` there is NO default on a direct call: a caller
 who named the endpoint and page size is uncapped unless they send the header. A non-numeric value is
-a 400. Asked for by a customer whose runner approved $0.23 and was billed $0.56 (2026-09-04).
+a 400. Routed children receive the unspent part of the route ceiling, including the default ceiling;
+this same reservation check also applies to overflow at its own price. Refusing a child cannot
+undo earlier paid attempts. Asked for by a customer whose runner approved $0.23 and was billed $0.56 (2026-09-04).
 
 Metered responses also carry `X-Treg-Cost-Micro`; a reserved call that fails before a provider answer
 carries an explicit `0`. That `0` is what the call ends up costing, but the **balance can lag it**:
@@ -860,3 +877,12 @@ make a team. A failed grant recovers by rolling the session back, which expires 
 tracks - so both doors read their response fields *before* granting, and the redemption revives an
 expired `user`/`org` with `db.refresh` before touching them. The recovery path costs the team its
 credit, never the signup response or the referral attribution.
+
+## Optional checkout attribution
+
+`POST /billing/topup` also accepts `checkout_source` alongside `amount_usd`. The dashboard sends
+`arena` for an Arena credit-link arrival and `app` otherwise. The server separately reads the
+first-observed `treg_entry_surface` cookie; both values are normalized to the fixed product-surface
+allowlist (missing or invalid is `unknown`). They travel through Stripe metadata to payment
+analytics and ledger provenance only, never affecting the charged amount or authorization.
+Email OTP and OAuth callbacks read the same cookie for new-account signup analytics after commit.

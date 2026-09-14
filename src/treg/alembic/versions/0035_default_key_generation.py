@@ -1,7 +1,7 @@
 """team-specific generation for rotatable signed Default keys
 
-Revision ID: 0027
-Revises: 0026
+Revision ID: 0035
+Revises: 0034
 Create Date: 2026-09-04
 """
 from collections.abc import Sequence
@@ -10,8 +10,8 @@ from alembic import op
 import sqlalchemy as sa
 
 
-revision: str = "0027"
-down_revision: str | Sequence[str] | None = "0026"
+revision: str = "0035"
+down_revision: str | Sequence[str] | None = "0034"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

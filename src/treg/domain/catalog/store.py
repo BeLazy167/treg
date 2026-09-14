@@ -106,7 +106,10 @@ class Catalog:
     adapters: dict = field(default_factory=dict)    # endpoint id -> routing.Adapter (verified flag set)
 
     def for_capability(self, capability: str) -> list[dict]:
-        return [e for e in self.endpoints if capability and e["capability"] == capability]
+        return [e for e in self.endpoints if capability and (
+            e["capability"] == capability or
+            (e["id"] in self.adapters and capability in self.adapters[e["id"]].verified_capabilities)
+        )]
 
     def for_platform(self, slug: str) -> list[dict]:
         return [e for e in self.endpoints if e["platform"] == slug]
@@ -149,17 +152,52 @@ class Catalog:
         usd = (round(value * rate / per, 9)
                if isinstance(value, (int, float)) and rate is not None and per > 0 else None)
         out = {**cost, "usd": usd}
+        # Optional presentation metadata describes the charge unit without changing billing.
+        display = cost.get("display") or {}
+        if usd is not None and display:
+            grouped = display.get("grouped", False)
+            out["display_usd"] = round(usd * per, 9) if grouped else usd
+            unit = display["unit"]
+            out["display_unit"] = f"{per:g} {unit}" if grouped else unit
+            if display.get("round_up"):
+                out["display_unit"] = "started " + out["display_unit"]
+            out["display_suffix"] = "+" if display.get("variable") else ""
         # A table prices out as a RANGE: `usd` stays the validated ceiling (what reserve and
         # eligibility read), `usd_min` is the cheapest row so a display never shows only the
         # worst case as "the price" (an H3 video is $0.25 typical against a $1.96 ceiling).
         floor = cost.get("table_min")
         if isinstance(floor, (int, float)) and rate is not None and per > 0 and usd is not None:
             out["usd_min"] = min(usd, round(floor * rate / per, 9))
+        # A duration-priced table is ADVERTISED as a per-second rate (`rate_usd_min`-`rate_usd`
+        # per `rate_unit`), the way every video model is quoted; `usd`/`usd_min` stay the
+        # reserve ceiling and floor for a whole call.
+        span = cost.get("table_rate")
+        if isinstance(span, list) and len(span) == 2 and rate is not None and per > 0 \
+                and usd is not None:
+            out["rate_usd_min"] = round(float(span[0]) * rate / per, 9)
+            out["rate_usd"] = round(float(span[1]) * rate / per, 9)
+            out["rate_unit"] = "s"
         # A $0 trial price travels with its allowance, so every surface showing the price can also
         # say how much of it a team gets — a bare $0.00 would read as unlimited.
         if provider in self.trial_pools and usd == 0:
             out["trial_calls_per_team_day"] = self.trial_pools[provider]
         return out
+
+    def advertised_usd(self, cost: dict | None) -> float | None:
+        """Dollar figure catalog_search / catalog_get should quote for one typical paid call.
+
+        `usd` is the reserve unit: for `per` > 1 it is the linear slice (Hunter Domain Search
+        → $0.00245/email). When `display.grouped` is set, `display_usd` is the chargeable
+        event — one search credit, one started block — which is what a live successful call
+        actually bills and what `usd_per_call` must say. Settlement still reads `usd`.
+        """
+        if not cost:
+            return None
+        shown = cost.get("display_usd")
+        if isinstance(shown, (int, float)) and not isinstance(shown, bool):
+            return shown
+        usd = cost.get("usd")
+        return usd if isinstance(usd, (int, float)) and not isinstance(usd, bool) else None
 
     def platform_eligible(self, endpoint: dict) -> bool:
         """May treg serve this endpoint with a PLATFORM key, billed to the caller's balance?
@@ -271,6 +309,25 @@ def _table_floor(cost: object, input_schema: object) -> float | None:
     return min(floors) if floors else None
 
 
+def _table_rate(cost: object) -> tuple[float, float] | None:
+    """The per-second rate span of a duration-priced table: (cheapest row, dearest row) in the
+    table's own currency, when EVERY row multiplies its value by a `duration` field. A video
+    model is quoted per second of output everywhere else, so a $0.47-$13.9 total range (minimum
+    clip at the cheapest resolution up to the longest clip at the dearest) reads as a mistake;
+    the rate is what a reader compares. Display only - reserve and settle read the rows."""
+    if not isinstance(cost, dict) or not isinstance(cost.get("table"), list) or not cost["table"]:
+        return None
+    values = []
+    for row in cost["table"]:
+        if not isinstance(row, dict) or not isinstance(row.get("value"), (int, float)):
+            return None
+        times = row.get("times")
+        if not isinstance(times, str) or times.rsplit(".", 1)[-1] != "duration":
+            return None
+        values.append(float(row["value"]))
+    return (min(values), max(values))
+
+
 def _parse(directory: Path) -> Catalog:
     if not directory.is_dir():
         return Catalog()
@@ -310,6 +367,7 @@ def _parse(directory: Path) -> Catalog:
         # The provider's cache policy (docs/context/architecture/archive.md): one licence judgment
         # at the file header covers every endpoint below it; an endpoint's own `cache:` overrides.
         # Kept as the dict/provenance form, not stringified — archive.policy reads `mode` from it.
+        _validate_cache(doc.get("cache"))
         if doc.get("cache") and not meta.get("cache"):
             meta["cache"] = doc["cache"]
         for raw in doc.get("endpoints") or []:
@@ -332,6 +390,9 @@ def _parse(directory: Path) -> Catalog:
             floor = _table_floor(raw.get("cost"), raw.get("input"))
             if floor is not None:
                 raw = {**raw, "cost": {**raw["cost"], "table_min": floor}}
+            span = _table_rate(raw.get("cost"))
+            if span is not None:
+                raw = {**raw, "cost": {**raw["cost"], "table_rate": list(span)}}
             ep = _normalize(raw, provider, directory)
             if ep["id"] in by_id:  # first file wins; ids are unique by validator contract
                 continue
@@ -509,7 +570,20 @@ def _effective_cost(raw: dict):
             "note": "price observed at live verification (provider-reported charge)"}
 
 
+_IGNORE_PATH = re.compile(r"(?:[A-Za-z0-9_][A-Za-z0-9_-]*|\[\*\])(?:\[\*\])*(?:\.[A-Za-z0-9_][A-Za-z0-9_-]*(?:\[\*\])*)*")
+
+
+def _validate_cache(cache) -> None:
+    if not isinstance(cache, dict) or "ignore_paths" not in cache:
+        return
+    paths = cache["ignore_paths"]
+    if (not isinstance(paths, list) or
+            any(not isinstance(path, str) or not _IGNORE_PATH.fullmatch(path) for path in paths)):
+        raise ValueError("cache.ignore_paths must be a list of dot paths with optional [*] array wildcards")
+
+
 def _normalize(raw: dict, provider: str, directory: Path) -> dict:
+    _validate_cache(raw.get("cache"))
     capability = raw.get("capability") or ""
     platform = raw.get("platform") or (capability.split(".")[0] if capability else "other")
     verified = raw.get("verified")
@@ -525,6 +599,9 @@ def _normalize(raw: dict, provider: str, directory: Path) -> dict:
         "kind": str(raw.get("kind") or DEFAULT_KIND).strip().lower() or DEFAULT_KIND,
         "method": (raw.get("method") or "GET").upper(),
         "path": raw.get("path") or "",
+        # Optional alternate provider host. Resolution accepts it only when the provider registry
+        # maps this exact hostname to an approved HTTPS base URL and credential profile.
+        "host": str(raw.get("host") or "").strip().lower(),
         # optional short display title; `summary` stays the provider's own description, verbatim
         "name": str(raw.get("name") or "").strip(),
         "summary": raw.get("summary") or "",
@@ -551,6 +628,8 @@ def _normalize(raw: dict, provider: str, directory: Path) -> dict:
         # Opaque shared-account objects created/read by legacy async endpoint pairs. Resolution
         # enforces `requires`; the buffered successful response persists every `produces` path.
         "resource_ownership": raw.get("resource_ownership") or None,
+        "platform_request": raw.get("platform_request") or None,
+        "strict_query": raw.get("strict_query") is True,
         "cost": _effective_cost(raw),
         # Absent `tier` means core: the curated first wave predates the split, and treating an
         # unmarked endpoint as extended would hide it from the platform view entirely.
@@ -657,6 +736,7 @@ def endpoint_view(ep: dict, provider_display: str, cat: Catalog | None = None) -
         # the request schema, split by location (pathParams/queryParams/body + notes) — without it
         # the dashboard can show what comes BACK (example_response) but not what to SEND
         "input": ep.get("input") or None,
+        **({"strict_query": True} if ep.get("strict_query") else {}),
         # the exact request that live-verified this endpoint — the Try-it drawer prefills from it
         # verbatim (it also carries the ground truth the input spec can't express: whether the
         # body is a bare object or an ARRAY of tasks, which dataforseo requires)
@@ -1246,3 +1326,13 @@ def tool_examples(service: str) -> list[dict]:
             note = f"{note} [capability: {ep['capability']}]"
         out.append({"method": ep["method"], "path": ep["path"], "note": note})
     return out
+
+
+def headline_counts(cat: Catalog) -> tuple[str, int]:
+    """The two numbers every agent-facing surface quotes, taken from the loaded catalog instead of
+    typed by hand: direct (non-routed) endpoints rounded DOWN to the hundred with a trailing "+",
+    and the providers behind them. Six hand-written copies once disagreed with each other and the
+    smallest undersold the catalog by six hundred endpoints; generated, the number cannot drift."""
+    direct = [e for e in cat.by_id.values() if e.get("kind") != "routed"]
+    providers = {e.get("provider") for e in direct if e.get("provider")}
+    return f"{len(direct) // 100 * 100:,}+", len(providers)

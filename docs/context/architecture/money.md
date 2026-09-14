@@ -13,6 +13,7 @@ sources:
   - src/treg/application/call/service.py
   - src/treg/application/call/reserve.py
   - src/treg/application/call/settle.py
+  - src/treg/catalog/tomba.yaml
   - src/treg/application/asynctasks.py
   - src/treg/alembic/versions/0017_async_task_record.py
   - src/treg/alembic/versions/0018_async_resource_ownership.py
@@ -25,6 +26,8 @@ sources:
   - src/treg/domain/referrals.py
   - src/treg/api.py
   - src/treg/application/signup.py
+  - src/treg/domain/identity/promotions.py
+  - src/treg/alembic/versions/0033_signup_promo_eligibility.py
   - src/treg/routers/admin.py
   - src/treg/routers/billing.py
   - src/treg/routers/call.py
@@ -70,6 +73,30 @@ providers is what the reserve takes, and a test walks the provider asserting the
 The money seam is one function: `ledger.topup(org, amount_micro, payment_ref)`. Billing orchestration
 asks the Stripe adapter to authorize or verify a payment, then asks the ledger to stage the credit
 and owns the commit that lands it; neither adapter reaches into the ledger.
+
+## Signup credit eligibility
+
+`application.signup._grant_signup_promo` calls `identity.promotions.claim_signup_promo` for the
+creating user's ID. A conditional UPDATE consumes `User.signup_promo_available` only for a verified,
+active, non-demo user. It commits in the same transaction as `ledger.grant(once=False)`, the block,
+balance and entry; failed commits roll everything back. Ledger metadata records `source=signup`
+and the claiming `user_id`. The ordinary per-org `grant(once=True)` check is not the concurrency
+arbiter and manual/referral grants retain their own semantics.
+
+`User.email_verified_at` is set only by successful OTP, verified social login or an inbox-only
+invitation link. Legacy `/users` and admin-visible invite codes do not prove email ownership. An
+unverified account may create teams with zero signup credit; after verifying it may claim once on
+a subsequently created eligible team. Existing teams are not automatically backfilled. The grant
+amount is `promo_grant_micro` (default 1,000,000); zero skips the claim as well as the credit.
+
+Revision `0033` defaults historical users and old writers to ineligible without scanning potentially
+deleted team ledgers. New application User rows explicitly start eligible. Verification never resets
+eligibility. Team deletion, leaving and ownership changes cannot restore it because it lives on the
+user. Administrative deletion of the user also deletes this marker; this is an account-level guarantee,
+not a permanent per-email denylist or proof that separate accounts belong to different humans.
+Existing balances and all five money operations are unchanged. During rollout or application rollback,
+keep automatic credit disabled until every serving instance enforces the new rule; old code still
+awards per team even after this additive migration.
 
 ## Units: integer micro-USD, everywhere
 
@@ -155,6 +182,12 @@ marketing expense and never refundable; purchased credit is a deferred-revenue l
 refundable and disputable - so spending promo first keeps the refundable pool as small as possible
 for as long as possible.
 
+`_consume_blocks` acquires `CreditBlock` row locks with `ORDER BY CreditBlock.id FOR UPDATE`.
+The unique primary-key order is shared by concurrent settlements and prevents opposite scan-order
+locking. It is independent of consumption priority: the subsequent `blocks.sort` still selects
+promotional credit first, then age and ID. Keep both the row lock (which prevents lost deductions)
+and that business sort. This is the repository's sole explicit CreditBlock row-lock query.
+
 **Margin is applied inside the module** (`with_margin`), at reserve AND settle, and the rate in force
 is recorded on every entry - so a rate change cannot retroactively rewrite what a call cost, and two
 call sites cannot disagree.
@@ -213,7 +246,7 @@ An authorized platform poll with an explicit `free` price and zero estimate is
 `_platform_settle`, including their spend checks, stale-hold sweep, auto-top-up scheduling and all
 new poll Hold/LedgerEntry/TagSpend writes. Ordinary authorization, usage limits and provider rate smoothing
 still apply. Its response reports `X-Treg-Cost-Micro: 0`; the original submission's hold remains
-owned by the original task and may close on this poll's terminal evidence. This exception does not cover fetch utilities, BYOK,
+owned by the original task and may close on this poll's terminal evidence. This no-new-hold exception does not cover fetch utilities, BYOK,
 billed OAuth, or a zero estimate on a paid endpoint.
 A 2xx that is not an accepted submission (not JSON, fails the endpoint's `expect` rule, or carries
 no task id / an off-allow-list poll URL: `application.call.service._submission_rejected`) never
@@ -437,9 +470,12 @@ Provider-specific calculation stays outside the faithful relay.
 | Evidence | Settlement behavior |
 |---|---|
 | Reported charge | DataForSEO `cost`, ScrapeCreators `credits_charged`, Akta `credits_consumed`, Lusha `billing.creditsCharged`, Exa `costDollars.total`; credit amounts use the catalog FX rate |
-| Crustdata | Read `X-Credits-Used` from response headers using the same FX rate |
+| Crustdata, cloro | Read the charge from a response HEADER (`_CREDIT_HEADERS`: Crustdata `X-Credits-Used`, cloro `X-Credits-Charged`) using the same FX rate. cloro omits the header on its free routes and on a failed extraction, neither of which it bills, so an absent header settles at the estimate, not at zero |
+| cloro reserve | `cost.value` is the full-surface `test_request` price (ChatGPT 9, Google SERP 7); the plain call settles lower from the header (verified live 2026-09-07 at the then-Lite rate: reserve 7,200 µ$, settled 5,600, refunded 1,600; at the Hobby rate 3,600 → 2,800, re-verified 2026-09-14). The top-level `state` body field is a `cost.modifiers` rider (+2 credits) reserved through the same generic path Aviato uses, which is open to any credit-priced provider with a FX rate |
 | Apollo | Known empty organization results are free |
+| Tomba domain search | Non-empty pages cost ceil(`meta.pageSize` / 10) credits, even when partially filled; empty `data.emails` is free. Reservation uses requested `limit`, default 10. Missing/malformed page evidence falls back to the estimate. Upstream duplicate discounts are not detected |
 | Hunter domain search | One whole search credit per ten returned emails, rounded up; an empty result is free |
+| QuickEnrich | Frozen $0.004834/credit base list rate (Starter $29/6,000, rounded up to micro-USD, before configured margin; assumes full allowance use); prefer integer `meta.credits_used`, including zero. If absent, count documented billable results. Domain holds reserve one credit without title or 20 with title; company holds use per_page (default 10, max 100). Discovery and lookups are free. BYOK never meters |
 | Hunter email finder | One whole credit when an email is present; a known miss is free |
 | TikHub | Honor explicit no-charge prose; an embedded error that says it is charged still costs the estimate |
 | Bright Data | Count delivered JSON-array records or CSV/NDJSON lines; a JSON object containing a status/snapshot handoff has zero records |
@@ -475,9 +511,18 @@ so the reserve IS the charge: a wrong entity count is a wrong bill, not a hold t
 The estimate is never a substitute for an available response-derived charge.
 
 `_platform_settle` uses its own short session and never turns a served response into a 500.
-A pool timeout gets one retry after 0.5 s; other failures are logged and the remaining hold goes
-to the reaper. The request session must be committed before relay so settlement cannot wait on
-a connection held by that same request. See [connection discipline](proxy-model.md#connection-discipline-a-call-in-flight-holds-no-db-connection).
+A pool timeout or PostgreSQL deadlock gets one retry after the existing 0.5 s delay. Deadlocks are
+identified as SQLAlchemy `DBAPIError` with `orig.sqlstate == "40P01"`, including asyncpg's adapted
+exception; error messages are never matched. The failed session closes and rolls back before the
+whole settlement/release transaction is retried in a fresh session, including any overflow spend.
+A second failure or an unrelated DB error is logged, leaves the hold for the reaper and preserves
+the upstream response. No upstream retry, new timeout or additional ledger operation is introduced.
+Tests inspect both concurrent settlements' compiled PostgreSQL lock order and verify consumption
+priority; SQLite cannot exercise row locks. PostgreSQL runs exercise concurrent settlements and
+real driver-wrapped SQLSTATE injection after staged writes, checking rollback and retry exhaustion.
+SQLSTATE injection tests recovery, not the production planner's original deadlock schedule.
+
+The request session must be committed before relay so settlement cannot wait on a connection held by that same request. See [connection discipline](proxy-model.md#connection-discipline-a-call-in-flight-holds-no-db-connection).
 
 ## Shared-plan pricing: flat-fee providers, and the rate treg sets
 
@@ -689,7 +734,7 @@ Why a counter and not an index: until 2026-09-06 the check was that journal aggr
 org that writes a large share of the platform's day its rows sit on nearly every heap page of the
 day, so no index makes the aggregate cheaper than reading the day - measured 395k buffer touches
 per call, 56-171 s once those pages were cold, holding an api-pool slot throughout. That was the
-API-pool saturation (see [deploy](../ops/deploy.md) § Three pools).
+API-pool saturation (see [deploy](../ops/deploy.md) § Database pools).
 
 ## Referrals
 
@@ -755,6 +800,16 @@ after a tier-4 balance/quota signature, and `_note_capacity_recovery` removes it
 resolution - and both are listed in the dataplane write allowlist on their own
 (`capacity_exhausted_mark`), not under the money entries. See `ops/capacity.md`.
 
+## Caller cost ceilings
+
+`MarketplaceCall.max_cost_micro` carries the caller's remaining ceiling. `_platform_reserve`
+checks the actual reservation estimate with margin before opening its transaction or creating a
+hold. Direct calls only set it when the caller supplies `X-Treg-Route-Max-Cost`; routed children
+always inherit their route's remaining ceiling, including its default. A refusal is a 402
+`route_max_cost` and moves no money for that attempt. Overflow inherits the same field via its
+child snapshot and checks its own estimate; a preceding direct charge reduces the remainder.
+This is a pre-reservation guard, not a rewrite of provider-reported settlement evidence.
+
 ## Overflow money
 
 The overflow child (`application.call.overflow`) is an ordinary metered cycle on its own hold
@@ -762,7 +817,45 @@ The overflow child (`application.call.overflow`) is an ordinary metered cycle on
 `observed_override` = the aggregator's in-band charge - the caller pays exactly that, 0% markup -
 and `cost_source: "aggregator"` + `served_via` in the ledger `meta`, so `reconcile` needs no join.
 `OverflowSpend` (per aggregator per UTC day) is updated inside that same settle transaction; it is
-accounting for the $20/day budget, not a balance. Shadow mode places no hold and charges nothing.
+accounting for the per-aggregator daily budget, not a balance. That budget is
+`TREG_OVERFLOW_DAILY_BUDGET_USD`: the code default is $20 per aggregator. A deployment may set a
+different value in its private operational configuration. Shadow mode places no hold and charges
+nothing.
+
+**The relay price is disclosed wherever a price is read.** `/call/` says `X-Treg-Served-Via:
+overflow:<aggregator>` with `X-Treg-Cost-Micro` the child's charge; the MCP `call` result (both
+`/mcp/` and `/mcp/v2/`, one `_call_impl`) lifts that header into `served_via` and a one-line `hint`
+naming the relay and the exhausted provider, because an MCP client never sees headers.
+`GET /catalog/endpoints/{id}` and `catalog_get` carry `overflow_price_usd`, `overflow_price_unit`
+and `overflow_via` on a platform-eligible endpoint the deployment can relay (mode on, a key for the
+aggregator, an enabled route), so a catalog-free endpoint is never silently a paid one: on 2026-09-08
+`apollo.people.search` (cost `free`) billed $0.002 through Orthogonal 8,810 times while treg's
+Apollo account was out, and no read surface said it could. What still is NOT disclosed up front is
+*when* a free endpoint is diverted: the route enables whenever the aggregator's price is at most
+`FREE_ROUTE_MAX_USD` (`domain.capacity.routes`), and a caller learns it was relayed only from the
+answer. That is a design gap, recorded here, not a settled rule.
+
+**An aggregator's own per-request refusal never bills.** Orthogonal's bare 400/422/404 with no vendor
+data (its request validation) parses as `contract`: the child hold is released with reason
+`overflow_contract`, `cost_observed_micro` is 0, no `OverflowSpend` delta beyond the estimate
+reversal, and the aggregator is not marked. Only a non-JSON body, a 5xx or a transport error is
+`malformed` (`AGGREGATOR_SIDE`, a 15-minute mark). One such 400 read as `malformed` on 2026-09-08
+struck `overflow:orthogonal` for every org and turned every Apollo call for a quarter hour into
+`provider_capacity_unavailable`.
+
+## MillionVerifier credit returns
+
+`application.call.settle._observed_cost_micro` treats `unknown` and `catch_all` verification
+results as zero cost, independently of routing (both are useful verdicts). Definitive results
+use the documented $0.00178 estimate, including invalid results. Upstream deducts credits first
+and automatically returns risky credits for eligible accounts after verification. Treg uses its
+existing reserve/settle cycle to close the hold at zero for unknown/catch-all as soon as the
+response arrives; it does not wait for the upstream return, poll the balance, or create a later
+refund transaction. The zero-cost rule reflects treg's pricing policy, not confirmation of an
+individual upstream return. If the platform account loses eligibility due to upstream misuse rules, treg absorbs
+that exception rather than charging callers for these advertised free results. Own keys still
+bypass treg metering. The response's `free` flag describes the email service and `credits` is a
+delayed account balance, so neither field is interpreted as per-call cost.
 
 ## Per-success response rules
 
@@ -774,3 +867,55 @@ success convention. An undecidable rule does not imply a free call.
 Coverage remains a catalog concern: providers without an adapter or `expect` can still return
 embedded errors. In particular, verify TikHub's success convention before adding a file-level rule;
 its existing explicit charge/no-charge prose handling is a separate billing signal.
+
+## Kitt AI response billing
+
+`_observed_cost_micro` reads the catalog's `cost.reported_charge.path` in USD
+(`unit: usd`), converting with Decimal to integer micro-USD. Kitt's two realtime
+endpoints declare `credits.jobCredits`; there is no provider-specific billing branch. Finite nonnegative values,
+including zero, override the estimate; malformed, negative, boolean or null values
+fall through to the verified miss rule and documented base estimate. Find misses
+(`no-results-found`) settle at zero. Completed verification verdicts including invalid,
+unknown and catchall settle at the reported charge or $0.0015 fallback.
+
+The base find price is $0.005. The documented volume discount is not tracked locally;
+an upstream reported discount is honored. The internal `/credit` check and `remainingCredits`
+are account balances, never charge evidence. Paid live tests reconciled $0.008 after a delayed
+balance update. Free-plan null charge fields use the same documented fallback policy.
+
+
+## ContactOut contact hits
+
+`application.call.contactout` calculates request-sized holds and derives contact/search charges
+from returned profiles using the YAML Starter micro-USD rates. It reuses the existing money lifecycle.
+Profile-only LinkedIn enrichment reserves and settles 20,000 micro-USD when a profile is found;
+misses remain free. Platform reveal search requires an explicit page size to bound its hold.
+Own keys are unmetered; see [ContactOut](contactout.md) for prices, free verification and evidence limits.
+
+## Top-up product attribution
+
+Manual checkout accepts optional product attribution independent of billing policy. `start_topup`
+and `create_topup_checkout` normalize `entry_surface` and `checkout_source` to fixed surface names.
+Both Stripe Session and PaymentIntent metadata carry them. `_credit` passes only those normalized
+values into the top-up ledger metadata and `topup_completed`, under the existing fresh-credit
+guard; webhook order and sequential redelivery do not change attribution or duplicate events.
+Missing/legacy attribution is `unknown`. No query inputs, URLs, API keys or provider results are
+copied into this metadata. Amounts, reservations, settlement and payment authorization are unchanged.
+
+## Response evidence size and free final downloads
+
+Settlement evidence must be complete. The call application's 8 MiB buffer raises a typed 502 on
+overflow and closes upstream; the failed call releases its reservation and idempotency claim.
+Partial JSON must not silently fall back to an estimate or be settled as a success. The original
+async submission's hold remains independent of a failing free status poll.
+
+An authorized, explicitly free final result GET with no body evidence consumers streams without
+buffering (`MarketplaceCall.streamable_free_result`). It retains the existing zero-amount
+reserve/settle gates and settles with an explicit zero override before returning the stream. It
+does not observe the original generation task or persist a response for idempotent replay; the
+label is released and retrying performs another free read. MIME type never decides billability.
+
+
+## HarvestAPI integration
+
+HarvestAPI reuses `cost.reported_charge` with path `cost` in USD. Billed misses retain their reported charge; wallet reads may lag and are never per-call evidence. Profile variants reserve their own scalar price. See [HarvestAPI](harvestapi.md).

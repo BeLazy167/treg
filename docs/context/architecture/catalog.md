@@ -2,8 +2,30 @@
 title: Endpoint catalog — what you can DO with a connected key, and which provider should do it
 status: shipped
 sources:
+  - src/treg/catalog/quickenrich.yaml
+  - src/treg/catalog/quickenrich.extended.yaml
+  - src/treg/catalog/examples/quickenrich.companies.search.json
+  - src/treg/catalog/examples/quickenrich.people.email.find.json
+  - src/treg/catalog/examples/quickenrich.people.enrich.json
+  - src/treg/catalog/examples/quickenrich.people.phone.find.json
+  - src/treg/catalog/examples/quickenrich.people.search.domain.json
+  - src/treg/catalog/examples/quickenrich.people.search.json
+  - src/treg/catalog/examples/quickenrich.x.company-services.json
+  - src/treg/catalog/examples/quickenrich.x.country-codes.json
+  - src/treg/catalog/examples/quickenrich.x.employee-ranges.json
+  - src/treg/catalog/examples/quickenrich.x.industries.json
+  - src/treg/catalog/examples/quickenrich.x.revenue-ranges.json
+  - src/treg/catalog/trykitt.yaml
+  - src/treg/catalog/examples/trykitt.people.email.find.json
+  - src/treg/catalog/examples/trykitt.people.email.verify.json
   - src/treg/catalog/contracts.yaml
+  - src/treg/catalog/millionverifier.yaml
+  - src/treg/catalog/examples/millionverifier.people.email.verify.json
+  - src/treg/catalog/examples/millionverifier.account.usage.json
   - src/treg/catalog/adapters.yaml
+  - tests/test_route_cost_ceiling.py
+  - src/treg/catalog/tomba.yaml
+  - src/treg/catalog/examples/tomba.people.email.verify.json
   - src/treg/catalog/examples/findymail.search.business-profile.json
   - src/treg/domain/catalog/routing/__init__.py
   - src/treg/domain/catalog/routing/contracts.py
@@ -18,6 +40,7 @@ sources:
   - scripts/catalog_validate.py
   - src/treg/catalog/aliases.yaml
   - src/treg/catalog/fx.yaml
+  - src/treg/catalog/cloro.yaml
   - src/treg/catalog/aviato.yaml
   - src/treg/catalog/crustdata.yaml
   - src/treg/catalog/examples/aviato.companies.acquisitions.json
@@ -62,7 +85,11 @@ sources:
   - src/treg/catalog/companyenrich.yaml
   - src/treg/catalog/oceanio.yaml
   - src/treg/catalog/akta.extended.yaml
+  - src/treg/catalog/dataforseo.yaml
   - src/treg/catalog/dataforseo.extended.yaml
+  - tests/test_dataforseo_constraints.py
+  - src/treg/catalog/diffbot.yaml
+  - src/treg/catalog/diffbot.extended.yaml
   - src/treg/catalog/tikhub.extended.yaml
   - src/treg/catalog/examples/minimax.video-gen.result.retrieve.json
   - src/treg/catalog/examples/minimax.video-gen.from_image.json
@@ -70,11 +97,32 @@ sources:
   - src/treg/catalog/openrouter.yaml
   - src/treg/catalog/openrouter.extended.yaml
   - src/treg/catalog/examples/openrouter.x.alibaba-wan-3-0.json
+  - src/treg/catalog/examples/openrouter.video-gen.seedance-2-5.json
   - src/treg/catalog/replicate.yaml
   - src/treg/catalog/replicate.extended.yaml
+  - src/treg/catalog/reapi.yaml
+  - src/treg/catalog/piapi.yaml
+  - src/treg/catalog/examples/replicate.image-gen.nano-banana-pro.json
+  - src/treg/catalog/examples/replicate.image-gen.gpt-image-2.json
+  - src/treg/catalog/examples/replicate.image-gen.gpt-image-2-5-flare.json
+  - src/treg/catalog/examples/replicate.image-gen.gpt-image-2-5-sunburst.json
+  - src/treg/catalog/examples/reapi.tasks.get.json
+  - src/treg/catalog/examples/reapi.video-gen.seedance-2-5.json
+  - src/treg/catalog/examples/reapi.video-gen.seedance-2-5.unrestricted.json
+  - src/treg/catalog/examples/reapi.image-gen.gpt-image-2-5.json
+  - src/treg/catalog/examples/reapi.image-gen.gpt-image-2.json
+  - src/treg/catalog/examples/reapi.image-gen.gemini-3-pro-image.json
+  - src/treg/catalog/examples/piapi.task.get.json
+  - src/treg/catalog/examples/piapi.video-gen.seedance-2-5.json
+  - src/treg/catalog/examples/piapi.video-gen.seedance-2-5.less-restriction.json
+  - src/treg/catalog/examples/piapi.image-gen.gemini-3-pro-image.json
+  - src/treg/catalog/examples/piapi.image-gen.gpt-image-2-5.json
+  - src/treg/catalog/examples/piapi.image-gen.gpt-image-2.json
   - src/treg/catalog/examples/replicate.image-gen.flux-schnell.json
   - src/treg/domain/catalog/__init__.py
   - src/treg/domain/catalog/store.py
+  - src/treg/catalog/hunter.yaml
+  - src/treg/mcp.py
   - src/treg/domain/money/settlement.py
   - src/treg/domain/catalog/stats.py
   - src/treg/infra/catalog_observations.py
@@ -90,12 +138,125 @@ related:
 
 # Endpoint catalog — platform-grouped operations per provider
 
+Sumble adds the full v9 surface with verified platform operations and explicit BYOK restrictions. See [Sumble](sumble.md) for schemas, pricing rules, routing and live evidence.
+
 The computed cost view uses a `cost.table` fallback as its scalar validated upper bound for
 eligibility and compact displays. Runtime charging evaluates the first matching row against request
 values plus catalog defaults and freezes that settlement basis. Terminal usage or the recorded table
 evidence feeds the shared money settlement function; provider variation stays declarative in YAML.
 
+## QuickEnrich enrichment (2026-09-08)
+
+`quickenrich.yaml` exposes email and phone finding, reverse email, people at a domain,
+free contact discovery and company search. `quickenrich.extended.yaml` contains the five
+public lookup utilities (countries, industries, employee ranges, revenue ranges, services).
+This is the complete documented API surface; no account-usage or SMTP-verification endpoint
+is invented. Company Finder accepts a domain filter but remains a search tool, not a duplicate
+company-enrichment listing. Six adapters add the core tools to five existing routed capabilities:
+`people.email.find`, `people.phone.find`, `people.enrich` (email input only), `people.search`
+(discovery and domain search), and `companies.search` (domain, name or industry inputs).
+Free discovery returns profiles and availability flags, not revealed emails or phones. It can
+satisfy a people-search request without a paid reveal. Domain search retains its fixed 20-row
+page; its adapter quotes one credit without a title and up to 20 with a title, independently of
+`limit`. The router discloses unsupported filters, including the domain route's row limit.
+No company-enrichment, email-verification or lookup-utility adapter is added.
+The phone adapter retains `data.country_code` as the provider's reported country context (company
+metadata, not proof of the phone owner's location). `people.phone.verify` accepts optional ISO-2
+`country_code`, and Tomba forwards it for national-number parsing. International numbers need no
+country hint; the phone verification verdict still establishes format only, not identity or reachability.
+
+A free-plan key was supplied and verified against `https://app.quickenrich.io`; the alternative
+marketing hostname `api.quickenrich.io` is unnecessary. The authenticated Contact Finder probe
+returns 401 `Invalid or inactive API key` for a bogus key and 200 with `credits_used: 0` for a
+valid key. This satisfies key-in-hand verification; self-serve provisioning of a new Growth key
+was not independently tested. Setup copy retains the docs' support fallback.
+
+Discover first with `quickenrich.people.search`, then selectively call email/phone find using
+the returned profile URL or name/company. Discovery exposes availability flags, not email/phone
+values. Contact filters use `industry_linkedin`, company filters use `industry`; Company Finder's
+`company_url` is a string, unlike the discovery include/exclude object. Lookup values must match
+exactly. Finder pagination defaults to 10 and caps at 100 rows; `meta.next_cursor` overrides page
+and supports deep pagination according to docs. The actual Free subscription reports `max_pages: 5`;
+paid deep-pagination behavior has not been exercised.
+
+Billing evidence from the initial live run (credits before 300, after 289):
+
+| Request | Observed credits |
+|---|---:|
+| Five public lookups; one-contact discovery | 0 |
+| Email hit / phone hit / reverse-email hit | 1 each |
+| Email miss / phone miss / empty domain | 0 each |
+| Domain without title: 20 returned | 1 flat |
+| Domain with title: 8 returned, 6 with email/phone | 6 |
+| Company search: 1 result / empty result | 1 / 0 |
+
+The standard verifier subsequently passed every core and utility test request. Total live
+verification used 18 trial credits, leaving 282. A live request through treg’s `/connections/token`
+returned 422 for the bogus key and provisioned no tool. Reverse misses
+must use a valid mail domain: `.invalid` and `example.com` were rejected with HTTP 422 by the
+upstream email validator; a unique nonexistent address at `stripe.com` returned a free 200 miss.
+Captured public examples have contact names, email, phone and personal profile URLs replaced
+with synthetic values. Shared billing tests use small inline payloads, following the existing
+provider tests. Dollar provenance stays documented: the live meter
+proved credit counts, not cash spent on the free account.
+
+The base list rate in `fx.yaml` is $0.004834 per credit before configured platform margin.
+It uses the purchased Starter monthly plan: $29 / 6,000 credits, rounded up to 4,834 micro-USD.
+This assumes all monthly credits are used; unused credits increase effective cost. Direct tools,
+settlement and routed estimates share this rate.
+Free/Starter/Growth are subscription allowances; GTM Unlimited is a subscription with no finite
+API allowance. The free subscription does not make billed enrichment a treg trial-priced product.
+See [money](money.md) for reservation/settlement and [capacity](../ops/capacity.md) for renewal
+and API balance reporting. Unlimited-plan status requires live verification; missing balance data remains unknown.
+Starter has been purchased. Six routed live checks on Starter used three credits and confirmed
+the existing response and credit rules. This price change does not enable production.
+
+## MillionVerifier email verification (2026-09-08)
+
+`millionverifier.yaml` adds single-email verification and the free own-account credit probe.
+The USD price is documented at $89 / 50,000 prepaid credits ($0.00178 each), with no expiry.
+The initial three live verification requests consumed three credits. Subsequent account-ledger
+evidence shows deductions followed by separate goodwill credits for risky results, including
+six catch-all credits returned after three ten-email bulk format tests (30 deducted, six returned).
+Those bulk tests are evidence only, not catalog support. Immediate balance probes are not a
+per-call meter. The account owner later confirmed $89 for the base 50,000-credit pack.
+The catalog rate excludes initial free credits and variable promotional bonuses; it is not
+the effective cost after bonuses. No receipt was inspected, so `confidence: documented` and
+`source: docs` remain appropriate.
+
+`adapters.yaml` adds `millionverifier.people.email.verify` to the existing
+`treg.people.email.verify` contract beside Hunter, LeadMagic and Tomba. `ok` maps to valid;
+other verdicts remain provider-native status words. Like the peer adapters, a risky or invalid
+verdict is an answer, while error bodies (no `quality`) are misses. `settle._observed_cost_micro`
+separately makes unknown/catch-all results free. The upstream `free` flag means a free email
+service, and `credits` is a delayed balance; neither is per-call usage.
+
+ContactOut also joins this contract via `contactout.people.email.verify`. Its direct price is free
+under the agreed commercial terms. The captured `accept_all` response verifies the adapter; only
+`valid` confirms deliverability, other status words remain intact, and unsuccessful envelopes or
+missing verdicts fall through. See `architecture/contactout.md` for capture evidence and tests.
+
+Bulk upload, file info/list/download, stop and delete are excluded: those operations use
+`bulkapi.millionverifier.com` with `key` auth and a multipart file lifecycle, rather than this
+provider's Single API host and `api` auth. The YAML records the complete eight-operation map.
+
+## Tomba email verification (2026-09-08)
+
+Tomba email verification uses `GET /v1/email-verifier?email=…`; its catalog input and routing
+adapter both send `email` in query parameters. A live comparison with the same address and
+credentials returned HTTP 200 with a verification verdict on this documented query route and
+HTTP 422 `params_invalid` on the former `/v1/email-verifier/{email}` path. The response fixture
+captures the returned verdict fields; the mapping remains `data.email.status` / `data.email.score`.
+Historical failure-only samples do not establish coverage for the corrected request shape.
+
 ## Authorization metadata
+
+Tomba email verification uses `GET /v1/email-verifier?email=…`; its catalog input and routing
+adapter both send `email` in query parameters. A September 8, 2026 live comparison with the same
+address and credentials returned a valid verification response on this documented query route
+and HTTP 422 `params_invalid` on the former `/v1/email-verifier/{email}` path. The response
+mapping remains `data.email.status` / `data.email.score`. Historical failure-only samples do not
+establish coverage for the corrected request shape.
 
 An endpoint can declare `authorization_method`, ordered `authorization_methods`, method-specific
 `authorization_paths`, `required_scopes`, `required_resource`, and `token_type`. `_normalize`
@@ -147,7 +308,14 @@ buffering, callback receiver, or proxy branch is added. Crustdata's required
 platform-key call.
 
 Variable prices use the existing reserve→settle path. Crustdata reserves the documented maximum
-for the requested record count and settles the exact `X-Credits-Used` response header. Aviato's
+for the requested record count and settles the exact `X-Credits-Used` response header. cloro
+(2026-09-07) is the second header-reporting provider: every billed response carries
+`X-Credits-Charged`, the catalog value is the price of the full-surface `test_request` (an upper
+bound — the ChatGPT ads/shopping include family and the Google AI Overview flags are +2 each), the
+top-level `state` body field is a generic `cost.modifiers` rider, and the header settles the exact
+charge. The header is absent on cloro's free routes and on a failed extraction, which it does not
+bill, so an absent header settles as unreported rather than as zero. The `cost.modifiers` reserve
+path is open to any credit-priced provider with a fx.yaml rate, not only Aviato. Aviato's
 preview calls reserve zero; observed email/rescrape add-ons are declared in each endpoint's generic
 `cost.modifiers` map and derived from request flags; synchronous bulk
 calls reserve per lookup and settle per returned successful record. Simple people search reserves
@@ -265,7 +433,20 @@ memberless, reserved for hand-picked models (see capabilities.yaml). Both AI gen
 therefore render as ONE flat model wall; the same model reachable over several routes (MiniMax
 direct, OpenRouter, Replicate all serve Hailuo) sits adjacent under model-led names, which is the
 comparison that actually means something. The per-model capability is the join key that lets those
-routes merge onto one row if that comparison is later curated.
+routes merge onto one row if that comparison is later curated. reAPI and PiAPI are the first pair
+to share join keys on purpose: both files propose `video-gen.seedance-2-5.generate`,
+`video-gen.seedance-2-5-unrestricted.generate`, `image-gen.gpt-image-2-5.generate`,
+`image-gen.gpt-image-2.generate` and `image-gen.gemini-3-pro-image.generate`, so the two routes to
+one model sit on one row with their prices side by side. The `-unrestricted` key names the Less Restriction route (reAPI `content_filter: false`, PiAPI's `seedance-2.5-less-restriction` task): the
+only route on which a real person's photo is accepted as the subject reference, which is the whole
+reason those resellers are listed beside the official-rate OpenRouter route. OpenRouter's Seedance 2.5
+is curated into `openrouter.yaml` on the same join key (its generated extended twin is therefore
+skipped by the ingester's curated-model rule), so the default-filter row compares three routes and
+the Less Restriction row two. Replicate's official `google/nano-banana-pro`, `openai/gpt-image-2` and both
+`openai/gpt-image-2.5-*` models are curated into `replicate.yaml` on the image keys the same way (per
+output image by quality or resolution, from the model pages' price criteria), so each image model
+row compares reAPI, PiAPI and Replicate. Merged rows are titled by the capability description, which for these
+per-model keys is the plain model name ("Seedance 2.5"), not a sentence.
 
 ## Schema
 
@@ -402,7 +583,13 @@ A `cost.table` also prices out as a range: at load time `_table_floor` computes 
 (a `times` row at its field's declared `min`) into `cost.table_min`, and `cost_view` exposes it as
 `usd_min` beside `usd`, which stays the validated ceiling (what reserve and eligibility read). Every
 price surface - the wall, `treg catalog search`, the dashboard, `/access` - shows `$low-$high` for a
-table rather than the worst case alone.
+table rather than the worst case alone. A table whose every row multiplies by a `duration` field is
+a video model sold per second, and `$0.47-$13.9/success` (shortest clip at the cheapest resolution
+up to the longest at the dearest) reads as nonsense beside a vendor page saying `$0.12/s`; so
+`_table_rate` records the row span as `cost.table_rate`, `cost_view` serves it as `rate_usd_min`,
+`rate_usd`, `rate_unit: s`, and the dashboard and CLI quote `$0.119-$0.462/s` for those rows while
+`usd`/`usd_min` keep pricing the whole call for reserve. `type: per_success` on these rows is the
+billing rule (a failed generation is not charged), not the display unit.
 
 The validator checks the effective descriptor. Dotted JSON paths are syntactically valid; success and
 failure are non-empty, disjoint lists; `interval` is positive; poll has exactly one of `endpoint`
@@ -425,7 +612,10 @@ the deferred-settlement design. `produces` maps response JSON paths to provider-
 kinds; `requires` binds a path/query parameter to one of those kinds. On treg's shared key, a 2xx
 producer records the opaque id for the caller org, and a consumer is refused before relay unless the
 same org owns that provider/kind/id tuple. This covers Apify run/dataset ids, Bright Data snapshot
-ids, and CompanyEnrich bulk job ids without changing their billing behavior. The validator requires
+ids, CompanyEnrich bulk job ids and LeadsForge enrichment/followers job ids without changing their
+billing behavior. Ownership is only as trustworthy as the producer's answer: a provider that dedupes
+on `Idempotency-Key` would hand one org another's job under a shared label, which is why the relay
+re-scopes that header per org on treg's key ([proxy-model](proxy-model.md)). The validator requires
 declared parameters and exact non-empty `{kind, path}` / `{kind, param}` shapes. BYOK does not use
 this metadata because the provider account itself belongs to the caller.
 Formal descriptors also materialize their poll/fetch ids under endpoint-namespaced resource kinds;
@@ -446,6 +636,15 @@ MiniMax's curated Hailuo routes intentionally use the v1 three-step protocol: su
 the terminal values `Success`/`Fail`, then pass the returned `file_id` to
 `GET /v1/files/retrieve`. The v2 generation path serves the H3 family and is not a protocol upgrade
 for the Hailuo models in this listing.
+
+reAPI answers every submission with a bare `{id, status}` and reports the charge on the poll body
+(`usage.credits`, 1 credit = $0.001); video rows keep the file-level descriptor (`output.video_urls`)
+and image rows replace it whole for `output.image_urls`. PiAPI wraps its task routes in
+`{code, data}` (HTTP 200 with `code` 400 on a bad request, hence the provider-wide `expect`), but
+its OpenAI-shaped `/api/v1/images/generations/async` route answers the bare task object, so those
+two rows override both `id_from` and `expect` (`error.code` 0). PiAPI's `meta.usage` counts
+"points" at ten million per dollar; it is read for the evidence ledger, not settled on, because
+`usd` is the only usage unit the settlement engine accepts.
 
 OpenRouter ingest reads `/api/v1/videos/models`, emits one extended row per model on the shared
 `POST /videos` route, and converts duration-based `pricing_skus` into price tables with
@@ -545,13 +744,19 @@ Rules:
   state, which every other check happily passed. A never-verified entry straight out of ingest has
   neither a request nor a state key and is left alone.
 - Ids are unique across the WHOLE catalog, both tiers, all providers.
-- Two optional fields exist only in this tier, both added for the first-party OAuth providers:
-  - `host: <fqdn>` — this route is NOT on the provider's `base_url`, and its `path` is relative to
-    the named host instead. Google splits one product across sibling `*.googleapis.com` services
-    (GA4 reporting vs GA4 admin; six separate My Business services) while an `OAuthProvider` names
-    one host. The same OAuth token calls them all, so the endpoints are real and worth listing —
-    but the auto-provisioned tool is bound to `base_url`, so calling one needs a second tool bound
-    to that host. Absence of `host` means "callable through the provisioned tool".
+- Two optional fields exist only in this tier, both added for providers with split surfaces:
+  - `host: <fqdn>` describes an additional API root for an endpoint whose `path` is not relative to
+    the provider's primary `base_url`. It becomes executable only when the provider explicitly opts
+    in with `OAuthProvider.catalog_targets`; otherwise historical host metadata remains inert and
+    calling still uses the provider's primary profile. The catalog cannot authorize a host by itself.
+    `OAuthProvider.catalog_targets` must map the exact hostname to a safe HTTPS base URL and any
+    credential-profile override. `profile_for_catalog_host` rejects missing, duplicate, malformed,
+    credential-bearing, port-bearing, query-bearing, and fragment-bearing targets before reserve or
+    relay. The endpoint path is joined after the approved base URL's existing prefix, so primary KG
+    paths and alternate Extract paths do not duplicate or erase version prefixes. Diffbot uses this
+    for its KG, Extract, Web Search, and Natural Language host families; Web Search's target also
+    changes query-token injection to its documented Bearer header. Absence of `host` retains the
+    primary provider profile and `base_url`.
   - `scope_gap: <one line>` — the credential treg's OAuth app obtains CANNOT call this, and this is
     the scope that is missing. These are listed rather than dropped on purpose: the set of gaps is
     the answer to "which scopes should we add to the registered app", and it is only visible if the
@@ -688,8 +893,14 @@ which is the whole reason the provenance keys exist.
 
 **`per` and `unit`.** Read a block as "`value` `currency` per `per` `unit`". SpyFu bills a CPM, so
 `value: 2.00, per: 1000, unit: row` — and `cost_view` divides, serving `usd: 0.002` per row. Hunter
-charges 1 credit per 10 emails (`per: 10, unit: record`), Akta 1.5 credits per 50 reviews. Without
-`per`, every one of those had to be either wrong or rounded into prose.
+Domain Search charges 1 SEARCH credit per 1–10 emails returned (`per: 10, unit: record`), so `usd`
+is the linear slice ($0.00245/email) that reserve can scale with `limit`. A live hit does not sell
+that slice: it bills one whole credit (~$0.0245) for one email or ten (observed 2026-07-31).
+`cost.display` with `grouped` + `round_up` advertises the credit (`display_usd: 0.0245`, "started
+10 emails"); `Catalog.advertised_usd` is what `catalog_search` / `catalog_get` put on
+`usd_per_call`. Settlement still reads `usd` and the derived email-count rule — display only.
+Akta bills 1.5 credits per 50 reviews the same `per` way. Without `per`, every one of those had
+to be either wrong or rounded into prose.
 
 **Three kinds of denomination convert, and they convert differently:**
 
@@ -1146,6 +1357,32 @@ the core file's paths are relative to it (`/serp/google/organic/live/regular`). 
 two spellings — every DataForSEO route curated in core is also present in the extended file under
 a different id. Fixing that belongs in `catalog_ingest.py` and needs a regeneration.
 
+### DataForSEO Live routes accept one task, not a batch
+
+DataForSEO's generic POST is "an array of task objects", and Standard `/task_post` really does
+batch up to 100. Every **Live** route in `dataforseo.yaml` (and the vendor's Backlinks / SERP
+Live docs) does not: "each Live API call can contain only one task." Extra array elements come
+back as per-task status `40000` ("You can set only one task at a time") and `$0`. Feedback #102 /
+#103: `dataforseo.web.backlinks.summary` (`/backlinks/summary/live`) reused the generic note and
+the provider `limits` line "up to 100 tasks per POST array", so agents batched domains. The
+fix is documentation only — `input.note` and `limits` name the single-task cap; multi-target
+work is a `bulk_*` live route (many targets *inside* one task), e.g. `dataforseo.web.url.metrics`
+(`/backlinks/bulk_ranks/live`). Do not auto-split a multi-task array into billed calls.
+
+### DataForSEO Google Trends explore/live rejects `item_types`
+
+Vendor docs still list `item_types` (`google_trends_graph`, `google_trends_map`,
+`google_trends_topics_list`, `google_trends_queries_list`) on
+`/keywords_data/google_trends/explore/live`. A live POST with that field returns HTTP 200 +
+task status `40501 Invalid Field: 'item_types'` and `$0`. Feedback #125 / #127:
+`dataforseo.x.keywords-data-google-trends-explore-live` documented the field, so agents sent
+`google_trends_queries_list` then switched to SerpAPI. The catalog omits the field;
+`input.note` says not to send it. Related-query discovery is `serpapi.x.google-trends` with
+`data_type: RELATED_QUERIES`. The neighboring DataForSEO Trends explore live route
+(`dataforseo.x.keywords-data-dataforseo-trends-explore-live`) never listed `item_types`; no
+DataForSEO sibling in the catalog answers related queries. Enforced by
+`test_google_trends_explore_live_omits_item_types`.
+
 ## Choosing between providers (`domain/catalog/stats.py`)
 
 307 capabilities are served by more than one provider, and prices inside one capability differ by up
@@ -1166,6 +1403,15 @@ sample size** per endpoint from `CallRecord` — which has recorded `endpoint_id
 `duration_ms` since the marketplace shipped and was never read. It rides on
 `/catalog/endpoints/{id}`, attached to the endpoint **and every sibling**, because the choice is made
 on that page and an agent will not make a second round-trip to compare reliability.
+
+The same page states the one price the `cost` block cannot: what the call bills when treg's own
+account is out and the overflow relay serves it. `routers.catalog._overflow_disclosure` reads the
+enabled `OverflowRoute` through `domain.capacity.routes_view` (a read, the worker stays the only
+writer) and puts `overflow_price_usd`, `overflow_price_unit` and `overflow_via` on the endpoint view
+plus a hint, only when the deployment can actually relay it (`TREG_OVERFLOW_MODE=on`, a key for the
+aggregator, `platform_eligible`, an enabled route). A catalog-free endpoint with an overflow route is
+the case that made this necessary (`apollo.people.search`, 2026-09-08); the MCP `catalog_get` lifts
+the three fields onto its result so the schema advertises them.
 
 The aggregate is authoritative but no longer request-time. `stats.EndpointObservationReader` is the
 narrow domain port, and bootstrap supplies `CachedEndpointObservationReader` around a
@@ -1221,6 +1467,9 @@ Five rules worth keeping:
   failure but an aviato 404 (voice-ai-outbound's GT report). Only a 4xx is honoured — a
   `status: 200` block (tikhub) is agent documentation; the adapter's own `miss` predicate decides
   a 2xx. Note a `per_call` provider (companyenrich) still bills the request on its declared miss.
+  Aviato company enrichment also declares 404 as a miss after the 2026-09-08 Arena sweep
+  returned `Not Found` for microsoft.com; its company-enrich documentation identifies the
+  response as `Company Not Found Error`. Arena and routed calls use the same metadata.
 - **Below `MIN_SAMPLES` we publish the count and nothing else.** "100% from two calls" is noise
   dressed as evidence, and on a quiet endpoint a rate could expose one org's activity. The floor
   applies to **decided calls** (2xx + provider-fault failures), not total traffic: four caller 422s
@@ -1374,21 +1623,33 @@ to choose (`docs/CAPABILITY-ROUTING-PLAN.md`). Everything else in the catalog st
   `{linkedin_url}`), `derive` rules so the two name shapes match the same adapters, a small
   *output* core (`email` required; `confidence`, names, `verified` optional) and `miss` in
   canonical terms. `raw` — the winning provider's body — is always returned and never documented
-  as stable. `advice_unverified` (email and phone finds) is one sentence the router attaches as
-  `_treg.advice` to a hit whose `verified` is not true — a found contact is not a confirmed one
-  (Hunter's `accept_all`, LeadMagic's personal finder, every phone provider), and a team that sent
-  to such hits unverified bounced on most of them (2026-09-06). A suggestion only: treg never
-  chains the verify call, which would double every hit's price and change what the find bills.
+  as stable. `advice_unverified` (email and phone finds, and `people.search`) is one sentence the
+  router attaches as `_treg.advice` to a hit whose `verified` is not true — a found contact is not
+  a confirmed one (Hunter's `accept_all`, LeadMagic's personal finder, every phone provider), and a
+  team that sent to such hits unverified bounced on most of them (2026-09-06). A search contract
+  has no `verified` output, so its advice attaches to every hit: rows are directory listings, and
+  the same team's 79-address bounce list (2026-09-08) was 73 unverified Hunter domain-search rows
+  and agent-guessed `info@` addresses that one verify call each would have caught. The
+  `hunter.companies.emails` catalog summary carries the same warning for direct `/call/` users,
+  whose body is relayed verbatim. A suggestion only: treg never chains the verify call, which
+  would double every hit's price and change what the find bills.
 - **Adapters** — `adapters.yaml`, one per endpoint: `accepts` (identity variants), `in` (contract
   field → `queryParams.x` / `body.x`), `const` (fixed provider params), `out` (core field →
   expression over the body), `miss`. The expression language (`domain/catalog/routing/paths.py`)
   is deliberately tiny: dotted paths with `[i]` (root `[0]`, `.` = the whole body), `coalesce`,
   `/ N`, `==`/`!=` against literals, and named transforms (`split_first`, `split_last`, `join`,
-  `has_type`, `len`, `list`, `obj`, `fmt`, `csv`, `lower`/`upper`, `at_least`, `linkedin_handle`/
+  `has_type`, `len`, `list`, `obj`, `fmt`, `csv`, `lower`/`upper`, `at_least`, `null_if`, `choose`, `linkedin_handle`/
   `linkedin_url`, `email_domain`, `host`, `dfs_location`, `seranking_source`, `tca_filter`).
+  `values` reads rows from object-keyed or list responses; `get` applies dotted/indexed lookup
+  to another expression result (for example, the first company in a domain-keyed response).
+  These are generic helpers, not provider-specific rewrites.
   `in_expr` builds provider params from expressions (URL-array bodies, DSL objects); `test_identity`
   states the fixture's identity when `in` builds a value rather than copying one; `filters` carry
-  defaults and are always sent.
+  defaults and are always sent. `null_if` removes explicitly declared empty markers while retaining
+  other values; `choose` selects between two expression values. Optional adapter `cost_units`
+  expresses an upper bound in catalog-priced units (for example, fixed-page billing). Both the
+  public quote and call-time plan use it through `routing/plan.py::cost_at`; invalid unit values
+  remain unpriced. It does not replace the child's normal reserve/settle rules.
 - **Verified at load, or absent** — `routing/contracts.py::verify`: `in` must reproduce the
   endpoint's own `test_request` and `out` must fill every required core field from its
   `example_response` (an example that is itself a miss passes with the hit half unverified).
@@ -1397,7 +1658,8 @@ to choose (`docs/CAPABILITY-ROUTING-PLAN.md`). Everything else in the catalog st
 - **The generated row** — `routing/synthetic.py`: every capability with ≥ 2 verified children gets
   `treg.<capability>` (`provider: treg`, `kind: routed`, `POST /<capability>`, `input` = the
   contract, `cost` = the children's range, `routed_children`). Never hand-written; not in any
-  provider file. `catalog_get` on it returns the contract and the ranked **plan** (the quote) —
+  provider file.
+  `catalog_get` on it returns the contract and the ranked **plan** (the quote) —
   nothing is reserved.
 - **Ranking** — `routing/plan.py`: own keys (tier 2) first at cost 0; then
   `expected_cost_per_hit = cost_at(request) × P(billed) / P(hit)` where `cost_at` prices *this*
@@ -1432,9 +1694,18 @@ to choose (`docs/CAPABILITY-ROUTING-PLAN.md`). Everything else in the catalog st
   2026-08-28: the endpoint's job is to find the thing, and misses on the per-success children are
   free); `X-Treg-Route-Waterfall: 0` stops at the first miss. Every attempt is settled at its real
   price and `X-Treg-Route-Max-Cost` (default $1) bounds the sum before each reserve (a candidate
-  that would breach it is `skipped`). Response: `{output, raw, _treg: {served_by, provider, tier,
-  outcome, tried[], charged_micro}}`, `X-Treg-Served-By`, `X-Treg-Providers-Tried`,
-  `X-Treg-Route-Outcome`, `X-Treg-Cost-Micro` = the sum, one `X-Treg-Call-Id`. The parent owns
+  that would breach it is `skipped`). Quota-row quotes scale with the requested row count, just
+  like per-result quotes. Each child also receives the remaining ceiling after actual earlier
+  charges; the shared reservation gate checks the resolved estimate including margin, even when
+  the advisory quote was too low or the child uses overflow. A budget refusal skips that candidate
+  without using the provider-error retry allowance; if every candidate is skipped, return 402
+  `route_max_cost`. A retained weak answer keeps its own outcome when later candidates are skipped.
+  When the waterfall ends with some candidates skipped due to max-cost, the response includes
+  `_treg.capped: true` and `X-Treg-Route-Capped: true` — a partial miss is distinguishable from an
+  exhaustive one, so callers can raise their budget if needed (feedback #131, 2026-09).
+  Response: `{output, raw, _treg: {served_by, provider, tier,
+  outcome, tried[], charged_micro, capped?}}`, `X-Treg-Served-By`, `X-Treg-Providers-Tried`,
+  `X-Treg-Route-Outcome`, `X-Treg-Route-Capped?`, `X-Treg-Cost-Micro` = the sum, one `X-Treg-Call-Id`. The parent owns
   the idempotency label (a success, or a terminal failure after a paid child, replays without
   touching a provider) and writes one audit row
   (`credential_tier: routed`) beside the children's.
@@ -1573,6 +1844,37 @@ to choose (`docs/CAPABILITY-ROUTING-PLAN.md`). Everything else in the catalog st
   `kind: filters` / `Location` layer for the DSL/SQL providers (aviato dsl and pdl sql ride `obj`/
   `fmt` today; crustdata/diffbot/coresignal/apollo do not); own-key-dry → treg-key fallback.
 
+- **Name-only Leadsforge requests (2026-09-07)**: email and phone adapters accept the derived
+  `{first_name, last_name, domain}` variant or a LinkedIn URL. Removed the redundant
+  `{full_name, domain}` fallback: a one-word name cannot derive `last_name`, so that fallback
+  selected an identity variant whose name was not mapped and sent only `companyDomain`.
+  Complete full names still derive both parts and work normally. Regression tests exercise the
+  actual matched-variant request, including rejection of mononyms and preservation of LinkedIn.
+  Arena also validates full names before quoting, preventing Hunter's `invalid_full_name` error.
+  Leadsforge and Fiber contact lookup success flags no longer populate `verified`: neither
+  flag is an explicit mailbox deliverability verdict. The field remains absent when unknown.
+
+## Archive comparison declarations
+
+The effective `cache:` block accepts `ignore_paths: [...]` alongside `max_age_s`. The default is
+an empty list. Provider-header inheritance and whole-block endpoint override follow the existing
+cache policy rules. `store._validate_cache` rejects an invalid list or path during catalog loading,
+including provider-header declarations even when endpoint blocks override them.
+
+Paths are case-sensitive dot-separated property names matching `[A-Za-z0-9_][A-Za-z0-9_-]*`, with
+`[*]` suffixes for arbitrary array elements: `request_id`, `data.items[*].updated_at`, or
+`matrix[*][*].request-id`. Leading digits are allowed, e.g. `2fa_enabled`. A root array can use `[*].request_id`. Empty lists are valid; null,
+non-lists, non-string members, empty paths, numeric indices, plain `*`, `$` prefixes, spaces,
+empty segments, escaping and recursive wildcards are rejected. Keys containing literal dots or
+brackets are deliberately not addressable in this first grammar. Missing paths are harmless.
+
+`archive._normalized_hash` removes only these paths from a parsed copy for TTL equality. It never
+changes archived or served data, raw hashes, deduplication or hit/miss classification. Without a
+nonempty list, exact byte comparison remains authoritative. No shipped endpoint has an ignore
+list; use the bounded `archive_change_observed` reports and HogQL in [archive](archive.md) as
+human review input, then add a justified declaration in a separate PR.
+
+
 ## Security
 
 PII IS THE HARD RULE. This repo is public, and every captured example ships in it. Three checks
@@ -1600,9 +1902,97 @@ long strings clipped, ~10 KB cap) by the verifier, then human-reviewed for PII b
 |---|---|---|---|
 | dataforseo | google, web | Basic (login:password base64) | SEO: web.backlinks.*, web.url.metrics |
 | exa (2026-08-27) | web, people, companies | `x-api-key` header; dollar-priced, settles from `costDollars.total` | Search: web.search*, web.contents.get, web.similar, web.answer; Enrichment: people.search, companies.search |
+| cloro (2026-09-07) | ai-search, google | `Authorization: Bearer sk_live_…`; credit-priced ($0.0004, Hobby metered rate), settles from `X-Credits-Charged` | AEO: ai-search.chatgpt.scrape, ai-search.copilot.scrape (new), ai-search.perplexity.answer, ai-search.gemini.scrape; SERP: google.serp.organic, google.serp.news, google.serp.ai_mode (overlaps dataforseo/serpapi extended) |
 | moz | web | Basic (AccessID:SecretKey base64), POST JSON API | SEO: web.backlinks.*, web.url.metrics |
 | tikhub | tiktok (+instagram, youtube, x) | Bearer key | Social: tiktok.* |
 | justoneapi | tiktok (+instagram, xiaohongshu, weibo) | `?token=` query param | Social: tiktok.* |
 
 The SEO pair and the social pair each implement the same capabilities on purpose — they are the
 first real test that the capability taxonomy supports cross-provider comparison.
+
+## Kitt AI (`trykitt`)
+
+`trykitt.yaml` lists only realtime email find/verify. Account checks are not public
+catalog tools; `/credit` remains the internal key probe and balance collector.
+`adapters.yaml` adds both email tools to their existing routed parents. Find maps
+`full_name`/derived first+last name and domain to `fullName` and `domain`; optional LinkedIn
+URLs are passed as `linkedinStandardProfileURL`. Both adapters set `realtime: true`.
+A find's `email: no-results-found` (or absent/empty email) is a miss; successful finds
+preserve `verified` from `validity == valid`. Verification verdicts, including invalid
+and unknown/catchall, are answers rather than waterfall misses.
+
+The scalar prices reserve the published base rate. `platform_request: {body.realtime: true}`
+binds platform calls to that value through `_enforce_platform_request`, before reserve.
+This shared rule accepts declared body fields with a matching singleton enum; the catalog
+validator rejects other forms. Existing fixed pricing selectors still use the same guard.
+The loader preserves the rule; BYOK returns before the guard and remains a faithful relay.
+`cost.reported_charge: {path: credits.jobCredits, unit: usd}` supplies the actual charge
+through the common response-field reader. The validator permits this only with paid scalar
+prices and no competing `settle` rule. Missing evidence uses the normal miss/base policy.
+Polling `/job?id=` returned 500 in repeated live tests and is excluded, along with
+asynchronous/webhook submission. The surface map is in the catalog header.
+
+Paid evidence on 2026-09-09: find hit $0.005, miss $0, valid verification $0.0015,
+invalid verification $0.0015; account balance eventually moved $10 → $9.992.
+`credits.jobCredits` is USD; `remainingCredits` lags. Unknown/catchall pricing is
+documented, not live-verified. Public API-doc example contact is used in fixtures; job IDs
+are redacted. Billing and BYOK regressions live in `tests/test_marketplace_call.py`;
+routing lives in `tests/test_routing.py`. Capacity tests use the shared collector, policy,
+and signature test files. The reusable setup is in `tests/conftest.py`.
+
+
+## ContactOut
+
+`contactout.yaml` adds the core LinkedIn/contact surface with explicit work/personal selectors,
+on-hit Starter rates supplied by the account owner, free verification, and deferred batches.
+People lookup/search entries are `untestable:` without test requests or stored examples under the
+PII rule. Their routing adapters are omitted; company search/enrichment and email verification
+retain verified adapters. Profile-only LinkedIn enrichment costs $0.02 when found.
+See [ContactOut](contactout.md) for request limitations, derived settlement and live evidence.
+
+`Catalog.cost_view` reads optional provider-neutral `cost.display` metadata. `unit` names the
+shown unit; `grouped` displays the price for `cost.per` units; `round_up` labels a started block;
+`variable` adds a plus sign for selected additions. It returns computed display USD/unit/suffix
+fields without changing `usd` or settlement. The CLI and web formatters consume those fields;
+`Catalog.advertised_usd` prefers `display_usd` so MCP `usd_per_call` quotes the chargeable event.
+The validator checks flags and requires grouped prices to declare a positive integer `per`.
+Hunter Domain Search is the credit-block case (`1` credit / `10` emails → `$0.0245/started 10
+emails`). Sumble keeps its billing rules in the existing provider-module pattern, separate from
+display rules.
+
+
+### Similar-company routing
+
+The `companies.similar` contract accepts a seed `domain` and returns a nonempty `companies` list.
+Tomba and CompanyEnrich adapters are checked against their existing saved catalog fixtures.
+Tomba maps the domain to its query parameter and returns `data`; CompanyEnrich maps it to a
+one-item `body.domains` list, fixes page to one and pageSize to ten, and returns `items`.
+CompanyEnrich pricing therefore uses the explicit ten-row request. The contract has no common
+limit filter because Tomba's endpoint does not accept one. The ordinary verified-adapter gate
+controls synthesized routing availability; Arena additionally bounds its displayed rows.
+
+### Phone validation adapter
+
+The `people.phone.verify` contract maps Tomba's existing GET `/v1/phone-validator` endpoint
+through `queryParams.phone`. The adapter reads `data.valid`, `data.e164_format`, country code,
+line type and carrier. A boolean false is a returned invalid verdict; a missing verdict is a
+miss. This validates numbering-plan/format details, not line activity or subscriber ownership.
+The single verified adapter is usable by Arena; the two-provider public routing gate stays intact.
+
+
+## HarvestAPI integration
+
+`harvestapi.yaml` adds API-key-only LinkedIn reads with opt-in `strict_query` contracts and three profile variants. See [HarvestAPI](harvestapi.md) for the verified surface, billed misses, pagination traps and adapters.
+
+
+### Verified additional routing categories
+
+An adapter can opt into `additional_capabilities` while its endpoint retains its primary
+catalog capability and direct-call ID. `load_routing` verifies each additional contract against
+the same request/response fixture and admits it through `verified_capabilities` only when the
+primary adapter passes, the extra contract exists, the filter definitions match, and the extra
+fixture check passes. Invalid extra contracts do not disable the primary adapter.
+`Catalog.for_capability` includes these verified memberships for both routed tools and Arena.
+No additional provider request, catalog row or billing path is introduced. The Harvest full
+profile adapter also serves `people.enrich`; its company adapter also serves `companies.enrich`.
+The basic profile adapter retains only its LinkedIn category.

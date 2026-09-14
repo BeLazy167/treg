@@ -5,12 +5,15 @@ from __future__ import annotations
 import hashlib
 import hmac
 import re
+from urllib.parse import parse_qsl, urlencode, urlsplit
 
+from cryptography.fernet import InvalidToken
 from fastapi import APIRouter, Cookie, Depends, Form, Header, HTTPException, Query, Request, Response
 from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse, RedirectResponse
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from .. import crypto
 from ..application import auth as auth_use_cases
 from ..application import signup
 from ..application.auth import (
@@ -30,7 +33,7 @@ from ..domain.identity import session as sess
 from ..domain.identity.access import require_identity
 from ..domain.identity.mcp_oauth import REFRESH_TTL_S
 from ..models import User
-from .auth_helpers import _is_https, _remember_oauth_return, _same_origin
+from .auth_helpers import _is_https, _remember_oauth_return, _same_origin, require_managed_cli
 from .web import _esc_html
 
 # The app alias preserves the moved handlers' original @app.post decorator text byte-for-byte.
@@ -79,6 +82,7 @@ async def auth_email_start(
     + logs it (so dummy emails are testable); prod will email it instead. Throttled per-email AND per-IP
     (sliding window) so this open endpoint can't be used to email-bomb an inbox or reset the OTP
     brute-force counter at will. All this state is in the DB (survives restart, correct multi-instance)."""
+    require_managed_cli(request)
     try:
         return await auth_use_cases.start_email_login(body.email, _client_ip(request))
     except auth_use_cases.EmailAuthError as exc:
@@ -92,8 +96,10 @@ async def auth_email_verify(
     """Check the code → find-or-create the user → mint an identity token AND set a browser session
     cookie. The CLI reads the token from the body; the dashboard just reloads into session mode
     (same path as GitHub login) — one endpoint serves both clients."""
+    require_managed_cli(request)
     try:
-        verified = await auth_use_cases.verify_email_login(body.email, body.code)
+        verified = await auth_use_cases.verify_email_login(body.email, body.code,
+            entry_surface=request.cookies.get("treg_entry_surface", ""))
     except auth_use_cases.EmailAuthError as exc:
         raise _email_http_error(exc) from exc
     resp = JSONResponse({"token": verified.token, "email": verified.email})
@@ -207,7 +213,7 @@ def _social_http_error(exc: auth_use_cases.SocialLoginError) -> HTTPException:
 
 # ---- human login via GitHub OAuth (dashboard sessions) ------------------------------------
 @app.get("/auth/github")
-async def auth_github(request: Request, cli: str = ""):
+async def auth_github(request: Request, cli: str = "", return_to: str = ""):
     try:
         started = auth_use_cases.start_github_login(cli, lambda: _login_callback_base(request))
     except auth_use_cases.SocialLoginError as exc:
@@ -215,6 +221,7 @@ async def auth_github(request: Request, cli: str = ""):
     resp = RedirectResponse(started.url, status_code=302)
     resp.set_cookie("treg_oauth_state", started.state, httponly=True, max_age=600,
                     samesite="lax", secure=_is_https(request))
+    _arena_login_return(resp, request, return_to if not cli else "")
     return resp
 
 
@@ -229,17 +236,52 @@ def _auth_page(headline: str, sub: str = "", *, ok: bool = True, status: int = 2
     return HTMLResponse(html, status_code=status)
 
 
+def _arena_return_target(target: str) -> str:
+    """Keep OAuth returns within Arena, including its selected task or saved run."""
+    if len(target) > 2048 or any(ord(c) < 32 or ord(c) == 127 or c == "\\" for c in target):
+        return ""
+    try:
+        url = urlsplit(target)
+    except ValueError:
+        return ""
+    if url.scheme or url.netloc or url.fragment or url.path not in {
+        "/enrich-arena", "/enrich-arena/leaderboard", "/enrich-arena/people-search-bench",
+    }:
+        return ""
+    params = parse_qsl(url.query, keep_blank_values=True)
+    if any(k not in {"run", "team", "capability", "variant", "mode"} for k, _ in params):
+        return ""
+    if len({k for k, _ in params}) != len(params):
+        return ""
+    return url.path + ("?" + urlencode(params) if params else "")
+
+
+def _arena_login_return(resp, request: Request, target: str) -> None:
+    target = _arena_return_target(target)
+    if target:
+        resp.set_cookie("treg_arena_return", crypto.encrypt(target), httponly=True, max_age=600,
+                        samesite="lax", secure=_is_https(request))
+    else:
+        resp.delete_cookie("treg_arena_return")
+
+
 def _finish_oauth_login(request: Request, user: User, st: tuple | None) -> RedirectResponse:
     """After a GitHub/Google callback proves an identity: set the browser session cookie, then either
     land on the dashboard (a plain browser login) or bounce to /login?cli=<id> so a `treg login`
     handshake goes through the SAME team picker as the other doors (instead of completing blind — which
     would leave the CLI guessing the org). The picker's POST /auth/cli/approve reads this same cookie."""
     login_id = st[0] if st is not None else None
-    dest = f"/login?cli={login_id}" if login_id else "/app"
+    try:
+        target = crypto.decrypt(request.cookies.get("treg_arena_return", ""))
+    except (InvalidToken, ValueError, UnicodeError):
+        target = ""
+    browser_dest = _arena_return_target(target) or "/app"
+    dest = f"/login?cli={login_id}" if login_id else browser_dest
     resp = RedirectResponse(dest, status_code=302)
     resp.set_cookie(sess.COOKIE, sess.make_session(user.id, token_version=user.token_version), httponly=True,
                     samesite="lax", secure=_is_https(request), max_age=sess.TTL_SECONDS)
     resp.delete_cookie("treg_oauth_state")
+    resp.delete_cookie("treg_arena_return")
     return resp
 
 
@@ -259,6 +301,7 @@ async def auth_github_callback(
         proof = await auth_use_cases.complete_github_login(
             lambda: request.app.state.http, code, state, treg_oauth_state,
             lambda: _login_callback_base(request),
+            entry_surface=request.cookies.get("treg_entry_surface", ""),
         )
     except auth_use_cases.SocialLoginError as exc:
         return _social_login_failure(exc)
@@ -266,7 +309,7 @@ async def auth_github_callback(
 
 
 @app.get("/auth/google")
-async def auth_google(request: Request, cli: str = ""):
+async def auth_google(request: Request, cli: str = "", return_to: str = ""):
     """Human login via Google OAuth — a parallel door to GitHub, same session/CLI-handshake plumbing."""
     try:
         started = auth_use_cases.start_google_login(cli, lambda: _login_callback_base(request))
@@ -275,6 +318,7 @@ async def auth_google(request: Request, cli: str = ""):
     resp = RedirectResponse(started.url, status_code=302)
     resp.set_cookie("treg_oauth_state", started.state, httponly=True, max_age=600,
                     samesite="lax", secure=_is_https(request))
+    _arena_login_return(resp, request, return_to if not cli else "")
     return resp
 
 
@@ -287,6 +331,7 @@ async def auth_google_callback(
         proof = await auth_use_cases.complete_google_login(
             lambda: request.app.state.http, code, state, treg_oauth_state,
             lambda: _login_callback_base(request),
+            entry_surface=request.cookies.get("treg_entry_surface", ""),
         )
     except auth_use_cases.SocialLoginError as exc:
         return _social_login_failure(exc)

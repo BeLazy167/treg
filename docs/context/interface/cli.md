@@ -3,6 +3,10 @@ title: The CLI (treg) + skill scaffolding
 status: shipped
 sources:
   - src/treg/cli.py
+  - tests/test_released_cli_compat.py
+  - tests/test_cli_key_compatibility.py
+  - src/treg/routers/auth_helpers.py
+  - src/treg/cli_analytics.py
   - src/treg/convert.py
   - src/treg/agents.py
   - src/treg/routers/api_keys.py
@@ -18,6 +22,8 @@ related:
 
 `cmd_feedback` implements `treg feedback submit <category> <message> [--call-id ID] [--endpoint-id ID]`.
 The category choices and help description come from the lightweight `feedback_contract` module.
+Both parent and submit help explain fields, category meanings, optional call-reference mapping,
+privacy and receipt semantics; a reference mentioned only in prose is not automatically linked.
 `--call-id` repeats; message `-` reads stdin. `_client` applies the configured registry and team,
 and `_feedback_request` prints JSON or exits nonzero with an actionable error without echoing
 rejected input. `cmd_feedback_get` implements `treg feedback get <feedback_id>`. Submission transport
@@ -33,6 +39,16 @@ responses use `Cache-Control: no-store`. The CLI stores no key-management state.
 org override, permissions, caps, and billing behavior still come from the live membership.
 The MCP installer refuses a seven-day bootstrap credential before writing any client configuration;
 the user must first choose/create/join a team and install its Default or Agent key.
+
+## Call review
+
+`cmd_review` implements `treg review <call_id> <usefulness> [--reason TEXT]`, sharing the light
+contract's enum and description with MCP. It validates the reference and trimmed reason locally,
+posts to `/reviews`, prints a receipt, and emits structured errors without echoing rejected input.
+A transport failure explicitly leaves the outcome unconfirmed. `_show_hint_line`, beside the
+charge line, prints the server's invitation (`X-Treg-Hint: review|feedback`; the older
+`X-Treg-Review: requested` still means review) as one stderr line per kind. Call responses
+retain the existing `_show` formatting on stdout, including pretty-printed JSON.
 
 ## Instagram grants
 
@@ -523,3 +539,47 @@ stored token when a deliberate team switch succeeds.
 `treg catalog get <routed id>` prints the ROUTING PLAN (order, accepted identity, price, HIT, expected
 cost per hit) above the sibling table; the sibling table itself gained a HIT column (`stats.observed`
 `hit_rate`). `treg catalog <platform>` rows lead with the endpoint id and show the unified USD price.
+
+## Anonymous CLI analytics
+
+`main` calls `cli_analytics.track_command` after dispatch, including failures and interrupts.
+The PostHog Python SDK sends `cli_command_completed` with the handler's fixed command name,
+exit code, success, duration in milliseconds, package version and OS. Help/version flags and
+argument parsing failures exit before dispatch and emit nothing. No arguments, request/response
+bodies, paths, tokens, emails or team identifiers are collected. A random UUID in `analytics-id`
+beside `TREG_CONFIG` identifies an installation; it is independent of login/logout.
+
+The public treg.to ingestion token is the default only for the hosted registry and its legacy
+alias. Self-hosted URLs send nothing unless `TREG_CLI_POSTHOG_KEY` is set; the host override is
+`TREG_CLI_POSTHOG_HOST` (default EU ingestion). `TREG_TELEMETRY=0` or `DO_NOT_TRACK=1` disables
+all analytics and ID creation. SDK import and synchronous capture run in a daemon thread with
+no retries, a 0.2-second request timeout and a 1-second caller wait budget. Slow delivery may
+be dropped at exit; telemetry failures are silent and preserve command output and exit status.
+
+## Catalog price display
+
+`_cost_label` and `_cost_usd` consume the same computed display USD/unit/suffix fields as the web
+pages. Grouped prices show the full block amount, and variable prices show a plus sign. The source
+is provider-neutral `cost.display` catalog metadata. Missing metadata retains the existing format.
+CLI call billing still uses the shared server call path.
+
+
+## Released CLI compatibility
+
+The unmodified PyPI CLIs 0.16.0 and 0.19.0 can use existing saved tokens, complete browser login,
+and exchange Default keys with `org use`. Their email flow discards the browser cookie and would
+save a restricted bootstrap token. Their team-create and identity-mode invite flows keep the
+previous token after selecting the new team. A scoped Default key must still reject that mismatch.
+
+`routers.auth_helpers.require_managed_cli` stops these known old-client requests with HTTP 426
+before issuing email credentials, creating a team, or consuming an invite. The response tells the
+user to run `treg update` and retry. Current CLI requests send `X-Treg-Key-Protocol: 1` and save the
+returned team's key. The legacy-client hint is the released CLI's `python-httpx/` User-Agent plus
+`ngrok-skip-browser-warning: 1`, without that protocol marker. It is a compatibility check, not an
+authorization boundary or a universal client-version detector. Browsers and generic API clients
+retain their API behavior; omitting or forging the hint never relaxes token restrictions.
+
+Existing unscoped tokens retain their old team-create behavior. Fresh email login and team changes
+with typed credentials require the updated CLI on the affected paths. This is a controlled upgrade
+requirement, not full support for all fresh-login flows in old clients. The released-wheel test in
+`test_released_cli_compat` checks that refusal preserves config bytes and the prior usable team.

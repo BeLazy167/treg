@@ -3,17 +3,18 @@
 from __future__ import annotations
 
 from functools import lru_cache
+from typing import Literal
 
-from pydantic import field_validator
+from pydantic import Field, PositiveInt, field_validator
 from urllib.parse import urlsplit
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-# Every hostname the reference deployment has EVER answered to. treg moved
+# Every hostname the hosted service has answered to. treg moved
 # treg.superdesign.dev → treg.to (2026-08); installed CLIs, skill.md files, .mcp.json configs and
 # MCP OAuth grants exist against BOTH names, so both stay valid everywhere a host or audience is
-# recognized — mcp.py's transport allow-lists, mcp_oauth's token audiences, api.py's login-callback
-# anchoring — REGARDLESS of which one `public_url` currently points at. That symmetry is what makes
+# recognized by mcp.py's transport allow-lists, mcp_oauth's token audiences and api.py's login callback,
+# regardless of which one `public_url` currently points at. That symmetry is what makes
 # a TREG_PUBLIC_URL revert a complete rollback: grants and logins minted on either name survive the
 # flip in either direction. Self-hosters are unaffected: these only ADD accepted names, and none of
 # them resolve to a self-hosted deployment.
@@ -46,15 +47,23 @@ def _blocked_email_domains(raw: str) -> frozenset[str]:
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_prefix="TREG_", extra="ignore")
 
+    review_sample_rate: float = Field(default=0, ge=0, le=1)
+    feedback_hint_rate: float = Field(default=0, ge=0, le=1)
+    # Review invitations a team can receive per hour, whatever its call volume. Sampling decides
+    # WHICH calls qualify; this decides how many of them a team is actually asked about.
+    review_budget_per_hour: int = Field(default=5, ge=1)
+    # The shared key-value store (Redis protocol). Empty = an in-process fallback; see infra/kv.py.
+    kv_url: str = ""
+
     # SQLite locally, Postgres on Render — same code path, just swap the URL.
     database_url: str = "sqlite+aiosqlite:///./treg.db"
 
     @field_validator("database_url")
     @classmethod
     def _async_pg_driver(cls, v: str) -> str:
-        # Render's `fromDatabase` (render.yaml) injects a bare `postgres://`/`postgresql://` URL, but
+        # Some hosts inject a bare `postgres://`/`postgresql://` URL, but
         # our async engine (create_async_engine) needs the asyncpg driver. Rewrite the scheme so the
-        # Blueprint can auto-wire the DB with no manual URL editing. No-op for sqlite / already-drivered URLs.
+        # a deployment can auto-wire the DB with no manual URL editing. No-op for sqlite / already-drivered URLs.
         if v.startswith("postgres://"):
             v = "postgresql://" + v[len("postgres://") :]
         if v.startswith("postgresql://"):
@@ -119,7 +128,7 @@ class Settings(BaseSettings):
     # a code change — and so the ledger records the rate that was in force for each call.
     platform_margin: float = 0.0
     # The signup gift, in micro-USD (1e-6 USD): $1 buys ~1,600 catalog calls, enough for an agent to
-    # get real work done before it ever sees a payment form. Granted once, at org creation only.
+    # get real work done before it ever sees a payment form. Granted once per verified user, when creating an eligible team.
     promo_grant_micro: int = 1_000_000
     # Upstream HTTP timeout for a relayed call (the shared httpx client). Also the base of the hold
     # reaper's cutoff: a hold older than call_timeout_s + hold_grace_s belongs to a call that can no
@@ -166,7 +175,13 @@ class Settings(BaseSettings):
     platform_key_serpapi: str = ""
     platform_key_moz: str = ""          # base64 of "access_id:secret_key" (HTTP Basic)
     platform_key_seranking: str = ""
+    platform_key_trykitt: str = ""  # x-api-key; credits.jobCredits reports USD
+    platform_key_contactout: str = ""  # raw API token; injected into the token header
+    platform_key_millionverifier: str = ""  # raw key; injected as ?api=…
     platform_key_hunter: str = ""
+    platform_key_sumble: str = ""  # Bearer; Pro monthly credits, optional vendor auto-top-up
+    platform_key_harvestapi: str = ""  # X-API-Key; prepaid USD wallet
+    platform_key_quickenrich: str = ""  # Bearer; monthly subscription credits, not auto-top-up
     platform_key_leadmagic: str = ""
     platform_key_lusha: str = ""
     platform_key_pdl: str = ""
@@ -202,9 +217,12 @@ class Settings(BaseSettings):
     platform_key_crustdata: str = ""  # Bearer key; every call also needs the pinned x-api-version header
     platform_key_aviato: str = ""     # Bearer key; $10 auto-top-up buys 1,000 credits
     platform_key_exa: str = ""        # x-api-key; dollar-metered ($7/1k searches, $1/1k pages); settles from costDollars.total
+    platform_key_cloro: str = ""      # Bearer key (sk_live_…); Hobby metered rate $0.0004/credit; settles from X-Credits-Charged
     platform_key_minimax: str = ""    # Bearer key for asynchronous Hailuo generation
     platform_key_openrouter: str = ""  # Bearer key for asynchronous routed generation
     platform_key_replicate: str = ""  # Bearer token for official asynchronous models
+    platform_key_reapi: str = ""      # Bearer key; prepaid credits at $0.001, Seedance 2.5 + image models
+    platform_key_piapi: str = ""      # X-API-Key; prepaid USD balance, Seedance 2.5 less-restriction + image models
     # Overflow aggregators (docs/PROVIDER-CAPACITY-PLAN.md §4.3): treg-owned accounts that serve the
     # SAME vendor endpoint when our direct account is out. Env only, never a Secret row, never logged.
     # Not platform_key_* on purpose: they are a credential RUNG (platform-overflow), not a provider.
@@ -294,6 +312,28 @@ class Settings(BaseSettings):
     # fresh hits from the store). Any other value degrades to "off" — a typo must disable, never
     # enable. Staged deliberately so production can sit in "shadow" while phase 0 measures.
     archive_mode: str = "off"
+    archive_body_write: Literal["db", "both", "r2"] = "db"
+    archive_change_observation_enabled: bool = True
+    archive_body_read_lookup: Literal["db", "r2-first"] = "db"
+    archive_body_read_result: Literal["db", "r2-first"] = "db"
+    archive_body_read_terminal: Literal["db", "r2-first"] = "db"
+    archive_object_store_endpoint: str = ""
+    archive_object_store_bucket: str = ""
+    archive_object_store_access_key_id: str = Field(default="", repr=False)
+    archive_object_store_secret_access_key: str = Field(default="", repr=False)
+    archive_r2_upload_concurrency: int = Field(default=8, ge=1, le=128)
+    archive_r2_max_pending: int = Field(default=256, ge=1, le=4096)
+    archive_r2_max_pending_bytes: int = Field(default=128 * 1024 * 1024, ge=1)
+    archive_r2_timeout_s: float = Field(default=10.0, gt=0, le=120)
+    archive_r2_read_timeout_s: float = Field(default=2.0, gt=0, le=120)
+    archive_r2_terminal_attempts: int = Field(default=3, ge=1, le=5)
+
+    # Exact endpoint IDs, comma-separated. Empty means no serving, even in serve mode.
+    archive_serve_endpoints: str = ""
+    # Stable team/endpoint cohorts; 0 disables serving, 100 includes every team.
+    archive_serve_percent: int = 0
+    # Operator freshness ceilings by exact endpoint ID; independent of vendor declarations.
+    archive_serve_max_age_s: dict[str, PositiveInt] = Field(default_factory=dict)
     # Bodies above this size are hash-counted but never stored (skipped whole, not truncated):
     # the archive is for API JSON answers, not downloads. Statistics still record size_bytes.
     archive_max_body_bytes: int = 2_000_000
@@ -306,7 +346,7 @@ class Settings(BaseSettings):
     # refresh calls ONE provider may spend per UTC day. A refresh is treg's own vendor spend with
     # no caller attached, so the cap is the brake — 0 disables refreshing without touching serving.
     archive_refresh_interval_s: int = 300
-    archive_refresh_daily_cap: int = 50
+    archive_refresh_daily_cap: int = 0
     # The pruner (profit-shaped: a stored body is inventory, and inventory that cannot sell goes
     # first). Runs whenever the archive records (shadow or serve); 0 batch disables it.
     archive_prune_interval_s: int = 3600       # one pass per hour

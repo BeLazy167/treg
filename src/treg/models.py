@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from datetime import date, datetime, timezone
 
-from sqlalchemy import BigInteger, JSON, Column, Index, Integer, UniqueConstraint, text
+from sqlalchemy import BigInteger, Boolean, JSON, CheckConstraint, Column, Index, Integer, UniqueConstraint, text
 from sqlmodel import Field, SQLModel
 
 # Role ordering for gates (owner > admin > member > viewer).
@@ -28,7 +28,7 @@ def _now() -> datetime:
 
 class Org(SQLModel, table=True):
     """A tenant (team). Owns secrets/tools/bundles; resources are scoped by `org_id`.
-    Every user gets a personal org on registration (like Vercel/GitHub) — no empty state.
+    Verified sign-in creates only a user; the user explicitly creates or joins a team.
     """
 
     id: int | None = Field(default=None, primary_key=True)
@@ -137,6 +137,14 @@ class User(SQLModel, table=True):
 
     id: int | None = Field(default=None, primary_key=True)
     email: str = Field(index=True, unique=True)
+    # Only an inbox proof or a provider-verified email can set this. Legacy /users and
+    # admin-visible invitation codes are not email proofs.
+    email_verified_at: datetime | None = Field(default=None)
+    # Consumed atomically with the signup grant; survives leaving/deleting every team.
+    # The DB default is false so pre-upgrade users and old writers never gain a fresh claim.
+    signup_promo_available: bool = Field(
+        default=True, sa_column=Column(Boolean, nullable=False, server_default=text("false")),
+    )
     is_superadmin: bool = Field(default=False)  # cross-tenant platform admin (see /admin/*)
     suspended: bool = Field(default=False)  # suspended users cannot authenticate
     # Bumped to revoke every token this user holds at once (session cookie + CLI tokens). A signed
@@ -308,13 +316,8 @@ class CallRecord(SQLModel, table=True):
                       Index("ix_callrecord_endpoint_id_id", "endpoint_id", "id"),
                       # EVERY question asked of this table is "… since <time>", and until now no
                       # index carried `created_at`, so the planner picked an index for the other
-                      # column and filtered the date in memory — reading the endpoint's or the
-                      # org's WHOLE history to answer a 30-day question. Measured on prod
-                      # 2026-09-06 at 2.94M rows / 1.68 GB: `ix_callrecord_endpoint_id_id` had
-                      # read 1.60 BILLION tuples across 570k scans (the catalog observation
-                      # refresh, `domain/catalog/stats.py`, WINDOW_DAYS=30), `ix_callrecord_org_id`
-                      # 295M across 70k (the per-member daily counts in `routers/orgs.py`), and
-                      # the table had taken 80,932 sequential scans for 27 BILLION tuples.
+                      # column and filtered the date in memory, reading an endpoint's or an org's
+                      # whole history to answer a bounded time-window question.
                       #
                       # That load is why the API pool saturates: the three pools bulkhead
                       # CONNECTIONS, not the one database's CPU, so a scan of this table makes
@@ -327,7 +330,10 @@ class CallRecord(SQLModel, table=True):
                       # `ix_callrecord_user_email` - measured 2.6 s of 3.0 s on prod 2026-09-06 for
                       # a member with 287k rows. Revision 0023 builds it concurrently.
                       Index("ix_callrecord_org_id_user_email_created_at", "org_id", "user_email", "created_at"),
-                      Index("ix_callrecord_org_id_created_at", "org_id", "created_at"),)
+                      Index("ix_callrecord_org_id_created_at", "org_id", "created_at"),
+                      Index("ix_callrecord_org_key_id", "org_id", "api_key_id", "id",
+                            postgresql_where=text("api_key_id IS NOT NULL"),
+                            sqlite_where=text("api_key_id IS NOT NULL")),)
 
     id: int | None = Field(default=None, primary_key=True)
     org_id: int | None = Field(default=None, foreign_key="org.id", index=True)
@@ -346,7 +352,7 @@ class CallRecord(SQLModel, table=True):
     client: str = Field(default="", index=True)
     # The key snapshot used for this call. Historical rows before managed-key tracking keep NULL.
     # Logical reference only: Activity must survive key and membership lifecycle changes.
-    api_key_id: int | None = Field(default=None, index=True)
+    api_key_id: int | None = Field(default=None)
     api_key_name: str | None = Field(default=None)
     api_key_prefix: str | None = Field(default=None)
     # ---- marketplace telemetry (NULL on a plain tool call) -------------------------------------
@@ -429,6 +435,12 @@ class RunRecord(SQLModel, table=True):
     `argv` never contains a secret value (secrets are injected via env, not the command line).
     """
 
+    __table_args__ = (
+        Index("ix_runrecord_org_key_id", "org_id", "api_key_id", "id",
+              postgresql_where=text("api_key_id IS NOT NULL"),
+              sqlite_where=text("api_key_id IS NOT NULL")),
+    )
+
     id: int | None = Field(default=None, primary_key=True)
     org_id: int | None = Field(default=None, foreign_key="org.id", index=True)
     user_email: str = Field(index=True)
@@ -437,7 +449,7 @@ class RunRecord(SQLModel, table=True):
     exit_code: int
     duration_ms: int
     client: str = Field(default="")  # runtime attribution, same contract as CallRecord.client
-    api_key_id: int | None = Field(default=None, index=True)
+    api_key_id: int | None = Field(default=None)
     api_key_name: str | None = Field(default=None)
     api_key_prefix: str | None = Field(default=None)
     created_at: datetime = Field(default_factory=_now)
@@ -1212,6 +1224,64 @@ class Feedback(SQLModel, table=True):
     created_at: datetime = Field(default_factory=_now)
 
 
+class FeedbackHandling(SQLModel, table=True):
+    """Internal admin state. Only treg-internal writes; absence means open/version zero."""
+
+    __table_args__ = (
+        CheckConstraint("status IN ('open', 'investigating', 'resolved', 'rejected')", name="ck_feedbackhandling_status"),
+        CheckConstraint("version >= 0", name="ck_feedbackhandling_version"),
+        Index("ix_feedbackhandling_status_feedback_id", "status", "feedback_id"),
+    )
+    feedback_id: int = Field(primary_key=True, foreign_key="feedback.id", ondelete="CASCADE")
+    status: str = Field(default="open")
+    assignee: str | None = Field(default=None)
+    version: int = Field(default=0)
+    updated_at: datetime = Field(default_factory=_now)
+
+
+class FeedbackHandlingEvent(SQLModel, table=True):
+    """Append-only internal handling history; no caller-facing API exposes these notes."""
+
+    __table_args__ = (
+        UniqueConstraint("feedback_id", "version", name="uq_feedbackhandlingevent_version"),
+        CheckConstraint("version > 0", name="ck_feedbackhandlingevent_version"),
+        CheckConstraint("from_status IN ('open', 'investigating', 'resolved', 'rejected') AND to_status IN ('open', 'investigating', 'resolved', 'rejected')", name="ck_feedbackhandlingevent_status"),
+        CheckConstraint("source IN ('web', 'api')", name="ck_feedbackhandlingevent_source"),
+        CheckConstraint("to_status NOT IN ('resolved', 'rejected') OR to_status = from_status OR length(trim(note)) > 0", name="ck_feedbackhandlingevent_closure_note"),
+    )
+    id: str = Field(primary_key=True)  # UUID generated by the internal admin server
+    feedback_id: int = Field(foreign_key="feedback.id", ondelete="CASCADE")
+    version: int
+    from_status: str
+    to_status: str
+    from_assignee: str | None = Field(default=None)
+    to_assignee: str | None = Field(default=None)
+    note: str = Field(default="")
+    links: list[str] = Field(default_factory=list, sa_column=Column(JSON, nullable=False))
+    actor: str
+    source: str
+    created_at: datetime = Field(default_factory=_now)
+
+
+class CallReview(SQLModel, table=True):
+    """One private usefulness rating per catalog call, attributed by the server."""
+
+    __table_args__ = (Index("ix_callreview_endpoint_id_created_at", "endpoint_id", "created_at"),)
+
+    id: int | None = Field(default=None, primary_key=True)
+    org_id: int = Field(foreign_key="org.id", index=True)
+    user_email: str
+    call_id: str = Field(unique=True, index=True)
+    endpoint_id: str = Field(index=True)
+    provider: str | None = Field(default=None)
+    routed_via: str | None = Field(default=None)
+    invited: bool = Field(default=False)
+    client: str = Field(default="")
+    usefulness: str
+    reason: str | None = Field(default=None)
+    created_at: datetime = Field(default_factory=_now)
+
+
 class ToolRequest(SQLModel, table=True):
     """A "the catalog doesn't have X" report — filed from the catalog page, the CLI, or by an
     agent mid-search over MCP. Demand signal for which provider to key next; reviewed by querying
@@ -1380,11 +1450,9 @@ class ArchiveKey(SQLModel, table=True):
 
     Timer state is AIMD (grow slowly on stability, shrink fast on change): `ttl_s` is the current
     per-key timer, adjusted by the learner on every refetch outcome. `change_seen` / `stable_seen`
-    count outcomes so the learner and the admin report can show their evidence. `volatile_paths`
-    holds the learned noisy JSON paths (request ids, server timestamps) excluded from change
-    detection — stored per key, applied before comparing, never applied to stored bytes.
-
-    PR 1 creates the shape only; nothing writes it until the recorder lands (PR 2).
+    count eligible observations. Only found-to-found comparisons can count stable; explicit
+    appearance/disappearance counts changed. Comparisons use raw hashes without changing stored
+    bytes. `volatile_paths` is a retired column retained for schema compatibility.
     """
 
     __table_args__ = (UniqueConstraint("key_hash", name="uq_archive_key_hash"),)
@@ -1398,8 +1466,8 @@ class ArchiveKey(SQLModel, table=True):
     ttl_s: int = Field(default=0)                  # current per-key timer; 0 = no serving opinion yet
     fetched_at: datetime = Field(default_factory=_now, index=True)  # newest snapshot's fetch time
     # --- change statistics (the learner's evidence) ---
-    change_seen: int = Field(default=0)            # refetches whose stripped hash differed
-    stable_seen: int = Field(default=0)            # refetches whose stripped hash matched
+    change_seen: int = Field(default=0)            # eligible observations classified changed
+    stable_seen: int = Field(default=0)            # positive observations classified stable
     last_changed_at: datetime | None = Field(default=None)
     volatile_paths: list = Field(default_factory=list, sa_column=Column(JSON))
     # --- demand (what earns a refresh) ---
@@ -1416,12 +1484,20 @@ class ArchiveKey(SQLModel, table=True):
     # must replay them or its recording lands under a different key than the caller's question.
     req_headers: dict = Field(default_factory=dict, sa_column=Column(JSON))
 
+    # Null state marks legacy keys, classified lazily. The pointer belongs to this key and
+    # names the last found/empty observation; errors cannot replace decisive evidence.
+    # No cyclic FK: archive owns both writes, validates key_id, and never deletes snapshots.
+    result_state: str | None = Field(default=None)
+    result_snapshot_id: int | None = Field(default=None)
+    # Detect writes from an older binary that did not maintain the result decision.
+    result_observed_version: int | None = Field(default=None)
+
 
 class ArchiveSnapshot(SQLModel, table=True):
-    """One stored answer — a version in a key's history. The newest fresh one is the cache.
+    """One historical answer. Cache eligibility is tracked separately on ArchiveKey.
 
-    Bytes are kept VERBATIM: change detection strips noisy fields on a comparison copy, never on
-    what is stored, so a served hit replays exactly what the vendor sent (relay faithfulness,
+    Bytes are kept VERBATIM: strict comparison uses raw hashes; legacy noise detection only
+    operates on a comparison copy. A hit replays exactly what the vendor sent (relay faithfulness,
     extended through time). `content_hash` (sha256 of the raw body) deduplicates: consecutive
     identical answers add a version row but reference the same bytes via `body_of` instead of
     storing them again — the history of "asked on these dates, same answer" is itself data.
@@ -1460,6 +1536,40 @@ class ArchiveSnapshot(SQLModel, table=True):
     enc: str | None = Field(default=None)
 
 
+    # NULL is a legacy DB row. R2 objects are addressed directly by content_hash.
+    body_storage: str | None = Field(default=None)
+
+
+class ArenaRun(SQLModel, table=True):
+    """Private, bounded Arena run. Encrypted payload owns the frozen plan and result snapshots."""
+    __table_args__ = (UniqueConstraint("org_id", "user_id", "request_key", name="uq_arena_request"),)
+    id: str = Field(primary_key=True)
+    org_id: int = Field(foreign_key="org.id", index=True)
+    user_id: int = Field(index=True)  # provenance; survives membership removal without granting access
+    request_key: str
+    fingerprint: str
+    capability: str
+    mode: str
+    state: str = "running"
+    payload: str
+    created_at: datetime = Field(default_factory=_now)
+    deadline_at: datetime
+    expires_at: datetime = Field(index=True)
+    cancel_requested: bool = False
+    revealed_at: datetime | None = None
+
+
+class ArenaEvaluation(SQLModel, table=True):
+    """One immutable preference for a run's creator, including its exposure context."""
+    __table_args__ = (UniqueConstraint("run_id", name="uq_arena_evaluation"),)
+    id: str = Field(primary_key=True)
+    org_id: int = Field(foreign_key="org.id", index=True)
+    run_id: str = Field(foreign_key="arenarun.id", index=True)
+    user_id: int
+    kind: str
+    payload: str  # encrypted selection, exposure snapshot, reasons and optional comment
+    created_at: datetime = Field(default_factory=_now)
+
 
 class ArchiveEndpointStat(SQLModel, table=True):
     """The archive report's running totals, one row per endpoint — maintained by the recorder in
@@ -1478,3 +1588,35 @@ class ArchiveEndpointStat(SQLModel, table=True):
     bodies_kept: int = Field(default=0)            # versions whose bytes were kept
     kept_bytes: int = Field(default=0, sa_column=Column(BigInteger, nullable=False, server_default="0"))  # already past int32 on prod
     newest_fetch: datetime | None = Field(default=None)
+
+
+class ArenaObservation(SQLModel, table=True):
+    """Derived, non-content call evidence; written only by application.arena_insights."""
+    __table_args__ = (Index("ix_arenaobservation_window", "version", "created_at"),
+                      Index("ix_arenaobservation_request", "version", "endpoint", "input", "request_hash", "created_at"),)
+    id: int = Field(primary_key=True)  # audit ID, deliberately no FK into lossy audit retention
+    version: str
+    endpoint: str
+    task: str
+    input: str
+    request_hash: str
+    category: str
+    duration_ms: int | None = None
+    created_at: datetime
+
+
+class ArenaInsightState(SQLModel, table=True):
+    """Persistent collection cursor and public aggregate, never raw request/response content."""
+    id: str = Field(primary_key=True)
+    cursor: int = 0
+    scan_until: datetime
+    updated_at: datetime | None = None
+    payload: dict = Field(default_factory=dict, sa_column=Column(JSON, nullable=False))
+
+
+class ArenaVerificationSnapshot(SQLModel, table=True):
+    """Published aggregate only; private contact evidence never enters this table."""
+    id: str = Field(primary_key=True)
+    source_digest: str
+    published_at: datetime = Field(index=True)
+    payload: dict = Field(default_factory=dict, sa_column=Column(JSON))

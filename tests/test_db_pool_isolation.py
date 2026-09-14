@@ -34,7 +34,13 @@ EXPECTED_MAKERS: dict[str, set[str]] = {
     "api.py": {API}, "mcp.py": {API}, "routers/resources.py": {API},
     "application/auth.py": {API}, "application/billing.py": {API}, "application/connect.py": {API},
     "application/asynctasks.py": {API},
+    # Interactive paid runs: short transactions between legs, never across upstream waits.
+    "application/arena.py": {API},
+    "application/arena_insights.py": {API, BACKGROUND},  # snapshot read vs incremental worker
+    "application/arena_verification_insights.py": {API},  # explicit aggregate publication, no worker
+
     "application/feedback.py": {API},  # synchronous intake; admin reads use get_admin_session
+
     "application/referrals.py": {API}, "application/signup.py": {API},
     "application/onboard/__init__.py": {API},
     "application/call/authorize.py": {API}, "application/call/idempotency.py": {API},
@@ -55,6 +61,8 @@ EXPECTED_MAKERS: dict[str, set[str]] = {
     "bootstrap.py": {BACKGROUND},
     # `lookup` is on the API pool inside a caller's /call/; every write here is background.
     "archive.py": {API, BACKGROUND},
+    # Request fallbacks use API; observation fallbacks share archive's background budget.
+    "archive_bodies.py": {API, BACKGROUND},
 }
 
 
@@ -125,15 +133,58 @@ def test_the_background_pool_fits_every_consumer_not_just_the_throttled_ones():
     assert infra_db.POOL_SPECS["background"]["pool_size"] >= sum(consumers.values())
 
 
+def _background_sites(tree):
+    from collections import Counter
+    class Sites(ast.NodeVisitor):
+        def __init__(self):
+            self.functions = []
+            self.sites = Counter()
+        def visit_AsyncFunctionDef(self, node):
+            self.functions.append(node.name)
+            self.generic_visit(node)
+            self.functions.pop()
+        visit_FunctionDef = visit_AsyncFunctionDef
+        def visit_Name(self, node):
+            if node.id == BACKGROUND and self.functions:
+                self.sites[".".join(self.functions)] += 1
+        def visit_Attribute(self, node):
+            if node.attr == BACKGROUND and self.functions:
+                self.sites[".".join(self.functions)] += 1
+            self.generic_visit(node)
+    visitor = Sites()
+    visitor.visit(tree)
+    return visitor.sites
+
+
+BACKGROUND_SITES = {
+    "domain/identity/api_keys.py:_write_last_used": "api_keys last used",
+    "bootstrap.py:_lifespan.lifespan": "adsconv.worker",
+    "bootstrap.py:create_app": "catalog observation refresh",
+    "audit.py:_write_batch": "audit._flush",
+    "archive.py:_store_locked": "archive._store/_touch",
+    "archive.py:_touch_write": "archive._store/_touch",
+    "archive.py:_ignored_matches": "archive._store/_touch",
+    "archive.py:_read_change_body": "archive._store/_touch",
+    "archive_bodies.py:_db_fallback": "archive._store/_touch",
+    "archive.py:prune_once": "archive.prune_worker",
+    "archive.py:refresh_once": "archive.refresh_worker",
+    "routers/admin.py:_purge_expired_error_evidence": "admin evidence sweep",
+    "application/arena_insights.py:collect_batch": "arena_insights.worker",
+}
+
+
 def test_every_background_session_site_is_named_in_the_consumer_list():
-    """The list sizes the pool, so a consumer missing from it is a row silently dropped under load.
-    Cross-checked against the modules classified above rather than trusted."""
-    background_modules = {m for m, pools in EXPECTED_MAKERS.items() if BACKGROUND in pools}
-    named = " ".join(infra_db.BACKGROUND_CONSUMERS)
-    for module in background_modules:
-        stem = pathlib.Path(module).stem
-        assert stem in named or stem in {"bootstrap", "admin"}, (
-            f"{module} opens background sessions but names no entry in BACKGROUND_CONSUMERS")
+    actual = {f"{module}:{function}": count
+              for module, tree in _modules_opening_sessions().items()
+              for function, count in _background_sites(tree).items()}
+    assert actual == {site: 1 for site in BACKGROUND_SITES}
+    assert set(BACKGROUND_SITES.values()) <= infra_db.BACKGROUND_CONSUMERS.keys()
+
+
+def test_background_guard_detects_another_site_in_an_existing_module():
+    tree = ast.parse("async def added():\n async with background_session_maker(): pass")
+    assert _background_sites(tree) == {"added": 1}
+    assert "archive.py:added" not in BACKGROUND_SITES
 
 
 def test_the_spec_is_what_the_engines_were_actually_built_with():

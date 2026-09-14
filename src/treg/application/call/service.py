@@ -23,7 +23,7 @@ from ...sandbox_identity import visitor_name
 from ...domain.capacity import signatures as capacity_signatures
 from ...domain.capacity.view import view as capacity_view
 from ...infra.upstream.limiter import limiter as provider_limiter
-from ...infra.upstream.relay import relay
+from ...infra.upstream.relay import relay, scope_shared_idempotency_key
 from .. import asynctasks as async_task_app
 from ...domain import asynctasks as asynctasks_rules
 from .authorize import authorize_call, enforce_public_demo_limit
@@ -70,7 +70,6 @@ from .types import (
     CallInput,
     FinalizationState,
     GatewayFailed,
-    ReservationFailed,
     ResolutionFailed,
     UpstreamRequest,
     UpstreamResponse,
@@ -163,30 +162,16 @@ async def _await_before_reserve(awaitable, request: _ApplicationRequest, call_re
         raise
 
 
-def _enforce_caller_max_cost(request, mk: MarketplaceCall) -> None:
-    """`X-Treg-Route-Max-Cost` on a DIRECT metered call: refuse before the reserve when what the
-    balance would be debited (estimate with margin) exceeds the caller's USD ceiling. Unlike /do/
-    there is NO default — a direct call named its endpoint and page size on purpose, so only an
-    explicit header caps it. Same header and the same `route_max_cost` 402 shape as the routed path,
-    so one agent-side handler covers both. Asked for by a customer whose runner approved $0.23 and
-    was billed $0.56 (2026-09-04): the price was knowable before the call, but nothing enforced it."""
+def _set_caller_max_cost(request, mk: MarketplaceCall) -> None:
+    """Carry the caller's ceiling to the common reservation gate, including overflow."""
     raw = request.headers.get(routed.MAX_COST_HEADER)
     if raw is None or not str(raw).strip():
         return
     try:
-        cap_micro = int(round(float(raw) * 1_000_000))
-    except ValueError:
+        mk.max_cost_micro = int(round(float(raw) * 1_000_000))
+    except (ValueError, OverflowError):
         raise ResolutionFailed("catalog_parameter_invalid", status_code=400,
                                detail=f"{routed.MAX_COST_HEADER} must be a USD number, got {raw!r}")
-    charged = ledger.with_margin(mk.estimate_micro)
-    if charged > cap_micro:
-        raise ReservationFailed("route_max_cost", status_code=402, detail={
-            "error": "route_max_cost", "endpoint_id": mk.endpoint_id, "provider": mk.provider,
-            "max_cost_micro": cap_micro, "estimated_cost_micro": charged,
-            "message": (f"{mk.endpoint_id} would reserve ~${ledger.usd(charged):g} and "
-                        f"{routed.MAX_COST_HEADER} is ${cap_micro / 1_000_000:g}; nothing was charged. "
-                        f"Ask for fewer rows/targets or raise the ceiling."),
-        })
 
 
 def _client_name(request: _ApplicationRequest) -> str:
@@ -268,26 +253,6 @@ def _burst_retry_after(provider: str, response: UpstreamResponse, body: bytes) -
     if signal.retry_after_s > SMOOTHING_RETRY_MAX_S:
         return None
     return float(signal.retry_after_s)
-
-
-def _hit_verdict(mk: MarketplaceCall, status: int, body: bytes) -> bool | None:
-    """Found or not, read off a 2xx body by the endpoint's fixture-verified routing adapter; None
-    when nothing can tell. The verdict is all that is kept — never the body."""
-    if not 200 <= status < 300:
-        return None
-    adapter = catalog_store.load().adapters.get(mk.endpoint_id)
-    if adapter is None or not adapter.verified:
-        return None
-    try:
-        doc = json.loads(body)
-    except ValueError:
-        return None
-    if not isinstance(doc, dict):
-        return None
-    try:
-        return not adapter.is_miss(doc)
-    except Exception:  # noqa: BLE001 — an undecidable predicate is a NULL, not a wrong verdict
-        return None
 
 
 def _refusal_kind(status_code: int) -> str | None:
@@ -410,6 +375,7 @@ async def _execute_call(request: _ApplicationRequest, upstream_client: httpx.Asy
     request.state.idem_claim = intake.claim
 
     drop_params: set[str] = set()
+    streaming_free_result = False
     served_hit = False  # a cached hit — set where the archive answers instead of the vendor
     # The archive identities of this call's answer (question key + exact bytes), set where the
     # archive records or serves; kept on the audit row so `/calls/{id}/result` can find it.
@@ -581,8 +547,15 @@ async def _execute_call(request: _ApplicationRequest, upstream_client: httpx.Asy
     audit_org_id, audit_email, audit_tool = caller.org_id, caller.email, tool.name
     audit_slug = caller.org.slug  # PostHog group key — must match the browser's posthog.group('team', slug)
 
+    cache_diagnostics: dict = {"cache_outcome": "not_attempted", "cache_mode": archive.mode(),
+                               "cache_comparison_mode": "json",
+                               "cache_ttl_policy": "adaptive",
+                               "cache_rollout_percent": get_settings().archive_serve_percent}
+
     def _capture(props: dict) -> None:
-        analytics.capture(audit_email, "tool_called", props, groups={"team": audit_slug})
+        analytics.capture(audit_email, "tool_called", props | cache_diagnostics |
+                          {"archive_body_write": get_settings().archive_body_write},
+                          groups={"team": audit_slug})
 
     def _overflow_event(props: dict, outcome, charged: int) -> dict:
         """What a caller rescued by overflow actually experienced: the child's answer at the
@@ -738,6 +711,9 @@ async def _execute_call(request: _ApplicationRequest, upstream_client: httpx.Asy
             read_body=request.body,
         ), request, call_ref)
 
+    if mk is not None and mk.metered:
+        _set_caller_max_cost(request, mk)
+
     if mk is not None and mk.skip_direct:
         # The resolver knows treg's own account is out and an overflow route is on: no direct
         # attempt, no parent hold — straight to the child cycle (plan §4 ladder, tier 4b). The DB
@@ -795,7 +771,6 @@ async def _execute_call(request: _ApplicationRequest, upstream_client: httpx.Asy
             # Secret reads above opened the dependency session. Release its pool slot before the
             # application opens the short transaction that owns the reservation.
             await db.commit()
-            _enforce_caller_max_cost(request, mk)
             await _platform_reserve(mk, caller, meta=meta, call_ref=call_ref)
             request.context.finalization = FinalizationState.OPEN
         except asyncio.CancelledError:
@@ -851,14 +826,20 @@ async def _execute_call(request: _ApplicationRequest, upstream_client: httpx.Asy
         # is `expire_on_commit=False`, so `tool`/`secrets`/`caller.org` stay usable without a reload.
         await db.commit()
         try:
+            platform_tier = mk is not None and mk.tier == "platform"
+            raw_headers = tuple(request.headers.raw)
+            if platform_tier:
+                # Rewrite 4 of the relay's faithfulness contract: every org shares ONE provider
+                # account here, so a caller's Idempotency-Key must be partitioned by org before it
+                # reaches a provider that honors it (relay.py explains the leak it closes).
+                raw_headers = scope_shared_idempotency_key(raw_headers, caller.org_id)
             upstream_request = UpstreamRequest(
                 method=request.method,
-                raw_headers=tuple(request.headers.raw),
+                raw_headers=raw_headers,
                 query_items=tuple(request.query_params.multi_items()),
                 body_stream=request.stream,
                 has_body=request.has_body,
             )
-            platform_tier = mk is not None and mk.tier == "platform"
             if platform_tier:
                 # Burst smoothing, half one (plan §4.4): many callers share treg's key, so a call that
                 # would exceed the provider's published rate waits briefly (≤ 2 s, in-process, no DB —
@@ -875,20 +856,28 @@ async def _execute_call(request: _ApplicationRequest, upstream_client: httpx.Asy
             # for, tagged `cached`; the founder's deferred pricing decision attaches to that tag.
             served = None
             # A probe must reach the vendor: an archived answer proves nothing about capacity.
-            if mk is not None and mk.metered and mk.probe_lock_id is None and archive.serving():
+            if (mk is not None and mk.metered and not mk.streamable_free_result
+                    and mk.probe_lock_id is None and archive.serving()):
+                lookup_started = time.monotonic()
                 try:
                     served = await archive.lookup(
                         method=request.method, endpoint_id=mk.endpoint_id,
                         url=archive.key_url(upstream_url,
                                             list(request.query_params.multi_items()),
                                             drop_params or set()),
-                        caller_body=caller_body, request_headers=request.headers)
+                        caller_body=caller_body, request_headers=request.headers,
+                        cohort=str(audit_org_id), diagnostics=cache_diagnostics)
                 except Exception:  # noqa: BLE001 — lookup swallows internally; this catches even a
                     served = None  # fault in its own plumbing. Cache trouble must cost a vendor
                     #              call, never a 500.
+                    cache_diagnostics["cache_outcome"] = "lookup_error"
+                finally:
+                    cache_diagnostics["cache_lookup_ms"] = round(
+                        (time.monotonic() - lookup_started) * 1000, 3)
             if served is not None:
                 body = served["body"]
                 served_hit = True
+                request.context.cached = served_hit
                 archive_key_hash, archive_content_hash = served["key_hash"], served["content_hash"]
                 response = _served_response(served, body)
             else:
@@ -898,7 +887,10 @@ async def _execute_call(request: _ApplicationRequest, upstream_client: httpx.Asy
                     drop_params=drop_params or None,
                     force_identity=mk is not None and (mk.metered or mk.free_owned_poll),
                 )
-            if served is None and mk is not None and (mk.metered or mk.free_owned_poll):
+            streaming_free_result = (mk is not None and mk.streamable_free_result
+                                     and request.method == "GET" and 200 <= response.status < 300)
+            if (served is None and mk is not None and (mk.metered or mk.free_owned_poll)
+                    and not streaming_free_result):
                 # Settlement reads the body; owned free polls also need it to learn result ownership.
                 # A failure while draining remains an upstream failure on either path.
                 response, body = await _buffer_response(response)
@@ -937,6 +929,9 @@ async def _execute_call(request: _ApplicationRequest, upstream_client: httpx.Asy
                 if mk.metered and archive.recording() and 200 <= response.status < 300:
                     _ct = next((v.decode("latin-1") for k, v in response.raw_headers
                                 if k.lower() == b"content-type"), "")
+                    body_observation = archive.archive_bodies.StorageReport(
+                        call_ref=call_ref, emit=lambda props: analytics.capture(
+                            audit_email, "archive_body_stored", props, groups={"team": audit_slug}))
                     archive_key_hash, archive_content_hash = archive.record(
                         method=request.method, endpoint_id=mk.endpoint_id, provider=mk.provider,
                         url=archive.key_url(upstream_url,
@@ -944,7 +939,8 @@ async def _execute_call(request: _ApplicationRequest, upstream_client: httpx.Asy
                                             drop_params or set()),
                         caller_body=caller_body,
                         headers={k: request.headers.get(k, "") for k in ("accept", "accept-language")},
-                        status_code=response.status, media_type=_ct, body=body)
+                        status_code=response.status, media_type=_ct, body=body,
+                        observation=body_observation)
             elif response.status >= 400:
                 # Preserve streaming for own-key and own-tool calls while retaining only the small
                 # diagnostic head. The replacement response replays every consumed byte verbatim.
@@ -1060,6 +1056,7 @@ async def _execute_call(request: _ApplicationRequest, upstream_client: httpx.Asy
             else:
                 charged, observed = await _platform_settle(
                     mk, response.status, body, headers=httpx.Headers(response.raw_headers),
+                    observed_override=0 if streaming_free_result else None,
                     # `provider_failed_`, not `call_failed_`: the latter is the branch above, where treg
                     # never got an answer (timeout, SSRF refusal, a failed oauth refresh). Both release a
                     # 502 the same way, so a shared prefix would make the two indistinguishable in the
@@ -1103,13 +1100,25 @@ async def _execute_call(request: _ApplicationRequest, upstream_client: httpx.Asy
                 err_response = _error_response_evidence(
                     response.raw_headers, body, _renderings)
         may_overflow = response.status >= 400 and mk.tier == "platform"
+        from ...domain.catalog.results import classify, has_result_rules
+
+        result = classify(mk.endpoint_id, response.status, body)
+        result_aware = has_result_rules(mk.endpoint_id)
+        cache_diagnostics.update(
+            result_state=result.state, result_reason=result.reason,
+            cache_result_policy="hit_miss" if result_aware else "legacy",
+            cache_admission=("eligible" if result.state == "found" else result.state)
+            if result_aware else "not_applicable")
         pending = _audit(response.status, observed_micro=observed,
                          charged_micro=None if deferred else charged,
-                         duration_ms=duration_ms, response_bytes=len(body), hit=_hit_verdict(mk, response.status, body),
+                         duration_ms=duration_ms,
+                         response_bytes=None if streaming_free_result else len(body), hit=result.hit,
                          capacity_signal=capacity_signal, error_request=err_request, error_response=err_response,
                          defer_analytics=may_overflow)
         served_via = ""
         if may_overflow:
+            if mk.max_cost_micro is not None:
+                mk.max_cost_micro = max(0, mk.max_cost_micro - charged)
             # Overflow (plan §4.3): the primary attempt is settled ($0) and audited above; a child
             # cycle may now serve the SAME endpoint through an aggregator. Off by default; shadow
             # mode returns the vendor's answer regardless. The event waits for the verdict.
@@ -1123,17 +1132,22 @@ async def _execute_call(request: _ApplicationRequest, upstream_client: httpx.Asy
                 _capture(pending)
                 await _finish_cancelled_call(request, mk, call_ref, response)
                 raise
-            except CallFailure as exc:  # the child's own 402 (insufficient balance for the child hold)
-                _capture(pending)
-                request.state.call_cost_micro = 0
-                raise
+            except CallFailure as exc:  # the child's own reservation refusal
+                if exc.kind == "route_max_cost" and charged:
+                    # Keep the paid direct answer and its charge visible to the outer router.
+                    # A refused overflow reservation adds nothing to that completed attempt.
+                    outcome = None
+                else:
+                    _capture(pending)
+                    request.state.call_cost_micro = 0
+                    raise
             if outcome is not None and outcome.failure is not None:
                 _capture(pending)
                 request.state.call_cost_micro = 0
                 raise outcome.failure
             if outcome is not None and outcome.served and outcome.response is not None:
                 await response.close()
-                response, body, charged = outcome.response, outcome.body, outcome.charged_micro
+                response, body, charged = outcome.response, outcome.body, charged + outcome.charged_micro
                 served_via = f"overflow:{outcome.aggregator}"
                 _capture(_overflow_event(pending, outcome, charged))
             else:
@@ -1145,7 +1159,8 @@ async def _execute_call(request: _ApplicationRequest, upstream_client: httpx.Asy
             try:
                 await _store_idempotent(idem_key, caller, status_code=response.status, body=body,
                                         media_type=_response_header(response, "content-type"),
-                                        charged_micro=charged, metered=True, call_ref=call_ref)
+                                        charged_micro=charged, metered=not streaming_free_result,
+                                        call_ref=call_ref)
             except asyncio.CancelledError:
                 await _finish_cancelled_call(request, mk, call_ref, response)
                 raise
