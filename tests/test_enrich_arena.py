@@ -200,7 +200,7 @@ async def test_public_page_and_tasks_but_no_anonymous_spending(clients):
     assert 'href="/enrich-arena/people-search-bench"' in benchmark.text
     assert (await clients.get("/enrich-arena/bench.js")).status_code == 200
     tasks = (await clients.get("/arena/tasks")).json()
-    assert len(tasks) == 10
+    assert len(tasks) == 9
     work = next(t for t in tasks if t["id"] == "people.email.find")
     names, linkedin = work["provider_previews"]
     assert "hunter" in {p["provider"] for p in names}
@@ -918,10 +918,12 @@ async def test_arena_and_dashboard_share_setup_components(clients):
 def test_discovery_public_cohorts_keep_all_requested_constraints():
     tasks = {t['id']: t for t in arena.public_tasks()}
     assert tasks['people.search']['discovery']
-    role_country = tasks['people.search']['provider_previews'][1]
-    assert role_country and 'lusha' not in {p['provider'] for p in role_country}
-    company_role = tasks['people.company.search']['provider_previews'][1]
+    assert list(tasks['people.search']['variants'][0]) == ['title', 'company_domain']
+    company_role, company, _q, role_country = tasks['people.search']['provider_previews']
     assert company_role and not {'hunter','lusha','leadsforge'} & {p['provider'] for p in company_role}
+    assert company and {'hunter','leadsforge'} <= {p['provider'] for p in company}
+    assert role_country and 'lusha' not in {p['provider'] for p in role_country}
+    assert 'people.company.search' not in tasks and rules.catalog_capability('people.company.search') == 'people.search'
     similar = tasks['companies.similar']['provider_previews'][0]
     assert {'tomba','companyenrich'} <= {p['provider'] for p in similar}
     assert tasks['companies.similar']['max_entries'] == 10
@@ -932,11 +934,11 @@ def test_search_outputs_are_bounded_sanitized_and_survive_presentation():
     output = rules.safe_output({'people':[{'name':'Example Person','linkedin_url':'javascript:bad','email':True,'title':False}]*30,'count':99999}, capability='people.search')
     assert output['count']==10 and len(output['people'])==10
     assert output['people'][0]=={'name':'Example Person'}
-    assert rules.safe_output(output, capability='people.company.search') == output
+    assert rules.safe_output(output, capability='people.company.search') == output  # legacy runs
     assert rules.safe_output({'companies':[{'name':False,'domain':'javascript:bad'}]},capability='companies.similar') == {'companies':[],'count':0}
     with pytest.raises(rules.ArenaError, match='10 entries'):
-        rules.validate_entries('people.company.search',None,[{'company_domain':f'example{i}.test'} for i in range(11)])
-    assert rules.validate_identity('people.company.search',{'company_domain':'https://Example.test/path'}) == {'company_domain':'example.test'}
+        rules.validate_entries('people.search',None,[{'company_domain':f'example{i}.test'} for i in range(11)])
+    assert rules.validate_identity('people.search',{'company_domain':'https://Example.test/path'}) == {'company_domain':'example.test'}
 
 
 async def test_people_search_executes_a_bounded_direct_query(clients, enrichment_on, monkeypatch):
@@ -956,7 +958,7 @@ async def test_company_people_batch_preserves_each_list_and_settles_once(clients
     seen=[]
     answer={'data':{'emails':[{'first_name':'Example','last_name':'Person','value':'example@example.test','position':'Engineer'}]}}
     monkeypatch.setattr(service,'relay',_relay_by_provider({'hunter':[(200,answer),(200,answer)]},seen))
-    response=await clients.post('/arena/plans',json={'capability':'people.company.search','identities':[{'company_domain':'one.test'},{'company_domain':'two.test'}],'providers':['hunter'],'mode':'compare','max_cost_micro':1_000_000})
+    response=await clients.post('/arena/plans',json={'capability':'people.search','identities':[{'company_domain':'one.test'},{'company_domain':'two.test'}],'providers':['hunter'],'mode':'compare','max_cost_micro':1_000_000})
     assert response.status_code==200,response.text
     before=await _balance(clients)
     result=await finish(clients,response.json())
