@@ -5,7 +5,9 @@
 treg is the tool catalog for an agent: one base URL, one token, and the agent can call a curated
 catalog of external endpoints plus its own team's tools without ever holding an API key. The
 load-bearing mechanic is a proxy that makes the caller's **real upstream request**, injects the
-credential server-side and relays the answer verbatim. We never model an upstream API.
+credential server-side when one is required, and relays the answer verbatim. A catalog endpoint
+explicitly verified as public can instead relay with no injected credential. We never model an
+upstream API.
 
 ## Paired treg.to checkout
 
@@ -36,6 +38,8 @@ Everything else in this file is guidance; these are the contract, and they win o
 4. Plain `/call/` is a faithful relay: the injected credential, the transport headers listed in
    `src/treg/infra/upstream/relay.py`, and (on treg's shared key only) the per-org re-scoping of the
    caller's `Idempotency-Key` are the only rewrites. Never add upstream-specific modeling.
+   A live-verified free catalog endpoint may declare an anonymous fallback; its empty binding list
+   omits credential injection but does not strip or rewrite caller headers.
    Routed endpoints and overflow wrap the child's answer and say so; they never alter it. Responses needing settlement or ownership evidence are buffered by the application
    up to 8 MiB; exceeding that limit fails without charging, never returns a successful prefix.
    Authorized free final fetches needing no body evidence stream in full.

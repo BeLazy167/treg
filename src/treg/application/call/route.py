@@ -38,7 +38,7 @@ from ...domain.catalog.routing.contracts import canonical_identity
 from ...domain.catalog.routing.plan import (
     MAX_ERROR_FALLBACKS, Candidate, Plan, candidates_for, cost_at, ignored_filters, rank,
 )
-from .resolve import _host_of, _marketplace_secret
+from .resolve import _anonymous_offer, _host_of, _marketplace_secret
 from .types import CallContext, CallFailure, GatewayFailed, ResolutionFailed, UpstreamResponse
 
 log = logging.getLogger("treg.route")
@@ -276,7 +276,13 @@ async def build_plan(ep: dict, identity_given: dict, caller, options: RouteOptio
     cands: list[Candidate] = []
     for e, ad, v in raw:
         st = stats.get(e["id"]) or {}
-        tier = "tool" if e["provider"] in own_tools else "credential" if e["provider"] in own else "platform"
+        anonymous = _anonymous_offer(e, caller.org) is not None
+        tier = (
+            "tool" if e["provider"] in own_tools else
+            "credential" if e["provider"] in own else
+            "anonymous" if anonymous else
+            "platform"
+        )
         cv = cat.cost_view(e.get("cost"), e["provider"])
         price = 0 if tier != "platform" else cost_at(cv, identity, ad)
         c = Candidate(endpoint=e, adapter=ad, variant=v, tier=tier, price_micro=price, hit_rate=st.get("hit_rate"),

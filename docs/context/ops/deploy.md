@@ -155,8 +155,10 @@ than SQLite isolation.
 
 Registry-owned OAuth applications, advertising conversion credentials and platform provider keys are
 optional deployment capabilities. Their names and binding behavior are documented with their owning
-subsystems. Credentials must stay in the deployment secret store. A provider key alone does not
-enable shared serving: the provider must also be allowed by `TREG_PLATFORM_PROVIDERS`.
+subsystems. Credentials must stay in the deployment secret store. `TREG_PLATFORM_PROVIDERS` is the
+shared-serving allow-list. Most providers also require a configured platform key. A live-verified
+free endpoint declared `platform_auth: anonymous` needs only the allow-list because treg injects no
+provider credential.
 
 ## Safe local mode
 

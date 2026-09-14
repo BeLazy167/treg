@@ -12,6 +12,7 @@ from treg.api import app
 from treg.config import Settings
 from treg.domain.catalog import store as catalog_store
 import dataclasses
+import pytest
 
 from httpx import AsyncClient
 
@@ -30,7 +31,7 @@ def test_key_providers_are_offerable_without_deployment_credentials():
                 "icypeas", "leadsforge", "influencersclub", "crustdata", "aviato",
                 "spyfu", "apify", "meta-ad-library", "serpapi",
                 "coingecko", "polygon", "finnhub", "twelvedata", "fmp", "eodhd", "marketstack",
-                "tiingo"):
+                "tiingo", "financialdatasets"):
         p = P.get(svc)
         assert p is not None, svc
         assert p.auth_kind == "key", svc
@@ -46,6 +47,7 @@ def test_key_providers_appear_in_the_marketplace_listing():
     assert listing["semrush"]["category"] == "SEO"
     assert listing["tikhub"]["category"] == "Social media"
     assert listing["coingecko"]["category"] == "Market data"
+    assert listing["financialdatasets"]["category"] == "Market data"
     assert listing["minimax"]["category"] == "AI generation"
     assert listing["openrouter"]["auth_kind"] == "token"
     assert listing["replicate"]["base_url"] == "https://api.replicate.com/v1"
@@ -362,3 +364,76 @@ def test_contactout_platform_binding(contactout_platform):
         }
     ]
     assert "contactout.account.usage" not in catalog_store.load().by_id
+
+
+@pytest.mark.parametrize("status", [200, 402])
+async def test_financialdatasets_connect_accepts_only_valid_key_outcomes_without_health_probe(
+    clients, monkeypatch, status,
+):
+    """200 and 402 prove the key reached the prepaid account.
+
+    The absolute connect-only probe must also stay out of the saved Tool health metadata: replaying
+    a paid data request from recurring health would consume Credits.
+    """
+    def probe(request):
+        assert request.url.path == "/prices/snapshot"
+        assert request.url.params["ticker"] == "AAPL"
+        assert request.headers["X-API-KEY"] == "valid-empty-key"
+        return httpx.Response(status, json={"detail": "Insufficient credits"})
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(probe)) as upstream:
+        monkeypatch.setattr(app.state, "http", upstream)
+        response = await clients.post(
+            "/connections/token",
+            json={"provider": "financialdatasets", "token": "valid-empty-key"},
+        )
+        assert response.status_code == 200, response.text
+        tool = next(t for t in (await clients.get("/tools")).json()
+                    if t["name"] == "financialdatasets")
+        assert tool["health_check"] is None
+        assert tool["bindings"][0]["name"] == "X-API-KEY"
+
+
+@pytest.mark.parametrize("status", [201, 301, 400, 401, 403, 404, 409, 422, 429, 500, 503])
+async def test_financialdatasets_connect_rejects_any_other_status(clients, monkeypatch, status):
+    def probe(request):
+        assert request.headers["X-API-KEY"] == "invalid-key"
+        return httpx.Response(status, json={"detail": "Invalid API key"})
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(probe)) as upstream:
+        monkeypatch.setattr(app.state, "http", upstream)
+        response = await clients.post(
+            "/connections/token",
+            json={"provider": "financialdatasets", "token": "invalid-key"},
+        )
+        assert response.status_code == 422, response.text
+        assert not [t for t in (await clients.get("/tools")).json()
+                    if t["name"] == "financialdatasets"]
+
+
+def test_financialdatasets_registry_and_platform_key_configuration(monkeypatch):
+    provider = P.get("financialdatasets")
+    assert provider.base_url == "https://api.financialdatasets.ai"
+    assert provider.token_header == "X-API-KEY"
+    assert provider.probe_url == (
+        "https://api.financialdatasets.ai/prices/snapshot?ticker=AAPL"
+    )
+    assert provider.probe_path == ""
+    assert 200 not in provider.probe_reject_statuses
+    assert 402 not in provider.probe_reject_statuses
+    assert all(
+        status in provider.probe_reject_statuses
+        for status in (201, 301, 400, 401, 403, 404, 409, 422, 429, 500, 503)
+    )
+
+    monkeypatch.setenv("TREG_PLATFORM_KEY_FINANCIALDATASETS", "platform-test-key")
+    monkeypatch.setenv("TREG_PLATFORM_PROVIDERS", "financialdatasets")
+    settings = Settings(_env_file=None)
+    assert settings.platform_key_for("financialdatasets") == "platform-test-key"
+    assert P.platform_bindings(provider) == [{
+        "platform_setting": "platform_key_financialdatasets",
+        "injector": "env",
+        "location": "header",
+        "name": "X-API-KEY",
+        "format": "{secret}",
+    }]

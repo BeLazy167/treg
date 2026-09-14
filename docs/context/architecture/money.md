@@ -55,6 +55,11 @@ owner per use, so even a call on the org's *own* connection spends treg's prepai
 [auth-secrets](auth-secrets.md)). Both run the same reserve→relay→settle path in `routers/call.py`, share the
 fail-closed daily cap, and are distinguished in ledger meta by `tier: platform` vs `tier: oauth`.
 An org's own key/credential on any *other* provider is never metered - there the org's account pays.
+An endpoint declared `platform_auth: anonymous` is also unmetered: after the own-key tiers miss,
+`_anonymous_offer` relays its verified public route with no provider credential and creates no
+reserve, settle, or release entry. Catalog validation permits this only on free read-only routes.
+These calls still pass normal authorization and any configured per-member daily call cap. That cap
+defaults to unlimited. Sandbox and public-demo teams cannot use the real anonymous fallback.
 
 On an oauth-billed provider a **`free` catalog price is a bug, never a fact**: the upstream charges us
 whatever the route costs, so a zero there means the entry is stale, not that the call is free. The

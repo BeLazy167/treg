@@ -16,6 +16,7 @@ from ...domain.connections import authorization as connection_authorization
 from ...domain.identity.access import Caller
 from .resolve import (
     _authorization_method,
+    _anonymous_offer,
     _enforce_catalog_status,
     _marketplace_secret,
     _platform_estimate_micro,
@@ -104,6 +105,16 @@ async def catalog_endpoint_access(
         direct = await _direct_access(endpoint, provider, service, caller, db, billed_note)
         if direct is not None:
             return direct
+
+    anonymous = _anonymous_offer(endpoint, caller.org)
+    if anonymous is not None:
+        return {
+            "tier": "anonymous",
+            "metered": False,
+            "detail": "no provider key needed — the verified public upstream route is free",
+            "estimated_cost_micro": 0,
+            "estimated_cost_usd": 0,
+        }
 
     cost = _platform_offer(endpoint, provider, caller.org)
     if cost is not None:

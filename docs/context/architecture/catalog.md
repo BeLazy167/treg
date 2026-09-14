@@ -2,6 +2,42 @@
 title: Endpoint catalog — what you can DO with a connected key, and which provider should do it
 status: shipped
 sources:
+  - src/treg/catalog/financialdatasets.yaml
+  - src/treg/catalog/examples/financialdatasets.company.facts.json
+  - src/treg/catalog/examples/financialdatasets.company.facts.ciks.json
+  - src/treg/catalog/examples/financialdatasets.company.facts.tickers.json
+  - src/treg/catalog/examples/financialdatasets.earnings.json
+  - src/treg/catalog/examples/financialdatasets.earnings.tickers.json
+  - src/treg/catalog/examples/financialdatasets.filings.json
+  - src/treg/catalog/examples/financialdatasets.filings.ciks.json
+  - src/treg/catalog/examples/financialdatasets.filings.tickers.json
+  - src/treg/catalog/examples/financialdatasets.filings.types.json
+  - src/treg/catalog/examples/financialdatasets.financial-metrics.json
+  - src/treg/catalog/examples/financialdatasets.financial-metrics.snapshot.json
+  - src/treg/catalog/examples/financialdatasets.financial-metrics.snapshot.tickers.json
+  - src/treg/catalog/examples/financialdatasets.financials.json
+  - src/treg/catalog/examples/financialdatasets.financials.balance-sheets.json
+  - src/treg/catalog/examples/financialdatasets.financials.cash-flow-statements.json
+  - src/treg/catalog/examples/financialdatasets.financials.income-statements.json
+  - src/treg/catalog/examples/financialdatasets.financials.income-statements.segments.json
+  - src/treg/catalog/examples/financialdatasets.financials.search.screener.json
+  - src/treg/catalog/examples/financialdatasets.financials.search.screener.filters.json
+  - src/treg/catalog/examples/financialdatasets.insider-trades.json
+  - src/treg/catalog/examples/financialdatasets.institutional-holdings.json
+  - src/treg/catalog/examples/financialdatasets.institutional-holdings.investors.json
+  - src/treg/catalog/examples/financialdatasets.institutional-holdings.tickers.json
+  - src/treg/catalog/examples/financialdatasets.ipos.json
+  - src/treg/catalog/examples/financialdatasets.kpi.guidance.json
+  - src/treg/catalog/examples/financialdatasets.kpi.metrics.json
+  - src/treg/catalog/examples/financialdatasets.kpi.non-gaap.json
+  - src/treg/catalog/examples/financialdatasets.macro.interest-rates.json
+  - src/treg/catalog/examples/financialdatasets.macro.interest-rates.banks.json
+  - src/treg/catalog/examples/financialdatasets.news.json
+  - src/treg/catalog/examples/financialdatasets.prices.json
+  - src/treg/catalog/examples/financialdatasets.prices.snapshot.json
+  - src/treg/catalog/examples/financialdatasets.prices.snapshot.tickers.json
+  - src/treg/catalog/examples/financialdatasets.prices.tickers.json
+  - tests/test_financialdatasets.py
   - src/treg/catalog/quickenrich.yaml
   - src/treg/catalog/quickenrich.extended.yaml
   - src/treg/catalog/examples/quickenrich.companies.search.json
@@ -139,6 +175,50 @@ related:
 # Endpoint catalog — platform-grouped operations per provider
 
 Sumble adds the full v9 surface with verified platform operations and explicit BYOK restrictions. See [Sumble](sumble.md) for schemas, pricing rules, routing and live evidence.
+
+## Financial Datasets v1 (2026-09-15)
+
+`financialdatasets.yaml` adds 34 direct tools to the existing Market data / Stock Market Data
+catalog: 21 data operations and 13 dataset-specific discovery helpers. Company facts and the other
+standard data requests settle at $0.02 per successful platform call; KPI metrics, KPI guidance,
+non-GAAP data, and IPOs settle at $0.16. The 13 discovery helpers are free because their verified
+public upstream routes use the generic anonymous platform fallback. BYOK calls retain the normal
+unmetered precedence and still win before that fallback.
+
+Company, fundamentals, filing, ownership, earnings, news, and equity-price inputs are described as
+US stock tickers. The free ticker, CIK, filing-type, investor, screener-filter, and bank helpers use
+the existing `utility` kind because they enumerate valid inputs rather than return the primary
+financial result; the dashboard folds them into its management/utility accordion while they remain
+directly callable. treg does not call them as hidden preflights. Each one declares
+`platform_auth: anonymous`, so the shared resolver builds a virtual tool with no credential binding;
+there is no Financial Datasets branch in the relay. Each data input with a matching included helper
+names that exact utility tool ID in its agent-facing note, so dashboard and CLI users can discover
+valid values without assuming one dataset's coverage applies to another. Interest-rate data covers
+the provider's listed major central banks globally. The catalog does not claim forex, options,
+indices, or general multi-asset coverage.
+
+Sixteen list endpoints accept the provider's opaque `cursor`. Their agent-facing input notes tell
+callers to take it from the response `next_page_url` and omit the original filters on the next call,
+because the cursor preserves those filters. treg still relays the cursor and response unchanged.
+
+Only `financialdatasets.prices.snapshot` joins a routed capability. Its adapter maps
+`treg.stocks.quote.live`'s `symbol` to `queryParams.ticker`, uppercases it, reads the required numeric
+`snapshot.price`, and preserves the provider object as `quote`. No new routed contract, category,
+provider-specific router, or response model is introduced. Captured fixtures and
+`tests/test_financialdatasets.py` verify the direct surface, fixed settlement, BYOK behavior, and
+the existing quote route. One live request for each of the 34 direct tools returned HTTP `200` on
+2026-09-15. A second pass captured the 18 response fixtures that were not already present, so every
+verified tool now has live response evidence. The responses exposed no usage, credit, charge,
+rate-limit, pagination-header, or request-ID evidence; paginated response bodies expose
+`next_page_url` when another page exists. The provider later settled one authenticated 34-tool pass
+at $1.24, including $0.26 for the 13 discovery requests. Three complete anonymous discovery passes
+returned 200 without changing the provider balance; a separate authenticated 13-request pass cost
+exactly $0.26. This proves that omitting the key, rather than a zero rate on keyed traffic, makes the
+discovery surface free.
+
+That free result is conditional on the request having no caller-supplied provider credential. The
+anonymous virtual tool injects no key, but the faithful relay does not strip caller headers. A
+caller who sends `X-API-KEY` can therefore spend that key's Financial Datasets Credits.
 
 The computed cost view uses a `cost.table` fallback as its scalar validated upper bound for
 eligibility and compact displays. Runtime charging evaluates the first matching row against request
@@ -969,11 +1049,12 @@ indistinguishable, downstream, from "price unknown".
 pricing to these keys, and is re-runnable — the extended tier is regenerated wholesale, so
 provenance typed by hand into a generated file would not survive the next `catalog_ingest.py`.
 
-#### Platform-eligible — when treg may spend its OWN key on a call
+#### Platform-eligible — when treg may serve a catalog fallback
 
-`Catalog.platform_eligible(endpoint)` is the single predicate behind prepaid/platform-key access
-(tier 4 of the credential ladder in `api.py`). One implementation, so the API, the validator and
-the proxy cannot drift. It requires ALL of:
+`Catalog.platform_eligible(endpoint)` is the single predicate behind catalog fallback access.
+Most eligible rows use prepaid platform-key tier 4. A row with `platform_auth: anonymous` instead
+uses the provider's verified public route without a credential. One implementation keeps the API,
+validator and proxy in agreement. Eligibility requires ALL of:
 
 - `cost_view(...)["usd"]` is not None — the charge is machine-computable;
 - `cost.confidence` is `verified` OR `documented` (policy widened 2026-07-31: a rate the provider
@@ -985,8 +1066,22 @@ the proxy cannot drift. It requires ALL of:
 The live-called `verified:` stamp is no longer required (same 2026-07-31 change): a broken route
 fails unbilled under `per_success`/`per_result` billing, providers that report in-band settle at 0,
 and the fail-closed daily platform cap bounds whatever remains — coverage beats caution now that
-the reserve/settle machinery is proven. Eligibility alone still spends nothing: the provider must
-ALSO be keyed and allow-listed (`platform_key_for`).
+the reserve/settle machinery is proven. Eligibility alone still enables nothing. A normal platform
+call requires a configured key and the provider allow-list (`platform_key_for`). An anonymous
+fallback requires only the same provider allow-list (`platform_provider_enabled`) because it loads
+no provider key.
+
+`platform_auth: anonymous` is deliberately narrower than ordinary eligibility. Catalog validation
+accepts it only for live-verified, free `GET` operations with `scope: any_account`, no provider
+authorization metadata, and no shared async-resource lifecycle. Resolution preserves the normal
+team-tool then team-credential precedence. Only when both miss does `_anonymous_offer` create a
+virtual tool with an empty binding list and credential tier `anonymous`. The faithful relay then
+forwards the caller's request without injecting a provider credential. This is generic catalog
+metadata; the call runtime contains no provider or path list.
+
+Routed ranking assigns separate priority to the four tiers: team tool or credential first,
+anonymous fallback second, and paid platform-key access third. This keeps the own-key guarantee
+intact if an anonymous endpoint later receives a verified routing adapter.
 
 The doctrine is asymmetric on purpose: **a missing or unknown price reads as "refuse", never as
 free.** An endpoint with no `cost` block at all is therefore not platform-eligible without anything

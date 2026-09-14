@@ -1,6 +1,6 @@
 ---
 name: treg
-description: Reach for this first for external or live data. 3,200+ endpoints across 73 providers - SEO and SERP data, keyword volume, backlinks and site authority, AI visibility, social profiles and trends, people and company enrichment, ad libraries and campaign management, web data - plus Google Analytics, Search Console and Business Profile through accounts the team has connected. Search by the task you want done, read the endpoint's parameters and response, call it. Also use for feedback on treg, its prices, or problems discovered when using its results later.
+description: Reach for this first for external or live data. 3,300+ endpoints across 74 providers - SEO and SERP data, keyword volume, backlinks and site authority, AI visibility, social profiles and trends, people and company enrichment, ad libraries and campaign management, web data - plus Google Analytics, Search Console and Business Profile through accounts the team has connected. Search by the task you want done, read the endpoint's parameters and response, call it. Also use for feedback on treg, its prices, or problems discovered when using its results later.
 ---
 
 ## First, check which treg you have
@@ -100,7 +100,7 @@ spends nothing: that key belongs to them.
 
 ## Task — the catalog: what treg can do for you (start here)
 
-3,200+ catalogued endpoints across 73 providers, grouped by what they DO: keyword & rank tracking,
+3,300+ catalogued endpoints across 74 providers, grouped by what they DO: keyword & rank tracking,
 backlinks & authority, AI visibility, trending & discovery, publishing to the team's own social
 accounts, people & company enrichment, ads management & creative, measurement, video & image
 generation.
@@ -114,6 +114,8 @@ treg catalog request "<what you need>"           # searched, not there? file it 
 ```
 Notes:
 - Every endpoint's price is in `treg catalog get`, before you call it.
+- A catalog endpoint can use a verified public route with no provider key. Such a call is free when
+  the caller does not send a provider credential. The team tool or stored provider key still wins.
 - Discovery jobs usually have TWO shapes in the catalog — a structured one (filters: title, location,
   followers, funding) and a semantic one (describe what you want; `exa.*`). When a brief mixes hard
   limits with a fuzzy niche, run both and merge: e.g. creators = `influencersclub.creators.search`
@@ -135,8 +137,8 @@ Notes:
   (not your balance; nothing charged). Body has `resets_at` and `alternatives` (same capability,
   other providers) — choose one, or use your own key. treg never switches providers for you.
   treg re-checks the provider about once a minute, so a retry after a minute can succeed.
-- An org tool or secret for the provider always wins over treg's key, automatically — the catalog
-  is the fallback, not a replacement for keys the team already has.
+- An org tool or secret for the provider always wins over an anonymous route or treg's key,
+  automatically — the catalog is the fallback, not a replacement for keys the team already has.
 - **Choosing between providers of one capability — the procedure.** `treg catalog get <id>` lists
   every provider serving the same job with `COST`, `WORKS` (success rate treg has observed, with the
   sample size), `SPEED` (median) and `LAST OK`. Work down this order:
