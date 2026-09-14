@@ -53,6 +53,9 @@ _TABLE: list[tuple[str, int, str, str]] = [
     # Documented 2026-09-08: discovery's allowance is distinct from the shared credit pool.
     # https://docs.influencers.club/guides/error-handling — ordinary burst 429s have Retry-After.
     ("influencersclub", 429, r"Discovery API credit limit reached", "quota"),
+    # reAPI: an empty prepaid balance is a 402 {"error": {"code": 30001, "message": "Insufficient
+    # credits. Required: 13856", ...}} (observed 2026-09-14 with a request larger than the balance).
+    ("reapi", 402, r"insufficient credits", "balance"),
     ("trykitt", 418, r"temporarily throttled", "burst"),
     ("trykitt", 402, r"insufficient (?:credits?|funds|balance)|out of credits", "balance"),
     # This API uses 402 for both funds and rate limits. The first matching row wins.

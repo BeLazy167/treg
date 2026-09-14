@@ -37,7 +37,7 @@ POST Contact Finder probe rejects invalid keys with HTTP 401 and does not requir
 balance to accept a successful probe. `platform_key_quickenrich` supplies the separate server-held platform credential.
 No OAuth app or special injector is needed. See the QuickEnrich section in [catalog](catalog.md).
 
-Tier 4 has explicit platform-key slots for MiniMax, OpenRouter and Replicate. The web and async cron
+Tier 4 has explicit platform-key slots for MiniMax, OpenRouter, Replicate, reAPI and PiAPI. The web and async cron
 receive them as environment secrets, and the worker constructs the same platform bindings as the call
 path. Key values are never copied into task records, logs or archive evidence.
 
@@ -245,7 +245,8 @@ module symbols:
   display can stop calling a connected account free (`catMetered`, [dashboard](../interface/dashboard.md)). A **BYO connect is never metered** — the callback
   stamps `secret.provider` only in registry mode, and that attribution is the whole detection.
 - `auth_kind` = `"oauth"` (treg's app), `"token"` (a user-pasted Bearer token: Slack plus the
-  MiniMax, OpenRouter, and Replicate AI-generation providers),
+  MiniMax, OpenRouter, Replicate and reAPI AI-generation providers; PiAPI pastes an `X-API-Key`
+  and is a `"key"` provider),
   or `"key"` (an **API-key provider** connected by pasting a key: Apollo, PDL,
   Akta, Hunter, Crunchbase, Lusha, Coresignal, Diffbot, The Companies API, LeadMagic on a new
   **Enrichment** shelf, TikHub + Bright Data + Just One API under

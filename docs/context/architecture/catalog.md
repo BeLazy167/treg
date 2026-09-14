@@ -97,8 +97,27 @@ sources:
   - src/treg/catalog/openrouter.yaml
   - src/treg/catalog/openrouter.extended.yaml
   - src/treg/catalog/examples/openrouter.x.alibaba-wan-3-0.json
+  - src/treg/catalog/examples/openrouter.video-gen.seedance-2-5.json
   - src/treg/catalog/replicate.yaml
   - src/treg/catalog/replicate.extended.yaml
+  - src/treg/catalog/reapi.yaml
+  - src/treg/catalog/piapi.yaml
+  - src/treg/catalog/examples/replicate.image-gen.nano-banana-pro.json
+  - src/treg/catalog/examples/replicate.image-gen.gpt-image-2.json
+  - src/treg/catalog/examples/replicate.image-gen.gpt-image-2-5-flare.json
+  - src/treg/catalog/examples/replicate.image-gen.gpt-image-2-5-sunburst.json
+  - src/treg/catalog/examples/reapi.tasks.get.json
+  - src/treg/catalog/examples/reapi.video-gen.seedance-2-5.json
+  - src/treg/catalog/examples/reapi.video-gen.seedance-2-5.unrestricted.json
+  - src/treg/catalog/examples/reapi.image-gen.gpt-image-2-5.json
+  - src/treg/catalog/examples/reapi.image-gen.gpt-image-2.json
+  - src/treg/catalog/examples/reapi.image-gen.gemini-3-pro-image.json
+  - src/treg/catalog/examples/piapi.task.get.json
+  - src/treg/catalog/examples/piapi.video-gen.seedance-2-5.json
+  - src/treg/catalog/examples/piapi.video-gen.seedance-2-5.less-restriction.json
+  - src/treg/catalog/examples/piapi.image-gen.gemini-3-pro-image.json
+  - src/treg/catalog/examples/piapi.image-gen.gpt-image-2-5.json
+  - src/treg/catalog/examples/piapi.image-gen.gpt-image-2.json
   - src/treg/catalog/examples/replicate.image-gen.flux-schnell.json
   - src/treg/domain/catalog/__init__.py
   - src/treg/domain/catalog/store.py
@@ -414,7 +433,20 @@ memberless, reserved for hand-picked models (see capabilities.yaml). Both AI gen
 therefore render as ONE flat model wall; the same model reachable over several routes (MiniMax
 direct, OpenRouter, Replicate all serve Hailuo) sits adjacent under model-led names, which is the
 comparison that actually means something. The per-model capability is the join key that lets those
-routes merge onto one row if that comparison is later curated.
+routes merge onto one row if that comparison is later curated. reAPI and PiAPI are the first pair
+to share join keys on purpose: both files propose `video-gen.seedance-2-5.generate`,
+`video-gen.seedance-2-5-unrestricted.generate`, `image-gen.gpt-image-2-5.generate`,
+`image-gen.gpt-image-2.generate` and `image-gen.gemini-3-pro-image.generate`, so the two routes to
+one model sit on one row with their prices side by side. The `-unrestricted` key names the Less Restriction route (reAPI `content_filter: false`, PiAPI's `seedance-2.5-less-restriction` task): the
+only route on which a real person's photo is accepted as the subject reference, which is the whole
+reason those resellers are listed beside the official-rate OpenRouter route. OpenRouter's Seedance 2.5
+is curated into `openrouter.yaml` on the same join key (its generated extended twin is therefore
+skipped by the ingester's curated-model rule), so the default-filter row compares three routes and
+the Less Restriction row two. Replicate's official `google/nano-banana-pro`, `openai/gpt-image-2` and both
+`openai/gpt-image-2.5-*` models are curated into `replicate.yaml` on the image keys the same way (per
+output image by quality or resolution, from the model pages' price criteria), so each image model
+row compares reAPI, PiAPI and Replicate. Merged rows are titled by the capability description, which for these
+per-model keys is the plain model name ("Seedance 2.5"), not a sentence.
 
 ## Schema
 
@@ -551,7 +583,13 @@ A `cost.table` also prices out as a range: at load time `_table_floor` computes 
 (a `times` row at its field's declared `min`) into `cost.table_min`, and `cost_view` exposes it as
 `usd_min` beside `usd`, which stays the validated ceiling (what reserve and eligibility read). Every
 price surface - the wall, `treg catalog search`, the dashboard, `/access` - shows `$low-$high` for a
-table rather than the worst case alone.
+table rather than the worst case alone. A table whose every row multiplies by a `duration` field is
+a video model sold per second, and `$0.47-$13.9/success` (shortest clip at the cheapest resolution
+up to the longest at the dearest) reads as nonsense beside a vendor page saying `$0.12/s`; so
+`_table_rate` records the row span as `cost.table_rate`, `cost_view` serves it as `rate_usd_min`,
+`rate_usd`, `rate_unit: s`, and the dashboard and CLI quote `$0.119-$0.462/s` for those rows while
+`usd`/`usd_min` keep pricing the whole call for reserve. `type: per_success` on these rows is the
+billing rule (a failed generation is not charged), not the display unit.
 
 The validator checks the effective descriptor. Dotted JSON paths are syntactically valid; success and
 failure are non-empty, disjoint lists; `interval` is positive; poll has exactly one of `endpoint`
@@ -598,6 +636,15 @@ MiniMax's curated Hailuo routes intentionally use the v1 three-step protocol: su
 the terminal values `Success`/`Fail`, then pass the returned `file_id` to
 `GET /v1/files/retrieve`. The v2 generation path serves the H3 family and is not a protocol upgrade
 for the Hailuo models in this listing.
+
+reAPI answers every submission with a bare `{id, status}` and reports the charge on the poll body
+(`usage.credits`, 1 credit = $0.001); video rows keep the file-level descriptor (`output.video_urls`)
+and image rows replace it whole for `output.image_urls`. PiAPI wraps its task routes in
+`{code, data}` (HTTP 200 with `code` 400 on a bad request, hence the provider-wide `expect`), but
+its OpenAI-shaped `/api/v1/images/generations/async` route answers the bare task object, so those
+two rows override both `id_from` and `expect` (`error.code` 0). PiAPI's `meta.usage` counts
+"points" at ten million per dollar; it is read for the evidence ledger, not settled on, because
+`usd` is the only usage unit the settlement engine accepts.
 
 OpenRouter ingest reads `/api/v1/videos/models`, emits one extended row per model on the shared
 `POST /videos` route, and converts duration-based `pricing_skus` into price tables with

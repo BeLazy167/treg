@@ -875,21 +875,36 @@ async def test_ai_generation_pages_keep_comparisons_curated_and_coverage_in_mode
     # the job-level rows return only when specific models are hand-picked into them.
     assert {section["domain"] for section in video["domains"]} == {"models"}
     rows = video["domains"][0]["rows"]
-    assert all(row["kind"] == "single" for row in rows)
+    # reAPI and PiAPI share per-model join keys on purpose, so the same model over two routes is
+    # the one merged row the wall is built for (a real comparison of price and filter policy).
+    shared = {"video-gen.seedance-2-5.generate", "video-gen.seedance-2-5-unrestricted.generate"}
+    assert {row["capability"] for row in rows if row["kind"] != "single"} == shared
+    providers = {row["capability"]: {e["provider"] for e in row["endpoints"]} for row in rows}
+    # the official OpenRouter route joins the default-filter row; only the resellers relax the filter
+    assert providers["video-gen.seedance-2-5.generate"] == {"reapi", "piapi", "openrouter"}
+    assert providers["video-gen.seedance-2-5-unrestricted.generate"] == {"reapi", "piapi"}
     caps = {row["capability"] for row in rows}
     assert "video-gen.from_text" not in caps and "video-gen.from_image" not in caps
     ids = {endpoint["id"] for row in rows for endpoint in row["endpoints"]}
     assert {"minimax.video-gen.from_text", "minimax.video-gen.from_image",
             "openrouter.video-gen.wan-3-0.from_text",
-            "replicate.video-gen.seedance-1-lite"} <= ids
+            "replicate.video-gen.seedance-1-lite",
+            "reapi.video-gen.seedance-2-5.unrestricted",
+            "piapi.video-gen.seedance-2-5.less-restriction"} <= ids
 
     image = (await clients.get("/catalog/platforms/image-gen")).json()
     assert {section["domain"] for section in image["domains"]} == {"models"}
     image_rows = [row for section in image["domains"] for row in section["rows"]]
-    assert all(row["kind"] == "single" for row in image_rows)
+    shared_images = {"image-gen.gpt-image-2-5.generate", "image-gen.gpt-image-2.generate",
+                     "image-gen.gemini-3-pro-image.generate"}
+    assert {row["capability"] for row in image_rows if row["kind"] != "single"} == shared_images
+    # every image model row compares the two resellers with Replicate's official model
+    assert all({e["provider"] for e in row["endpoints"]} == {"reapi", "piapi", "replicate"}
+               for row in image_rows if row["capability"] in shared_images)
     assert "image-gen.from_text" not in {row["capability"] for row in image_rows}
     image_ids = {endpoint["id"] for row in image_rows for endpoint in row["endpoints"]}
-    assert {"minimax.image-gen.from_text", "replicate.image-gen.flux-schnell"} <= image_ids
+    assert {"minimax.image-gen.from_text", "replicate.image-gen.flux-schnell",
+            "reapi.image-gen.gemini-3-pro-image", "piapi.image-gen.gpt-image-2-5"} <= image_ids
 
 
 def test_a_missing_catalog_directory_is_an_empty_catalog_not_a_crash(tmp_path):

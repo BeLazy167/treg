@@ -3625,6 +3625,22 @@ product, including per-customer usage tracking and billing.</pre>
             <div v-if="callView.cached"><b>Answer</b><span class="chip" title="served from the archive instead of the vendor">cached</span></div>
             <div v-if="callView.call_ref"><b>Call id</b><span class="mono" style="font-size:11px">{{callView.call_ref}}</span></div>
           </div>
+          <!-- A generation task's result, shown rather than linked: the video or image the caller paid
+               for is the point of the call, and the archived body is only the submission receipt. -->
+          <template v-if="callView.task">
+            <h3 style="margin:10px 0 6px;font-size:13px;display:flex;align-items:center;gap:8px">Result
+              <span class="chip" :title="taskStateTitle(callView.task)">{{taskStateLabel(callView.task)}}</span>
+              <a v-if="callView.task.result_url" :href="callView.task.result_url" target="_blank" rel="noopener" style="margin-left:auto;font-size:12px">open ↗</a>
+            </h3>
+            <template v-if="callView.task.result_url">
+              <video v-if="isVideoUrl(callView.task.result_url)" :src="callView.task.result_url" controls playsinline style="width:100%;max-height:60vh;background:#000;border-radius:8px"></video>
+              <img v-else :src="callView.task.result_url" alt="generated result" style="max-width:100%;max-height:60vh;border-radius:8px;display:block"/>
+              <p class="sub" style="margin:6px 0 12px">{{callView.task.ttl_note?'The provider keeps this file for '+callView.task.ttl_note+' — download it to keep it.':'Time-limited link — download it to keep it.'}}</p>
+            </template>
+            <p v-else-if="callView.task.fetch_command" class="sub" style="margin:0 0 12px">Retrieve it from the CLI: <span class="mono">{{callView.task.fetch_command}}</span></p>
+            <p v-else-if="callView.task.error" class="sub" style="margin:0 0 12px;color:var(--red)">{{callView.task.error}}</p>
+            <p v-else-if="callView.task.status==='pending'" class="sub" style="margin:0 0 12px">Still generating — the result appears here when the provider finishes.</p>
+          </template>
           <p v-if="callView.loading" class="sub">Loading…</p>
           <p v-else-if="callView.error" class="sub" style="color:var(--red)">{{callView.error}}</p>
           <template v-else>
@@ -3954,8 +3970,9 @@ createApp({
       // their own shelf; they are SEO now, unfeatured, so they surface inside its "see more" row
       // rather than as a category of six. The list is a lookup, not a schema — a category the
       // catalog invents tomorrow still gets a shelf, sorted to the end.
-      const order=['Enrichment','SEO/AEO','Social','Advertising','E-commerce','Reviews & Apps','Community'];
+      const order=['Enrichment','SEO/AEO','Social','Advertising','E-commerce','Reviews & Apps','AI generation','Community'];
       const hints={
+        'AI generation':'video and image models, the same model over several routes priced side by side',
         'SEO/AEO':'rankings, keywords and backlinks — what search engines know, and what the answer engines say',
         'Social':'posts, profiles and comments, straight from the feeds',
         'Enrichment':'people and company records, resolved from an email or a domain',
@@ -5694,7 +5711,9 @@ createApp({
     costShort(c){
       if(!c || !c.type) return '—';
       if(c.type==='free') return 'free';
-      if(c.value==null) return 'credit-priced';
+      // A price table has no scalar value but does have a range (and, for video, a per-second
+      // rate); only a truly unpublished number is "credit-priced".
+      if(c.value==null && !(c.table && typeof c.usd==='number')) return 'credit-priced';
       return this.costLabel(c); },
     // `providers` needs a session. Publicly, "is this a provider treg knows" is answered by the
     // open catalog response instead — otherwise the whole action chain collapses and a signed-out
@@ -5763,7 +5782,11 @@ createApp({
       // fall back to the native figure rather than dropping the price entirely.
       if(typeof c.usd!=='number') return this.nativeAmount(c)+'/'+this.priceUnit(c.type);
       const unit=(c.type==='quota_rows'?'call':this.priceUnit(c.type));
-      // A price table (generation models) is a range: cheapest row up to the validated ceiling.
+      // A duration-priced table (video models) is quoted per second, the way the model is sold.
+      if(c.rate_unit && typeof c.rate_usd==='number'){
+        const lo=c.rate_usd_min, hi=c.rate_usd;
+        return (typeof lo==='number' && lo<hi ? '$'+this.usdNum(lo)+'-$'+this.usdNum(hi) : '$'+this.usdNum(hi))+'/'+c.rate_unit; }
+      // Any other price table (image models) is a range: cheapest row up to the validated ceiling.
       if(typeof c.usd_min==='number' && c.usd_min<c.usd) return '$'+this.usdNum(c.usd_min)+'-$'+this.usdNum(c.usd)+'/'+unit;
       return '$'+this.usdNum(c.usd)+'/'+unit; },
     costTitle(c){ if(!c) return 'The catalog has no price for this endpoint';
@@ -5895,11 +5918,14 @@ createApp({
       finally{ this.loading=false; } },
     async openCall(a){  // Activity row → the drawer; details load from /calls/{id}/result
       this.callViewFull=false; this.callCopied='';
-      this.callView={id:a.id, tool:a.tool, endpoint_id:a.endpoint_id, call_ref:a.call_ref, created_at:a.created_at, status_code:a.status, credential_tier:a.tier, cached:a.cached, loading:true};
+      // `task` rides along from the row: a generation's artifact (the provider's time-limited URL)
+      // lives on the async task, not in the archived submission body, and the drawer shows it inline.
+      this.callView={id:a.id, tool:a.tool, endpoint_id:a.endpoint_id, call_ref:a.call_ref, created_at:a.created_at, status_code:a.status, credential_tier:a.tier, cached:a.cached, task:a.task||null, loading:true};
       try{ const d=await this.api('/calls/'+a.id+'/result'); this.callView={...this.callView, ...d, loading:false}; }
       catch(e){ this.callView={...this.callView, loading:false, error:'Could not load this call.'}; }
     },
     pretty(text){ try{ return JSON.stringify(JSON.parse(text), null, 2); }catch(e){ return text; } },
+    isVideoUrl(u){ try{ return /\.(mp4|webm|mov|m4v)$/i.test(new URL(u).pathname); }catch(e){ return /\.(mp4|webm|mov|m4v)(\?|$)/i.test(u||''); } },
     fmtBytes(n){ if(n==null) return '—'; if(n<1024) return n+' B'; if(n<1048576) return (n/1024).toFixed(1)+' KB'; return (n/1048576).toFixed(2)+' MB'; },
     async copyCallBody(){ const t=this.callView&&this.callView.response&&this.callView.response.body_text; if(!t) return; if(await this.toClipboard(t)){ this.callCopied='Copied'; setTimeout(()=>{ this.callCopied=''; },1400); } },
     async loadCalls(){ try{ const [calls,runs]=await Promise.all([this.api('/calls?limit=100'), this.api('/runs?limit=100').catch(()=>[])]); this.calls=calls; this.runs=runs; }catch(e){ this.err='Failed to load activity.'; } },
