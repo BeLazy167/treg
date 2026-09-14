@@ -5294,11 +5294,13 @@ def cmd_hub_earnings(args, cfg) -> None:
     if getattr(args, "json", False):
         print(json.dumps(d, indent=2)); return
     _section(f"Earnings — {d['tool_id']}, last {d['days']} days")
-    _kv("earned", f"${d['earned_micro'] / 1e6:.4f}   from {d['runs']} runs")
+    _kv("earned", f"${d['earned_micro'] / 1e6:.4f}   from {d['runs']} runs"
+                  f"   · avg ${d.get('avg_price_micro', 0) / 1e6:.4f} per successful run")
     if d["by_day"]:
-        print(f"  {_M}{'DAY':<12}{'RUNS':>5}{'OK':>5}{'FAILED':>8}{'EARNED $':>11}{_R}")
+        print(f"  {_M}{'DAY':<12}{'RUNS':>5}{'OK':>5}{'FAILED':>8}{'EARNED $':>11}{'AVG $':>10}{_R}")
         for r in d["by_day"]:
-            print(f"  {r['day']:<12}{r['runs']:>5}{r['ok']:>5}{r['failed']:>8}{r['earned_micro'] / 1e6:>11.4f}")
+            print(f"  {r['day']:<12}{r['runs']:>5}{r['ok']:>5}{r['failed']:>8}{r['earned_micro'] / 1e6:>11.4f}"
+                  f"{r.get('avg_price_micro', 0) / 1e6:>10.4f}")
 
 
 def cmd_hub_retire(args, cfg) -> None:

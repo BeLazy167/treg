@@ -308,16 +308,25 @@ async def hub_tool_earnings(
                HubRun.caller_org_id != caller.org_id,
                HubRun.started_at >= since, HubRun.version > 0)
         .group_by(day).order_by(day.desc()))).all()
+    # avg_price_micro: what one successful run earned on average (earned / ok). With a variable
+    # price (per_unit, cost_plus) this is how the maker sees where the price lands
+    # (docs/hub-pricing-decisions.md round 2 q5). 0 on a day with no successful run.
     table = [{"day": str(d), "runs": int(n), "ok": int(ok or 0), "failed": int(bad or 0),
-              "earned_micro": int(earned)} for d, n, ok, bad, earned in rows]
+              "earned_micro": int(earned),
+              "avg_price_micro": int(round(int(earned) / int(ok))) if int(ok or 0) else 0}
+             for d, n, ok, bad, earned in rows]
     total = sum(r["earned_micro"] for r in table)
+    total_ok = sum(r["ok"] for r in table)
     if format == "csv":
-        lines = ["day,runs,ok,failed,earned_usd"] + [
-            f"{r['day']},{r['runs']},{r['ok']},{r['failed']},{r['earned_micro'] / 1e6:.6f}" for r in table]
+        lines = ["day,runs,ok,failed,earned_usd,avg_price_usd"] + [
+            f"{r['day']},{r['runs']},{r['ok']},{r['failed']},{r['earned_micro'] / 1e6:.6f},"
+            f"{r['avg_price_micro'] / 1e6:.6f}" for r in table]
         return Response("\n".join(lines) + "\n", media_type="text/csv",
                         headers={"Content-Disposition": f'attachment; filename="{base}-earnings.csv"'})
     return JSONResponse({"tool_id": base, "days": days, "earned_micro": total,
-                         "runs": sum(r["runs"] for r in table), "by_day": table})
+                         "runs": sum(r["runs"] for r in table),
+                         "avg_price_micro": int(round(total / total_ok)) if total_ok else 0,
+                         "by_day": table})
 
 
 @app.delete("/hub/tools/{tool_id}")
