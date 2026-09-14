@@ -113,8 +113,14 @@ respectively, before configured margin. Geo-ID uses the existing free-price path
 - Profile search returned anonymized entries as well as linked profiles. It is not a
   substitute for lead search when users need broad identifiable results.
 
-Five existing-contract adapters cover basic/full member profiles, company profiles,
-email finding and post detail. They derive provider requests using existing identity
+Six existing-contract adapters cover basic/full member profiles, company profiles,
+email finding, post detail and lead search. Lead search (`harvestapi.linkedin.leads.search`)
+is filed under `people.search` since 2026-09-14 so `treg.people.search` can reach it: domain
+and title map to `currentCompanies` (a bare domain is accepted upstream) and
+`currentJobTitles`, location or country name to `locations`, keywords to `search`; a page
+is a fixed 25 rows for $0.10, so `cost_units: "25"` prices every routed request at 25 rows
+regardless of `limit`. Profile search stays unrouted: live on 2026-09-14 a company+title
+page returned 10 of 10 out-of-network rows hidden (no name, no URL). They derive provider requests using existing identity
 transforms and wrap results with the ordinary route disclosure. Adapter misses do not
 cancel Harvest's reported charges. Email `verified` means Harvest reported `status: valid`,
 not independent deliverability testing. No provider priority or automatic preference is added.
