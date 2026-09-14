@@ -7,7 +7,7 @@ limits: "Generation is asynchronous: POST /api/v1/task answers with data.task_id
 proposed_capabilities:
   # Per-model join keys shared with reapi.yaml (see minimax.yaml for the model-wall rationale).
   video-gen.seedance-2-5.generate: "Seedance 2.5"
-  video-gen.seedance-2-5-unrestricted.generate: "Seedance 2.5 (relaxed content filter)"
+  video-gen.seedance-2-5-unrestricted.generate: "Seedance 2.5 (Less Restriction)"
   image-gen.gemini-3-pro-image.generate: "Gemini 3 Pro Image"
   image-gen.gpt-image-2-5.generate: "GPT Image 2.5"
   image-gen.gpt-image-2.generate: "GPT Image 2"
@@ -100,8 +100,8 @@ endpoints:
     scope: any_account
     method: POST
     path: /api/v1/task
-    name: "ByteDance: Seedance 2.5 (less restriction)"
-    summary: "Seedance 2.5 with PiAPI's relaxed content filter. Face references are accepted only after the image passes the account's Private Asset Library review; other references are used as-is."
+    name: "ByteDance: Seedance 2.5 (Less Restriction)"
+    summary: "Less Restriction: the same Seedance 2.5 model on PiAPI's relaxed filter, where a real person's face may drive the video; the default row refuses real faces. Face images must first pass the connected account's Private Asset Library review; other references are used as-is. 10% dearer than the default row."
     input:
       body:
         model: {type: string, required: true, enum: [seedance], example: seedance}

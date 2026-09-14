@@ -431,13 +431,12 @@ routes merge onto one row if that comparison is later curated. reAPI and PiAPI a
 to share join keys on purpose: both files propose `video-gen.seedance-2-5.generate`,
 `video-gen.seedance-2-5-unrestricted.generate`, `image-gen.gpt-image-2-5.generate`,
 `image-gen.gpt-image-2.generate` and `image-gen.gemini-3-pro-image.generate`, so the two routes to
-one model sit on one row with their prices side by side. The `-unrestricted` key names the relaxed
-content filter (reAPI `content_filter: false`, PiAPI's `seedance-2.5-less-restriction` task): the
+one model sit on one row with their prices side by side. The `-unrestricted` key names the Less Restriction route (reAPI `content_filter: false`, PiAPI's `seedance-2.5-less-restriction` task): the
 only route on which a real person's photo is accepted as the subject reference, which is the whole
 reason those resellers are listed beside the official-rate OpenRouter route. OpenRouter's Seedance 2.5
 is curated into `openrouter.yaml` on the same join key (its generated extended twin is therefore
 skipped by the ingester's curated-model rule), so the default-filter row compares three routes and
-the relaxed-filter row two. Merged rows are titled by the capability description, which for these
+the Less Restriction row two. Merged rows are titled by the capability description, which for these
 per-model keys is the plain model name ("Seedance 2.5"), not a sentence.
 
 ## Schema

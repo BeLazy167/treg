@@ -8,7 +8,7 @@ proposed_capabilities:
   # Per-model capabilities (see minimax.yaml): one join key per model, shared with piapi.yaml so
   # the model wall shows the two routes to the same model side by side.
   video-gen.seedance-2-5.generate: "Seedance 2.5"
-  video-gen.seedance-2-5-unrestricted.generate: "Seedance 2.5 (relaxed content filter)"
+  video-gen.seedance-2-5-unrestricted.generate: "Seedance 2.5 (Less Restriction)"
   image-gen.gpt-image-2-5.generate: "GPT Image 2.5"
   image-gen.gpt-image-2.generate: "GPT Image 2"
   image-gen.gemini-3-pro-image.generate: "Gemini 3 Pro Image"
@@ -97,8 +97,8 @@ endpoints:
     scope: any_account
     method: POST
     path: /videos/generations
-    name: "ByteDance: Seedance 2.5 (relaxed content filter)"
-    summary: "Seedance 2.5 with content_filter off: reference images and audio may contain real people, so an uploaded face can drive the video. Same route and price as the default row; illegal content is still refused."
+    name: "ByteDance: Seedance 2.5 (Less Restriction)"
+    summary: "Less Restriction: the same Seedance 2.5 model with content_filter off, so a photo of a real person is accepted as the subject reference and a voice clip as the speech reference; the default row refuses real faces. Same route and price; illegal content is still refused."
     input:
       body:
         model: {type: string, required: true, enum: [doubao-seedance-2.5-face], example: doubao-seedance-2.5-face}
