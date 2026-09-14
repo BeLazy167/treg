@@ -4849,8 +4849,8 @@ WORKFLOWS["mine-competitor-meta-ads-as-creative-pack"] = {
             ("Meta ads pulled", "20 active ads for Notion: 10 image, 6 dynamic creative, 4 video"),
             ("Calls to action", "Sign up (13), Get offer (5), Apply now (2)"),
             ("Google ads pulled", "17 creatives on notion.so: 9 text, 7 image, 1 video"),
-            ("Metered at the time of the run", "$0.015 for the Google call; the two Meta calls settled at $0.00 (see below)"),
-            ("Rate-card cost of the same run", "$0.105 for the count probe and 20 Meta ads, plus $0.015 for Google"),
+            ("Metered on treg's shared key", "$0.015 for the Google call"),
+            ("Not metered", "the two Meta calls ran on this team's own Apify key, which treg never meters; on the shared key they bill at the rate in the table, $0.105 for the probe and 20 ads"),
         ],
         "cost_usd": 0.015,
         "csv": "/workflows/mine-competitor-meta-ads-as-creative-pack.csv",
@@ -4859,9 +4859,9 @@ WORKFLOWS["mine-competitor-meta-ads-as-creative-pack"] = {
             "and 17 in one Google call. The worst-case total above counts the count probe once per row "
             "because it shares the pull's endpoint; in practice it is one result. Every Meta ad opened with "
             "the same line and pointed at a sign-up; the variety is in format, not copy. The Google side "
-            "is mostly text ads. The Meta route is billed per ad at the rate in the table, but this run "
-            "settled at zero on treg's balance, so the receipt shows both the metered figure and what "
-            "the rate card says the run costs. Your own run is billed at the rate card.",
+            "is mostly text ads. The Meta calls went out on the team's own Apify key, and a team's own key "
+            "is never metered, so the receipt shows the shared-key rate for them separately. A run on "
+            "treg's shared key bills them at the rate in the table.",
         ],
     },
     "failure_modes": [
