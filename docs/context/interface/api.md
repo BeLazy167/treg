@@ -2,6 +2,7 @@
 title: The API — the only brain (FastAPI)
 status: shipped
 sources:
+  - src/treg/routers/media.py
   - src/treg/web/sitetrack.js
   - src/treg/api.py
   - src/treg/bootstrap_handlers.py
@@ -85,6 +86,14 @@ Billing, balance, and daily-cap checks still use the resolved membership.
 and super-admin `GET /admin/feedback`. The intake's transaction belongs to `application.feedback`;
 the routes are in the control role. `routers.web.feedback_md` serves the compact instructions.
 See [feedback](../architecture/feedback.md) for the contract and provenance boundaries.
+
+## Media hosting
+
+`POST /media` (member+, raw body, `Content-Type` = the media type) stores a reference file and
+answers `{url, token, content_type, size, expires_at}`; `GET /m/{token}` serves it publicly, no
+token, because the vendor's fetcher has none. 30 MB per file, 300 MB per org per 24 h, 7-day TTL,
+`image/*` / `audio/*` / `video/*` only, refused in the sandbox. Refusals: 415 type, 413 size, 429
+quota, 403 sandbox. Not metered. See [media](../architecture/media.md).
 
 ## Composition
 

@@ -98,6 +98,10 @@ See [signup eligibility](money.md#signup-credit-eligibility).
   category/message/references, authenticated org and user attribution, and the references verified
   against that team's call records or ledger. Revision `0025`; `domain.feedback` owns inserts;
   `application.feedback` commits. Team deletion removes these rows. See [feedback](feedback.md).
+- **`Media`** - a reference file a member hosted for a vendor to fetch (`treg host`): opaque
+  token, org, media type, size, the bytes, created and expiry. Revision `0037`;
+  `application.media` is the only writer and sweeps expired rows on each upload. Team deletion
+  removes these rows. See [media](media.md).
 - **`FeedbackHandling` / `FeedbackHandlingEvent`** - internal current processing state and
   versioned history (revision 0030), owned by this schema and written only by the private admin
   service. Both cascade from the original report. See [feedback](feedback.md).

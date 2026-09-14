@@ -135,6 +135,21 @@ async def _resolve_call(rest: str, caller: Caller, db: AsyncSession) -> Resolved
     ).scalar_one_or_none()
     if tool is None:
         cat = catalog_store.load()
+        # An EXACT catalog id followed by a URL path (`reapi.tasks.get/tasks/<id>`) is the own-tool
+        # shape applied to the catalog half: the caller had the right id and wrote the vendor's path
+        # by hand. "no tool in this org" sends them hunting in the wrong half of treg; name the
+        # endpoint's real parameter slots instead so the next call is the right one.
+        if path and (ep := cat.by_id.get(name)) is not None:
+            inp = ep.get("input") or {}
+            slots = sorted({k for sec in ("pathParams", "queryParams", "query", "body")
+                            for k in (inp.get(sec) or {})})
+            raise ResolutionFailed(
+                "invalid_target", status_code=400, detail={
+                    "error": f"{name!r} is a catalog endpoint and takes no URL path",
+                    "hint": (f"pass parameters as --query K=V (path and query params) or --data "
+                             f"'{{…}}' (body): treg call {name} --query <k>=<v>"
+                             + (f"; parameters: {', '.join(slots)}" if slots else "")),
+                    "parameters": slots})
         # A DOTTED name that reached here was meant to be a catalog endpoint id and missed — a
         # near-miss id, most often one segment off. Answering "no tool 'lusha.companies-signals' in
         # this org" describes the wrong half of treg and leaves the caller nothing to try; naming

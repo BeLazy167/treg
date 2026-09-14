@@ -57,6 +57,7 @@ from .routers import call as call_routes
 from .routers import catalog as catalog_routes
 from .routers import connections as connection_routes
 from .routers import feedback as feedback_routes
+from .routers import media as media_routes
 from .routers import onboard as onboard_routes
 from .routers import orgs as org_routes
 from .routers import referrals as referral_routes
@@ -301,6 +302,7 @@ async def create_tool_request(
 
 
 router.routes.extend(feedback_routes.app.routes)
+router.routes.extend(media_routes.app.routes)
 router.routes.extend(auth_routes.social_router.routes)
 router.routes.extend(auth_routes.cli_router.routes)         # CLI pairing
 router.routes.extend(auth_routes.session_router.routes)

@@ -1086,3 +1086,28 @@ def test_show_prints_the_charge_and_call_id_for_a_metered_success(capsys):
     cli._show(replay)
     _, err = capsys.readouterr()
     assert "replay" in err and "nothing new charged" in err
+
+
+def test_host_prints_the_url_alone_and_the_full_response_under_json(monkeypatch, tmp_path, capsys):
+    """`$(treg host face.jpg)` must yield the bare URL; `--json` is the GLOBAL flag main() pops from
+    argv, so cmd_host reads _JSON_OVERRIDE like every other command (a per-subcommand flag is dead)."""
+    class Response:
+        status_code = 201
+        def json(self):
+            return {"url": "http://x/m/tok", "token": "tok", "content_type": "image/png",
+                    "size": 3, "expires_at": "2026-09-21T00:00:00Z"}
+
+    class Client:
+        def __enter__(self): return self
+        def __exit__(self, *args): return False
+        def post(self, path, **kwargs):
+            assert path == "/media" and kwargs["content"] == b"png" and kwargs["headers"]["content-type"] == "image/png"
+            return Response()
+
+    monkeypatch.setattr(cli, "_client", lambda cfg, **k: Client())
+    monkeypatch.setattr(cli, "_load_config", lambda: {"base_url": "http://x", "token": "t"})
+    f = tmp_path / "face.png"; f.write_bytes(b"png")
+    cli.main(["host", str(f)])
+    assert capsys.readouterr().out == "http://x/m/tok\n"
+    cli.main(["host", str(f), "--json"])
+    assert json.loads(capsys.readouterr().out)["token"] == "tok"

@@ -3,7 +3,7 @@ source:
   docs: https://piapi.ai/docs/overview
   curated: 2026-09-14
 pricing_url: https://piapi.ai/seedance-2-5
-limits: "Generation is asynchronous: POST /api/v1/task answers with data.task_id; poll GET /api/v1/task/{task_id} every 10 seconds. Errors arrive as HTTP 200 with a non-200 `code`. Output URLs are temporary; download promptly."
+limits: "Generation is asynchronous: POST /api/v1/task answers with data.task_id; poll GET /api/v1/task/{task_id} every 10 seconds. Errors arrive as HTTP 200 with a non-200 `code`. Output URLs are temporary; download promptly. Reference image URLs must return raw image bytes with an image/* content-type, not an HTML file page."
 proposed_capabilities:
   # Per-model join keys shared with reapi.yaml (see minimax.yaml for the model-wall rationale).
   video-gen.seedance-2-5.generate: "Seedance 2.5"
@@ -69,7 +69,7 @@ endpoints:
             duration: {type: integer, required: false, default: 5, min: 5, max: 30, enum: [5, 8, 10, 15, 20, 25, 30], example: 5}
             resolution: {type: string, required: false, default: 480p, enum: [480p, 720p, 1080p], example: 480p}
             aspect_ratio: {type: string, required: false, default: "16:9", enum: ["21:9", "16:9", "9:16", "4:3", "1:1", "3:4"], example: "16:9"}
-            image_urls: {type: array, required: false, note: "Up to 9 public image URLs."}
+            image_urls: {type: array, required: false, note: "Up to 9 public image URLs. Each URL must answer a plain GET with the raw image bytes and an image/* content-type (signed cloud-storage or CDN links work; file-page hosts such as tmpfiles.org return HTML and the task fails). `treg host <file>` prints a URL that satisfies this."}
             video_urls: {type: array, required: false, note: "Up to 3 public video URLs."}
             audio_urls: {type: array, required: false, note: "Up to 3 public audio URLs, 15 s total."}
       bodyType: json
@@ -114,7 +114,7 @@ endpoints:
             duration: {type: integer, required: false, default: 5, min: 5, max: 30, enum: [5, 8, 10, 15, 20, 25, 30], example: 5}
             resolution: {type: string, required: false, default: 480p, enum: [480p, 720p, 1080p], example: 480p}
             aspect_ratio: {type: string, required: false, default: "16:9", enum: ["21:9", "16:9", "9:16", "4:3", "1:1", "3:4"], example: "9:16"}
-            image_urls: {type: array, required: false, example: ["https://picsum.photos/seed/treg-aigc/720/1280"], note: "Up to 9 public image URLs. A real person's face must be pre-approved in the Private Asset Library of the connected account."}
+            image_urls: {type: array, required: false, example: ["https://picsum.photos/seed/treg-aigc/720/1280"], note: "Up to 9 public image URLs. A real person's face must be pre-approved in the Private Asset Library of the connected account. Each URL must answer a plain GET with the raw image bytes and an image/* content-type (signed cloud-storage or CDN links work; file-page hosts such as tmpfiles.org return HTML and the task fails). `treg host <file>` prints a URL that satisfies this."}
             video_urls: {type: array, required: false, note: "Up to 3 public video URLs."}
             audio_urls: {type: array, required: false, note: "Up to 3 public audio URLs, 15 s total."}
       bodyType: json
@@ -168,7 +168,7 @@ endpoints:
           required: true
           properties:
             prompt: {type: string, required: true, example: "A clean editorial illustration of a paper airplane."}
-            image_urls: {type: array, required: false, note: "Up to 14 public image URLs to edit or reference."}
+            image_urls: {type: array, required: false, note: "Up to 14 public image URLs to edit or reference. Each URL must answer a plain GET with the raw image bytes and an image/* content-type (signed cloud-storage or CDN links work; file-page hosts such as tmpfiles.org return HTML and the task fails). `treg host <file>` prints a URL that satisfies this."}
             resolution: {type: string, required: false, default: 1K, enum: [1K, 2K, 4K], example: 1K}
             aspect_ratio: {type: string, required: false, default: "1:1", enum: ["1:1", "16:9", "9:16", "4:3", "3:4", "3:2", "2:3", "21:9", "5:4", "4:5"], example: "1:1"}
             output_format: {type: string, required: false, default: png, enum: [png, jpeg], example: png}

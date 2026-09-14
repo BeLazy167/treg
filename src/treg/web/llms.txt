@@ -484,6 +484,8 @@ are both supported; you do not need to pre-arrange anything with us.
     treg call <tool> <path>  |  treg call <full-url>     proxy an HTTP call (named or agent-native)
     treg call <endpoint-id> --await [--timeout N] a catalog call that is an async task (generation):
                                                   submit, poll, print the final response (default 900 s)
+    treg host <file> [--content-type T]           host a reference image/audio/video at a public URL a
+                                                  vendor can fetch (30 MB, 7 days, free) — for image_urls / audio_urls
     treg calls [--limit N]                        the proxied-call audit log
     treg audit [--limit N] [--calls | --runs]     calls + CLI runs in one log; generation tasks carry
                                                   their state and result link

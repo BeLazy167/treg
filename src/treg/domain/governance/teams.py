@@ -21,6 +21,7 @@ from ...models import (
     DenyRule,
     Feedback,
     CallReview,
+    Media,
     Hold,
     IdempotentCall,
     Invite,
@@ -174,6 +175,7 @@ ORG_SCOPED_MODELS = (
     ToolRequest,  # attribution rows go with the team; anonymous filings carry no org_id and stay
     Feedback,
     CallReview,
+    Media,        # hosted reference files expire on their own; a deleted team's go now
     AdConversion,  # pending Google Ads conversions belong to the team they'd be attributed to
     Membership,   # last: it is what makes the caller a member of the org being deleted
 )
