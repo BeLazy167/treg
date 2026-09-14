@@ -50,6 +50,11 @@ _TABLE: list[tuple[str, int, str, str]] = [
     # unrecognised on 2026-09-04 (nothing here matched a 403, and "quota" alone is not a tripwire
     # word). The period resets on Moz's billing day, which the answer does not name.
     ("moz", 403, r"insufficient-quota", "quota"),
+    # cloro: a spent credit allowance is a 403 ForbiddenError with `error.code: "INSUFFICIENT_CREDITS"`
+    # (OpenAPI 3.1 spec, 2026-09-07 — documented, not yet observed). Its 429s are
+    # CONCURRENT_LIMIT_EXCEEDED / RATE_LIMIT_EXCEEDED bursts with X-RateLimit-* headers, never a
+    # period quota; the plan allowance resets monthly at `cycleResetsAt` from GET /v1/credits.
+    ("cloro", 403, r"insufficient_credits", "balance"),
     # Documented 2026-09-08: discovery's allowance is distinct from the shared credit pool.
     # https://docs.influencers.club/guides/error-handling — ordinary burst 429s have Retry-After.
     ("influencersclub", 429, r"Discovery API credit limit reached", "quota"),

@@ -212,6 +212,15 @@ def _observed_cost_micro(mk: MarketplaceCall, body: bytes, headers=None) -> int 
             credits = -1
         if credits >= 0 and rate:
             return _usd_to_micro(credits * rate)
+    if provider == "cloro" and headers is not None:
+        raw = headers.get("x-credits-charged")
+        rate = catalog_store.load().credit_rates.get("cloro")
+        try:
+            credits = float(raw)
+        except (TypeError, ValueError):
+            credits = -1
+        if credits >= 0 and rate:
+            return _usd_to_micro(credits * rate)
     if not body:
         return 0 if provider == "contactout" else None
     if provider == "brightdata" and mk.cost_type == "per_result" and mk.unit_micro > 0:
