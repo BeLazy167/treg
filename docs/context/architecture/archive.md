@@ -363,6 +363,13 @@ caps even an already-learned positive TTL by that declaration, then by caller `X
 Without a declared ceiling, learned TTLs can exceed capability defaults; lookup never uses the
 static default to cap a positive learned TTL.
 
+The one exception is a **volatile capability** (`volatile_max_age_s`, since 2026-09-14): a
+capability SEGMENT naming moving data — `live`, `realtime`, `quote` (60 s), `price` and any
+`hot*`/`trend*` segment (300 s) — is a HARD ceiling on the default, on serving
+and on refresh, even over a learned timer. The learner cannot tell "flat over the weekend" from
+"stable"; a live quote or a trending list that was identical across refetches must still not be
+served hours later. A vendor `max_age_s` and an operator ceiling stack with it (the minimum wins).
+
 Caller controls, always honored: `Cache-Control: no-cache`/`no-store` forces a live call (the
 read-after-write escape — the archive never guesses cross-endpoint effects); `X-Treg-Max-Age`
 tightens (never widens) the window; malformed values are ignored. None on every uncertain branch
@@ -438,9 +445,13 @@ enable. Rollback is an environment-setting change through the deployment's norma
 process.
 
 In serve mode the two rollout gates default open since 2026-09-14: `TREG_ARCHIVE_SERVE_ENDPOINTS`
-is `*` (every endpoint the policy allows; an exact comma-separated list still narrows it, and
-empty serves nothing — the rollback lever) and `TREG_ARCHIVE_SERVE_PERCENT` is `100` (the
-sha256 team/endpoint cohort still applies below 100). `TREG_ARCHIVE_SERVE_MAX_AGE_S` remains the
+is `*` (every endpoint the policy allows) and `TREG_ARCHIVE_SERVE_PERCENT` is `100` (the
+sha256 team/endpoint cohort still applies below 100). The allowlist is comma-separated and mixes
+three entry forms: an exact endpoint id, `capability:<prefix>` (a whole family —
+`capability:people.` matches every endpoint whose capability starts with it; `endpoint_served`
+checks the entry's capability), and `*`. Empty serves nothing — the rollback lever. Production
+rolls families in through treg-internal rather than flipping `*`; the refresh worker applies a
+family or `*` allowlist in Python after its query (`serve_ids_only` decides). `TREG_ARCHIVE_SERVE_MAX_AGE_S` remains the
 per-endpoint operator ceiling and `TREG_ARCHIVE_HIT_REPEAT_PRICE_PERCENT` (10) the repeat price.
 
 ## Conservative comparison and controlled serving (2026-09-08)
@@ -499,7 +510,11 @@ produce hypothetical hit counts or fresh-answer comparisons.
 
 ## Eligibility — three gates, in order
 
-1. **Kind.** `kind: action` entries are never stored; only data reads pass.
+1. **Kind.** Only a `data` read (the catalog's default kind) is ever stored. `action` changes
+   the world; `utility` is a task-status poll or a model list, where a stored "running" would
+   break every poller; `account` answers about the caller's own account (balance, quota, own
+   profile), stale the moment it is spent. `archive.cacheable_kind` (since 2026-09-14; before
+   it only actions were excluded).
 2. **License.** Per catalog entry: `cache: forbidden | transient | archive` — either a bare
    string or a provenance dict `{mode, license_quote, source_url, checked}`, exactly like `cost`
    provenance. **Absent ⇒ `archive_default_policy`**, which is `transient` since the founder's

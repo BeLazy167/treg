@@ -328,9 +328,10 @@ class Settings(BaseSettings):
     archive_r2_read_timeout_s: float = Field(default=2.0, gt=0, le=120)
     archive_r2_terminal_attempts: int = Field(default=3, ge=1, le=5)
 
-    # Exact endpoint IDs, comma-separated, or "*" for every endpoint the policy allows (the
-    # default since the founder's 2026-09-14 serve-everything decision). Empty means no serving,
-    # even in serve mode - the rollback lever.
+    # Comma-separated: exact endpoint IDs, "capability:<prefix>" families (capability:people.),
+    # or "*" for every endpoint the policy allows (the default since the founder's 2026-09-14
+    # serve-everything decision; production rolls families in through treg-internal). Empty
+    # means no serving, even in serve mode - the rollback lever.
     archive_serve_endpoints: str = "*"
     # Stable team/endpoint cohorts; 0 disables serving, 100 includes every team.
     archive_serve_percent: int = 100

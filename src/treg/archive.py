@@ -55,22 +55,34 @@ def serving() -> bool:
 
 
 SERVE_ALL = "*"
+CAPABILITY_PREFIX = "capability:"
 
 
 def serve_endpoints() -> set[str]:
-    """The serving allowlist: exact endpoint ids, or `{"*"}` meaning every endpoint the policy
-    allows. Empty means nothing serves even in serve mode (the operator's rollback lever)."""
+    """The serving allowlist, comma-separated: exact endpoint ids, `capability:<prefix>` entries
+    (every endpoint whose capability starts with the prefix — a whole family such as
+    `capability:people.`), or `*` for every endpoint the policy allows. Empty means nothing
+    serves even in serve mode (the operator's rollback lever)."""
     return {value.strip() for value in get_settings().archive_serve_endpoints.split(",")
             if value.strip()}
 
 
-def endpoint_served(endpoint_id: str) -> bool:
+def serve_ids_only() -> bool:
+    """True when the allowlist can be applied as a SQL `IN` on endpoint ids (no `*`, no
+    capability entries) — the refresh worker's query shortcut."""
+    return not any(v == SERVE_ALL or v.startswith(CAPABILITY_PREFIX) for v in serve_endpoints())
+
+
+def endpoint_served(endpoint_id: str, capability: str = "") -> bool:
     allowed = serve_endpoints()
-    return SERVE_ALL in allowed or endpoint_id in allowed
+    if SERVE_ALL in allowed or endpoint_id in allowed:
+        return True
+    return any(v.startswith(CAPABILITY_PREFIX) and capability.startswith(v[len(CAPABILITY_PREFIX):])
+               and len(v) > len(CAPABILITY_PREFIX) for v in allowed)
 
 
-def rollout_reason(endpoint_id: str, cohort: str) -> str:
-    if not endpoint_served(endpoint_id):
+def rollout_reason(endpoint_id: str, cohort: str, capability: str = "") -> str:
+    if not endpoint_served(endpoint_id, capability):
         return "endpoint_disabled"
     percent = get_settings().archive_serve_percent
     if not 0 < percent <= 100:
@@ -91,19 +103,29 @@ CACHE_TRANSIENT = "transient"   # short-lived cache only; old versions are pruna
 CACHE_ARCHIVE = "archive"       # keep versions long-term (public-domain and license-cleared)
 
 _STORABLE = (CACHE_TRANSIENT, CACHE_ARCHIVE)
+# Only a DATA read (the catalog's default kind) is ever cached. An `action` changes the world;
+# a `utility` is a task-status poll or a model list, where a stored "running" would break every
+# poller; an `account` answers about the caller's own account (balance, quota, own profile),
+# which is stale the moment it is spent. A missing `kind` is a data read (store.DEFAULT_KIND).
+_CACHEABLE_KINDS = ("data",)
+
+
+def cacheable_kind(entry: dict[str, Any]) -> bool:
+    return str(entry.get("kind") or "data").strip().lower() in _CACHEABLE_KINDS
 
 
 def policy(entry: dict[str, Any] | None) -> str:
     """Gates 1+2 for one catalog entry, returning the effective cache policy.
 
     `entry` is the endpoint's catalog mapping (the same dict the resolver already holds). Two
-    branches are non-negotiable whatever the default says: a missing entry or an ACTION is never
+    branches are non-negotiable whatever the default says: a missing entry or anything but a
+    DATA read (an action, a utility poll, an account query — `_CACHEABLE_KINDS`) is never
     stored, and a JUDGED forbidden (a licence that was read and says no) is always respected.
     An UNJUDGED entry takes `archive_default_policy` — "transient" since the founder's 2026-08-29
     keep-all decision, flippable back to "forbidden" by env without a deploy."""
     if not entry:
         return CACHE_FORBIDDEN
-    if entry.get("kind") == "action":  # gate 1 — never store an action's answer
+    if not cacheable_kind(entry):  # gate 1 — only a data read's answer is ever stored
         return CACHE_FORBIDDEN
     declared = entry.get("cache")
     if isinstance(declared, dict):  # provenance form: {mode, license_quote, source_url, checked}
@@ -125,8 +147,8 @@ def judged_storable(entry: dict[str, Any] | None) -> bool:
     on the entry (or its provider header) - never from the unjudged default. This is the line
     for serving one team's OWN-KEY answer to another team: the data was fetched under that
     team's vendor contract, so it crosses teams only where the licence was judged to permit
-    storage. Actions stay excluded whatever the declaration says."""
-    if not entry or entry.get("kind") == "action":
+    storage. Non-data kinds stay excluded whatever the declaration says."""
+    if not entry or not cacheable_kind(entry):
         return False
     declared = entry.get("cache")
     if isinstance(declared, dict):
@@ -1172,6 +1194,25 @@ _TTL_DEFAULTS: tuple[tuple[str, int], ...] = (
     ("seo.", 86400),              # backlink/rank profiles: days
 )
 DEFAULT_TTL_S = 3600
+# A capability SEGMENT that names moving data caps the window HARD — the default, a learned
+# timer, and serving alike — because the learner cannot tell "stable over the weekend" from
+# "stable": a live quote or a trending list that was flat across refetches must still not be
+# served hours later. Exact segments, then segment prefixes (`hot_search`, `trending`, `trends`).
+_TTL_VOLATILE_SEGMENTS: dict[str, int] = {
+    "live": 60, "lives": 60, "realtime": 60, "quote": 60, "quotes": 60, "price": 300,
+}
+_TTL_VOLATILE_SEGMENT_PREFIXES: tuple[tuple[str, int], ...] = (("hot", 300), ("trend", 300))
+
+
+def volatile_max_age_s(entry: dict[str, Any] | None) -> int | None:
+    """The hard ceiling for a capability that names moving data, else None."""
+    capability = str((entry or {}).get("capability") or "").lower()
+    caps = []
+    for segment in capability.split("."):
+        if segment in _TTL_VOLATILE_SEGMENTS:
+            caps.append(_TTL_VOLATILE_SEGMENTS[segment])
+        caps.extend(s for prefix, s in _TTL_VOLATILE_SEGMENT_PREFIXES if segment.startswith(prefix))
+    return min(caps) if caps else None
 
 
 def declared_max_age_s(entry: dict[str, Any] | None) -> int | None:
@@ -1196,9 +1237,9 @@ def ttl_for(entry: dict[str, Any] | None) -> int:
     for prefix, seconds in _TTL_DEFAULTS:
         if capability.startswith(prefix) and len(prefix) > best:
             best, ttl = len(prefix), seconds
-    cap = declared_max_age_s(entry)
-    if cap is not None:
-        ttl = min(ttl, cap)
+    for ceiling in (declared_max_age_s(entry), volatile_max_age_s(entry)):
+        if ceiling is not None:
+            ttl = min(ttl, ceiling)
     return ttl
 
 
@@ -1254,13 +1295,15 @@ async def lookup(
             return miss("mode_disabled")
         if caller_forces_live(request_headers):
             return miss("caller_bypass")
-        selection = rollout_reason(endpoint_id, cohort)
-        if selection != "selected":
-            return miss(selection)
         from sqlalchemy import select
 
         from .domain.catalog import store as catalog_store
         from .domain.catalog.results import classify, has_result_rules
+
+        entry = catalog_store.load().by_id.get(endpoint_id)
+        selection = rollout_reason(endpoint_id, cohort, str((entry or {}).get("capability") or ""))
+        if selection != "selected":
+            return miss(selection)
         # The API pool, deliberately: a lookup runs INSIDE a caller's /call/. Every other session in
         # this module is a write nobody awaits and goes to the background pool; this one is on the
         # hot path and must not queue behind them.
@@ -1268,7 +1311,6 @@ async def lookup(
         from .models import ArchiveKey, ArchiveKeyOrg, ArchiveSnapshot
 
         result_aware = has_result_rules(endpoint_id)
-        entry = catalog_store.load().by_id.get(endpoint_id)
         if not storable(entry):
             return miss("policy_excluded")
         wanted = caller_max_age_s(request_headers)
@@ -1284,14 +1326,10 @@ async def lookup(
             if key.ttl_s == TTL_NEVER:
                 return miss("ttl_disabled")
             window = key.ttl_s if key.ttl_s > 0 else ttl_for(entry)
-            cap = declared_max_age_s(entry)
-            if cap is not None:
-                window = min(window, cap)
-            operator_cap = get_settings().archive_serve_max_age_s.get(endpoint_id)
-            if operator_cap is not None:
-                window = min(window, operator_cap)
-            if wanted is not None:
-                window = min(window, wanted)
+            for ceiling in (declared_max_age_s(entry), volatile_max_age_s(entry),
+                            get_settings().archive_serve_max_age_s.get(endpoint_id), wanted):
+                if ceiling is not None:
+                    window = min(window, ceiling)
             if window <= 0:
                 return miss("ttl_disabled")
             newest = (await s.execute(
@@ -1478,8 +1516,7 @@ async def refresh_once(client) -> int:
     async with background_session_maker() as s:
         candidates = (await s.execute(
             select(ArchiveKey)
-            .where(*([] if SERVE_ALL in serve_endpoints()
-                     else [ArchiveKey.endpoint_id.in_(serve_endpoints())]),
+            .where(*([ArchiveKey.endpoint_id.in_(serve_endpoints())] if serve_ids_only() else []),
                    ArchiveKey.ttl_s > 0,
                    ArchiveKey.req_url != "",
                    ArchiveKey.last_requested_at.is_not(None))
@@ -1506,10 +1543,13 @@ async def refresh_once(client) -> int:
         entry = cat.by_id.get(key.endpoint_id)
         if not storable(entry):
             continue  # judgment changed since recording — never refresh what may not be kept
+        if not endpoint_served(key.endpoint_id, str((entry or {}).get("capability") or "")):
+            continue  # a family/`*` allowlist is applied here, not in the query
         window = key.ttl_s if key.ttl_s > 0 else ttl_for(entry)
-        operator_cap = get_settings().archive_serve_max_age_s.get(key.endpoint_id)
-        if operator_cap is not None:
-            window = min(window, operator_cap)
+        for ceiling in (get_settings().archive_serve_max_age_s.get(key.endpoint_id),
+                        volatile_max_age_s(entry)):
+            if ceiling is not None:
+                window = min(window, ceiling)
         age = (now - key.fetched_at).total_seconds()
         demanded = key.last_requested_at is not None and key.last_requested_at > key.fetched_at
         if age < window * _DUE_SHARE or not demanded:

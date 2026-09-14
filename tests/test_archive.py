@@ -53,9 +53,15 @@ def test_policy_defaults():
     # The founder's 2026-08-29 keep-all decision: an UNJUDGED entry defaults to transient.
     assert policy(None) == "forbidden"                              # no entry: never
     assert policy({}) == "forbidden"                                # empty ≈ no entry: never
-    assert policy({"kind": "read"}) == "transient"                  # unjudged license
-    assert policy({"cache": "everything"}) == "transient"           # unknown value
+    assert policy({"kind": "data"}) == "transient"                  # unjudged license
+    assert policy({"cache": "everything"}) == "transient"           # unknown value (kind: data)
     assert policy({"cache": {"mode": "keep"}}) == "transient"       # unknown value, dict form
+    # Only a DATA read is ever cached: a poll's "running" or an account's balance must not be.
+    for kind in ("action", "utility", "account", "ACCOUNT ", "anything-else"):
+        assert policy({"kind": kind}) == "forbidden", kind
+        assert policy({"kind": kind, "cache": "archive"}) == "forbidden", kind
+        assert not archive.judged_storable({"kind": kind, "cache": {"mode": "transient"}})
+    assert archive.judged_storable({"kind": "data", "cache": {"mode": "transient"}})
     # A judged forbidden is always respected, whatever the default says.
     assert policy({"cache": "forbidden"}) == "forbidden"
     assert policy({"cache": {"mode": "forbidden", "license_quote": "q"}}) == "forbidden"
@@ -63,7 +69,7 @@ def test_policy_defaults():
 
 def test_keep_all_can_be_switched_off(monkeypatch):
     monkeypatch.setattr(get_settings(), "archive_default_policy", "forbidden")
-    assert policy({"kind": "read"}) == "forbidden"
+    assert policy({"kind": "data"}) == "forbidden"
     assert policy({"cache": "transient"}) == "transient"            # judged stays judged
 
 
@@ -380,6 +386,43 @@ def test_ttl_fixed_guesses_and_vendor_ceiling():
                             "cache": {"mode": "transient", "max_age_s": 60}}) == 60
     assert archive.ttl_for({"capability": "crypto.price.current",
                             "cache": {"mode": "transient", "max_age_s": 86400}}) == 300
+
+
+def test_volatile_capabilities_cap_the_window_hard():
+    # A segment naming moving data caps the default whatever the family says.
+    assert archive.ttl_for({"capability": "stocks.quote.live"}) == 60
+    assert archive.ttl_for({"capability": "tiktok.live.status"}) == 60
+    assert archive.ttl_for({"capability": "weibo.trending.hot_search"}) == 300
+    assert archive.ttl_for({"capability": "x.trends.by_woeid"}) == 300
+    assert archive.ttl_for({"capability": "people.headcount_trend"}) == 7 * 86400  # not a segment
+    assert archive.ttl_for({"capability": "crypto.price.current"}) == 300           # unchanged
+    assert archive.volatile_max_age_s({"capability": "people.email.find"}) is None
+    assert archive.volatile_max_age_s({"capability": "stocks.quote.live"}) == 60
+    assert archive.volatile_max_age_s(None) is None
+
+
+async def test_a_learned_timer_never_outlives_a_volatile_capability(clients, serve, monkeypatch):
+    """The learner cannot tell "flat over the weekend" from "stable": a live quote key that
+    learned a long timer is still capped at the volatile ceiling when served."""
+    from datetime import timedelta
+    monkeypatch.setitem(catalog_store.load().by_id[EP], "capability", "tiktok.live.status")
+    await clients.get(f"/call/{EP}?aweme_id=7")
+    await archive.drain()
+    async with session_maker() as session:
+        key = (await session.execute(select(ArchiveKey))).scalars().one()
+        snap = (await session.execute(select(ArchiveSnapshot))).scalars().one()
+        key.ttl_s = 86400
+        snap.fetched_at -= timedelta(seconds=120)
+        session.add(key)
+        session.add(snap)
+        await session.commit()
+    events = []
+    monkeypatch.setattr(call_service.analytics, "capture",
+                        lambda who, event, props, **kw: events.append((event, props)))
+    r = await clients.get(f"/call/{EP}?aweme_id=7")
+    assert r.status_code == 200 and "x-treg-cache" not in r.headers
+    props = [p for e, p in events if e == "tool_called"][-1]
+    assert props["cache_outcome"] == "stale" and props["cache_window_s"] == 60
 
 
 @pytest.fixture
@@ -1479,8 +1522,33 @@ def test_serving_defaults_to_every_endpoint_and_every_team(monkeypatch):
     assert archive.endpoint_served("c.d")
     monkeypatch.setattr(settings, "archive_serve_endpoints", "a.b")
     assert archive.endpoint_served("a.b") and not archive.endpoint_served("c.d")
+    assert archive.serve_ids_only()
     monkeypatch.setattr(settings, "archive_serve_endpoints", "")
     assert not archive.endpoint_served("a.b")                  # the rollback lever
+    # A capability family: every endpoint whose capability starts with the prefix.
+    monkeypatch.setattr(settings, "archive_serve_endpoints", "capability:people., x.y")
+    assert not archive.serve_ids_only()
+    assert archive.endpoint_served("hunter.people.email.find", "people.email.find")
+    assert archive.endpoint_served("x.y", "anything")
+    assert not archive.endpoint_served("acme.companies.search", "companies.search")
+    assert not archive.endpoint_served("acme.companies.search", "")
+    assert archive.rollout_reason("acme.companies.search", "42", "companies.search") == "endpoint_disabled"
+    assert archive.rollout_reason("acme.people.search", "42", "people.search") == "selected"
+    monkeypatch.setattr(settings, "archive_serve_endpoints", "capability:")
+    assert not archive.endpoint_served("a.b", "people.search")  # an empty prefix serves nothing
+
+
+async def test_a_capability_family_allowlist_gates_serving(clients, serve, monkeypatch):
+    capability = catalog_store.load().by_id[EP]["capability"]
+    await clients.get(f"/call/{EP}?aweme_id=7")
+    await archive.drain()
+    monkeypatch.setattr(get_settings(), "archive_serve_endpoints", "capability:people.")
+    r = await clients.get(f"/call/{EP}?aweme_id=7")
+    assert "x-treg-cache" not in r.headers
+    monkeypatch.setattr(get_settings(), "archive_serve_endpoints",
+                        "capability:" + capability.split(".")[0] + ".")
+    r = await clients.get(f"/call/{EP}?aweme_id=7")
+    assert r.headers["X-Treg-Cache"] == "hit"
 
 
 @pytest.mark.parametrize("endpoints,percent,reason", [
