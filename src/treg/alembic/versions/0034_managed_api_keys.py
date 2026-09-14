@@ -6,12 +6,27 @@ Create Date: 2026-09-04
 
 This additive revision is a rollback floor because new code can record key disable and revoke state
 that old code cannot enforce. Rolling the schema back would remove that security state.
+
+**Why this revision raises lock_timeout around the hot-table ADD COLUMNs.** ALTER TABLE ADD COLUMN
+takes ACCESS EXCLUSIVE, so the env's 5 s lock_timeout exists to fail fast rather than queue the
+whole database behind it (the 2026-08-15 rule). However, for NULLABLE columns with no DEFAULT,
+PostgreSQL's ADD COLUMN is metadata-only — once the lock is acquired, the operation completes in
+microseconds. The bottleneck is purely waiting for the lock while existing queries drain; the
+actual holding time is negligible. Raising lock_timeout therefore only extends the wait, not the
+duration traffic is blocked. The env timeouts are restored before the block ends.
 """
 from collections.abc import Sequence
 
 from alembic import op
 import sqlalchemy as sa
 import sqlmodel
+
+# Long enough to wait for short-lived transactions on hot tables to drain.  See the docstring for
+# why waiting longer here is safe.  `env.py`'s values are restored after the contended section.
+_LOCK_TIMEOUT = "60s"
+_STATEMENT_TIMEOUT = "120s"
+_ENV_LOCK_TIMEOUT = "5s"
+_ENV_STATEMENT_TIMEOUT = "120s"
 
 
 revision: str = "0034"
@@ -79,13 +94,25 @@ def upgrade() -> None:
     op.create_index("ix_apikeyevent_actor_email", "apikeyevent", ["actor_email"])
     op.create_index("ix_apikeyevent_action", "apikeyevent", ["action"])
 
-    for table in ("callrecord", "runrecord"):
-        op.add_column(table, sa.Column("api_key_id", sa.Integer(), nullable=True))
-        op.add_column(table, sa.Column("api_key_name", sqlmodel.sql.sqltypes.AutoString(), nullable=True))
-        op.add_column(table, sa.Column("api_key_prefix", sqlmodel.sql.sqltypes.AutoString(), nullable=True))
+    # Hot-table ADD COLUMNs: raise lock_timeout so the DDL can wait for short-lived transactions to
+    # drain.  The actual ALTER is metadata-only (nullable, no default) and completes instantly once
+    # the lock is acquired.
+    bind = op.get_bind()
+    is_pg = bind.dialect.name == "postgresql"
+    if is_pg:
+        bind.execute(sa.text(f"SET lock_timeout = '{_LOCK_TIMEOUT}'"))
+        bind.execute(sa.text(f"SET statement_timeout = '{_STATEMENT_TIMEOUT}'"))
+    try:
+        for table in ("callrecord", "runrecord"):
+            op.add_column(table, sa.Column("api_key_id", sa.Integer(), nullable=True))
+            op.add_column(table, sa.Column("api_key_name", sqlmodel.sql.sqltypes.AutoString(), nullable=True))
+            op.add_column(table, sa.Column("api_key_prefix", sqlmodel.sql.sqltypes.AutoString(), nullable=True))
+    finally:
+        if is_pg:
+            bind.execute(sa.text(f"SET lock_timeout = '{_ENV_LOCK_TIMEOUT}'"))
+            bind.execute(sa.text(f"SET statement_timeout = '{_ENV_STATEMENT_TIMEOUT}'"))
 
     # One signed default-key control per real human membership. Machine identities cannot sign in.
-    bind = op.get_bind()
     bind.execute(sa.text("""
         INSERT INTO apikey
             (org_id, membership_id, identity_label, kind, name, safe_prefix, key_hash, state,
