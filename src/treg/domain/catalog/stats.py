@@ -26,6 +26,7 @@ its JSON provenance).
 
 from __future__ import annotations
 
+import math
 import random
 from collections.abc import Collection, Iterable
 from dataclasses import dataclass, field
@@ -71,9 +72,20 @@ class Tally:
     free_misses: int = 0
     # Successful durations. `latency_seen` counts every one folded in; `latencies` keeps at most
     # `LATENCY_SAMPLE` of them, a uniform reservoir (Vitter's algorithm R) so a busy day's
-    # percentiles are as honest as a quiet day's exact list.
+    # percentiles are as honest as a quiet day's exact list. `latency_weights`, parallel to
+    # `latencies`, is empty while a tally is one uniform sample and is filled by `merge`: a merged
+    # window must weight each sample by the calls it stands for, or a day with ten thousand calls
+    # and a day with ten would count the same and the window's p95 would be the quiet day's.
     latency_seen: int = 0
     latencies: list[int] = field(default_factory=list)
+    latency_weights: list[float] = field(default_factory=list)
+
+    def _weights(self) -> list[float]:
+        if self.latency_weights:
+            return list(self.latency_weights)
+        if not self.latencies:
+            return []
+        return [self.latency_seen / len(self.latencies)] * len(self.latencies)
 
     def fold(self, *, status_code: int, created_at: datetime, duration_ms: int | None,
              hit: bool | None, cost_observed_micro: int | None, refused_by: str | None,
@@ -114,9 +126,11 @@ class Tally:
         return True
 
     def merge(self, other: "Tally") -> "Tally":
-        """Sum two tallies (e.g. thirty days into a window). Samples concatenate: each day's
-        reservoir is uniform over that day, and the window's percentile over the concatenation is
-        the same day-weighted estimate the live query's bounded fetch produced."""
+        """Sum two tallies (e.g. thirty days into a window). Samples concatenate with weights:
+        each day's reservoir is uniform over that day, so a sample from a day with `seen` calls
+        and `kept` samples stands for `seen / kept` calls, and the window's percentile is taken
+        over those weights. A merged tally is never folded into again."""
+        weights = self._weights() + other._weights()
         self.n += other.n
         self.ok += other.ok
         self.bad += other.bad
@@ -127,8 +141,27 @@ class Tally:
         self.paid_hits += other.paid_hits
         self.free_misses += other.free_misses
         self.latency_seen += other.latency_seen
-        self.latencies.extend(other.latencies)
+        self.latencies = self.latencies + other.latencies
+        self.latency_weights = weights
         return self
+
+    def percentile(self, q: float) -> int | None:
+        """Nearest-rank percentile of the successful durations, by weight when the samples stand
+        for different numbers of calls (a merged window), plain when they are one uniform sample
+        (a single day, or the live query's rows)."""
+        if not self.latencies:
+            return None
+        if not self.latency_weights:
+            return _pct(sorted(self.latencies), q)
+        pairs = sorted(zip(self.latencies, self.latency_weights))
+        total = sum(w for _, w in pairs)
+        target = q * total - 1e-9      # the same rank rule as `_pct`, over weight instead of count
+        acc = 0.0
+        for value, weight in pairs:
+            acc += weight
+            if acc >= target:
+                return int(value)
+        return int(pairs[-1][0])
 
 
 def publish(endpoint_ids: Iterable[str], tallies: dict[str, Tally], *,
@@ -162,8 +195,7 @@ def publish(endpoint_ids: Iterable[str], tallies: dict[str, Tally], *,
                           "p50_ms": None, "p95_ms": None, "last_ok_days": None,
                           "hit_rate": hit_rate, "hit_samples": hit_decided}
             continue
-        ms = sorted(t.latencies)
-        enough_latency = len(ms) >= MIN_SAMPLES
+        enough_latency = len(t.latencies) >= MIN_SAMPLES
         out[ep_id] = {
             "samples": t.n,
             # `decided` is the denominator of ok_rate (2xx + 5xx). Anything aggregating rates
@@ -173,8 +205,8 @@ def publish(endpoint_ids: Iterable[str], tallies: dict[str, Tally], *,
             # A rate may rest on five decided calls while only one succeeded. Calling that single
             # duration p50 AND p95 dresses one observation up as a distribution, so latency has
             # its own successful-sample floor.
-            "p50_ms": _pct(ms, 0.50) if enough_latency else None,
-            "p95_ms": _pct(ms, 0.95) if enough_latency else None,
+            "p50_ms": t.percentile(0.50) if enough_latency else None,
+            "p95_ms": t.percentile(0.95) if enough_latency else None,
             "last_ok_days": (at - t.last_ok).days if t.last_ok else None,
             "hit_rate": hit_rate, "hit_samples": hit_decided,
         }
@@ -218,12 +250,16 @@ def _now() -> datetime:
 
 
 def _pct(sorted_values: list[int], q: float) -> int | None:
-    """Nearest-rank percentile. Deliberately not interpolated: these are milliseconds off a wire,
-    and a reader comparing providers gains nothing from a fractional millisecond."""
+    """Nearest-rank percentile: the smallest value at or above which lie `q` of the samples
+    (rank `ceil(q * n)`). Deliberately not interpolated: these are milliseconds off a wire, and a
+    reader comparing providers gains nothing from a fractional millisecond. `Tally.percentile`
+    applies the same rule over weighted samples, so a merged window and a live aggregate of the
+    same rows agree to the millisecond."""
     if not sorted_values:
         return None
-    i = max(0, min(len(sorted_values) - 1, int(round(q * (len(sorted_values) - 1)))))
-    return int(sorted_values[i])
+    n = len(sorted_values)
+    k = max(1, min(n, math.ceil(q * n - 1e-9)))
+    return int(sorted_values[k - 1])
 
 
 MIN_HIT_SAMPLES = 20     # a hit rate below this many decided lookups is published as None

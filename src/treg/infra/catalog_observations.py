@@ -23,6 +23,10 @@ from ..domain.catalog import stats
 FRESH_TTL_S = 5 * 60
 STALE_TTL_S = 30 * 60
 REFRESH_RETRY_S = 5
+# The folded read model is trusted only while its worker keeps running. Generous against a cron
+# scheduled every few minutes, so a slow backfill or one failed run never flips the catalog back
+# to the live aggregate; short enough that a dead cron is noticed within a working day.
+STALE_AFTER_S = 2 * 3600
 
 log = logging.getLogger("treg.catalog")
 
@@ -49,9 +53,11 @@ class PostgresEndpointObservationReader:
 
     Once `treg-worker catalog stats` has caught up with the audit table (the cursor row says so),
     an observation is thirty `EndpointDayStat` rows per endpoint, summed and published through the
-    same floors as the live aggregate. Until then, and on any deployment that never schedules the
-    worker, it is the live thirty-day aggregate over `callrecord` it always was, so the numbers
-    the catalog publishes never depend on an operator remembering a cron.
+    same floors as the live aggregate. Until then, on any deployment that never schedules the
+    worker, and whenever the worker has not run for `STALE_AFTER_S` (it stopped, or every run is
+    failing), it is the live thirty-day aggregate over `callrecord` it always was, so the numbers
+    the catalog publishes never depend on an operator remembering a cron or noticing a dead one.
+    The fallback is logged: it is the expensive path this table exists to retire.
     """
 
     def __init__(self, session_factory: async_sessionmaker[AsyncSession]) -> None:
@@ -63,11 +69,16 @@ class PostgresEndpointObservationReader:
             return {}
         from ..domain.catalog import store as catalog_store  # the per-success set is a catalog fact, read at query time
         from ..models import EndpointDayStat, EndpointStatCursor
+        from ..timeutil import utcnow_naive
         cat = catalog_store.load()
         per_success = {i for i in ids if ((cat.by_id.get(i) or {}).get("cost") or {}).get("type") == "per_success"}
         async with self._session_factory() as db:
             cursor = await db.get(EndpointStatCursor, "callrecord")
             if cursor is None or cursor.caught_up_at is None:
+                return await stats.observed(db, ids, per_success=per_success)
+            if (utcnow_naive() - cursor.updated_at).total_seconds() > STALE_AFTER_S:
+                log.warning("catalog stats worker last ran at %s; computing observations live",
+                            cursor.updated_at.isoformat())
                 return await stats.observed(db, ids, per_success=per_success)
             rows = (await db.execute(
                 select(EndpointDayStat).where(EndpointDayStat.endpoint_id.in_(ids),

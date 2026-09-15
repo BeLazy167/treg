@@ -96,15 +96,18 @@ async def refresh(session_factory=session_maker, *, max_rows: int = 500_000,
     """One scheduled pass. Returns `{rows, buckets, caught_up, cursor}`.
 
     Each batch is its own short transaction: lock the cursor row, read the next `batch_rows` audit
-    rows by id, fold them into the day buckets they touch, upsert those buckets, advance the
-    cursor, commit. Buckets touched earlier in the same run stay in memory so a day spanning many
-    batches is read from the table once.
+    rows by id, read the current value of every day bucket they touch, fold, upsert those buckets,
+    advance the cursor, commit. Nothing about a bucket is carried from one batch to the next: the
+    row lock serializes overlapping runs (a slow backfill still running when the next schedule
+    fires), and a bucket value remembered from an earlier batch would be stale by the time the lock
+    is held again, so the later upsert would erase what the other run folded in between, with the
+    cursor already past those rows and nothing to recover them from.
     """
     at = now or utcnow_naive()
     young = at - LAG
     since = at - timedelta(days=stats.WINDOW_DAYS)
     consumed = 0
-    touched: dict[tuple[str, str], stats.Tally] = {}
+    buckets_touched: set[tuple[str, str]] = set()
     caught_up = False
     cursor_id = 0
     insert_for = None
@@ -124,6 +127,7 @@ async def refresh(session_factory=session_maker, *, max_rows: int = 500_000,
                        CallRecord.cost_observed_micro, CallRecord.refused_by)
                 .where(CallRecord.id > state.cursor_id).order_by(CallRecord.id).limit(limit)
             )).all()
+            touched: dict[tuple[str, str], stats.Tally] = {}   # this batch only, read under the lock
             batch_touched: set[tuple[str, str]] = set()
             last: tuple[int, datetime] | None = None
             deferred = False
@@ -144,6 +148,7 @@ async def refresh(session_factory=session_maker, *, max_rows: int = 500_000,
                 if tally.fold(status_code=status_code, created_at=created_at, duration_ms=duration_ms,
                               hit=hit, cost_observed_micro=cost, refused_by=refused_by):
                     batch_touched.add(key)
+            buckets_touched |= batch_touched
             for endpoint_id, day in sorted(batch_touched):
                 t = touched[(endpoint_id, day)]
                 values = dict(endpoint_id=endpoint_id, day=day, n=t.n, ok=t.ok, bad=t.bad,
@@ -168,4 +173,4 @@ async def refresh(session_factory=session_maker, *, max_rows: int = 500_000,
             await db.commit()
             if not rows:
                 break
-    return {"rows": consumed, "buckets": len(touched), "caught_up": caught_up, "cursor": cursor_id}
+    return {"rows": consumed, "buckets": len(buckets_touched), "caught_up": caught_up, "cursor": cursor_id}

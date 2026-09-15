@@ -10,12 +10,14 @@ caught up, so a deployment without the cron changes nothing.
 from __future__ import annotations
 
 import random
+from contextlib import asynccontextmanager
 from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import select
 
 from treg.application import catalog_stats
 from treg.domain.catalog import stats
+from treg.infra import catalog_observations
 from treg.infra.catalog_observations import PostgresEndpointObservationReader
 from treg.infra.db import session_maker
 from treg.models import CallRecord, EndpointDayStat, EndpointStatCursor
@@ -149,6 +151,58 @@ async def test_the_first_run_starts_inside_the_window_and_prunes_old_days(client
     assert folded[EP]["samples"] == 6
 
 
+async def test_an_overlapping_run_cannot_erase_what_the_other_folded(clients):
+    """A slow backfill still running when the next schedule fires: both runs take the cursor row
+    lock batch by batch and interleave. A bucket value remembered by the first run from an
+    earlier batch would be stale after the second run's fold, and upserting it would erase those
+    rows for good, since the cursor is already past them. Every batch must re-read its buckets
+    under the lock."""
+    for _ in range(8):
+        await _record(EP, 200, 100, ago=timedelta(hours=1))
+    at = _now()
+
+    class Interleaved:
+        """The outer run's session factory; before its second batch, another run consumes two rows."""
+        calls = 0
+
+        def __call__(self):
+            Interleaved.calls += 1
+            return self._session(Interleaved.calls)
+
+        @asynccontextmanager
+        async def _session(self, n):
+            if n == 2:
+                intruder = await catalog_stats.refresh(session_maker, max_rows=2, batch_rows=2, now=at)
+                assert intruder["rows"] == 2
+            async with session_maker() as db:
+                yield db
+
+    outer = await catalog_stats.refresh(Interleaved(), batch_rows=4, now=at)
+    assert outer["rows"] == 6 and outer["caught_up"]
+    folded = await PostgresEndpointObservationReader(session_maker).get_many([EP])
+    assert folded[EP]["samples"] == 8         # 4 (outer) + 2 (intruder) + 2 (outer), nothing erased
+
+
+async def test_a_dead_worker_sends_the_reader_back_to_the_live_aggregate(clients, caplog):
+    """A cron that stopped must not leave the catalog on buckets that quietly age out of the
+    window. Past the staleness threshold the reader computes live again, and says so."""
+    for _ in range(6):
+        await _record(EP, 200, 100, ago=timedelta(hours=1))
+    assert (await catalog_stats.refresh(session_maker, now=_now()))["caught_up"]
+    await _record(EP, 500, 100, ago=timedelta(minutes=30))      # never folded: the worker is gone
+    reader = PostgresEndpointObservationReader(session_maker)
+    assert (await reader.get_many([EP]))[EP]["samples"] == 6    # buckets, still trusted
+    async with session_maker() as db:
+        cursor = await db.get(EndpointStatCursor, catalog_stats.CURSOR_ID)
+        cursor.updated_at = _now() - timedelta(seconds=catalog_observations.STALE_AFTER_S + 60)
+        db.add(cursor)
+        await db.commit()
+    with caplog.at_level("WARNING", logger="treg.catalog"):
+        got = (await reader.get_many([EP]))[EP]
+    assert got["samples"] == 7 and got["ok_rate"] == round(6 / 7, 4)   # live: sees the seventh row
+    assert "computing observations live" in caplog.text
+
+
 async def test_an_empty_audit_table_caught_up_immediately(clients):
     result = await catalog_stats.refresh(session_maker, now=_now())
     assert result == {"rows": 0, "buckets": 0, "caught_up": True, "cursor": 0}
@@ -169,6 +223,26 @@ def test_a_busy_day_keeps_a_uniform_latency_reservoir():
     published = stats.publish([EP], {EP: t}, now=at)[EP]
     assert 4_000 < published["p50_ms"] < 6_000
     assert published["p95_ms"] > 9_000
+
+
+def test_a_busy_day_outweighs_a_quiet_one_in_the_merged_percentile():
+    """Each day keeps at most `LATENCY_SAMPLE` durations, so ten thousand fast calls and four
+    hundred slow ones would meet as equals in a plain concatenation and the window's p95 would
+    be the slow day's. Weighted by the calls each sample stands for, the slow calls are under
+    four percent of the window and the p95 stays fast."""
+    fast, slow = stats.Tally(), stats.Tally()
+    rng = random.Random(3)
+    at = datetime(2026, 9, 15)
+    for _ in range(10_000):
+        fast.fold(status_code=200, created_at=at, duration_ms=1, hit=None, cost_observed_micro=None, refused_by=None, rng=rng)
+    for _ in range(stats.LATENCY_SAMPLE):
+        slow.fold(status_code=200, created_at=at, duration_ms=1000, hit=None, cost_observed_micro=None, refused_by=None, rng=rng)
+    window = stats.merged([(EP, fast), (EP, slow)])[EP]
+    assert window.latency_seen == 10_400 and len(window.latencies) == 2 * stats.LATENCY_SAMPLE
+    assert window.percentile(0.50) == 1 and window.percentile(0.95) == 1
+    assert window.percentile(0.99) == 1000
+    # A single uniform sample is unaffected: no weights, the plain nearest rank.
+    assert slow.percentile(0.95) == 1000 and fast.percentile(0.95) == 1
 
 
 def test_merging_days_keeps_the_newest_success_and_every_count():

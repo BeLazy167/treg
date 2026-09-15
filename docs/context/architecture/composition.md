@@ -104,9 +104,9 @@ architecture test separately pins the dataplane/control startup split and backgr
 
 | Role | HTTP routes and mounts | Background tasks | Startup checks |
 |---|---|---|---|
-| `all` | The complete surface, including `/run`, static files, `/mcp`, and the flagged `/mcp/v2` | Arena insights collector; Ads conversion worker when enabled | Read-only DB verify, HTTP client, enabled MCP lifespans |
+| `all` | The complete surface, including `/run`, static files, `/mcp`, and the flagged `/mcp/v2` | Ads conversion worker when enabled | Read-only DB verify, HTTP client, enabled MCP lifespans |
 | `dataplane` | `/call/{rest:path}`, `/catalog/call/{rest:path}`, MCP mounts, and their resource metadata; no `/run`, static files, docs, or OpenAPI | None | Read-only DB verify, HTTP client, enabled MCP lifespans |
-| `control` | Everything except the calling surfaces; includes OAuth issuance, `/run`, and static files | Arena insights collector; Ads conversion worker when enabled | Read-only DB verify, HTTP client |
+| `control` | Everything except the calling surfaces; includes OAuth issuance, `/run`, and static files | Ads conversion worker when enabled | Read-only DB verify, HTTP client |
 
 No role lifespan writes schema, performs a data backfill, or provisions the local single user. The explicit
 `python -m treg upgrade` release phase owns content-driven backfills; the default `python -m treg`

@@ -1559,10 +1559,20 @@ not evidence and are not folded, exactly as the live query excludes them. The fi
 primary key to the first row inside the window rather than reading older pages, consumes at most
 `--max-rows` per run, and the reader keeps computing the live aggregate until a run reports it
 has caught up (`caught_up_at`), so a deployment that never schedules the worker behaves as before.
+The same fallback applies when the worker stops: a cursor not updated for `STALE_AFTER_S` (two
+hours) sends the reader back to the live aggregate with a warning, so a dead cron degrades to the
+old cost rather than to buckets that silently age out of the window. Each batch is one
+transaction under the cursor row's lock and re-reads every bucket it touches inside that lock;
+nothing about a bucket is carried between batches, so two overlapping runs (a slow backfill
+still going when the next schedule fires) serialize cleanly instead of one erasing the other's
+fold with the cursor already past the rows.
 Once caught up, an observation is the sum of that endpoint's day buckets from the day of the
 window's start onward (`stats.window_days`, at most one day more evidence than the live cut,
 never less), published through the same `stats.publish` floors the live path uses; the fold and
-the SQL are held equal by `tests/test_catalog_stats_refresh.py`. Buckets older than the window
+the SQL are held equal by `tests/test_catalog_stats_refresh.py`. Merging days weights each
+day's latency sample by the calls it stands for (`Tally.merge`, `Tally.percentile`): a reservoir
+is uniform within its day, so a busy day's four hundred samples must count for its thousands of
+calls, or the window's p95 would be the quiet days'. Buckets older than the window
 are pruned at the end of each caught-up run. `stats.Tally` is the one shape all three paths
 share: a day, a merged window, or the live aggregate.
 
