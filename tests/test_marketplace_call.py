@@ -52,6 +52,22 @@ PLATFORM_KEYS = {  # never a real key: a test that leaked one into an assertion 
 }
 
 
+class _DropleadsJSONStream(httpx.AsyncByteStream):
+    def __init__(self, doc):
+        self.body = json.dumps(doc).encode()
+
+    async def __aiter__(self):
+        yield self.body
+
+
+def _dropleads_response(status: int, doc: dict) -> httpx.Response:
+    return httpx.Response(
+        status,
+        headers={"content-type": "application/json"},
+        stream=_DropleadsJSONStream(doc),
+    )
+
+
 @pytest.fixture
 def platform_on(monkeypatch):
     """Turn tier 4 on the way a deploy does: keys in the environment AND the provider allow-listed."""
@@ -68,6 +84,15 @@ def minimax_platform_on(monkeypatch):
     """Enable only MiniMax tier 4 for its provider-envelope billing regressions."""
     monkeypatch.setenv("TREG_PLATFORM_KEY_MINIMAX", "PLATFORM-MINIMAX-KEY")
     monkeypatch.setenv("TREG_PLATFORM_PROVIDERS", "minimax")
+    get_settings.cache_clear()
+    yield
+    get_settings.cache_clear()
+
+
+@pytest.fixture
+def dropleads_platform_on(monkeypatch):
+    monkeypatch.setenv("TREG_PLATFORM_KEY_DROPLEADS", "PLATFORM-DROPLEADS")
+    monkeypatch.setenv("TREG_PLATFORM_PROVIDERS", "dropleads")
     get_settings.cache_clear()
     yield
     get_settings.cache_clear()
@@ -2713,3 +2738,121 @@ def test_email_path_keeps_at_sign_but_cannot_inject_path_or_query():
     url, _ = call_resolution._marketplace_upstream(
         ep, oauth_providers.TOMBA, {'email': 'person@example.com/extra?x=1#fragment'})
     assert url.endswith('person@example.com%2Fextra%3Fx%3D1%23fragment')
+
+
+@pytest.mark.parametrize(
+    "endpoint,path,request_body,response_body,expected_micro",
+    [
+        ("dropleads.people.email.find", "/email-finder",
+         {"first_name": "Jane", "last_name": "Doe", "company_domain": "example.com"},
+         {"email": "jane@example.com", "status": "found", "credits_charged": 1}, 18_000),
+        ("dropleads.people.enrich", "/api/v2/prime-db/leads/simple-enrich",
+         {"id": "example-person"},
+         {"success": True, "person": {"name": "Jane Doe"}, "credits_consumed": 0.2}, 3_600),
+        ("dropleads.companies.search", "/api/v1/companies/search",
+         {"filters": {"companyDomains": ["example.com"]},
+          "pagination": {"page": 1, "limit": 1}},
+         {"success": True, "data": {"companies": [{"name": "Example"}]},
+          "credits": {"creditsDeducted": 0.1}}, 1_800),
+    ],
+)
+async def test_dropleads_platform_settles_reported_credits(
+    clients, monkeypatch, dropleads_platform_on, endpoint, path, request_body,
+    response_body, expected_micro,
+):
+    def serve(request):
+        assert request.url.path == path
+        assert request.headers["x-api-key"] == "PLATFORM-DROPLEADS"
+        return _dropleads_response(200, response_body)
+
+    before = await _balance(clients)
+    async with httpx.AsyncClient(transport=httpx.MockTransport(serve)) as upstream:
+        monkeypatch.setattr(A.app.state, "http", upstream)
+        result = await clients.post(f"/call/{endpoint}", json=request_body)
+    assert result.status_code == 200, result.text
+    assert result.json() == response_body
+    assert result.headers["x-treg-cost-micro"] == str(expected_micro)
+    assert before - await _balance(clients) == expected_micro
+
+
+@pytest.mark.parametrize(
+    "endpoint,request_body,response_body",
+    [
+        ("dropleads.people.email.find",
+         {"first_name": "Nobody", "last_name": "Missing", "company_domain": "example.test"},
+         {"email": None, "status": "not_found"}),
+        ("dropleads.people.phone.find",
+         {"linkedin_url": "https://www.linkedin.com/in/treg-nonexistent"},
+         {"mobile_number": None, "status": "not_found", "credits_charged": 0}),
+        ("dropleads.people.enrich",
+         {"id": "treg-nonexistent"},
+         {"success": False, "person": None, "credits_consumed": 0}),
+        ("dropleads.companies.enrich",
+         {"domains": ["example.test"]},
+         {"success": True, "data": {"companies": []},
+          "credits": {"creditsDeducted": 0}}),
+    ],
+)
+async def test_dropleads_reported_free_misses_release_full_hold(
+    clients, monkeypatch, dropleads_platform_on, endpoint, request_body, response_body,
+):
+    before = await _balance(clients)
+    async with httpx.AsyncClient(
+        transport=httpx.MockTransport(
+            lambda request: _dropleads_response(200, response_body)
+        )
+    ) as upstream:
+        monkeypatch.setattr(A.app.state, "http", upstream)
+        result = await clients.post(f"/call/{endpoint}", json=request_body)
+    assert result.status_code == 200, result.text
+    assert result.headers["x-treg-cost-micro"] == "0"
+    assert await _balance(clients) == before
+    assert [entry["kind"] for entry in (await _entries(clients))[:2]] == ["settle", "reserve"]
+
+
+async def test_dropleads_byok_wins_and_is_never_metered(
+    clients, monkeypatch, dropleads_platform_on,
+):
+    await clients.post("/secrets", json={"name": "dropleads", "value": "OWN-DROPLEADS"})
+    seen = []
+
+    def serve(request):
+        seen.append(request.headers["x-api-key"])
+        return _dropleads_response(
+            200, {"email": "jane@example.com", "credits_charged": 1}
+        )
+
+    before = await _balance(clients)
+    async with httpx.AsyncClient(transport=httpx.MockTransport(serve)) as upstream:
+        monkeypatch.setattr(A.app.state, "http", upstream)
+        result = await clients.post(
+            "/call/dropleads.people.email.find",
+            json={"first_name": "Jane", "last_name": "Doe", "company_domain": "example.com"},
+        )
+    assert result.status_code == 200, result.text
+    assert seen == ["OWN-DROPLEADS"]
+    assert "x-treg-cost-micro" not in result.headers
+    assert await _balance(clients) == before
+
+
+@pytest.mark.parametrize(
+    "endpoint,body,expected",
+    [
+        ("dropleads.people.enrich.bulk", {"details": [{"id": str(i)} for i in range(10)]}, 36_000),
+        ("dropleads.people.enrich.verified.bulk", {"details": [{"id": str(i)} for i in range(3)]}, 10_800),
+        ("dropleads.companies.enrich", {"domains": [f"{i}.test" for i in range(25)],
+                                         "companyNames": [str(i) for i in range(25)]}, 90_000),
+        ("dropleads.companies.search", {"filters": {},
+                                         "pagination": {"page": 1, "limit": 50}}, 90_000),
+        ("dropleads.companies.search", {"filters": {},
+                                         "pagination": {"page": 1, "limit": "50"}}, 90_000),
+    ],
+)
+def test_dropleads_request_shapes_reserve_exact_valid_maxima(endpoint, body, expected):
+    catalog = catalog_store.load()
+    ep = catalog.by_id[endpoint]
+    cost = catalog.cost_view(ep["cost"], "dropleads")
+    estimate, _ = call_resolution._marketplace_pricing(
+        "dropleads", endpoint, cost, {}, json.dumps(body).encode()
+    )
+    assert estimate == expected

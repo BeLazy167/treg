@@ -173,6 +173,9 @@ def _observed_cost_micro(mk: MarketplaceCall, body: bytes, headers=None) -> int 
         charge lives here. LeadMagic answers a miss with 2xx and `credits_consumed: 0` (observed at
         verify time), so honouring the field is what keeps a free miss from billing the estimate;
         it also reports fractions (email verify is 0.25).
+      - Dropleads: REPORTED in provider credits through `credits_charged` for finder/verifier,
+        `credits_consumed` for people enrichment, or `credits.creditsDeducted` for company calls.
+        Each field uses the same Dropleads credit rate from fx.yaml.
       - lusha: `billing.creditsCharged`, one level down — the same reported-credits contract,
         including 0 on a 2xx miss (the captured people.enrich example IS one) and the 2-credit
         company enrich. Converted through the lusha rate like the others.
@@ -261,6 +264,27 @@ def _observed_cost_micro(mk: MarketplaceCall, body: bytes, headers=None) -> int 
         return None
     if provider == "quickenrich":
         return _quickenrich_cost_micro(mk, doc)
+    if provider == "dropleads":
+        if mk.endpoint_id.startswith("dropleads.companies."):
+            info = doc.get("credits")
+            credits = info.get("creditsDeducted") if isinstance(info, dict) else None
+        elif mk.endpoint_id in (
+            "dropleads.people.email.find",
+            "dropleads.people.phone.find",
+            "dropleads.people.email.verify",
+        ):
+            credits = doc.get("credits_charged")
+            # Email Finder omits the numeric field on its explicit, free not-found answer.
+            if credits is None and mk.endpoint_id == "dropleads.people.email.find" \
+                    and doc.get("status") == "not_found":
+                credits = 0
+        else:
+            credits = doc.get("credits_consumed")
+        rate = catalog_store.load().credit_rates.get("dropleads")
+        if (isinstance(credits, (int, float)) and not isinstance(credits, bool)
+                and credits >= 0 and rate):
+            return int(credits * rate * 1_000_000 + 0.5)
+        return None
     if provider == "aviato" and mk.endpoint_id == "aviato.companies.enrich.bulk":
         rows = doc.get("companies")
         if isinstance(rows, list) and mk.unit_micro > 0:

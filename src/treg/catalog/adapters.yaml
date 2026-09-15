@@ -15,6 +15,11 @@
 
 adapters:
   # ---- people.email.find --------------------------------------------------------------------
+  dropleads.people.email.find:
+    accepts: [[first_name, last_name, domain]]
+    in: {first_name: body.first_name, last_name: body.last_name, domain: body.company_domain}
+    out: {email: email, verified: "status == 'valid'"}
+    miss: "email == null"
   trykitt.people.email.find:
     accepts: [[full_name, domain], [first_name, last_name, domain]]
     in: {full_name: body.fullName, domain: body.domain, linkedin_url: body.linkedinStandardProfileURL}
@@ -221,6 +226,11 @@ adapters:
     miss: "data.creator_info.unique_id == null"
 
   # ---- people.phone.find --------------------------------------------------------------------
+  dropleads.people.phone.find:
+    accepts: [[linkedin_url]]
+    in: {linkedin_url: body.linkedin_url}
+    out: {phone: mobile_number, line_type: "'mobile'"}
+    miss: "mobile_number == null"
   tomba.people.phone.find:
     accepts: [[email], [linkedin_url]]
     in:  {email: queryParams.email, linkedin_url: queryParams.linkedin}
@@ -267,6 +277,11 @@ adapters:
     miss: "data.valid == null"
 
   # ---- people.email.verify ------------------------------------------------------------------
+  dropleads.people.email.verify:
+    accepts: [[email]]
+    in: {email: body.email}
+    out: {valid: "status == 'valid'", status: status}
+    miss: "status == null"
   trykitt.people.email.verify:
     accepts: [[email]]
     in: {email: body.email}
@@ -304,6 +319,16 @@ adapters:
     miss: "data.status == null"
 
   # ---- people.enrich ------------------------------------------------------------------------
+  dropleads.people.enrich:
+    accepts: [[email], [linkedin_url], [first_name, last_name, domain], [full_name, domain]]
+    in: {email: body.email, linkedin_url: body.linkedin_url, first_name: body.first_name,
+         last_name: body.last_name, full_name: body.name, domain: body.domain}
+    test_identity: {full_name: Jane Doe, domain: example.com}
+    out: {full_name: "coalesce(person.name, join(person.first_name, person.last_name))",
+          first_name: person.first_name, last_name: person.last_name, title: person.title,
+          company: person.organization_name, company_domain: person.organization_domain,
+          linkedin_url: person.linkedin_url, location: "join(person.city, person.country)"}
+    miss: "person == null"
   tomba.people.enrich:
     accepts: [[email]]
     in:  {email: queryParams.email}
@@ -491,6 +516,19 @@ adapters:
     miss: "items == []"
 
   # ---- people.search ------------------------------------------------------------------------
+  dropleads.people.search:
+    accepts: [[company_domain, title], [company_domain], [title]]
+    in: {company_domain: body.filters.companyDomains, title: body.filters.jobTitles}
+    in_expr:
+      body.filters.companyDomains: "list(company_domain)"
+      body.filters.jobTitles: "list(title)"
+      body.filters.countries: "list(country_name(country))"
+      body.filters.cities: "list(location)"
+      body.filters.keywords: "list(keywords)"
+      body.pagination.limit: limit
+    const: {body.pagination.page: 1}
+    out: {people: data.leads, count: data.total}
+    miss: "data.leads == []"
   exa.people.search:
     accepts: [[q]]
     in:  {q: body.query}
@@ -582,6 +620,17 @@ adapters:
     miss: "results[0].error != null"
 
   # ---- companies.enrich (batch 5, 2026-08-28) --------------------------------------------------
+  dropleads.companies.enrich:
+    accepts: [[domain], [name]]
+    in: {domain: body.domains, name: body.companyNames}
+    in_expr: {body.domains: "list(domain)", body.companyNames: "list(name)"}
+    out: {name: "data.companies[0].name", domain: "data.companies[0].domain",
+          website: "data.companies[0].websiteUrl", description: "data.companies[0].description",
+          industry: "data.companies[0].industry", employees: "data.companies[0].employees",
+          founded: "data.companies[0].yearFounded",
+          location: "join(data.companies[0].city, data.companies[0].country)",
+          linkedin_url: "data.companies[0].linkedinUrl"}
+    miss: "data.companies == []"
   thecompaniesapi.companies.enrich:
     accepts: [[domain]]
     in:  {domain: pathParams.domain}
@@ -727,6 +776,20 @@ adapters:
   # coresignal.companies.enrich: no example (402 at capture, empty account).
 
   # ---- companies.search (batch 5, 2026-08-28) --------------------------------------------------
+  dropleads.companies.search:
+    accepts: [[domain], [name], [industry], [technology]]
+    in: {domain: body.filters.companyDomains, name: body.filters.companyNames,
+         industry: body.filters.industries, technology: body.filters.technologies}
+    in_expr:
+      body.filters.companyDomains: "list(domain)"
+      body.filters.companyNames: "list(name)"
+      body.filters.industries: "list(industry)"
+      body.filters.technologies: "list(technology)"
+      body.filters.countries: "obj('include', list(country_name(country)))"
+      body.pagination.limit: limit
+    const: {body.pagination.page: 1}
+    out: {companies: data.companies, count: data.total}
+    miss: "data.companies == []"
   exa.companies.search:
     accepts: [[q]]
     in:  {q: body.query}
