@@ -22,8 +22,10 @@ bills fractions of a cent per call.
 
 ## Two kinds of tool, one token
 
-- **The catalog** — external endpoints treg can serve **on its own key**, metered against your
-  team's prepaid balance (**$1.00 free** once per new verified account, on an eligible team). No account with the provider needed.
+- **The catalog** — external endpoints treg can serve with its own key or through a verified public
+  route that needs no provider key. Own-key calls use the team's prepaid balance; anonymous calls
+  are free. No account with the provider is needed. New verified accounts receive **$1.00 free**
+  once, when they create an eligible team.
 - **Your own tools** — anything a teammate registered: a paid API account, an OAuth connection, a
   vendor CLI, a `SKILL.md`. **Your own key always wins over treg's, and those calls are never
   metered.**
@@ -111,8 +113,11 @@ treg call hunter.people.email.find --query domain=reddit.com --query full_name="
 
 1. your team registered its own tool for that provider → that tool, that key;
 2. your team stored a secret for the provider → injected through a virtual tool;
-3. neither → **treg's own key**, billed to the team's prepaid balance.
+3. neither, and the endpoint has a verified public route → **no provider key**, free;
+4. otherwise → **treg's own key**, billed to the team's prepaid balance.
 
+The anonymous price assumes the caller does not send a provider credential header. The faithful
+relay preserves caller headers, so a caller-supplied provider key can use that key's credits.
 Your own credential always beats treg's, so connecting a key you already pay for makes those calls
 free of the balance rather than duplicating them. An endpoint treg has no published price for is
 **refused**, not served free — you are told to connect your own key instead. Where several providers

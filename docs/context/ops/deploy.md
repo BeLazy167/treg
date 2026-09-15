@@ -6,6 +6,9 @@ sources:
   - src/treg/__main__.py
   - src/treg/maintenance.py
   - src/treg/alembic/env.py
+  - src/treg/alembic/versions/0034_managed_api_keys.py
+  - src/treg/alembic/versions/0035_default_key_generation.py
+  - src/treg/alembic/versions/0036_activity_key_indexes.py
   - src/treg/worker.py
   - src/treg/web/selfhost.sh
   - src/treg/config.py
@@ -56,8 +59,11 @@ event loop therefore creates fresh pooled connections instead of receiving conne
 closed maintenance loop. Calling `maintenance.upgrade()` directly does not dispose the engine.
 
 ## Schema upgrade safety
-
-- **Alembic is authoritative.** Migration scripts ship inside `src/treg/alembic/` in the wheel.
+- **Managed-key rollback floor:** revision `0034` adds key controls, audit rows, Activity snapshots,
+  and a hash-only backfill for existing membership credentials. It is marked `contract = True`
+  because old code cannot enforce newly stored disable or revoke state. The migration is additive
+  and uses SQL that works on SQLite and Postgres.
+- **Alembic is authoritative:** migration scripts ship inside `src/treg/alembic/` in the wheel.
   `maintenance._alembic_config()` resolves that installed package resource, supplies the escaped
   configured URL, and runs Alembic in a worker thread.
 - **The adoption floor is final.** An unstamped existing database must pass through release 0.14.x.
@@ -72,9 +78,19 @@ closed maintenance loop. Calling `maintenance.upgrade()` directly does not dispo
   `database_url` is not SQLite, `verify_db()` raises. On SQLite development it logs a warning.
 
 For PostgreSQL, migrations set bounded lock and statement timeouts. A contended ordinary DDL
-migration must fail cleanly rather than queue production traffic behind an exclusive lock. The one
-sanctioned exception is `CREATE INDEX CONCURRENTLY` in its own revision. Such a revision owns its
-longer timeouts and must detect and rebuild an invalid index left by interruption.
+migration must fail cleanly rather than queue production traffic behind an exclusive lock: while an
+`ALTER TABLE` waits for its `ACCESS EXCLUSIVE` lock, every later query on that table queues behind
+it, so the 5 s `lock_timeout` is the longest stall a deploy may inflict and no revision may raise it
+for an `ALTER`. A deploy waits longer by retrying instead: `maintenance` re-runs `alembic upgrade
+head` up to `LOCK_RETRY_ATTEMPTS` times after a lock timeout, pausing a jittered few seconds between
+attempts so the table's short transactions can drain, and `env.py` commits each revision on its own
+(`transaction_per_migration`) so a retry resumes at the revision that timed out. Any other error
+fails the deploy at once. The one sanctioned exception to the 5 s cap is `CREATE INDEX CONCURRENTLY`
+in its own revision: its lock blocks nobody while it waits, so such a revision owns its longer
+timeouts and must detect and rebuild an invalid index left by interruption.
+
+Hot-table ALTERs stay cheap to retry when they sit in their own revision, add only nullable columns
+without defaults (metadata-only in PostgreSQL) and leave backfills and `NOT NULL` to later steps.
 
 Deploy schema changes before starting application or worker code that expects the new revision. A
 platform whose scheduled workers update independently must sequence them accordingly.
@@ -149,8 +165,10 @@ than SQLite isolation.
 
 Registry-owned OAuth applications, advertising conversion credentials and platform provider keys are
 optional deployment capabilities. Their names and binding behavior are documented with their owning
-subsystems. Credentials must stay in the deployment secret store. A provider key alone does not
-enable shared serving: the provider must also be allowed by `TREG_PLATFORM_PROVIDERS`.
+subsystems. Credentials must stay in the deployment secret store. `TREG_PLATFORM_PROVIDERS` is the
+shared-serving allow-list. Most providers also require a configured platform key. A live-verified
+free endpoint declared `platform_auth: anonymous` needs only the allow-list because treg injects no
+provider credential.
 
 ## Safe local mode
 
@@ -223,3 +241,16 @@ without importing the heavy database stack into the light `treg` CLI.
 Workers call read-only `verify_db()` before work and must run against a compatible schema. They need
 only the credentials and configuration required by their job. Hosting schedules, service wiring and
 manual production procedures belong in the private deployment runbook.
+
+
+Managed-key rollout uses revisions `0034` through `0036`. Apply the key controls and generation
+before the separate concurrent Activity index build. The index migration allows 180 seconds for
+lock waits and 600 seconds per statement, then restores 5/120 seconds. A failed concurrent build
+can leave an invalid index; retrying `0036` removes and rebuilds only that invalid index.
+Do not deploy server code older than `0034` after key disable or revoke state has been recorded.
+The package version follows current main; this branch does not publish a release.
+
+For hosted rollout, release and verify the compatible CLI before deploying the managed-key server.
+The served installer installs from PyPI, so changing the server alone does not make `treg update`
+install the new client. Old browser login and saved-token calls remain usable; affected email and
+team-change requests receive an update instruction before their local state can be replaced.

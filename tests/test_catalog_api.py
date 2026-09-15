@@ -1405,6 +1405,18 @@ async def test_catalog_get_dataforseo_backlinks_summary_names_the_single_task_li
     assert "--data '[{\"target\":\"moz.com\"" in tmpl
 
 
+async def test_catalog_get_dataforseo_page_audit_names_browser_preset_dependency(
+        clients: AsyncClient):
+    """Feedback #234 / #235: catalog_get must not advertise browser_preset alone."""
+    body = (await clients.get("/catalog/endpoints/dataforseo.web.page.audit")).json()
+    fields = body["endpoint"]["input"]["body"]
+    assert "enable_browser_rendering=true" in fields["browser_preset"]["note"]
+    assert "40501" in fields["browser_preset"]["note"]
+    assert "browser_preset" in fields["enable_browser_rendering"]["note"]
+    assert "browser_preset" in body["endpoint"]["input"]["note"]
+    assert "enable_browser_rendering" in body["endpoint"]["input"]["note"]
+
+
 async def test_catalog_get_hunter_domain_search_quotes_the_credit(clients: AsyncClient):
     body = (await clients.get("/catalog/endpoints/hunter.companies.emails")).json()
     cost = body["endpoint"]["cost"]

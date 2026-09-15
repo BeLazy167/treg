@@ -209,6 +209,64 @@ class Membership(SQLModel, table=True):
     created_at: datetime = Field(default_factory=_now)
 
 
+class ApiKey(SQLModel, table=True):
+    """One credential control record for a human or scoped-agent membership.
+
+    Hash-backed credentials keep only ``key_hash``. A default human record controls the stable
+    signed identity credential and therefore has no hash. ``membership_id`` becomes NULL when the
+    membership is removed; the saved identity label keeps audit and Activity readable.
+    """
+
+    __table_args__ = (
+        Index(
+            "uq_apikey_default_membership",
+            "membership_id",
+            unique=True,
+            postgresql_where=text("kind = 'default_human'"),
+            sqlite_where=text("kind = 'default_human'"),
+        ),
+        Index(
+            "uq_apikey_current_agent_membership",
+            "membership_id",
+            unique=True,
+            postgresql_where=text("kind = 'agent' AND state IN ('active', 'disabled')"),
+            sqlite_where=text("kind = 'agent' AND state IN ('active', 'disabled')"),
+        ),
+    )
+
+    id: int | None = Field(default=None, primary_key=True)
+    org_id: int = Field(foreign_key="org.id", index=True)
+    membership_id: int | None = Field(default=None, foreign_key="membership.id", index=True)
+    identity_label: str = Field(default="", index=True)
+    kind: str = Field(index=True)  # default_human | additional_human | legacy_human | agent
+    name: str
+    safe_prefix: str | None = Field(default=None)
+    key_hash: str | None = Field(default=None, index=True, unique=True)
+    state: str = Field(default="active", index=True)  # active | disabled | revoked
+    # Signed Default keys carry this per-team generation. Rotating increments it so only that
+    # membership's previously issued Default token stops working; no replacement row is needed.
+    default_generation: int = Field(default=0)
+    created_by: str = Field(default="")
+    created_at: datetime = Field(default_factory=_now)
+    last_used_at: datetime | None = Field(default=None)
+    disabled_at: datetime | None = Field(default=None)
+    revoked_at: datetime | None = Field(default=None)
+    deleted_at: datetime | None = Field(default=None)
+    replacement_key_id: int | None = Field(default=None)
+
+
+class ApiKeyEvent(SQLModel, table=True):
+    """Append-only key administration audit. It never contains complete secret material."""
+
+    id: int | None = Field(default=None, primary_key=True)
+    org_id: int = Field(foreign_key="org.id", index=True)
+    key_id: int = Field(foreign_key="apikey.id", index=True)
+    actor_email: str = Field(default="", index=True)
+    identity_label: str = Field(default="")
+    action: str = Field(index=True)
+    created_at: datetime = Field(default_factory=_now)
+
+
 class Invite(SQLModel, table=True):
     """A one-time invite code (no email server yet). An admin creates it and shares the code
     (Slack/DM); the invitee redeems it and mints their own org-scoped token. (Used by PR2.)
@@ -272,7 +330,10 @@ class CallRecord(SQLModel, table=True):
                       # `ix_callrecord_user_email` - measured 2.6 s of 3.0 s on prod 2026-09-06 for
                       # a member with 287k rows. Revision 0023 builds it concurrently.
                       Index("ix_callrecord_org_id_user_email_created_at", "org_id", "user_email", "created_at"),
-                      Index("ix_callrecord_org_id_created_at", "org_id", "created_at"),)
+                      Index("ix_callrecord_org_id_created_at", "org_id", "created_at"),
+                      Index("ix_callrecord_org_key_id", "org_id", "api_key_id", "id",
+                            postgresql_where=text("api_key_id IS NOT NULL"),
+                            sqlite_where=text("api_key_id IS NOT NULL")),)
 
     id: int | None = Field(default=None, primary_key=True)
     org_id: int | None = Field(default=None, foreign_key="org.id", index=True)
@@ -289,6 +350,11 @@ class CallRecord(SQLModel, table=True):
     # treg CLI via X-Treg-Client (attribution, NOT authentication: anything holding the token can
     # claim any name). "" = unreported. What makes the observed-agents roster possible.
     client: str = Field(default="", index=True)
+    # The key snapshot used for this call. Historical rows before managed-key tracking keep NULL.
+    # Logical reference only: Activity must survive key and membership lifecycle changes.
+    api_key_id: int | None = Field(default=None)
+    api_key_name: str | None = Field(default=None)
+    api_key_prefix: str | None = Field(default=None)
     # ---- marketplace telemetry (NULL on a plain tool call) -------------------------------------
     # What a direct catalog call actually did: which endpoint, whose credential paid for it, what we
     # expected it to cost vs what the provider said it cost, and how big/slow the answer was. The
@@ -369,6 +435,12 @@ class RunRecord(SQLModel, table=True):
     `argv` never contains a secret value (secrets are injected via env, not the command line).
     """
 
+    __table_args__ = (
+        Index("ix_runrecord_org_key_id", "org_id", "api_key_id", "id",
+              postgresql_where=text("api_key_id IS NOT NULL"),
+              sqlite_where=text("api_key_id IS NOT NULL")),
+    )
+
     id: int | None = Field(default=None, primary_key=True)
     org_id: int | None = Field(default=None, foreign_key="org.id", index=True)
     user_email: str = Field(index=True)
@@ -377,6 +449,9 @@ class RunRecord(SQLModel, table=True):
     exit_code: int
     duration_ms: int
     client: str = Field(default="")  # runtime attribution, same contract as CallRecord.client
+    api_key_id: int | None = Field(default=None)
+    api_key_name: str | None = Field(default=None)
+    api_key_prefix: str | None = Field(default=None)
     created_at: datetime = Field(default_factory=_now)
 
 
@@ -1207,6 +1282,23 @@ class CallReview(SQLModel, table=True):
     created_at: datetime = Field(default_factory=_now)
 
 
+class Media(SQLModel, table=True):
+    """A reference file a member hosted for a vendor to fetch (`treg host`): the image, voice clip
+    or video an AIGC endpoint takes as a public URL. Bytes live in the row, expire by TTL, and are
+    served by an opaque token that names no org or file. See docs/context/architecture/media.md.
+    """
+
+    __table_args__ = (Index("ix_media_org_created", "org_id", "created_at"),)
+    id: int | None = Field(default=None, primary_key=True)
+    token: str = Field(unique=True, index=True)
+    org_id: int = Field(foreign_key="org.id")
+    content_type: str
+    size: int = Field(default=0)
+    body: bytes
+    created_at: datetime = Field(default_factory=_now)
+    expires_at: datetime = Field(index=True)
+
+
 class ToolRequest(SQLModel, table=True):
     """A "the catalog doesn't have X" report — filed from the catalog page, the CLI, or by an
     agent mid-search over MCP. Demand signal for which provider to key next; reviewed by querying
@@ -1422,7 +1514,7 @@ class ArchiveKey(SQLModel, table=True):
     # Detect writes from an older binary that did not maintain the result decision.
     result_observed_version: int | None = Field(default=None)
     # "org" | "conn" for a private key (see archive.scope_tags); NULL = public. Declared LAST
-    # (migration 0034).
+    # (migration 0038).
     scope: str | None = Field(default=None)
 
 
@@ -1473,7 +1565,7 @@ class ArchiveSnapshot(SQLModel, table=True):
     body_storage: str | None = Field(default=None)
     # The team whose OWN credential fetched this answer; NULL when treg's platform key did.
     # Provenance for the admin views - what confines the answer is the KEY's scope, not this
-    # column. Declared LAST (migration 0034).
+    # column. Declared LAST (migration 0038).
     origin_org_id: int | None = Field(default=None)
 
 

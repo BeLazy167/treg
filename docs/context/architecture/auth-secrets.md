@@ -20,7 +20,13 @@ sources:
   - src/treg/domain/tools/__init__.py
   - src/treg/domain/tools/bindings.py
   - src/treg/domain/tools/bundles.py
+  - src/treg/domain/identity/api_keys.py
+  - src/treg/domain/identity/access.py
+  - src/treg/routers/api_keys.py
+  - tests/test_api_keys.py
   - tests/test_oauth_refresh.py
+  - tests/test_financialdatasets.py
+  - tests/test_key_providers.py
   - src/treg/config.py
 related:
   - architecture/proxy-model.md
@@ -32,6 +38,20 @@ related:
 
 `SUMBLE` uses the standard pasted Bearer-key path and a free technology-search miss probe; garbage-key rejection was verified through the local connection API. See [Sumble](sumble.md).
 
+Financial Datasets uses the standard pasted-key and platform-key paths with a raw `X-API-KEY`
+header. `OAuthProvider.probe_url` points at the smallest practical price-snapshot request and
+`probe_path` remains empty. The absolute URL therefore verifies a pasted key only during connect;
+`_autoprovision_provider_tool` does not persist a recurring health check for this provider.
+The existing `probe_reject_statuses` metadata rejects every normal HTTP result except `200` and
+`402`. Thus, a `402` proves that the credential was recognized but its upstream Credits account is
+empty, while unrelated failures such as `429` and `500` cannot validate a key. This rule applies
+only during connection validation: an ordinary data call still relays a `402` as a failure. No
+shared connection logic, health schema, or Financial-Datasets-only health branch is added.
+Its 13 discovery helpers declare the generic `platform_auth: anonymous` mode. When no team tool or
+stored provider key exists, treg calls those verified public routes with no injected credential.
+If a caller supplies `X-API-KEY` directly, the faithful relay preserves it and Financial Datasets
+can charge that key.
+
 QuickEnrich uses `QUICKENRICH`, a pasted Bearer key on `app.quickenrich.io`. The free
 POST Contact Finder probe rejects invalid keys with HTTP 401 and does not require a positive credit
 balance to accept a successful probe. `platform_key_quickenrich` supplies the separate server-held platform credential.
@@ -40,6 +60,42 @@ No OAuth app or special injector is needed. See the QuickEnrich section in [cata
 Tier 4 has explicit platform-key slots for MiniMax, OpenRouter, Replicate, reAPI and PiAPI. The web and async cron
 receive them as environment secrets, and the worker constructs the same platform bindings as the call
 path. Key values are never copied into task records, logs or archive evidence.
+
+## Managed treg API keys
+
+Treg API keys authenticate callers; provider secrets authorize upstream services. These stores are
+separate. New additional human and agent keys start with `treg_`, are returned once, and are stored
+only as SHA-256 hashes plus a safe prefix. A signed identity key has no stored hash. Its stable
+`default_human` row controls that team membership. New human memberships leave the legacy
+`Membership.token_hash` compatibility field empty and return a team-pinned signed default token, so
+they do not manufacture a `legacy_human` row. Existing non-empty hashes retain their migrated rows.
+
+Authentication loads the key first and the live membership second. Disable and revoke therefore
+take effect without changing role, access, cap, or billing data. Revoke is permanent. Rotation
+uses a conditional row update as its cross-process claim, then revokes the old row and links it to
+one new row. The claim also hides the revoked predecessor from the default inventory; its row, key
+events, and Activity snapshots remain available for audit. A competing request receives 409 instead
+of creating another replacement or leaking a database error. The key audit table and Activity
+snapshot contain no complete secret.
+
+The signed human Default key is the exception to replacement-row rotation. Its control row carries
+`default_generation`; the team-pinned token carries the signed `kg` claim. Rotating increments that
+same row and returns the newly derived token, so the prior token fails as `revoked key` while Default
+keys for the user's other teams, random additional keys, agent keys, and browser sessions are unchanged.
+Default keys cannot be revoked: disable/enable is the temporary stop, and rotate is the replacement.
+Newly minted Default keys also carry `scp=team`; their signed `org` is authoritative for resource
+access, so a conflicting `X-Treg-Org` cannot redirect one team's key to another team. Org-less
+`scp=bootstrap` login tokens are seven-day onboarding credentials, not managed API keys.
+
+`last_used_at` is approximate display metadata. Authentication commits its read transaction before
+`api_keys.touch()` schedules a best-effort background update. The process and the conditional UPDATE
+both enforce a five-minute window, the in-process map is bounded, and one writer uses the background
+pool. Requests that share one key do not serialize on an `ApiKey` row write.
+
+Every response that returns a complete caller credential uses `Cache-Control: no-store`. Owners and
+admins can list, inspect Activity, disable, and enable another human's key, and revoke hash-backed
+human keys. Only the assigned human can rotate a Default or additional human key. Admins can rename,
+rotate, revoke, and hide agent keys.
 
 `MILLIONVERIFIER` is a pasted-key Enrichment provider. Both own keys and platform bindings inject
 `api` into the query at `https://api.millionverifier.com`. Its free `/api/v3/credits` probe returns

@@ -1479,3 +1479,38 @@ async def test_run_finishes_while_cancel_poll_is_reading(clients, enrichment_on,
         await database.reset_db()
     finally:
         release.set()
+
+
+@pytest.mark.parametrize('change', ['disable', 'rotate', 'detach'])
+async def test_fresh_caller_keeps_key_attribution_and_rechecks_key_controls(clients, change):
+    from treg.domain.identity.access import Caller
+    from treg.domain.identity import session as sess
+    from treg.application.call.types import CallerSnapshot
+    from treg.models import ApiKey, Membership, Org, User
+
+    claims = sess.read_identity_claims(clients.headers['X-Treg-Token'])
+    async with session_maker() as db:
+        user = await db.get(User, claims['uid'])
+        org = (await db.execute(select(Org).where(Org.slug == claims['org']))).scalar_one()
+        member = (await db.execute(select(Membership).where(
+            Membership.org_id == org.id, Membership.user_id == user.id))).scalar_one()
+        key = (await db.execute(select(ApiKey).where(
+            ApiKey.membership_id == member.id, ApiKey.kind == 'default_human'))).scalar_one()
+        snapshot = CallerSnapshot.capture(Caller(member, user, org, key))
+        browser = CallerSnapshot.capture(Caller(member, user, org, None))
+    current = await arena._fresh_caller(snapshot)
+    assert current.api_key_id == snapshot.api_key_id
+    assert current.api_key_generation == snapshot.api_key_generation
+    async with session_maker() as db:
+        key = await db.get(ApiKey, snapshot.api_key_id)
+        if change == 'disable':
+            key.state = 'disabled'
+        elif change == 'rotate':
+            key.default_generation += 1
+        else:
+            key.membership_id = None
+        await db.commit()
+    with pytest.raises(rules.ArenaError, match='API key is no longer active'):
+        await arena._fresh_caller(snapshot)
+    # Browser sessions do not inherit the Default key's lifecycle.
+    assert (await arena._fresh_caller(browser)).api_key_id is None

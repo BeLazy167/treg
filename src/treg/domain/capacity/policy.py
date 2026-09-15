@@ -52,6 +52,7 @@ _KNOWN: dict[str, tuple[str, str, str]] = {
     "diffbot": ("monthly_quota", "quota_reset", "api"),
     "apify": ("cash", "manual", "api"),
     "twelvedata": ("requests", "subscription", "api"),
+    "financialdatasets": ("credits", "auto_recharge", "manual"),
     # Neither aggregator exposes a balance endpoint at its documented path (plan §7).
     "overflow:orthogonal": ("cash", "manual", "manual"),
     "overflow:monid": ("cash", "manual", "manual"),

@@ -200,6 +200,7 @@ class Settings(BaseSettings):
     platform_key_finnhub: str = ""      # FREE-tier key — trial pool, 50 calls/team/day
     platform_key_twelvedata: str = ""   # FREE Basic key (800/day TOTAL) — trial pool, 20 calls/team/day
     platform_key_tiingo: str = ""       # FREE Starter key (1,000/day total) — trial pool, 20 calls/team/day
+    platform_key_financialdatasets: str = ""  # X-API-KEY; prepaid Credits with vendor auto-reload
     # ---- Enrichment expansion (2026-08-20). Slots only — fund the accounts and set the keys before
     # naming any of these in TREG_PLATFORM_PROVIDERS.
     platform_key_companyenrich: str = ""  # Bearer key
@@ -525,12 +526,21 @@ class Settings(BaseSettings):
         """The allow-listed tier-4 providers (comma-separated `TREG_PLATFORM_PROVIDERS`)."""
         return frozenset(p.strip().lower() for p in self.platform_providers.split(",") if p.strip())
 
+    def platform_provider_enabled(self, provider: str) -> bool:
+        """Whether this deployment allows a catalog fallback for `provider`.
+
+        Most fallbacks also need `platform_key_for`. A catalog endpoint explicitly verified as
+        anonymous needs only this operator-controlled switch because no provider credential or
+        provider balance is used.
+        """
+        return (provider or "").lower() in self.platform_provider_set
+
     def platform_key_for(self, provider: str) -> str | None:
         """treg's own key for `provider`, or None if tier 4 must not serve it. BOTH conditions have to
         hold — the provider is allow-listed AND a key is configured — so neither half alone can start
         spending our money. Returns the value only; callers put the SETTING NAME in the binding
         (`platform_setting_name`) so the key itself never travels through a tool row."""
-        if (provider or "").lower() not in self.platform_provider_set:
+        if not self.platform_provider_enabled(provider):
             return None
         return getattr(self, platform_setting_name(provider), "") or None
 

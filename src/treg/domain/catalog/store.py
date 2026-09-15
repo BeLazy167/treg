@@ -642,6 +642,14 @@ def _normalize(raw: dict, provider: str, directory: Path) -> dict:
         # enforces `requires`; the buffered successful response persists every `produces` path.
         "resource_ownership": raw.get("resource_ownership") or None,
         "platform_request": raw.get("platform_request") or None,
+        # How treg serves the catalog fallback after the team's own tool/credential ladder misses.
+        # Absent means the provider credential is required. `anonymous` means the verified public
+        # upstream route is called with no injected credential; catalog validation limits that
+        # mode to free, read-only endpoints.
+        "platform_auth": (
+            str(raw["platform_auth"]).strip().lower()
+            if raw.get("platform_auth") is not None else None
+        ),
         "strict_query": raw.get("strict_query") is True,
         "cost": _effective_cost(raw),
         # Absent `tier` means core: the curated first wave predates the split, and treating an
@@ -733,6 +741,9 @@ def endpoint_view(ep: dict, provider_display: str, cat: Catalog | None = None) -
         # a fact about the row that decides whether the caller needs a credential at all, so it
         # rides on the row rather than being re-derived per client (see `Catalog.platform_eligible`)
         "platform_eligible": cat.platform_eligible(ep) if cat else None,
+        # A public upstream route can be served without treg's provider key. This is declarative
+        # endpoint metadata, not provider logic in the relay.
+        **({"platform_auth": "anonymous"} if ep.get("platform_auth") == "anonymous" else {}),
         # WHY the platform can't serve an otherwise-working route (plan/tier gap on treg's own
         # subscription) — so "bring your own key" is said up front instead of discovered via a 403.
         "platform_blocked": ep.get("platform_blocked") or None,

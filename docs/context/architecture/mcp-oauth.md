@@ -7,6 +7,9 @@ sources:
   - src/treg/domain/identity/health.py
   - src/treg/domain/identity/mcp_oauth.py
   - src/treg/domain/identity/session.py
+  - src/treg/domain/identity/access.py
+  - src/treg/domain/identity/api_keys.py
+  - src/treg/routers/api_keys.py
   - src/treg/routers/auth.py
   - src/treg/web/claude-connector.html
   - src/treg/web/connect-demo.html
@@ -32,6 +35,19 @@ not an upstream call. It requires the existing transport identity and spends no 
 Both also expose `review(call_id, usefulness, reason?)` as a non-destructive, non-idempotent local
 write relayed to `/reviews`, using the shared usefulness enum and description.
 See [feedback](feedback.md) for invitation sampling and hint priority. V2 retains its catalog-only calling boundary.
+
+## Managed bearer keys
+
+Both `/mcp/` and `/mcp/v2/` accept an active managed key as a direct bearer. MCP tools pass that
+bearer to the normal API, so disable and revoke take effect on the next tool call. The transport can
+still list static tool schemas before it validates a non-OAuth bearer; this does not grant data or
+call access. A seven-day `scp=bootstrap` login token is not a team bearer and cannot call either MCP
+surface; `treg mcp install` rejects it before writing any client configuration. Use a team Default,
+Additional, or Agent key instead.
+
+MCP OAuth access and refresh tokens remain typed, short-lived bridge credentials with separate V1
+and V2 audiences. They do not resolve through an `ApiKey` row and do not use a default-key control.
+This keeps OAuth refresh and audience isolation unchanged.
 
 ## Provider authorization remediation
 
@@ -520,6 +536,12 @@ which makes it look like a provider outage rather than a setup problem. The garb
 the test suite's own dummy: `install_mcp(only=[])` read an empty list as "no filter" and wrote
 `Bearer K` into the developer's real configs on every suite run — `only=[]` now means *none*, and
 the test isolates HOME.
+
+Before that verification, the installer also recognizes the signed `scp=bootstrap` hint and exits
+without writes. The server remains authoritative—the local decode grants nothing—but this gives a
+clear setup error instead of installing a credential that cannot identify a billing team. MCP OAuth
+access/refresh flows are unchanged; their internal 120-second bridge identity remains a separate
+typed path.
 
 Why a header works even though treg advertises OAuth: a client only falls back to OAuth discovery on
 a **401**, and treg returns **200** for a valid header — verified against Claude Code, which

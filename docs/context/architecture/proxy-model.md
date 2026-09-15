@@ -51,6 +51,12 @@ Named catalog calls with authorization metadata select the provider and grant me
 comparing hosts. This separates Facebook and Instagram tools sharing `graph.facebook.com`;
 the resulting tool enters the same relay without provider-specific relay logic.
 
+A live-verified free `GET` catalog row can declare `platform_auth: anonymous`. The normal team tool
+and team credential still win. If neither exists, `_anonymous_offer` requires the deployment's
+provider allow-list and creates an unmetered virtual tool with no bindings. `relay()` therefore
+forwards the request without injecting any provider credential. The field is generic catalog
+metadata; the resolver and relay contain no provider-specific anonymous path rules.
+
 Cache experiment metadata is attached to the existing `tool_called` event by the call-service
 capture funnel: outcome/reason, comparison and TTL policy, rollout percentage, lookup duration,
 and candidate age/window, plus `cache_price` (`full` | `repeat` | `free`) on a hit. It contains
@@ -120,6 +126,9 @@ Bindings can also stamp provider protocol constants: a format with no `{secret}`
 (Crustdata's required API-version header is the first registry use). It still carries the same secret
 reference for binding validation and lifecycle, and the assignment overwrites a caller-supplied value.
 This is generic binding behavior, not an upstream-specific branch in the relay.
+An anonymous catalog fallback uses the same relay with an empty binding list. It does not strip
+caller headers or rewrite the request; it only omits a credential that treg would otherwise inject.
+The catalog price is free only when the caller does not supply a provider credential header.
 
 **Platform bindings - injecting treg's OWN credential.** A binding with a `platform_setting` key (instead
 of a `secret_id`) injects one of treg's own credentials read from `get_settings()` - the Google Ads
@@ -183,7 +192,9 @@ cancellation cleanup, metering, audit, idempotency, and faithful relay.
   `base_url + path`. **No path → the base URL itself, without a trailing slash** - a tool pinned to a
   full resource (`.../v1/charges`) must relay as-is, since Stripe `404`s `/v1/charges/`.
 
-Named misses also inspect the org's caller-usable own tools on the error path. When a dotted operation
+A named miss whose `<tool>` is an exact catalog id with a path behind it (`reapi.tasks.get/tasks/1`)
+is the own-tool shape applied to the catalog half: it answers `400` naming the endpoint's parameter
+slots and the `--query` form, before any hint below runs. Named misses also inspect the org's caller-usable own tools on the error path. When a dotted operation
 name shares its provider/first segment with one (for example `google-analytics.report` beside the
 connected `google-analytics` tool), the 404 carries `hint` plus `did_you_mean` and points at
 `/call/google-analytics/<path>`. If that dotted name is a real catalog endpoint, the hint follows the

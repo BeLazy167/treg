@@ -20,7 +20,7 @@ sources:
   - src/treg/alembic/versions/0011_callrecord_archive_link.py
   - src/treg/application/call/service.py
   - src/treg/application/call/settle.py
-  - src/treg/alembic/versions/0034_archive_own_key_and_repeat_pricing.py
+  - src/treg/alembic/versions/0038_archive_own_key_and_repeat_pricing.py
   - scripts/backfill_call_archive_links.py
   - src/treg/api.py
   - src/treg/bootstrap.py
@@ -577,7 +577,7 @@ and credentials could not anyway: injection happens after the key is taken.
 change — the learner lands in PR 5), change statistics (`change_seen`/`stable_seen`/
 `last_changed_at`), legacy `volatile_paths` (retained for schema compatibility, no longer read or updated), and demand (`heat`, `last_requested_at`). Platform-scoped, no `org_id`:
 one team's fetch may warm another team's hit; an own-credential answer's reach is its KEY's
-scope (`ArchiveKey.scope`, migration 0034, and the scope folded into the hash — see "Sharing"),
+scope (`ArchiveKey.scope`, migration 0038, and the scope folded into the hash — see "Sharing"),
 the snapshot's `origin_org_id` (same migration) is provenance, and `ArchiveKeyOrg` (same
 migration) is the per-(org, key) "has paid for this question" mark that prices a repeat hit —
 see "Pricing a hit".
@@ -752,13 +752,26 @@ still exhaust R2's unchanged 256-record/128 MiB budget; increasing those setting
 this fix. `duplicate_queue_bypass`, `skipped_duplicate` and `coalesced` process counters supplement
 the existing per-record `archive_body_stored.upload_status` values.
 
-Residual `rate_limited`/`upstream_error` failures get one retry on nonterminal uploads too, with
-1.0-1.5 seconds of jitter before retry. This clears the one-write-per-second same-key window and
-shares the existing transfer deadline rather than restarting it. Exhaustion keeps `storage=db`
-in `both` mode with `upload_status=failed` and the classified `drop_reason`; the DB copy is not
-reported as dropped. R2-only mode now uses the same DB fallback for eligible bytes. No SDK retries
-are enabled, no extra DB transaction or new column/table is added, and no production setting is
-changed.
+`timeout`, `rate_limited`, `upstream_error` and bounded `store_error` failures get one retry on
+nonterminal uploads. Each attempt is capped at four seconds and at 40% of the configured transfer
+budget, so both attempts and jitter share the existing deadline rather than restarting it.
+Rate-limit/upstream retries retain 1.0-1.5 seconds of jitter; timeout/store retries use 0.05-0.15
+seconds. The leader releases the upload semaphore during that delay and reacquires it within the
+same deadline, while same-body followers continue sharing the leader's result. Permission, missing,
+hash, size, and unavailable-store failures are not retried. Exhaustion keeps `storage=db` in `both`
+mode with `upload_status=failed` and the classified `drop_reason`; the DB copy is not reported as
+dropped. R2-only mode uses the same DB fallback for eligible bytes. `archive_body_stored` reports
+`upload_attempts`, `upload_retry_reason`, and `upload_retry_recovered`; bounded process counters
+record retry reasons and recoveries. No SDK retries are enabled, no extra DB transaction or new
+column/table is added, and no production setting is changed.
+
+R2-first reads apply the same retryable-reason policy. They make at most two GET attempts, each
+capped at one second and half the configured read timeout, with at most 0.1 seconds of jitter.
+Missing objects, hash mismatches, permission failures, oversized objects, and an unavailable store
+fall back immediately. A retryable failure is logged as a fallback only if the second attempt also
+fails. Lookup diagnostics add `cache_r2_attempts`, `cache_r2_retry_reason`, and
+`cache_r2_retry_recovered`; bounded process counters cover result, terminal, and observation reads.
+The DB session is still opened only after all object I/O finishes.
 
 ### Timing and queue interpretation
 
@@ -771,7 +784,8 @@ regression; its configured SDK retry count remains zero. Neither fact identifies
 production network/server operation caused the delay.
 
 After this fix, leader `upload_ms` includes all attempts and jitter under its transfer budget;
-followers record their shared-flight wait in `queue_wait_ms` and zero transfer time. LRU hits have
+`queue_wait_ms` includes semaphore acquisition for each attempt. Followers record their
+shared-flight wait in `queue_wait_ms` and zero transfer time. LRU hits have
 zero transfer/wait time. Do not interpret these post-fix per-record values as one SDK request's
 latency, or average duplicate statuses and zero-transfer failed waiters into physical PUT latency. R2 pending accounting spans the
 recording's DB completion too; it is not just the number of active PUTs. Compare existing failure/
