@@ -1368,13 +1368,15 @@ class ArchiveKey(SQLModel, table=True):
     refresh worker need about this question: when it was last fetched, how it has changed across
     refetches, how often callers ask (heat), and which JSON paths turned out to be noise.
 
-    **Scoped to the platform, not to an org.** Every catalog answer the policy allows is recorded,
-    whichever credential made the call. A platform-key answer belongs to the platform and one
-    team's fetch may warm another team's hit. An own-key answer is recorded with its
-    `ArchiveSnapshot.origin_org_id` and is served back to that team; other teams see it only when
-    the provider's licence was JUDGED to allow storage (an explicit `cache: transient|archive`).
-    That line is drawn at read time in `archive.lookup`, and `ArchiveKeyOrg` remembers which
-    teams have paid for which question so a repeat hit can be priced.
+    **Scoped by the key itself.** Every catalog answer the policy allows is recorded, whichever
+    credential made the call, but WHOSE question it is (`archive.sharing`) is folded into the
+    key hash: a platform-key answer is public and one team's fetch may warm another team's hit;
+    an own-credential answer lives under an org-scoped key (or a connection-scoped one on an
+    `own_account` endpoint) that nobody else ever computes, and reaches the public key only where
+    the endpoint declares `cache.sharing: public`. `scope` names that kind of key ("org", "conn",
+    NULL = public, including every key from before the column) so the refresh worker skips the
+    private ones. `ArchiveKeyOrg` remembers which teams have paid for which question so a repeat
+    hit can be priced.
 
     Timer state is AIMD (grow slowly on stability, shrink fast on change): `ttl_s` is the current
     per-key timer, adjusted by the learner on every refetch outcome. `change_seen` / `stable_seen`
@@ -1419,6 +1421,9 @@ class ArchiveKey(SQLModel, table=True):
     result_snapshot_id: int | None = Field(default=None)
     # Detect writes from an older binary that did not maintain the result decision.
     result_observed_version: int | None = Field(default=None)
+    # "org" | "conn" for a private key (see archive.scope_tags); NULL = public. Declared LAST
+    # (migration 0034).
+    scope: str | None = Field(default=None)
 
 
 class ArchiveSnapshot(SQLModel, table=True):
@@ -1466,9 +1471,9 @@ class ArchiveSnapshot(SQLModel, table=True):
 
     # NULL is a legacy DB row. R2 objects are addressed directly by content_hash.
     body_storage: str | None = Field(default=None)
-    # The team whose OWN credential fetched this answer; NULL when treg's platform key did. Read
-    # by `archive.lookup`: an own-key answer serves its own team always, other teams only on a
-    # provider whose licence was judged to allow storage. Declared LAST (migration 0034).
+    # The team whose OWN credential fetched this answer; NULL when treg's platform key did.
+    # Provenance for the admin views - what confines the answer is the KEY's scope, not this
+    # column. Declared LAST (migration 0034).
     origin_org_id: int | None = Field(default=None)
 
 

@@ -74,20 +74,44 @@ compresses anyway is not recorded (`_identity_encoded`). A caller body the own-k
 read (streamed, no small `Content-Length`) cannot key the question: no lookup, no recording.
 Own-TOOL calls (no catalog entry) stay untouched. **An answer that quotes the team's own
 credential back is never recorded** (`_echoes_own_credential`: the exact renderings the error
-masking uses, failing closed when they cannot be rendered) — on a judged provider it would be
-served to another team. The same guard and the same `origin_org_id` apply to a metered call on an
-org credential that rides treg's pay-per-use OAuth app (`billed_oauth`): the token is the team's.
+masking uses, failing closed when they cannot be rendered). The same guard, the same
+`origin_org_id` provenance and the same sharing rules apply to a metered call on an org
+credential that rides treg's pay-per-use OAuth app (`billed_oauth`): the token is the team's.
 
-The snapshot carries `origin_org_id` (migration 0034; NULL = treg's platform key). Who it may
-serve is decided at READ time in `lookup`: its own team always; another team only when the
-provider's licence was JUDGED to allow storage (`judged_storable`: an explicit
-`cache: transient|archive`, never the unjudged default) — the data was fetched under that team's
-vendor contract. Otherwise the miss is `own_key_scoped` and the vendor answers; the platform's
-own recording of that answer then serves everyone. A platform-key snapshot serves own-key
-callers too. **A hit on an own key is free**: nothing is reserved or settled (non-negotiable 1),
-the response carries the same `X-Treg-Cache: hit` headers and the audit row `cached: true`, and
-`cache_price` reports `free`. Own-key observations train the timer and the result state like any
-other; the refresh worker still re-asks on treg's platform key.
+**A hit on an own key is free**: nothing is reserved or settled (non-negotiable 1), the response
+carries the same `X-Treg-Cache: hit` headers and the audit row `cached: true`, and `cache_price`
+reports `free`. Own-key observations train the timer and the result state of THEIR key like any
+other.
+
+### Sharing: whose question is it (2026-09-15)
+
+Storage and sharing are two dimensions, judged separately. The licence (`cache.mode`) says
+whether bytes may be KEPT; `archive.sharing(entry, own_credential=…)` says whose question the
+answer is — "the vendor allows storage" never implies "the answer does not depend on who asked".
+
+| Who asked | `scope: any_account` | `scope: own_account` |
+|---|---|---|
+| treg's platform key | `public` | (never: own_account needs the caller's credential) |
+| the org's own credential (API key or OAuth token, metered or not) | `org`, or `public` only where the ENDPOINT declares `cache.sharing: public` | `connection` |
+
+Sharing is enforced by the KEY, not by a filter at read time: `scope_tags` folds `org:<id>` or
+`conn:<id>:<sorted bound secret ids>` into `cache_key`, so a private history is under a hash
+nobody else ever computes, its timer learns only from its own answers, and two Google accounts
+in one team never see each other's sites (a reconnect is a new secret, hence a fresh history).
+A caller consults its scopes most specific first — connection only; org then public (a
+platform-key fetch may serve an own-key caller free); public only — and records under the first.
+`ArchiveKey.scope` (`org` | `conn` | NULL = public, including every key from before the column)
+lets the refresh worker skip private keys: treg's platform key cannot re-ask them. History from
+before this rule (platform and billed-OAuth rows, all NULL-origin, all on public keys) is
+therefore never served to an `own_account` caller and only ever served on `any_account`
+endpoints, where it was a public question anyway. `cache_sharing` and, on a hit, `cache_scope`
+are on `tool_called`.
+
+`cache.sharing: public` is an ENDPOINT declaration (`_validate_cache` refuses it on a provider
+header, refuses any value but `public`, and refuses it on an `own_account` endpoint): it says
+this endpoint's answer is identical whoever asks — treg's own service OAuth reading public data
+is the intended case — and it is judged per endpoint, never inherited from a provider's licence.
+Nothing in the shipped catalog declares it yet.
 
 ## Pricing a hit (2026-09-14)
 
@@ -528,7 +552,7 @@ produce hypothetical hit counts or fresh-answer comparisons.
    (`_buffer_response` needs the provider's reported cost), so recording adds no latency. An
    own-key catalog answer is read whole only when it fits the archive's size cap (see "Own-key
    answers"); larger ones stream untouched. Own-tool calls (no catalog entry) are never touched.
-   Who an own-key answer may serve is decided at READ time by `origin_org_id`, not at write time.
+   Who an own-credential answer may serve is decided by the KEY it is recorded under ("Sharing").
 
 Gates 1+2 are `archive.policy(entry)`; gate 3 is the hook site's own context.
 
@@ -539,10 +563,11 @@ buffer's 8 MiB limit fail before recording and cannot populate a cache or idempo
 
 ## The cache key
 
-`archive.cache_key(method, endpoint_id, upstream_url, body, headers)` → sha256 over the canonical
-request: uppercased method, catalog endpoint id (a provider URL reshuffle starts a fresh history),
-sorted query pairs, canonical-JSON body hash (raw hash for non-JSON), plus only `Accept` and
-`Accept-Language` from the caller's headers. Auth/cookies/tracing/encodings never enter the key —
+`archive.cache_key(method, endpoint_id, upstream_url, body, headers, scope="")` → sha256 over the
+canonical request: uppercased method, catalog endpoint id (a provider URL reshuffle starts a fresh
+history), sorted query pairs, canonical-JSON body hash (raw hash for non-JSON), plus only `Accept`
+and `Accept-Language` from the caller's headers, plus the sharing scope when the answer is not
+public (`org:<id>` / `conn:<id>:<secret ids>`, see "Sharing"; a public key hashes as it always did). Auth/cookies/tracing/encodings never enter the key —
 and credentials could not anyway: injection happens after the key is taken.
 
 ## Tables (migration 0002)
@@ -551,9 +576,11 @@ and credentials could not anyway: injection happens after the key is taken.
 `policy`, AIMD timer state (`ttl_s`, grow ×1.5 capped on stable refetch / shrink ×0.5 floored on
 change — the learner lands in PR 5), change statistics (`change_seen`/`stable_seen`/
 `last_changed_at`), legacy `volatile_paths` (retained for schema compatibility, no longer read or updated), and demand (`heat`, `last_requested_at`). Platform-scoped, no `org_id`:
-one team's fetch may warm another team's hit; an own-key answer's reach is the SNAPSHOT's
-`origin_org_id` (migration 0034), and `ArchiveKeyOrg` (same migration) is the per-(org, key)
-"has paid for this question" mark that prices a repeat hit — see "Pricing a hit".
+one team's fetch may warm another team's hit; an own-credential answer's reach is its KEY's
+scope (`ArchiveKey.scope`, migration 0034, and the scope folded into the hash — see "Sharing"),
+the snapshot's `origin_org_id` (same migration) is provenance, and `ArchiveKeyOrg` (same
+migration) is the per-(org, key) "has paid for this question" mark that prices a repeat hit —
+see "Pricing a hit".
 
 `ArchiveSnapshot` — one version: unique `(key_id, version)`, verbatim `body` bytes, `content_hash`
 (raw sha256) for dedup — an identical consecutive answer stores a version row with `body=NULL,

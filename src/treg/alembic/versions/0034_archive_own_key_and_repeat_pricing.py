@@ -11,6 +11,9 @@ depends_on = None
 def upgrade() -> None:
     # NULL = fetched on treg's platform key (every row before this revision).
     op.add_column("archivesnapshot", sa.Column("origin_org_id", sa.Integer(), nullable=True))
+    # "org" | "conn" for a key private to an org or a connection; NULL = public (every key
+    # before this revision, whose hash carries no scope).
+    op.add_column("archivekey", sa.Column("scope", sa.String(), nullable=True))
     op.create_table(
         "archivekeyorg",
         sa.Column("id", sa.Integer(), primary_key=True),
@@ -29,4 +32,5 @@ def downgrade() -> None:
     op.drop_index("ix_archivekeyorg_key_hash", table_name="archivekeyorg")
     op.drop_index("ix_archivekeyorg_org_id", table_name="archivekeyorg")
     op.drop_table("archivekeyorg")
+    op.drop_column("archivekey", "scope")
     op.drop_column("archivesnapshot", "origin_org_id")

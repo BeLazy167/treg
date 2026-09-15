@@ -881,6 +881,18 @@ async def _execute_call(request: _ApplicationRequest, upstream_client: httpx.Asy
             own_key_archivable = (
                 own_key_cacheable and archive.recording()
                 and archive.storable(catalog_store.load().by_id.get(mk.endpoint_id)))
+            # Whose question this is (archive.sharing): the org's own credential - an API key or
+            # an OAuth token, metered or not - confines the answer to the org, or to the
+            # connection on an `own_account` endpoint, by keying it. The tags are the scopes this
+            # caller may READ, most specific first; the first is where its answer is recorded.
+            own_credential = mk is not None and mk.tier in ("tool", "credential")
+            cache_scopes = archive.scope_tags(
+                archive.sharing(catalog_store.load().by_id.get(mk.endpoint_id) if mk else None,
+                                own_credential=own_credential),
+                caller.org_id, secrets) if mk is not None else [""]
+            if mk is not None:
+                cache_diagnostics["cache_sharing"] = archive.sharing(
+                    catalog_store.load().by_id.get(mk.endpoint_id), own_credential=own_credential)
             # A probe must reach the vendor: an archived answer proves nothing about capacity.
             if (mk is not None and mk.probe_lock_id is None and archive.serving()
                     and ((mk.metered and not mk.streamable_free_result) or own_key_cacheable)):
@@ -893,7 +905,7 @@ async def _execute_call(request: _ApplicationRequest, upstream_client: httpx.Asy
                                             drop_params or set()),
                         caller_body=caller_body, request_headers=request.headers,
                         cohort=str(audit_org_id), diagnostics=cache_diagnostics,
-                        org_id=caller.org_id, price_repeat=mk.metered)
+                        org_id=caller.org_id, price_repeat=mk.metered, scopes=cache_scopes)
                 except Exception:  # noqa: BLE001 — lookup swallows internally; this catches even a
                     served = None  # fault in its own plumbing. Cache trouble must cost a vendor
                     #              call, never a 500.
@@ -959,7 +971,7 @@ async def _execute_call(request: _ApplicationRequest, upstream_client: httpx.Asy
                 # in memory here for the settle, so observing it costs nothing on-request. Metered
                 # 2xx only — gate 3 of eligibility is exactly 'this fact, at this line'. Off unless
                 # TREG_ARCHIVE_MODE says otherwise; record() is fire-and-forget and never raises.
-                own_credential = mk.tier in ("tool", "credential")  # billed OAuth: the org's token
+                # `own_credential` here means billed OAuth: the org's token, treg's bill.
                 if (mk.metered and archive.recording() and 200 <= response.status < 300
                         and not (own_credential and _echoes_own_credential(tool, secrets, body))):
                     _ct = next((v.decode("latin-1") for k, v in response.raw_headers
@@ -976,7 +988,8 @@ async def _execute_call(request: _ApplicationRequest, upstream_client: httpx.Asy
                         headers={k: request.headers.get(k, "") for k in ("accept", "accept-language")},
                         status_code=response.status, media_type=_ct, body=body,
                         observation=body_observation,
-                        origin_org_id=caller.org_id if own_credential else None)
+                        origin_org_id=caller.org_id if own_credential else None,
+                        scope=cache_scopes[0])
             elif (served is None and own_key_archivable and 200 <= response.status < 300
                   and _identity_encoded(response)):
                 # An own-key answer: read whole when it fits the archive's cap (bounded, before
@@ -999,7 +1012,8 @@ async def _execute_call(request: _ApplicationRequest, upstream_client: httpx.Asy
                         caller_body=caller_body,
                         headers={k: request.headers.get(k, "") for k in ("accept", "accept-language")},
                         status_code=response.status, media_type=_ct, body=body,
-                        observation=body_observation, origin_org_id=caller.org_id)
+                        observation=body_observation, origin_org_id=caller.org_id,
+                        scope=cache_scopes[0])
             elif response.status >= 400:
                 # Preserve streaming for own-key and own-tool calls while retaining only the small
                 # diagnostic head. The replacement response replays every consumed byte verbatim.

@@ -111,11 +111,12 @@ agents then built against a constitution that was wrong.
 - **Money.** Everything is **integer micro-USD** - never floats, never cents. The Stripe SDK lives
   only in `infra/stripe.py`, orchestration in `application/billing.py`, and `reconcile.py` is
   read-only. See `docs/context/architecture/money.md`.
-- **The archive serves every tier.** Own-key answers are recorded (bounded read, never a prefix)
-  and a hit on an own key is free; a metered hit settles through the same hold, at
-  `archive_hit_repeat_price_percent` once the team has paid for that question. An own-key answer
-  crosses teams only where the provider's licence was judged. See
-  `docs/context/architecture/archive.md`.
+- **The archive serves every tier, keyed by whose question it is.** Own-credential answers are
+  recorded (bounded read, never a prefix) under an org-scoped key, or a connection-scoped key on
+  an `own_account` endpoint, and reach other teams only where the endpoint itself declares
+  `cache.sharing: public`; a provider's storage licence never decides that. A hit on an own key
+  is free; a metered hit settles through the same hold, at `archive_hit_repeat_price_percent`
+  once the team has paid for that question. See `docs/context/architecture/archive.md`.
 
 ### Security guards that look redundant on purpose
 

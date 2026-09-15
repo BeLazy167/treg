@@ -252,9 +252,8 @@ def archive_serve(billed_on, monkeypatch):
 
 async def test_billed_oauth_answers_are_the_orgs_own_in_the_archive(
         clients: AsyncClient, archive_serve, monkeypatch):
-    """Metered (treg's app pays X) but fetched with the org's OWN token: recorded with the org as
-    origin, served back to the org at the repeat price, never to a stranger on an unjudged
-    provider."""
+    """Metered (treg's app pays X) but fetched with the org's OWN token: keyed to the org,
+    served back to the org at the repeat price, never to a stranger."""
     from sqlalchemy import select
     from tests.conftest import verified_signup
     from treg import archive
@@ -282,7 +281,8 @@ async def test_billed_oauth_answers_are_the_orgs_own_in_the_archive(
     assert r3.status_code == 200 and "x-treg-cache" not in r3.headers
     assert int(r3.headers["x-treg-cost-micro"]) == POST_MICRO   # X answered them, at full price
     props = [p for e, p in events if e == "tool_called"][-1]
-    assert props["cache_outcome"] == "own_key_scoped"
+    assert props["cache_outcome"] == "key_missing"             # their org key has nothing
+    assert props["cache_sharing"] == "org"                      # any_account: the org's question
 
 
 async def test_billed_oauth_answer_echoing_the_token_is_never_recorded(

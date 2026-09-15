@@ -60,8 +60,39 @@ def test_policy_defaults():
     for kind in ("action", "utility", "account", "ACCOUNT ", "anything-else"):
         assert policy({"kind": kind}) == "forbidden", kind
         assert policy({"kind": kind, "cache": "archive"}) == "forbidden", kind
-        assert not archive.judged_storable({"kind": kind, "cache": {"mode": "transient"}})
-    assert archive.judged_storable({"kind": "data", "cache": {"mode": "transient"}})
+
+
+def test_sharing_is_whose_question_not_whether_bytes_are_kept():
+    """Storage (the licence) and sharing (who asked) are separate dimensions."""
+    judged = {"scope": "any_account", "cache": {"mode": "transient", "license_quote": "q"}}
+    # treg's platform key: public, whatever the entry says.
+    assert archive.sharing(judged, own_credential=False) == "public"
+    assert archive.sharing({"scope": "own_account"}, own_credential=False) == "public"
+    # The org's own credential: the org's question by default - a judged licence does NOT
+    # make it public - and the connection's on an own_account endpoint.
+    assert archive.sharing(judged, own_credential=True) == "org"
+    assert archive.sharing({"scope": "any_account"}, own_credential=True) == "org"
+    assert archive.sharing({"scope": "own_account"}, own_credential=True) == "connection"
+    assert archive.sharing({"scope": "own_account", "cache": {"sharing": "public"}},
+                           own_credential=True) == "connection"   # scope wins (the store refuses it anyway)
+    # Only the endpoint's own declaration opens an own-credential answer to other teams.
+    assert archive.sharing({"scope": "any_account", "cache": {"sharing": "public"}},
+                           own_credential=True) == "public"
+    assert archive.sharing({"cache": {"sharing": "org"}}, own_credential=True) == "org"
+    assert archive.sharing(None, own_credential=True) == "org"
+
+
+def test_scope_tags_are_most_specific_first_and_key_apart():
+    assert archive.scope_tags("public", 7, [3]) == [""]
+    assert archive.scope_tags("org", 7, [3]) == ["org:7", ""]
+    assert archive.scope_tags("connection", 7, [9, 3]) == ["conn:7:3+9"]
+    assert archive.scope_tags("connection", 7, []) == ["conn:7:"]
+    public = cache_key("GET", "p.e", "https://api.x/q?a=1")
+    org = cache_key("GET", "p.e", "https://api.x/q?a=1", scope="org:7")
+    conn = cache_key("GET", "p.e", "https://api.x/q?a=1", scope="conn:7:3")
+    assert len({public, org, conn}) == 3
+    assert public == cache_key("GET", "p.e", "https://api.x/q?a=1", scope="")   # legacy hash
+    assert org != cache_key("GET", "p.e", "https://api.x/q?a=1", scope="org:8")
     # A judged forbidden is always respected, whatever the default says.
     assert policy({"cache": "forbidden"}) == "forbidden"
     assert policy({"cache": {"mode": "forbidden", "license_quote": "q"}}) == "forbidden"
@@ -322,8 +353,9 @@ def test_every_declared_cache_field_in_the_catalog_is_valid():
             continue
         if isinstance(declared, dict):
             if "mode" not in declared:
-                # Comparison declarations do not claim a license or override the default policy.
-                assert set(declared) == {"ignore_paths"}, ep["id"]
+                # Comparison / sharing declarations do not claim a license or override the
+                # default policy.
+                assert set(declared) <= {"ignore_paths", "sharing"}, ep["id"]
                 assert archive.policy(ep) == archive.policy({**ep, "cache": None})
                 continue
             assert declared.get("mode") in ("forbidden", "transient", "archive"), ep["id"]
@@ -565,13 +597,15 @@ async def test_an_own_key_answer_is_recorded_and_served_back_free(
     assert result["stored"] and result["response"]["body_text"] == OWN.decode()
 
 
-async def test_an_own_key_answer_stays_with_its_team_on_an_unjudged_provider(
+async def test_an_own_key_answer_is_the_orgs_question_and_never_another_teams(
         clients: AsyncClient, own_key_serve, monkeypatch):
     from tests.conftest import verified_signup
     _vendor_says(monkeypatch, OWN)
     await _own_key(clients)
     await clients.get(f"/call/{EP}?aweme_id=7&count=5")
     await archive.drain()
+    keys, _ = await _rows()
+    assert [k.scope for k in keys] == ["org"]                  # keyed to the org, not public
     events = []
     monkeypatch.setattr(call_service.analytics, "capture",
                         lambda who, event, props, **kw: events.append((event, props)))
@@ -582,38 +616,106 @@ async def test_an_own_key_answer_stays_with_its_team_on_an_unjudged_provider(
     assert r.status_code == 200 and "x-treg-cache" not in r.headers
     assert r.content == PLAT                                   # the vendor answered, on treg's key
     props = [p for e, p in events if e == "tool_called"][-1]
-    assert props["cache_outcome"] == "own_key_scoped"
-    # Now the newest snapshot is treg's own: the stranger's next call is a hit - a REPEAT for
-    # them (their live call above was their first paid call on the question) - and the own-key
-    # team hits that platform answer too, free.
+    assert props["cache_outcome"] == "key_missing"             # the public key had nothing
+    assert props["cache_sharing"] == "public"
+    # Now a public answer exists: the stranger's next call is a hit - a REPEAT for them (their
+    # live call above was their first paid call on the question). The own-key team still reads
+    # its OWN answer first: the org key wins over the public one.
     await archive.drain()
     _vendor_says(monkeypatch, b'{"changed": true}')
     r2 = await clients.get(f"/call/{EP}?aweme_id=7&count=5", headers=headers)
     assert r2.headers["X-Treg-Cache"] == "hit" and r2.content == PLAT
     assert int(r2.headers["X-Treg-Cost-Micro"]) == int(r.headers["X-Treg-Cost-Micro"]) * 10 // 100
     mine = await clients.get(f"/call/{EP}?aweme_id=7&count=5")
-    assert mine.headers["X-Treg-Cache"] == "hit" and mine.content == PLAT
+    assert mine.headers["X-Treg-Cache"] == "hit" and mine.content == OWN
     assert "X-Treg-Cost-Micro" not in mine.headers
     mine_props = [p for e, p in events if e == "tool_called"][-1]
     assert mine_props["cache_price"] == "free" and mine_props["cache_outcome"] == "hit"
+    assert mine_props["cache_sharing"] == "org" and mine_props["cache_scope"] == "org"
+    keys, _ = await _rows()
+    assert sorted(k.scope or "public" for k in keys) == ["org", "public"]
 
 
-async def test_an_own_key_answer_crosses_teams_on_a_judged_provider(
+async def test_a_judged_licence_does_not_share_an_own_key_answer_but_an_endpoint_declaration_does(
         clients: AsyncClient, own_key_serve, monkeypatch):
     from tests.conftest import verified_signup
-    monkeypatch.setitem(catalog_store.load().by_id[EP], "cache",
-                        {"mode": "transient", "license_quote": "q", "source_url": "u",
-                         "checked": "2026-09-14"})
+    entry = catalog_store.load().by_id[EP]
+    monkeypatch.setitem(entry, "cache", {"mode": "transient", "license_quote": "q",
+                                         "source_url": "u", "checked": "2026-09-14"})
     _vendor_says(monkeypatch, OWN)
     await _own_key(clients)
     await clients.get(f"/call/{EP}?aweme_id=7&count=5")
     await archive.drain()
     other = await verified_signup(clients, json={"email": "stranger@example.com"})
     headers = {"X-Treg-Token": other.json()["token"]}
-    _vendor_says(monkeypatch, PLAT)                            # must not be asked
+    _vendor_says(monkeypatch, PLAT)
     r = await clients.get(f"/call/{EP}?aweme_id=7&count=5", headers=headers)
-    assert r.headers["X-Treg-Cache"] == "hit" and r.content == OWN
-    assert int(r.headers["X-Treg-Cost-Micro"]) > 0             # metered caller: first = full
+    assert "x-treg-cache" not in r.headers and r.content == PLAT   # licence says nothing about who asked
+    # The endpoint itself declares the answer independent of who asked: the own-key answer is
+    # recorded under the public key and serves the stranger (a metered caller: first = full).
+    monkeypatch.setitem(entry, "cache", {"sharing": "public"})
+    _vendor_says(monkeypatch, OWN)
+    await clients.get(f"/call/{EP}?aweme_id=8")
+    await archive.drain()
+    keys, _ = await _rows()
+    assert sorted(k.scope or "public" for k in keys) == ["org", "public", "public"]
+    _vendor_says(monkeypatch, PLAT)
+    shared = await clients.get(f"/call/{EP}?aweme_id=8", headers=headers)
+    assert shared.headers["X-Treg-Cache"] == "hit" and shared.content == OWN
+    assert int(shared.headers["X-Treg-Cost-Micro"]) > 0
+
+
+async def test_an_own_account_answer_is_the_connections_and_a_reconnect_starts_over(
+        clients: AsyncClient, own_key_serve, monkeypatch):
+    """`scope: own_account`: the answer is about the credential's account. It is keyed to the
+    connection (org + bound secrets); a public answer for the same URL is never consulted, and a
+    new connection (a new secret) never sees the old one's history."""
+    from tests.conftest import verified_signup
+    entry = catalog_store.load().by_id[EP]
+    # A legacy/public answer for the same URL, recorded before the scope flips.
+    other = await verified_signup(clients, json={"email": "stranger@example.com"})
+    headers = {"X-Treg-Token": other.json()["token"]}
+    _vendor_says(monkeypatch, PLAT)
+    await clients.get(f"/call/{EP}?aweme_id=7&count=5", headers=headers)
+    await archive.drain()
+    monkeypatch.setitem(entry, "scope", "own_account")
+    events = []
+    monkeypatch.setattr(call_service.analytics, "capture",
+                        lambda who, event, props, **kw: events.append((event, props)))
+    _vendor_says(monkeypatch, OWN)
+    await _own_key(clients)
+    r1 = await clients.get(f"/call/{EP}?aweme_id=7&count=5")
+    assert "x-treg-cache" not in r1.headers and r1.content == OWN   # the public answer is not mine
+    props = [p for e, p in events if e == "tool_called"][-1]
+    assert props["cache_outcome"] == "key_missing" and props["cache_sharing"] == "connection"
+    await archive.drain()
+    keys, _ = await _rows()
+    assert sorted(k.scope or "public" for k in keys) == ["conn", "public"]
+    _vendor_says(monkeypatch, b'{"changed": true}')
+    r2 = await clients.get(f"/call/{EP}?aweme_id=7&count=5")
+    assert r2.headers["X-Treg-Cache"] == "hit" and r2.content == OWN
+    assert [p for e, p in events if e == "tool_called"][-1]["cache_scope"] == "conn"
+    # Reconnect: a new secret is a new connection, and the old answer is not its answer. (The
+    # filler row keeps sqlite from handing the recreated secret the deleted row's id back.)
+    secret = next(x for x in (await clients.get("/secrets")).json() if x["name"] == "tikhub")
+    assert (await clients.delete(f"/secrets/{secret['id']}")).status_code in (200, 204)
+    assert (await clients.post("/secrets", json={"name": "filler", "value": "F"})).status_code == 200
+    await _own_key(clients)
+    renewed = next(x for x in (await clients.get("/secrets")).json() if x["name"] == "tikhub")
+    assert renewed["id"] != secret["id"]
+    r3 = await clients.get(f"/call/{EP}?aweme_id=7&count=5")
+    assert "x-treg-cache" not in r3.headers and r3.content == b'{"changed": true}'
+
+
+async def test_the_refresh_worker_never_re_asks_a_private_question(
+        clients: AsyncClient, own_key_serve, monkeypatch):
+    _vendor_says(monkeypatch, OWN)
+    await _own_key(clients)
+    await clients.get(f"/call/{EP}?aweme_id=7&count=5")
+    await archive.drain()
+    await _age_key(days=1)
+    fake = _FakeUpstream()
+    assert await archive.refresh_once(fake) == 0 and fake.calls == []
 
 
 async def test_a_platform_answer_serves_an_own_key_caller_free(
@@ -1755,6 +1857,32 @@ def test_catalog_rejects_invalid_ignore_paths(tmp_path, paths, at_header):
     (tmp_path / 'test.yaml').write_text(yaml.safe_dump(doc))
     with pytest.raises(ValueError, match='cache.ignore_paths'):
         catalog_store.load(directory=tmp_path)
+
+
+@pytest.mark.parametrize('doc_cache,ep,match', [
+    ({'sharing': 'public'}, {}, 'never on a provider header'),
+    (None, {'cache': {'sharing': 'org'}}, "accepts only 'public'"),
+    (None, {'scope': 'own_account', 'cache': {'sharing': 'public'}}, 'impossible on an own_account'),
+])
+def test_catalog_rejects_misplaced_sharing(tmp_path, doc_cache, ep, match):
+    import yaml
+    doc = {'provider': 'test', 'endpoints': [{'id': 'test.read', **ep}]}
+    if doc_cache:
+        doc['cache'] = doc_cache
+    (tmp_path / 'test.yaml').write_text(yaml.safe_dump(doc))
+    with pytest.raises(ValueError, match=match):
+        catalog_store.load(directory=tmp_path)
+
+
+def test_catalog_accepts_an_endpoint_level_public_sharing(tmp_path):
+    import yaml
+    doc = {'provider': 'test', 'endpoints': [
+        {'id': 'test.read', 'scope': 'any_account', 'cache': {'sharing': 'public'}}]}
+    (tmp_path / 'test.yaml').write_text(yaml.safe_dump(doc))
+    cat = catalog_store.load(directory=tmp_path)
+    assert archive.sharing(cat.by_id['test.read'], own_credential=True) == 'public'
+    assert not any(isinstance(ep.get('cache'), dict) and 'sharing' in ep['cache']
+                   for ep in catalog_store.load().endpoints)   # nothing declared public yet
 
 
 def test_catalog_preserves_ignore_paths_and_defaults(tmp_path):
