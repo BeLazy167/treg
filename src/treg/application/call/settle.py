@@ -165,7 +165,7 @@ def _observed_cost_micro(mk: MarketplaceCall, body: bytes, headers=None) -> int 
       - dataforseo: a top-level `cost` in USD — including 0 when it decided not to charge (a free
         route, or a request it rejected before metering). That zero is real information and settles the
         call at zero, which is why the test is `>= 0` and not truthiness.
-      - scrapecreators (`credits_charged`), akta and leadmagic (`credits_consumed`): provider
+      - scrapecreators (`credits_charged`), akta, leadmagic and Dropleads (`credits_consumed`): provider
         credits, converted through the provider's credit rate (fx.yaml) — the same conversion
         `cost_view` uses, so a settle can't disagree with the catalog's price. Akta is the one that
         NEEDS this: its enrich route is priced per SECTION requested and its news route adds a
@@ -261,6 +261,27 @@ def _observed_cost_micro(mk: MarketplaceCall, body: bytes, headers=None) -> int 
         return None
     if provider == "quickenrich":
         return _quickenrich_cost_micro(mk, doc)
+    if provider == "dropleads":
+        if mk.endpoint_id.startswith("dropleads.companies."):
+            info = doc.get("credits")
+            credits = info.get("creditsDeducted") if isinstance(info, dict) else None
+        elif mk.endpoint_id in (
+            "dropleads.people.email.find",
+            "dropleads.people.phone.find",
+            "dropleads.people.email.verify",
+        ):
+            credits = doc.get("credits_charged")
+            # Email Finder omits the numeric field on its explicit, free not-found answer.
+            if credits is None and mk.endpoint_id == "dropleads.people.email.find" \
+                    and doc.get("status") == "not_found":
+                credits = 0
+        else:
+            credits = doc.get("credits_consumed")
+        rate = catalog_store.load().credit_rates.get("dropleads")
+        if (isinstance(credits, (int, float)) and not isinstance(credits, bool)
+                and credits >= 0 and rate):
+            return int(credits * rate * 1_000_000 + 0.5)
+        return None
     if provider == "aviato" and mk.endpoint_id == "aviato.companies.enrich.bulk":
         rows = doc.get("companies")
         if isinstance(rows, list) and mk.unit_micro > 0:

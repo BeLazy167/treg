@@ -651,3 +651,26 @@ def test_missing_platform_auth_normalizes_as_absent():
         'path': '/values',
     }, 'example', Path('.'))
     assert normalized['platform_auth'] is None
+
+
+def test_dropleads_catalog_surface_is_bounded_and_excludes_internal_routes():
+    catalog = catalog_store.load()
+    rows = [ep for ep in catalog.endpoints if ep["provider"] == "dropleads"]
+    assert len(rows) == 12
+    assert all(catalog.platform_eligible(ep) for ep in rows)
+    assert not any(
+        "credits/balance" in ep["path"] or "export/cost" in ep["path"]
+        for ep in rows
+    )
+    assert {ep.get("host") for ep in rows if ep.get("host")} == {"api.dropleads.io"}
+    assert catalog.by_id["dropleads.people.enrich"]["test_request"]["body"] == {
+        "name": "Jane Doe",
+        "organization_name": "Example",
+        "domain": "example.com",
+    }
+    assert catalog.by_id["dropleads.people.enrich.verified"]["test_request"]["body"] == {
+        "name": "Jane Doe",
+        "organization_name": "Example",
+        "domain": "example.com",
+        "email_verification_type": "valid_and_catchall",
+    }

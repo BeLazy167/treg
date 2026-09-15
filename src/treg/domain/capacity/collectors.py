@@ -104,6 +104,25 @@ async def _harvestapi(c, key):
                     "Auto top-up is managed in HarvestAPI."}
 
 
+async def _dropleads(c, key):
+    d = await _get(c, "https://prime.dropleads.io/api/v2/prime-db/credits/balance",
+                   headers={"X-API-Key": key})
+    credits = d.get("credits") if isinstance(d, dict) and d.get("success") is True else None
+    remaining = credits.get("totalAvailable") if isinstance(credits, dict) else None
+    if (type(remaining) not in (int, float) or not math.isfinite(remaining)
+            or remaining < 0):
+        remaining = None
+    subscription = credits.get("subscription") if isinstance(credits, dict) else None
+    payg = credits.get("payg") if isinstance(credits, dict) else None
+    use_payg = credits.get("usePayg") if isinstance(credits, dict) else None
+    return {
+        "value": remaining,
+        "unit": "credits",
+        "note": f"subscription {subscription}, PAYG {payg}, use PAYG {use_payg}; "
+                "totalAvailable is the spendable balance",
+    }
+
+
 async def _quickenrich(c, key):
     # Free discovery carries the remaining subscription allowance; no account endpoint exists.
     r = await c.post("https://app.quickenrich.io/api/employees/contact-finder",
@@ -441,6 +460,7 @@ BALANCE_ROUTES = {
     "akta": _akta,
     "brightdata": _brightdata,
     "crustdata": _crustdata,
+    "dropleads": _dropleads,
     "fiber_ai": _fiber_ai,
     "spyfu": _spyfu,
     "icypeas": _icypeas,

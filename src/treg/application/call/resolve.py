@@ -575,7 +575,7 @@ def _marketplace_pricing(
     """Return (reserve estimate, response-count unit), in raw micro-USD.
 
     The catalog remains the price source. This helper only models provider rules that one fixed
-    scalar cannot express: Crustdata batch-shaped single calls and Aviato preview/add-on/bulk modes.
+    scalar cannot express: provider batch shapes and request-dependent modes.
     `unit` is non-zero only when the response must decide the final charge.
     """
     if not cost:
@@ -588,6 +588,27 @@ def _marketplace_pricing(
         from . import contactout
         request = _json_object(body) if body else dict(query.multi_items())
         return contactout.estimate(cost, request), 0
+    if provider == "dropleads":
+        doc = _json_object(body)
+        rate = float(cost.get("usd") or 0)
+        unit = _usd_to_micro(rate)
+        if endpoint_id in (
+            "dropleads.people.enrich.verified.bulk",
+            "dropleads.people.enrich.bulk",
+        ):
+            details = doc.get("details")
+            count = len(details) if isinstance(details, list) else 1
+            return _usd_to_micro(rate * max(1, min(count, 10))), unit
+        if endpoint_id == "dropleads.companies.enrich":
+            domains = doc.get("domains") if isinstance(doc.get("domains"), list) else []
+            names = doc.get("companyNames") if isinstance(doc.get("companyNames"), list) else []
+            # More than 50 is rejected before charging; reserve the maximum valid request.
+            return _usd_to_micro(rate * max(1, min(len(domains) + len(names), 50))), unit
+        if endpoint_id == "dropleads.companies.search":
+            nested = doc.get("pagination") if isinstance(doc.get("pagination"), dict) else {}
+            asked = nested.get("limit", 20)
+            asked = max(1, min(asked, 50)) if type(asked) is int else 20
+            return _usd_to_micro(rate * asked), unit
     estimate = _platform_estimate_micro(cost, query, body)
     unit = (_usd_to_micro(cost["usd"])
             if cost.get("type") in ("per_result", "quota_rows") and cost.get("usd") else 0)

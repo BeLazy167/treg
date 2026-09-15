@@ -98,6 +98,18 @@ support. Per-call billing remains separate: use `meta.credits_used` at the treg 
 Exhaustion behavior is acknowledged as unrecorded in the existing shared signature guard;
 we did not exhaust the trial to manufacture evidence. No overflow route is claimed.
 
+
+## Dropleads credits
+
+`collectors._dropleads` uses the free internal balance route and reads
+`credits.totalAvailable`. Zero is a valid exhausted balance. A missing, negative, Boolean or
+non-numeric value is unknown. Subscription, PAYG and `usePayg` values stay in the observation note;
+they do not replace the spendable total. The default policy is `credits / manual / api`.
+`scripts/provider_balances.py` needs no provider branch because the typed platform-key setting and
+the shared collector table discover Dropleads automatically. The free trial was not exhausted, so
+the actual upstream exhaustion response is acknowledged as unrecorded and no overflow route is
+enabled. See [Dropleads](../architecture/dropleads.md).
+
 ## Pieces (`src/treg/domain/capacity/`)
 
 - **`collectors.py`** — the providers' *free* balance/quota calls (`coroutine(client, key) →

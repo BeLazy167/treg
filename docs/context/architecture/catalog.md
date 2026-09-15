@@ -2143,6 +2143,16 @@ The single verified adapter is usable by Arena; the two-provider public routing 
 `harvestapi.yaml` adds API-key-only LinkedIn reads with opt-in `strict_query` contracts and three profile variants. See [HarvestAPI](harvestapi.md) for the verified surface, billed misses, pagination traps and adapters.
 
 
+## Dropleads integration
+
+`dropleads.yaml` adds twelve synchronous people and company tools. The balance check and export-cost
+route stay outside the public catalog. Seven verified adapters add email finding, phone finding,
+email verification, people search and enrichment, and company search and enrichment to the existing
+routed tools and Enrich Arena. The count and synchronous bulk tools stay direct. The provider uses
+the existing `CatalogTarget` allow-list for its second API host; catalog data cannot send a
+credential to another host. See [Dropleads](dropleads.md) for the surface, prices and live evidence.
+
+
 ### Verified additional routing categories
 
 An adapter can opt into `additional_capabilities` while its endpoint retains its primary
