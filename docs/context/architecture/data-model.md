@@ -389,7 +389,9 @@ Migration scripts live under `src/treg/alembic/`, inside the shipped wheel. The 
 `alembic.ini` points there for developer CLI use, while `maintenance._alembic_config` resolves the
 installed package resource and supplies the configured database URL. Alembic commands run through
 `asyncio.to_thread` because the environment owns its own `asyncio.run`. On Postgres, `env.py` sets
-`lock_timeout = 5s` before migrations so lock contention fails the deploy cleanly.
+`lock_timeout = 5s` before migrations so lock contention fails an attempt cleanly, and commits each
+revision on its own so `maintenance`'s bounded retry resumes at the revision that timed out (see
+[deploy](../ops/deploy.md)).
 
 The authoritative drift guard upgrades to head, runs Alembic autogenerate against
 `SQLModel.metadata`, and requires an empty diff. Tests keep fast `create_all` fixtures through
