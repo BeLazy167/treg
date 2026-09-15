@@ -59,7 +59,7 @@ def header_img(lines, sz=62):
     return out
 
 def whisper_words(video):
-    wav = tempfile.mktemp(suffix=".wav")
+    wav = tempfile.NamedTemporaryFile(suffix=".wav", delete=False).name
     subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", video, "-vn", "-ac", "1", "-ar", "16000", wav], check=True)
     r = subprocess.run(["curl", "-s", "https://api.openai.com/v1/audio/transcriptions", "-H", f"Authorization: Bearer {os.environ['OPENAI_API_KEY']}",
                         "-F", f"file=@{wav}", "-F", "model=whisper-1", "-F", "response_format=verbose_json",
