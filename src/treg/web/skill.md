@@ -75,6 +75,8 @@ treg catalog request "<what you need>"           # searched, not there? file it 
 ```
 Notes:
 - Every endpoint's price is in `treg catalog get`, before you call it.
+- A catalog endpoint can use a verified public route with no provider key. Such a call is free when
+  the caller does not send a provider credential. The team tool or stored provider key still wins.
 - Discovery jobs usually have TWO shapes in the catalog — a structured one (filters: title, location,
   followers, funding) and a semantic one (describe what you want; `exa.*`). When a brief mixes hard
   limits with a fuzzy niche, run both and merge: e.g. creators = `influencersclub.creators.search`
@@ -96,8 +98,8 @@ Notes:
   (not your balance; nothing charged). Body has `resets_at` and `alternatives` (same capability,
   other providers) — choose one, or use your own key. treg never switches providers for you.
   treg re-checks the provider about once a minute, so a retry after a minute can succeed.
-- An org tool or secret for the provider always wins over treg's key, automatically — the catalog
-  is the fallback, not a replacement for keys the team already has.
+- An org tool or secret for the provider always wins over an anonymous route or treg's key,
+  automatically — the catalog is the fallback, not a replacement for keys the team already has.
 - **Choosing between providers of one capability — the procedure.** `treg catalog get <id>` lists
   every provider serving the same job with `COST`, `WORKS` (success rate treg has observed, with the
   sample size), `SPEED` (median) and `LAST OK`. Work down this order:

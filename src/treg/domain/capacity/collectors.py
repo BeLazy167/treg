@@ -491,6 +491,9 @@ NO_BALANCE_API = {
            "returns historical costs, not remaining balance; dashboard only",
     "finnhub": "no account/usage endpoint and no rate-limit headers (checked 2026-08-31) — "
                "per-minute limits only, nothing to read back",
+    "financialdatasets": "no free balance or usage endpoint in the official API "
+                         "(checked www.financialdatasets.ai/openapi.json 2026-09-15) — "
+                         "prepaid Credits are visible in the vendor dashboard only",
     "justoneapi": "balance available only via MCP server (get_account_balance tool), no public REST "
                   "endpoint documented (checked docs.justoneapi.com 2026-08-31) — dashboard only",
     "marketstack": "no usage endpoint (checked 2026-08-31) — monthly quota in the dashboard, "

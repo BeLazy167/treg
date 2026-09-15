@@ -69,6 +69,12 @@ Names wrap and are included in the platform filter. This distinguishes tools tha
 same provider and API path, such as Harvest's basic and full profile variants. The rule
 applies to all providers; entries without a name retain the provider label.
 
+The endpoint Try drawer treats `catalog_endpoint_access` as the access truth. An `anonymous` tier is
+callable in the Manual tab, says that no provider key is used, and does not show the own-key action as
+a requirement. Activity uses `servedOn` to distinguish a public provider route from a team key, a
+registered tool, treg's platform key, and platform overflow. CLI and API instructions also avoid
+claiming credential injection for an anonymous call.
+
 ## Instagram authorization state
 
 The primary **Add account** action opens one method picker for providers with several separate OAuth

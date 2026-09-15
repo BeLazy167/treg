@@ -2726,6 +2726,48 @@ TIINGO = OAuthProvider(
 )
 
 
+FINANCIALDATASETS = OAuthProvider(
+    service="financialdatasets",
+    display_name="Financial Datasets",
+    auth_kind="key",
+    token_label="API key",
+    token_placeholder="your Financial Datasets API key",
+    token_header="X-API-KEY",
+    token_format="{secret}",
+    setup_url="https://www.financialdatasets.ai/",
+    setup_action_label="Get your Financial Datasets API key",
+    setup_steps=(
+        "Create or sign in to a Financial Datasets account.",
+        "Open the dashboard, create an API key, and copy it.",
+    ),
+    setup_note=(
+        "Financial Datasets uses prepaid Credits. Connecting checks one real-time US stock "
+        "snapshot, which is listed at $0.02; an empty-Credits 402 still proves the key is valid."
+    ),
+    auth_uri="", token_uri="",
+    scopes={},
+    client_id_setting="", client_secret_setting="",
+    category="Market data",
+    summary=(
+        "US public-company financial statements, metrics, filings, ownership, earnings, news "
+        "and stock prices, plus major-central-bank interest rates."
+    ),
+    base_url="https://api.financialdatasets.ai",
+    docs_url="https://docs.financialdatasets.ai/",
+    # Discovery helpers accept anonymous requests and cannot validate a pasted key. A snapshot is
+    # the smallest authenticated data request. Keep this absolute and probe_path empty: connect-time
+    # verification only, with no recurring health check saved onto the provisioned tool.
+    probe_url="https://api.financialdatasets.ai/prices/snapshot?ticker=AAPL",
+    probe_path="",
+    # 402 means the key was accepted but its prepaid Credits are empty. Use the existing reject-list
+    # metadata to accept exactly the two observed valid-key outcomes, without changing shared probe
+    # behavior or the recurring health-check schema.
+    probe_reject_statuses=tuple(
+        status for status in range(100, 600) if status not in (200, 402)
+    ),
+)
+
+
 # Alpha Vantage is DELIBERATELY absent. Its API served real quote data to a garbage key (verified
 # live 2026-08-14: bogus key -> HTTP 200 with the IBM quote; even premium endpoints answer 200 with
 # an upsell note), so a pasted key can never be validated at connect — the ScrapeCreators rule:
@@ -2936,6 +2978,7 @@ REGISTRY: dict[str, OAuthProvider] = {
         INFLUENCERSCLUB,
         # Market data API-key providers
         COINGECKO, POLYGON, FINNHUB, TWELVEDATA, FMP, EODHD, MARKETSTACK, TIINGO,
+        FINANCIALDATASETS,
         # Advertising: API-key ad intelligence + unconfigured OAuth ad platforms
         SPYFU, APIFY, META_AD_LIBRARY, SERPAPI,
         MICROSOFT_ADS, SNAPCHAT_ADS, TIKTOK_ADS, PINTEREST_ADS,
