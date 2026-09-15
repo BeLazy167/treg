@@ -356,6 +356,12 @@ async def test_existing_router_can_plan_a_generic_anonymous_child(
         assert response.status_code == 200, response.text
         assert response.json()["_treg"]["tier"] == "anonymous"
         assert await _balance(clients) == 1_000_000
+        access = (await clients.get(
+            "/catalog/endpoints/treg.stocks.quote.live/access"
+        )).json()
+        assert access["tier"] == "routed"
+        assert "verified public upstream route, no provider key" in access["detail"]
+        assert "treg's financialdatasets key" not in access["detail"]
     finally:
         get_settings.cache_clear()
 

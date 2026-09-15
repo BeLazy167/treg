@@ -55,6 +55,15 @@ script logic. treg continues to report its own ledger-estimated spend, billed am
 The shared bare HTTP 402 balance-exhaustion signature and strike/lock lifecycle apply to platform
 calls; own-key calls remain outside capacity decisions.
 
+Its `platform_auth: anonymous` discovery calls are authenticated treg team calls, not a public
+internet proxy. The normal tool ACL, deny rules, and a configured member `daily_call_cap` apply, but
+the default member cap is unlimited and the shared-key provider spacer applies only to the
+`platform` tier. An anonymous upstream 429 or edge block is therefore relayed without marking the
+platform account. Heavy anonymous traffic can still harm the shared egress address and disrupt paid
+calls to the same provider. The immediate kill switch is removal of `financialdatasets` from
+`TREG_PLATFORM_PROVIDERS`, which stops anonymous and platform-key offers while leaving team BYOK
+credentials first and usable. A default anonymous-provider throttle is not shipped in this change.
+
 **Problem.** When a registry-owned vendor account runs dry, callers receive an upstream refusal they
 cannot fix themselves. Capacity handling has three layers: **know** the runway, **fund** before it
 dies, and **protect** the call when it dies anyway through refusal before reserve, same-endpoint

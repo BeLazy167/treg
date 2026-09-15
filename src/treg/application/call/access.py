@@ -167,6 +167,7 @@ async def _routed_access(endpoint: dict, caller: Caller, catalog) -> dict:
     how = (
         "your registered tool" if first.tier == "tool" else
         "your own credential" if first.tier == "credential" else
+        "a verified public upstream route, no provider key" if first.tier == "anonymous" else
         f"treg's {first.endpoint['provider']} key, ~${(first.price_micro or 0) / 1e6:g}"
     )
     dropped_note = ""
