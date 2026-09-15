@@ -1048,6 +1048,10 @@ a:hover{text-decoration-color:var(--muted)}
   background:transparent;border:0;box-shadow:none;color:var(--code-ink)}
 .lc-cp{background:var(--code-btn);color:var(--code-ink);border:1px solid var(--code-line)}
 .lc-cp:hover{background:var(--code-btn);border-color:var(--code-ink);color:var(--code-ink)}
+/* The shared onboarding component (agent-setup.js) uses Arena's .text-button for "Show key";
+   this sheet never had one, so the browser painted a native button. */
+.agent-setup-instructions .text-button{background:none;border:0;padding:0;font:inherit;font-size:12px;color:var(--muted);text-decoration:underline;cursor:pointer}
+.agent-setup-instructions .text-button:hover{color:var(--ink)}
 /* One ramp, themed, covering all three generations of token class in this file. */
 .hl-cmd,.hl-kw,.s-kw{color:var(--sx-cmd);font-weight:600}
 .s-token,.hl-var,.hl-key,.s-proxy{color:var(--sx-var)}

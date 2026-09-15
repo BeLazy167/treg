@@ -280,7 +280,10 @@ prevent controlled rankings, and returned fields are not independently verified.
 The heading's “Setup treg in” button shows Claude Code, Codex, OpenClaw and Hermes logos plus
 the count of other choices. It opens a native dialog using the same `AgentPicker` and
 `SetupInstructions` components as the dashboard welcome modal (`agent-setup.js`). The instruction
-label sits inside the prompt card alongside Copy, above the setup command. The remembered
+heading sits above the prompt card; the card is a flat panel with Copy floating in a right gutter
+on desktop and above the command on phones. Both stylesheets style that one shape, and the
+component carries no layout of its own, so a change to its markup is checked on both surfaces
+(the dashboard defines `.agent-setup-instructions .text-button` for "Show key"). The remembered
 `treg-agent` choice, expanded agent list and Grok Bot plugin step are shared. The setup text points
 to this deployment's `/llms.txt`. Continuing as a signed-in team member fetches `/auth/cli-token`
 for the active team; the token is masked by default, copied only on click, never persisted by the
