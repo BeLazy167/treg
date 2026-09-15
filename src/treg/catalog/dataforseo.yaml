@@ -396,12 +396,12 @@ endpoints:
       body:
         url: {type: string, required: true, note: "FULL absolute URL including scheme — unlike the backlinks endpoints", example: "https://moz.com/"}
         custom_user_agent: {type: string, required: false}
-        browser_preset: {type: string, required: false, note: "desktop | mobile | tablet"}
-        enable_javascript: {type: boolean, required: false, note: "render JS; costs more; default false"}
-        enable_browser_rendering: {type: boolean, required: false, note: "measure Core Web Vitals; implies enable_javascript; costs more; default false"}
+        browser_preset: {type: string, required: false, note: "desktop | mobile | tablet; requires enable_browser_rendering=true — live API returns 40501 without it. Omit this field if you only need enable_javascript."}
+        enable_javascript: {type: boolean, required: false, note: "render JS; costs more; default false. Not sufficient for browser_preset."}
+        enable_browser_rendering: {type: boolean, required: false, note: "measure Core Web Vitals; implies enable_javascript; required for browser_preset; costs more; default false"}
         accept_language: {type: string, required: false}
         check_spell: {type: boolean, required: false, note: "default false"}
-      note: "POST body is an array with exactly 1 task object (Live endpoints do not support multi-task arrays; one page crawled per task)"
+      note: "POST body is an array with exactly 1 task object (Live endpoints do not support multi-task arrays; one page crawled per task). Do not send browser_preset without enable_browser_rendering=true (live API returns 40501)."
     test_request:
       body:
         - {url: "https://moz.com/"}

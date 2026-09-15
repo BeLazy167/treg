@@ -9,6 +9,10 @@ DataForSEO has provider-specific rules that generic catalog validation can't cat
    google_trends_graph / map / topics_list / queries_list, but a live POST with
    that field returns task status 40501 Invalid Field: 'item_types' and $0.
 
+3. Instant Pages (/on_page/instant_pages) rejects browser_preset unless
+   enable_browser_rendering is true. Vendor docs still say enable_javascript *or*
+   enable_browser_rendering; live returns 40501 requiring the latter.
+
 These tests ensure catalog test_requests and documentation stay aligned with live behavior.
 """
 
@@ -173,3 +177,59 @@ def test_core_live_endpoints_document_single_task_constraint(endpoint_id):
     assert "exactly 1" in note.lower() or "exactly one task" in note.lower() or "do not support multi-task" in note.lower(), (
         f"{endpoint_id}: input.note should clarify Live endpoints accept exactly 1 task"
     )
+
+
+PAGE_AUDIT_ID = "dataforseo.web.page.audit"
+
+
+def test_instant_pages_browser_preset_requires_browser_rendering():
+    """Instant Pages rejects browser_preset without enable_browser_rendering (40501).
+
+    Vendor Instant Pages docs still say set enable_javascript *or*
+    enable_browser_rendering. Live POST with browser_preset and neither (or
+    only enable_javascript) returns HTTP 200 + task status 40501 requiring
+    enable_browser_rendering. Feedback #234 / #235: catalog_get advertised
+    browser_preset as "desktop | mobile | tablet" with enable_browser_rendering
+    as an unrelated Core Web Vitals toggle, so agents sent the preset alone.
+
+    Workaround: omit browser_preset and use enable_javascript only.
+
+    Ref: https://docs.dataforseo.com/v3/on_page/instant_pages/
+    """
+    core_path = CATALOG / "dataforseo.yaml"
+    data = yaml.safe_load(core_path.read_text())
+    endpoint = next((ep for ep in data.get("endpoints", []) if ep.get("id") == PAGE_AUDIT_ID), None)
+    assert endpoint is not None, f"{PAGE_AUDIT_ID} not found"
+
+    body = (endpoint.get("input") or {}).get("body") or {}
+    preset = body.get("browser_preset") or {}
+    rendering = body.get("enable_browser_rendering") or {}
+    javascript = body.get("enable_javascript") or {}
+    note = (endpoint.get("input") or {}).get("note", "")
+
+    assert "enable_browser_rendering" in (preset.get("note") or ""), (
+        f"{PAGE_AUDIT_ID}: browser_preset.note must require enable_browser_rendering=true"
+    )
+    assert "40501" in (preset.get("note") or ""), (
+        f"{PAGE_AUDIT_ID}: browser_preset.note should name the live 40501"
+    )
+    js_note = (javascript.get("note") or "").lower()
+    assert "not sufficient" in js_note and "browser_preset" in js_note, (
+        f"{PAGE_AUDIT_ID}: enable_javascript.note should say it is not enough for browser_preset"
+    )
+    assert "browser_preset" in (rendering.get("note") or ""), (
+        f"{PAGE_AUDIT_ID}: enable_browser_rendering.note should name browser_preset"
+    )
+    assert "browser_preset" in note and "enable_browser_rendering" in note, (
+        f"{PAGE_AUDIT_ID}: input.note should tell agents not to send browser_preset "
+        "without enable_browser_rendering=true"
+    )
+
+    test_req = endpoint.get("test_request") or {}
+    tasks = test_req.get("body") or []
+    for i, task in enumerate(tasks):
+        if isinstance(task, dict):
+            assert "browser_preset" not in task, (
+                f"{PAGE_AUDIT_ID}: test_request.body[{i}] must not send browser_preset "
+                "(cheap probe; the field is paid browser-rendering only)"
+            )

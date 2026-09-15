@@ -1478,6 +1478,19 @@ task status `40501 Invalid Field: 'item_types'` and `$0`. Feedback #125 / #127:
 DataForSEO sibling in the catalog answers related queries. Enforced by
 `test_google_trends_explore_live_omits_item_types`.
 
+### DataForSEO Instant Pages `browser_preset` needs `enable_browser_rendering`
+
+Vendor Instant Pages docs (`/on_page/instant_pages`) still say set `enable_javascript` *or*
+`enable_browser_rendering` to use `browser_preset`. A live POST with `browser_preset` and
+neither (or only `enable_javascript`) returns HTTP 200 + task status `40501` requiring
+`enable_browser_rendering`. Feedback #234 / #235: `dataforseo.web.page.audit` advertised
+`browser_preset` as `"desktop | mobile | tablet"` with `enable_browser_rendering` as a
+separate Core Web Vitals toggle, so agents sent the preset alone and burned a failed call.
+The catalog field note (and `input.note`) now require `enable_browser_rendering=true`;
+JS-only audits omit `browser_preset`. Settlement is unchanged. Enforced by
+`test_instant_pages_browser_preset_requires_browser_rendering` and
+`test_catalog_get_dataforseo_page_audit_names_browser_preset_dependency`.
+
 ## Choosing between providers (`domain/catalog/stats.py`)
 
 307 capabilities are served by more than one provider, and prices inside one capability differ by up
