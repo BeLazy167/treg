@@ -237,10 +237,19 @@ without importing the heavy database stack into the light `treg` CLI.
 - `treg-worker overflow verify` obtains route evidence and spends real money when configured.
 - `treg-worker overflow sync` derives enabled overflow routes from current evidence.
 - `treg-worker asynctasks settle` completes durable holds for asynchronous upstream operations.
+- `treg-worker arena insights` folds new audit rows into the rolling Arena aggregate
+  (`--max-seconds`, default 110, bounds one pass; schedule it every two minutes).
+- `treg-worker catalog stats` folds new audit rows into per-endpoint, per-day reliability buckets
+  (`--max-rows`, default 500,000, bounds one pass; schedule it every few minutes). The catalog keeps
+  computing observations live until this command has caught up once, so it can be scheduled after
+  the application deploys, and a self-hosted registry that never schedules it loses nothing.
 
-Workers call read-only `verify_db()` before work and must run against a compatible schema. They need
-only the credentials and configuration required by their job. Hosting schedules, service wiring and
-manual production procedures belong in the private deployment runbook.
+The two analytics commands exist so that no web process aggregates the audit table beside the
+money path; `callrecord` is read only through the persisted cursors they own. Workers call
+read-only `verify_db()` before work and must run against a compatible schema. They need only the
+credentials and configuration required by their job (the two analytics commands need only the
+database URL). Hosting schedules, service wiring and manual production procedures belong in the
+private deployment runbook.
 
 
 Managed-key rollout uses revisions `0034` through `0036`. Apply the key controls and generation

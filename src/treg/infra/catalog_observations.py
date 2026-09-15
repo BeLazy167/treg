@@ -15,6 +15,7 @@ from collections.abc import Callable, Collection
 from contextlib import suppress
 from dataclasses import dataclass
 
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from ..domain.catalog import stats
@@ -44,7 +45,14 @@ class _Entry:
 
 
 class PostgresEndpointObservationReader:
-    """Authoritative reader whose session exists only for the two aggregate queries."""
+    """Authoritative reader whose session exists only for one small read.
+
+    Once `treg-worker catalog stats` has caught up with the audit table (the cursor row says so),
+    an observation is thirty `EndpointDayStat` rows per endpoint, summed and published through the
+    same floors as the live aggregate. Until then, and on any deployment that never schedules the
+    worker, it is the live thirty-day aggregate over `callrecord` it always was, so the numbers
+    the catalog publishes never depend on an operator remembering a cron.
+    """
 
     def __init__(self, session_factory: async_sessionmaker[AsyncSession]) -> None:
         self._session_factory = session_factory
@@ -54,10 +62,22 @@ class PostgresEndpointObservationReader:
         if not ids:
             return {}
         from ..domain.catalog import store as catalog_store  # the per-success set is a catalog fact, read at query time
+        from ..models import EndpointDayStat, EndpointStatCursor
         cat = catalog_store.load()
         per_success = {i for i in ids if ((cat.by_id.get(i) or {}).get("cost") or {}).get("type") == "per_success"}
         async with self._session_factory() as db:
-            return await stats.observed(db, ids, per_success=per_success)
+            cursor = await db.get(EndpointStatCursor, "callrecord")
+            if cursor is None or cursor.caught_up_at is None:
+                return await stats.observed(db, ids, per_success=per_success)
+            rows = (await db.execute(
+                select(EndpointDayStat).where(EndpointDayStat.endpoint_id.in_(ids),
+                                              EndpointDayStat.day >= stats.window_days()))).scalars().all()
+        tallies = stats.merged((row.endpoint_id, stats.Tally(
+            n=row.n, ok=row.ok, bad=row.bad, last_ok=row.last_ok_at, hits=row.hits,
+            hit_decided=row.hit_decided, paid_hits=row.paid_hits, free_misses=row.free_misses,
+            latency_seen=row.latency_seen, latencies=list(row.latency_sample or []),
+        )) for row in rows)
+        return stats.publish(ids, tallies, per_success=per_success)
 
 
 class CachedEndpointObservationReader:

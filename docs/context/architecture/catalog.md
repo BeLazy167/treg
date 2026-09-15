@@ -162,6 +162,8 @@ sources:
   - src/treg/domain/money/settlement.py
   - src/treg/domain/catalog/stats.py
   - src/treg/infra/catalog_observations.py
+  - src/treg/application/catalog_stats.py
+  - src/treg/alembic/versions/0038_endpoint_day_stats.py
   - src/treg/routers/catalog.py
   - tests/test_aigc_pr_b.py
   - tests/test_catalog_api.py
@@ -1532,8 +1534,8 @@ acceptable entry exists.
 
 Refresh is process-level singleflight. Concurrent misses join one shared Task, duplicate endpoint ids
 already in flight are not queued again, and the Task batches the requested ids. Its
-`PostgresEndpointObservationReader` opens an independent session only around `stats.observed()` and
-closes it as soon as the two queries finish. HTTP `/catalog/search`, both MCP catalog-search tools,
+`PostgresEndpointObservationReader` opens an independent session only around one small read and
+closes it as soon as that finishes. HTTP `/catalog/search`, both MCP catalog-search tools,
 routed planning in `application.call.route.build_plan`, and the prose pages that print observed stats
 (`/use-cases/*`, `/workflows` and `/workflows/*`) receive the same reader instance from bootstrap, so
 their request paths have no observation DB dependency, check out zero connections, and join the same
@@ -1542,6 +1544,27 @@ entries, backs off before retry, and never changes the Catalog response status; 
 cached entry is honest emptiness. The adapter exposes entry-level `fresh`, `stale`, and `miss`
 counters plus `refresh` and `refresh_failure` counts. Its invalidation story is the two TTLs: deploys
 and process restarts begin cold, and no cross-instance correctness depends on the cache.
+
+**The evidence is folded once, off the request path** (`application/catalog_stats.py`, run by the
+`treg-worker catalog stats` cron). Refreshing straight from `callrecord` meant every web process
+re-aggregating thirty days of audit rows for an endpoint and its siblings whenever its cache
+expired, and again from cold after each deploy: on a large audit table that is tens of seconds per
+pass, each pass evicting the pages the money path needs. The worker instead
+walks the audit table by primary key from a persisted cursor (`EndpointStatCursor`) and folds each
+row into one `EndpointDayStat` bucket per endpoint per UTC day: counts, the newest success, the
+`hit`/per-success tallies, and a uniform reservoir of at most `stats.LATENCY_SAMPLE` successful
+durations. Rows younger than sixty seconds wait for the next run so an audit insert that commits
+late is never skipped; a plain tool call (no `endpoint_id`) and a treg refusal (`refused_by`) are
+not evidence and are not folded, exactly as the live query excludes them. The first run bisects the
+primary key to the first row inside the window rather than reading older pages, consumes at most
+`--max-rows` per run, and the reader keeps computing the live aggregate until a run reports it
+has caught up (`caught_up_at`), so a deployment that never schedules the worker behaves as before.
+Once caught up, an observation is the sum of that endpoint's day buckets from the day of the
+window's start onward (`stats.window_days`, at most one day more evidence than the live cut,
+never less), published through the same `stats.publish` floors the live path uses; the fold and
+the SQL are held equal by `tests/test_catalog_stats_refresh.py`. Buckets older than the window
+are pruned at the end of each caught-up run. `stats.Tally` is the one shape all three paths
+share: a day, a merged window, or the live aggregate.
 
 Five rules worth keeping:
 

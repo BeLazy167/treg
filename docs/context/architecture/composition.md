@@ -149,8 +149,9 @@ otherwise change route inspection and the committed surface snapshot.
 Public routes added since: `/{INDEXNOW_KEY}.txt` (`indexnow_key`, `routers/web.py`) — the IndexNow
 key file; listed in the ownership table beside `/sitemap.xml`. See `interface/seo.md` § IndexNow.
 
-The control/all lifespan starts and drains `application.arena_insights.worker` for database-backed
-Arena statistics. Dataplane processes do not run this collector; `/arena/insights` is a control route.
+No web process collects Arena statistics any more: `treg-worker arena insights` (a cron) does,
+and `/arena/insights`, a control route, only reads the last published snapshot. `ROLE_BACKGROUND_TASKS`
+therefore lists `adsconv.worker` alone for control/all.
 Shutdown cancels and awaits every started background worker before draining Arena, audit and
 analytics or closing the shared client, so database rollback/close finishes before event-loop teardown.
 
