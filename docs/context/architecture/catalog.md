@@ -23,6 +23,8 @@ sources:
   - src/treg/catalog/examples/financialdatasets.financials.search.screener.json
   - src/treg/catalog/examples/financialdatasets.financials.search.screener.filters.json
   - src/treg/catalog/examples/financialdatasets.insider-trades.json
+  - src/treg/catalog/examples/financialdatasets.index-funds.json
+  - src/treg/catalog/examples/financialdatasets.index-funds.tickers.json
   - src/treg/catalog/examples/financialdatasets.institutional-holdings.json
   - src/treg/catalog/examples/financialdatasets.institutional-holdings.investors.json
   - src/treg/catalog/examples/financialdatasets.institutional-holdings.tickers.json
@@ -178,17 +180,18 @@ related:
 
 Sumble adds the full v9 surface with verified platform operations and explicit BYOK restrictions. See [Sumble](sumble.md) for schemas, pricing rules, routing and live evidence.
 
-## Financial Datasets v1 (2026-09-15)
+## Financial Datasets v1 and v2 (2026-09-15)
 
-`financialdatasets.yaml` adds 34 direct tools to the existing Market data / Stock Market Data
-catalog: 21 data operations and 13 dataset-specific discovery helpers. Company facts and the other
+`financialdatasets.yaml` adds 36 direct tools to the existing Market data / Stock Market Data
+catalog: 22 data operations and 14 dataset-specific discovery helpers. Company facts and the other
 standard data requests settle at $0.02 per successful platform call; KPI metrics, KPI guidance,
-non-GAAP data, and IPOs settle at $0.16. The 13 discovery helpers are free because their verified
+non-GAAP data, and IPOs settle at $0.16. The 14 discovery helpers are free because their verified
 public upstream routes use the generic anonymous platform fallback. BYOK calls retain the normal
 unmetered precedence and still win before that fallback.
 
 Company, fundamentals, filing, ownership, earnings, news, and equity-price inputs are described as
-US stock tickers. The free ticker, CIK, filing-type, investor, screener-filter, and bank helpers use
+US stock tickers; the Index Funds data tool instead accepts an ETF or index-fund ticker or a held
+US security ticker. The free ticker, CIK, filing-type, investor, screener-filter, and bank helpers use
 the existing `utility` kind because they enumerate valid inputs rather than return the primary
 financial result; the dashboard folds them into its management/utility accordion while they remain
 directly callable. treg does not call them as hidden preflights. Each one declares
@@ -196,10 +199,10 @@ directly callable. treg does not call them as hidden preflights. Each one declar
 there is no Financial Datasets branch in the relay. Each data input with a matching included helper
 names that exact utility tool ID in its agent-facing note, so dashboard and CLI users can discover
 valid values without assuming one dataset's coverage applies to another. Interest-rate data covers
-the provider's listed major central banks globally. The catalog does not claim forex, options,
-indices, or general multi-asset coverage.
+the provider's listed major central banks globally. The catalog does not claim forex, options, or
+general multi-asset coverage.
 
-Sixteen list endpoints accept the provider's opaque `cursor`. Their agent-facing input notes tell
+Seventeen list endpoints accept the provider's opaque `cursor`. Their agent-facing input notes tell
 callers to take it from the response `next_page_url` and omit the original filters on the next call,
 because the cursor preserves those filters. treg still relays the cursor and response unchanged.
 
@@ -208,9 +211,10 @@ Only `financialdatasets.prices.snapshot` joins a routed capability. Its adapter 
 `snapshot.price`, and preserves the provider object as `quote`. No new routed contract, category,
 provider-specific router, or response model is introduced. Captured fixtures and
 `tests/test_financialdatasets.py` verify the direct surface, fixed settlement, BYOK behavior, and
-the existing quote route. One live request for each of the 34 direct tools returned HTTP `200` on
-2026-09-15. A second pass captured the 18 response fixtures that were not already present, so every
-verified tool now has live response evidence. The responses exposed no usage, credit, charge,
+the existing quote route. One live request for each of the original 34 direct tools returned HTTP
+`200` on 2026-09-15. A second pass captured the 18 response fixtures that were not already present;
+the V2 checks described below supplied the two new fixtures, so every verified tool now has live
+response evidence. The responses exposed no usage, credit, charge,
 rate-limit, pagination-header, or request-ID evidence; paginated response bodies expose
 `next_page_url` when another page exists. The provider later settled one authenticated 34-tool pass
 at $1.24, including $0.26 for the 13 discovery requests. Three complete anonymous discovery passes
@@ -221,6 +225,19 @@ discovery surface free.
 That free result is conditional on the request having no caller-supplied provider credential. The
 anonymous virtual tool injects no key, but the faithful relay does not strip caller headers. A
 caller who sends `X-API-KEY` can therefore spend that key's Financial Datasets Credits.
+
+V2 adds `financialdatasets.index-funds` and its anonymous
+`financialdatasets.index-funds.tickers` discovery helper. The data tool supports both provider
+query directions: a fund ticker returns constituents and weights, while a held security ticker
+returns funds that hold it. `as_of` and `asset_class` apply only to the fund-ticker direction. The
+provider returns at most ten rows per page even when `limit` is larger; callers continue with the
+opaque cursor from `next_page_url`. Live checks returned 200 for the SPY fund direction, the AAPL
+holding direction, both pages of an eleven-row request, and the anonymous ticker helper. The
+authenticated Index Funds request settled at the existing standard $0.02 rate; anonymous ticker
+discovery did not use the provider account. Invalid requests with neither query direction or both
+`ticker` and `holding` returned HTTP 400, so per-success settlement releases their holds. All 36
+Financial Datasets documentation links were matched to the provider's current index and returned
+HTTP 200 after its move from `/api-reference/` to route-specific `/api/` pages.
 
 The computed cost view uses a `cost.table` fallback as its scalar validated upper bound for
 eligibility and compact displays. Runtime charging evaluates the first matching row against request
