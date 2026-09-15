@@ -234,6 +234,30 @@ def check_platform_request(rule: object, input_schema: object, where: str,
             fail(errors, where, "platform_request value must match the field's singleton enum")
 
 
+def check_platform_auth(ep: dict, where: str, errors: list[str]) -> None:
+    """Anonymous platform fallback is intentionally narrow: proven public GETs that cost zero."""
+    mode = ep.get("platform_auth")
+    if mode is None:
+        return
+    if mode != "anonymous":
+        fail(errors, where, "platform_auth must be 'anonymous'")
+        return
+    if ep.get("method") != "GET":
+        fail(errors, where, "platform_auth anonymous requires GET")
+    cost = ep.get("cost")
+    if not isinstance(cost, dict) or cost.get("type") != "free":
+        fail(errors, where, "platform_auth anonymous requires cost.type free")
+    if not ep.get("verified"):
+        fail(errors, where, "platform_auth anonymous requires live verification")
+    if ep.get("scope", "any_account") != "any_account" or ep.get("kind") == "account":
+        fail(errors, where, "platform_auth anonymous cannot expose an own-account endpoint")
+    if (ep.get("authorization_method") or ep.get("authorization_methods")
+            or ep.get("required_scopes") or ep.get("required_resource")):
+        fail(errors, where, "platform_auth anonymous cannot require provider authorization")
+    if ep.get("async") or ep.get("resource_ownership"):
+        fail(errors, where, "platform_auth anonymous cannot create or retrieve shared async resources")
+
+
 def check_cost_table(cost: dict, input_schema: object, where: str, errors: list[str]) -> None:
     """Validate a first-match AIGC price table and its explicit reserve upper bound."""
     table = cost.get("table")
@@ -897,6 +921,7 @@ def main(argv: list[str]) -> int:
             check_status_marker(ep, where, endpoint_status, errors)
             inp = ep.get("input") or {}
             check_strict_query(ep, where, errors)
+            check_platform_auth(ep, where, errors)
             if "platform_request" in ep:
                 check_platform_request(ep["platform_request"], inp, where, errors)
             default_array_encoding = inp.get("queryArrayEncoding")

@@ -803,6 +803,28 @@ def test_example_responses_are_fetched_only_when_their_tab_is_opened():
     assert "if(tab==='res') this.loadExample(e);" in INDEX[INDEX.index("setEpTab(e, tab){") :][:300]
 
 
+def test_anonymous_catalog_access_is_runnable_and_never_claims_a_provider_key():
+    """A verified public upstream route is a callable access tier. The Try drawer must not send it
+    through the missing-key branch or describe the absent provider credential as injected."""
+    drawer = INDEX[INDEX.index('v-if="epTry"') : INDEX.index("methods:{")]
+    assert "epTryAccess.tier==='anonymous'" in drawer
+    blocked = drawer[drawer.index('<div v-if="epTryAccess &&') :][:500]
+    assert "epTryAccess.tier!=='anonymous'" in blocked
+    assert "no provider key is needed" in drawer
+    assert "This verified public upstream route needs no provider key." in drawer
+    assert "free — no provider key ⓘ" in drawer
+
+
+def test_activity_names_each_access_tier_without_calling_anonymous_a_team_key():
+    assert "{{servedOn(callView.credential_tier)}}" in INDEX
+    labels = INDEX[INDEX.index("servedOn(tier){") :][:350]
+    assert "anonymous:'public provider route (no key)'" in labels
+    assert "platform:'treg key'" in labels
+    assert "credential:'your key'" in labels
+    assert "tool:'your registered tool'" in labels
+    assert "'platform-overflow':'treg overflow'" in labels
+
+
 def test_the_run_actions_lead_the_expansion_tab_bar():
     """The tab bar carries docs + the two run actions, visible the moment the expansion opens.
     Try-it is the primary (ink-fill) CTA for a key/token provider — trying on treg's key is what most

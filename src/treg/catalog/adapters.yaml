@@ -1593,6 +1593,12 @@ adapters:
     in_expr: {queryParams.ticker: "lower(symbol)"}
     out: {price: "[0].tngoLast", open: "[0].open", high: "[0].high", low: "[0].low", quote: "[0]"}
     miss: ". == []"
+  financialdatasets.prices.snapshot:
+    accepts: [[symbol]]
+    in: {symbol: queryParams.ticker}
+    in_expr: {queryParams.ticker: "upper(symbol)"}
+    out: {price: snapshot.price, quote: snapshot}
+    miss: "snapshot.price == null"
   eodhd.real-time:
     accepts: [[symbol]]
     in:  {}

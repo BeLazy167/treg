@@ -34,6 +34,7 @@ sources:
   - src/treg/alembic/versions/0005_capacity_policy_snapshot.py
   - tests/test_capacity_know.py
   - tests/test_capacity_collectors.py
+  - tests/test_financialdatasets.py
 related:
   - architecture/data-model.md
   - architecture/money.md
@@ -44,6 +45,24 @@ related:
 # Provider capacity
 
 `collectors._sumble` reads `credits_remaining` from a free technology-search miss. Its monthly allowance and optional vendor top-ups remain separate from per-call pricing; no renewal date or auto-funding status is assumed. See [Sumble](../architecture/sumble.md).
+
+Financial Datasets uses the existing capacity path with `_KNOWN` policy
+`credits / auto_recharge / manual`. The official API publishes no free balance or usage endpoint,
+so `NO_BALANCE_API` reports its upstream remainder as `no API`; the dashboard is not scraped and a
+paid data request is not scheduled as a meter. Its typed platform-key setting makes it appear in
+`all_platform_providers()` and therefore in `scripts/provider_balances.py` without provider-specific
+script logic. treg continues to report its own ledger-estimated spend, billed amount, and call count.
+The shared bare HTTP 402 balance-exhaustion signature and strike/lock lifecycle apply to platform
+calls; own-key calls remain outside capacity decisions.
+
+Its `platform_auth: anonymous` discovery calls are authenticated treg team calls, not a public
+internet proxy. The normal tool ACL, deny rules, and a configured member `daily_call_cap` apply, but
+the default member cap is unlimited and the shared-key provider spacer applies only to the
+`platform` tier. An anonymous upstream 429 or edge block is therefore relayed without marking the
+platform account. Heavy anonymous traffic can still harm the shared egress address and disrupt paid
+calls to the same provider. The immediate kill switch is removal of `financialdatasets` from
+`TREG_PLATFORM_PROVIDERS`, which stops anonymous and platform-key offers while leaving team BYOK
+credentials first and usable. A default anonymous-provider throttle is not shipped in this change.
 
 **Problem.** When a registry-owned vendor account runs dry, callers receive an upstream refusal they
 cannot fix themselves. Capacity handling has three layers: **know** the runway, **fund** before it
@@ -84,7 +103,7 @@ we did not exhaust the trial to manufacture evidence. No overflow route is claim
 - **`collectors.py`** — the providers' *free* balance/quota calls (`coroutine(client, key) →
   {value, unit, note}`), shared with `scripts/provider_balances.py`. Providers such as DataForSEO,
   TikHub, Brightdata, and Kitt AI report balances in USD; other meters include credits, rows, and searches. `NO_BALANCE_API`
-  names the 7 providers that publish no meter (dashboard-only) so they read as "no API", never as a
+  names the 8 providers that publish no meter (dashboard-only) so they read as "no API", never as a
   broken key.
   `provider_balance()` never raises — a failure is a row. It reads the *setting*, not
   `platform_key_for`: the tier-4 allow-list is a serving kill switch, and a provider just switched

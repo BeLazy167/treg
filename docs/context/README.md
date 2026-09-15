@@ -19,7 +19,7 @@ covers (frontmatter `sources:`). Regenerate this index with
 | [Google Ads conversion tracking — capture, outbox, upload](architecture/ads-conversions.md) | shipped | adsconv.py, signup.py, adtrack.js, gtag.js |
 | [Archive - versioned history and cache admission](architecture/archive.md) | building | archive.py, hunter.yaml, results.py, 0031_archive_result_admission.py, … |
 | [Auth & secrets — injectors, encryption, OAuth freshness, health](architecture/auth-secrets.md) | shipped | injectors.py, ssrf.py, crypto.py, oauth.py, … |
-| [Endpoint catalog — what you can DO with a connected key, and which provider should do it](architecture/catalog.md) | shipped | quickenrich.yaml, quickenrich.extended.yaml, quickenrich.companies.search.json, quickenrich.people.email.find.json, … |
+| [Endpoint catalog — what you can DO with a connected key, and which provider should do it](architecture/catalog.md) | shipped | financialdatasets.yaml, financialdatasets.company.facts.json, financialdatasets.company.facts.ciks.json, financialdatasets.company.facts.tickers.json, … |
 | [Application composition and deployment roles](architecture/composition.md) | shipped | bootstrap.py, bootstrap_handlers.py, bootstrap_http.py, call_surface.py, … |
 | [ContactOut — LinkedIn enrichment, Starter billing and independent credit pools](architecture/contactout.md) | implemented; live connect and core surface verified, informational capacity monitoring | contactout.yaml, adapters.yaml, contactout.people.email.verify.json, test_routing.py, … |
 | [Data model — the registry tables, async DB, audit writer](architecture/data-model.md) | shipped | alembic.ini, env.py, 0001_baseline_current_schema.py, 0002_archive_tables.py, … |

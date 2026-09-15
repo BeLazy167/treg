@@ -25,6 +25,8 @@ sources:
   - src/treg/routers/api_keys.py
   - tests/test_api_keys.py
   - tests/test_oauth_refresh.py
+  - tests/test_financialdatasets.py
+  - tests/test_key_providers.py
   - src/treg/config.py
 related:
   - architecture/proxy-model.md
@@ -35,6 +37,20 @@ related:
 # Auth & secrets
 
 `SUMBLE` uses the standard pasted Bearer-key path and a free technology-search miss probe; garbage-key rejection was verified through the local connection API. See [Sumble](sumble.md).
+
+Financial Datasets uses the standard pasted-key and platform-key paths with a raw `X-API-KEY`
+header. `OAuthProvider.probe_url` points at the smallest practical price-snapshot request and
+`probe_path` remains empty. The absolute URL therefore verifies a pasted key only during connect;
+`_autoprovision_provider_tool` does not persist a recurring health check for this provider.
+The existing `probe_reject_statuses` metadata rejects every normal HTTP result except `200` and
+`402`. Thus, a `402` proves that the credential was recognized but its upstream Credits account is
+empty, while unrelated failures such as `429` and `500` cannot validate a key. This rule applies
+only during connection validation: an ordinary data call still relays a `402` as a failure. No
+shared connection logic, health schema, or Financial-Datasets-only health branch is added.
+Its 13 discovery helpers declare the generic `platform_auth: anonymous` mode. When no team tool or
+stored provider key exists, treg calls those verified public routes with no injected credential.
+If a caller supplies `X-API-KEY` directly, the faithful relay preserves it and Financial Datasets
+can charge that key.
 
 QuickEnrich uses `QUICKENRICH`, a pasted Bearer key on `app.quickenrich.io`. The free
 POST Contact Finder probe rejects invalid keys with HTTP 401 and does not require a positive credit

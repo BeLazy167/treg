@@ -676,6 +676,13 @@ validated before resolving the shared HTTP client. `/auth/logout` remains an HTT
   credential ladder onward it delegates to `call_tool`, retaining provider/user credentials, ACLs,
   deny rules, caps, metering, audit, idempotency and faithful relay.
 
+  The credential ladder also supports a generic `platform_auth: anonymous` catalog fallback. A
+  team tool or provider credential still wins. Without one, a verified free read-only endpoint can
+  relay through a virtual tool with no bindings when its provider is allow-listed. Endpoint access
+  reports `tier: anonymous`, `metered: false`, and zero estimated cost. No platform key is loaded and
+  no team-balance entry is written. The relay preserves caller headers, so a caller-supplied provider
+  key can still be charged by that provider.
+
   A resolved catalog endpoint with an async descriptor adds one treg-owned response header:
   `X-Treg-Async`, containing compact JSON for the already-known effective descriptor. The router
   attaches it after catalog resolution and before Starlette begins streaming; no provider response
