@@ -612,6 +612,21 @@ def _marketplace_pricing(
                 and str(raw).strip().isdigit() else 20
             asked = max(1, min(asked, 50))
             return _usd_to_micro(rate * asked), unit
+    if provider == "prospeo":
+        doc = _json_object(body)
+        credit = _usd_to_micro(float(cost.get("usd") or 0))
+        if endpoint_id in (
+            "prospeo.people.enrich.bulk",
+            "prospeo.companies.enrich.bulk",
+        ):
+            records = doc.get("data")
+            count = len(records) if isinstance(records, list) else 1
+            count = max(1, min(count, 50))
+            _, _, _, per_record_rider = _credit_modifiers(cost, query, doc)
+            return credit * count + _usd_to_micro(
+                per_record_rider * catalog_store.load().credit_rates[provider]
+            ) * count, credit
+        return _platform_estimate_micro(cost, query, body), credit
     estimate = _platform_estimate_micro(cost, query, body)
     unit = (_usd_to_micro(cost["usd"])
             if cost.get("type") in ("per_result", "quota_rows") and cost.get("usd") else 0)

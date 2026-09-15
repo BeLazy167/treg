@@ -99,6 +99,15 @@ def dropleads_platform_on(monkeypatch):
 
 
 @pytest.fixture
+def prospeo_platform_on(monkeypatch):
+    monkeypatch.setenv("TREG_PLATFORM_KEY_PROSPEO", "PLATFORM-PROSPEO")
+    monkeypatch.setenv("TREG_PLATFORM_PROVIDERS", "prospeo")
+    get_settings.cache_clear()
+    yield
+    get_settings.cache_clear()
+
+
+@pytest.fixture
 def diffbot_platform_on(monkeypatch):
     """Enable Diffbot tier 4 without exposing or calling a real provider credential."""
     monkeypatch.setenv("TREG_PLATFORM_KEY_DIFFBOT", "PLATFORM-DIFFBOT-KEY")
@@ -2856,3 +2865,215 @@ def test_dropleads_request_shapes_reserve_exact_valid_maxima(endpoint, body, exp
         "dropleads", endpoint, cost, {}, json.dumps(body).encode()
     )
     assert estimate == expected
+
+
+@pytest.mark.parametrize(
+    "endpoint,doc,expected",
+    [
+        ("prospeo.people.email.find",
+         {"error": False, "free_enrichment": False, "person": {"email": {"email": "jane@example.com"}}},
+         24_500),
+        ("prospeo.people.email.find",
+         {"error": False, "free_enrichment": False, "person": {"email": {"email": None}}}, 0),
+        ("prospeo.people.email.find",
+         {"error": False, "free_enrichment": False, "person": {}}, 0),
+        ("prospeo.people.enrich",
+         {"error": False, "free_enrichment": True, "person": {"person_id": "p1"}}, 0),
+        ("prospeo.people.enrich",
+         {"error": False, "free_enrichment": False,
+          "person": {"person_id": "p1", "email": {"email": None}}}, 24_500),
+        ("prospeo.people.enrich",
+         {"error": False, "free_enrichment": False, "person": {}}, 0),
+        ("prospeo.companies.enrich",
+         {"error": False, "free_enrichment": False, "company": {"company_id": "c1"}}, 24_500),
+        ("prospeo.companies.enrich",
+         {"error": False, "free_enrichment": False, "company": None}, 0),
+        ("prospeo.companies.enrich",
+         {"error": False, "free_enrichment": False}, 0),
+        ("prospeo.people.search",
+         {"error": False, "free": False, "results": [{"person": {"person_id": "p1"}}]}, 24_500),
+        ("prospeo.companies.search",
+         {"error": False, "free": True, "results": [{"company": {"company_id": "c1"}}]}, 0),
+        ("prospeo.people.enrich.bulk",
+         {"error": False, "total_cost": 3, "matched": []}, 73_500),
+        ("prospeo.search.suggestions",
+         {"error": False, "location_results": []}, 0),
+        ("prospeo.people.email.find", {"error": True, "error_code": "NO_MATCH"}, 0),
+    ],
+)
+def test_prospeo_settles_only_from_response_evidence(endpoint, doc, expected):
+    mk = _mk("prospeo", endpoint_id=endpoint, cost_type="per_success", unit_micro=24_500)
+    assert call_settle._observed_cost_micro(mk, json.dumps(doc).encode()) == expected
+
+
+@pytest.mark.parametrize(
+    "doc,expected",
+    [
+        ({"error": False, "free_enrichment": False,
+          "person": {"mobile": {"mobile_international": "+15550101000"}}}, 245_000),
+        ({"error": False, "free_enrichment": False,
+          "person": {"mobile": {"mobile_international": None}}}, 0),
+        ({"error": False, "free_enrichment": False, "person": {"mobile": {}}}, 0),
+        ({"error": False, "free_enrichment": False, "person": {}}, 0),
+        ({"error": False, "free_enrichment": False}, 0),
+        ({"error": False, "free_enrichment": False, "person": "malformed"}, None),
+    ],
+)
+def test_prospeo_phone_settlement_requires_an_actual_mobile(doc, expected):
+    mk = _mk("prospeo", endpoint_id="prospeo.people.phone.find",
+             cost_type="per_success", unit_micro=245_000)
+    assert call_settle._observed_cost_micro(mk, json.dumps(doc).encode()) == expected
+
+
+@pytest.mark.parametrize(
+    "endpoint,body,expected",
+    [
+        ("prospeo.people.enrich.bulk", {"data": [{"id": i} for i in range(4)]}, 98_000),
+        ("prospeo.people.enrich.bulk",
+         {"enrich_mobile": True, "data": [{"id": i} for i in range(4)]}, 980_000),
+        ("prospeo.companies.enrich.bulk", {"data": [{"id": i} for i in range(50)]}, 1_225_000),
+    ],
+)
+def test_prospeo_bulk_reserves_the_maximum_documented_charge(endpoint, body, expected):
+    catalog = catalog_store.load()
+    ep = catalog.by_id[endpoint]
+    cost = catalog.cost_view(ep["cost"], "prospeo")
+    estimate, unit = call_resolution._marketplace_pricing(
+        "prospeo", endpoint, cost, {}, json.dumps(body).encode()
+    )
+    assert estimate == expected
+    assert unit == 24_500
+
+
+async def test_prospeo_platform_email_settles_one_credit(
+    clients, monkeypatch, prospeo_platform_on,
+):
+    response_body = {
+        "error": False,
+        "free_enrichment": False,
+        "person": {"person_id": "p1", "email": {"email": "jane@example.com"}},
+        "company": {"company_id": "c1"},
+    }
+
+    def serve(request):
+        assert request.url.path == "/enrich-person"
+        assert request.headers["x-key"] == "PLATFORM-PROSPEO"
+        sent = json.loads(request.content)
+        assert sent["only_verified_email"] is True
+        assert sent["enrich_mobile"] is False
+        return _dropleads_response(200, response_body)
+
+    body = {
+        "only_verified_email": True,
+        "enrich_mobile": False,
+        "only_verified_mobile": False,
+        "data": {"full_name": "Jane Doe", "company_website": "example.com"},
+    }
+    before = await _balance(clients)
+    async with httpx.AsyncClient(transport=httpx.MockTransport(serve)) as upstream:
+        monkeypatch.setattr(A.app.state, "http", upstream)
+        result = await clients.post("/call/prospeo.people.email.find", json=body)
+    assert result.status_code == 200, result.text
+    assert result.headers["x-treg-cost-micro"] == "24500"
+    assert before - await _balance(clients) == 24_500
+
+
+async def test_prospeo_platform_person_enrich_uses_non_free_flag_when_email_is_null(
+    clients, monkeypatch, prospeo_platform_on,
+):
+    response_body = {
+        "error": False,
+        "free_enrichment": False,
+        "person": {"person_id": "p1", "email": {"email": None}},
+    }
+
+    body = {
+        "only_verified_email": False,
+        "enrich_mobile": False,
+        "only_verified_mobile": False,
+        "data": {"linkedin_url": "https://www.linkedin.com/in/example"},
+    }
+    before = await _balance(clients)
+    async with httpx.AsyncClient(transport=httpx.MockTransport(
+            lambda request: _dropleads_response(200, response_body))) as upstream:
+        monkeypatch.setattr(A.app.state, "http", upstream)
+        result = await clients.post("/call/prospeo.people.enrich", json=body)
+    assert result.status_code == 200, result.text
+    assert result.headers["x-treg-cost-micro"] == "24500"
+    assert before - await _balance(clients) == 24_500
+
+
+@pytest.mark.parametrize(
+    "endpoint,body,response_body",
+    [
+        ("prospeo.people.email.find",
+         {"only_verified_email": True, "enrich_mobile": False,
+          "only_verified_mobile": False,
+          "data": {"full_name": "Missing Person", "company_website": "example.com"}},
+         {"error": False, "free_enrichment": False,
+          "person": {"email": {"email": None}}}),
+        ("prospeo.people.phone.find",
+         {"only_verified_email": False, "enrich_mobile": True,
+          "only_verified_mobile": True,
+          "data": {"linkedin_url": "https://www.linkedin.com/in/missing"}},
+         {"error": False, "free_enrichment": False,
+          "person": {"mobile": {"mobile_international": None}}}),
+    ],
+)
+async def test_prospeo_platform_field_level_misses_settle_zero(
+    clients, monkeypatch, prospeo_platform_on, endpoint, body, response_body,
+):
+    before = await _balance(clients)
+    async with httpx.AsyncClient(transport=httpx.MockTransport(
+            lambda request: _dropleads_response(200, response_body))) as upstream:
+        monkeypatch.setattr(A.app.state, "http", upstream)
+        result = await clients.post(f"/call/{endpoint}", json=body)
+    assert result.status_code == 200, result.text
+    assert result.headers["x-treg-cost-micro"] == "0"
+    assert await _balance(clients) == before
+
+
+async def test_prospeo_mobile_uses_fixed_ten_credit_platform_price_and_byok_is_unmetered(
+    clients, monkeypatch, prospeo_platform_on,
+):
+    body = {
+        "only_verified_email": False,
+        "enrich_mobile": True,
+        "only_verified_mobile": True,
+        "data": {"linkedin_url": "https://www.linkedin.com/in/example"},
+    }
+    def platform_serve(request):
+        assert request.headers["x-key"] == "PLATFORM-PROSPEO"
+        return _dropleads_response(200, {
+            "error": False,
+            "free_enrichment": False,
+            "person": {"mobile": {"mobile_international": "+15550101000"}},
+        })
+
+    before = await _balance(clients)
+    async with httpx.AsyncClient(transport=httpx.MockTransport(platform_serve)) as upstream:
+        monkeypatch.setattr(A.app.state, "http", upstream)
+        platform = await clients.post("/call/prospeo.people.phone.find", json=body)
+    assert platform.status_code == 200, platform.text
+    assert platform.headers["x-treg-cost-micro"] == "245000"
+    assert before - await _balance(clients) == 245_000
+
+    await clients.post("/secrets", json={"name": "prospeo", "value": "OWN-PROSPEO"})
+    seen = []
+
+    def serve(request):
+        seen.append(request.headers["x-key"])
+        return _dropleads_response(200, {
+            "error": False,
+            "free_enrichment": False,
+            "person": {"mobile": {"mobile_international": "+15550101000"}},
+        })
+
+    before = await _balance(clients)
+    async with httpx.AsyncClient(transport=httpx.MockTransport(serve)) as upstream:
+        monkeypatch.setattr(A.app.state, "http", upstream)
+        result = await clients.post("/call/prospeo.people.phone.find", json=body)
+    assert result.status_code == 200, result.text
+    assert seen == ["OWN-PROSPEO"]
+    assert "x-treg-cost-micro" not in result.headers
+    assert await _balance(clients) == before

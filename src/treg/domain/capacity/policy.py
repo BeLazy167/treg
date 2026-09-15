@@ -34,6 +34,7 @@ _KNOWN: dict[str, tuple[str, str, str]] = {
     "tomba": ("monthly_quota", "quota_reset", "api"),
     "hunter": ("monthly_quota", "quota_reset", "api"),
     "quickenrich": ("monthly_quota", "quota_reset", "api"),
+    "prospeo": ("monthly_quota", "quota_reset", "api"),
     "sumble": ("monthly_quota", "quota_reset", "api"),
     "predictleads": ("monthly_quota", "quota_reset", "api"),
     "companyenrich": ("credits", "manual", "api"),
@@ -64,6 +65,7 @@ _QUOTAS: dict[str, dict] = {
     "lusha": {"limit": None, "period": "day", "resets_at_rule": "local_midnight"},
     "hunter": {"limit": None, "period": "billing", "resets_at_rule": "account.reset_date"},
     "quickenrich": {"limit": None, "period": "billing", "resets_at_rule": "subscription renewal; no reset timestamp in API"},
+    "prospeo": {"limit": None, "period": "billing", "resets_at_rule": "account.next_quota_renewal_date"},
 }
 _RATE_LIMITS: dict[str, dict] = {
     "sumble": {"limit": 10, "window_s": 1, "source": "docs"},

@@ -130,6 +130,34 @@ def test_dropleads_country_filters_use_each_upstream_schema():
     assert company_body["filters"]["countries"] == {"include": ["United States"]}
 
 
+def test_prospeo_routing_surface_uses_fixed_single_record_modes():
+    catalog = catalog_store.load()
+    expected = {
+        "prospeo.people.email.find",
+        "prospeo.people.phone.find",
+        "prospeo.people.enrich",
+        "prospeo.people.search",
+        "prospeo.companies.enrich",
+        "prospeo.companies.search",
+    }
+    assert {eid for eid in expected if catalog.adapters[eid].verified} == expected
+    assert not any("bulk" in eid or "suggestions" in eid for eid in expected)
+    _, email_body = catalog.adapters["prospeo.people.email.find"].to_upstream({
+        "full_name": "Jane Doe", "domain": "example.com",
+    })
+    assert email_body == {
+        "data": {"full_name": "Jane Doe", "company_website": "example.com"},
+        "only_verified_email": True,
+        "enrich_mobile": False,
+        "only_verified_mobile": False,
+    }
+    _, phone_body = catalog.adapters["prospeo.people.phone.find"].to_upstream({
+        "linkedin_url": "https://www.linkedin.com/in/example",
+    })
+    assert phone_body["enrich_mobile"] is True
+    assert phone_body["only_verified_mobile"] is True
+
+
 def test_identity_variants_derive_and_never_cross():
     contract = catalog_store.load().contracts["people.email.find"]
     ident, variant = canonical_identity(contract, {"full_name": "Patrick Collison", "domain": "stripe.com"})
@@ -1175,14 +1203,14 @@ def test_every_declared_miss_status_names_its_meaning():
 async def test_lusha_is_the_last_rung_of_the_phone_waterfall_and_settles_on_its_own_bill(clients: AsyncClient, enrichment_on, monkeypatch):
     """Guatemala, 2026-09-03: 7 phones in 44 across tomba/aviato/leadmagic/findymail/leadsforge.
     Lusha's native direct-dial data remains the last rung — dearest per hit (6 credits), so it ranks
-    after Dropleads and the cheaper providers; a miss is free and a matched profile
+    after Dropleads, Prospeo, and the cheaper providers; a miss is free and a matched profile
     with no number costs the 1-credit search, both read off `billing.creditsCharged`."""
     monkeypatch.setenv("TREG_PLATFORM_KEY_LUSHA", "PLATFORM-LUSHA-KEY")
     monkeypatch.setenv("TREG_PLATFORM_PROVIDERS", "hunter,tomba,leadmagic,leadsforge,findymail,aviato,fiber-ai,lusha")
     get_settings.cache_clear()
     routed = "treg.people.phone.find"
     plan = (await clients.get(f"/catalog/endpoints/{routed}")).json()["routing"]["plan"]
-    assert plan[-1]["endpoint_id"] == "lusha.people.phone.find" and len(plan) == 8, [c["endpoint_id"] for c in plan]
+    assert plan[-1]["endpoint_id"] == "lusha.people.phone.find" and len(plan) == 9, [c["endpoint_id"] for c in plan]
     def misses():
         return {"aviato": [(404, {"message": "Not Found"})], "tomba": [(200, {"data": {"e164_format": None}})],
                 "leadmagic": [(200, {"mobile_number": None, "credits_consumed": 0})],

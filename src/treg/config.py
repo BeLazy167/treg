@@ -183,6 +183,7 @@ class Settings(BaseSettings):
     platform_key_harvestapi: str = ""  # X-API-Key; prepaid USD wallet
     platform_key_dropleads: str = ""  # X-API-Key; PAYG credits priced in fx.yaml
     platform_key_quickenrich: str = ""  # Bearer; monthly subscription credits, not auto-top-up
+    platform_key_prospeo: str = ""  # X-KEY; Starter monthly subscription credits
     platform_key_leadmagic: str = ""
     platform_key_lusha: str = ""
     platform_key_pdl: str = ""

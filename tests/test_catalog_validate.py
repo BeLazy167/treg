@@ -676,3 +676,21 @@ def test_dropleads_catalog_surface_is_bounded_and_excludes_internal_routes():
         "domain": "example.com",
         "email_verification_type": "valid_and_catchall",
     }
+
+
+def test_prospeo_catalog_surface_excludes_account_info_and_prices_mobile_at_the_documented_maximum():
+    catalog = catalog_store.load()
+    rows = [ep for ep in catalog.endpoints if ep["provider"] == "prospeo"]
+    assert len(rows) == 9
+    assert not any(ep["path"] == "/account-information" for ep in rows)
+    assert {ep["path"] for ep in rows} == {
+        "/enrich-person", "/bulk-enrich-person", "/enrich-company",
+        "/bulk-enrich-company", "/search-person", "/search-company",
+        "/search-suggestions",
+    }
+    phone = catalog.by_id["prospeo.people.phone.find"]
+    assert not phone.get("platform_blocked")
+    assert phone["cost"]["value"] == 10
+    bulk_mobile = catalog.by_id["prospeo.people.enrich.bulk"]["cost"]["modifiers"]
+    assert bulk_mobile["enrich_mobile"]["add_credits_per_result"] == 9
+    assert all(catalog.platform_eligible(ep) for ep in rows)

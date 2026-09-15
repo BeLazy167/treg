@@ -140,6 +140,23 @@ async def _quickenrich(c, key):
             "note": "Subscription allowance; resets at renewal, no auto-top-up. Reset date not reported."}
 
 
+async def _prospeo(c, key):
+    d = await _get(c, "https://api.prospeo.io/account-information",
+                   headers={"X-KEY": key})
+    response = d.get("response") if isinstance(d, dict) and d.get("error") is False else None
+    remaining = response.get("remaining_credits") if isinstance(response, dict) else None
+    if isinstance(remaining, bool) or not isinstance(remaining, (int, float)) \
+            or not math.isfinite(remaining) or remaining < 0:
+        raise ValueError("Prospeo returned no valid remaining-credit balance")
+    return {
+        "value": remaining,
+        "unit": "credits",
+        "note": (f"plan {response.get('current_plan', 'unknown')}, "
+                 f"{response.get('used_credits', 'unknown')} used, renews "
+                 f"{response.get('next_quota_renewal_date', 'unknown')}"),
+    }
+
+
 async def _hunter(c, key):
     d = await _get(c, "https://api.hunter.io/v2/account", params={"api_key": key})
     req = (d.get("data") or {}).get("requests", {})
@@ -485,6 +502,7 @@ BALANCE_ROUTES = {
     "hunter": _hunter,
     "harvestapi": _harvestapi,
     "quickenrich": _quickenrich,
+    "prospeo": _prospeo,
     "sumble": _sumble,
     "trykitt": _trykitt,
     "contactout": _contactout,
