@@ -12,7 +12,7 @@ proposed_capabilities:
   people.enrich.verified: Enrich one person and require verified email data
   people.enrich.verified.bulk: Synchronously enrich up to ten people with verified email data
   people.enrich.bulk: Synchronously enrich up to ten people
-  companies.count: Count companies matching search filters without returning records
+  companies.search.count: Count companies matching search filters without returning records
 endpoints:
   - id: dropleads.people.email.find
     capability: people.email.find
@@ -43,7 +43,7 @@ endpoints:
       source: docs
       source_url: https://dropleads.readme.io/reference/email-finder
       checked: '2026-09-15'
-      confidence: verified
+      confidence: documented
       note: One credit when an email is found; a not_found response is free. The response-reported credits_charged is authoritative.
     docs_url: https://dropleads.readme.io/reference/email-finder
     verified: '2026-09-15'
@@ -74,7 +74,7 @@ endpoints:
       source: docs
       source_url: https://dropleads.readme.io/reference/mobile-finder
       checked: '2026-09-15'
-      confidence: verified
+      confidence: documented
       note: Three credits when a mobile is found; a miss is free. The response-reported credits_charged is authoritative.
     docs_url: https://dropleads.readme.io/reference/mobile-finder
     verified: '2026-09-15'
@@ -102,7 +102,7 @@ endpoints:
       currency: credit
       per: 1
       unit: call
-      source: docs
+      source: observed
       source_url: https://dropleads.readme.io/reference/email-verifier
       checked: '2026-09-15'
       confidence: verified
@@ -138,6 +138,8 @@ endpoints:
             organizationRegions, lists, companyLists, segments, segmentsExclude, buyingIntent,
             and requireEmail. Most inclusion/exclusion fields are arrays; personal and
             organization location scopes and saved-list filters use the documented objects.
+            countries uses the live-verified plain list of country names; an include object
+            returns 200 but is ignored by the provider.
         pagination:
           type: object
           required: false
@@ -214,7 +216,7 @@ endpoints:
       source: docs
       source_url: https://dropleads.readme.io/reference/post_api-v2-prime-db-leads-enrich
       checked: '2026-09-15'
-      confidence: verified
+      confidence: documented
       note: 0.2 credit for a returned verified lead; a miss is free. credits_consumed is authoritative.
     docs_url: https://dropleads.readme.io/reference/post_api-v2-prime-db-leads-enrich
     verified: '2026-09-15'
@@ -277,6 +279,8 @@ endpoints:
       body: {name: Jane Doe, organization_name: Example, domain: example.com}
     cost:
       <<: *person_enrich_cost
+      source: observed
+      confidence: verified
       note: 0.2 credit for a returned person; a miss is free. credits_consumed is authoritative.
     docs_url: https://dropleads.readme.io/reference/post_api-v2-prime-db-leads-simple-enrich
     verified: '2026-09-15'
@@ -331,6 +335,8 @@ endpoints:
             industriesExclude, keywords, keywordsExclude, technologies,
             technologiesExclude, employeeRanges, customEmployeeRange, revenueRange,
             fundingRange, foundedYear, countries, states, cities, regions and lists.
+            countries uses the live-verified {include: [country names]} object shape; a plain
+            list returns 200 but is ignored by the provider.
         pagination:
           type: object
           required: false
@@ -348,14 +354,14 @@ endpoints:
       source: docs
       source_url: https://dropleads.readme.io/reference/post_api-v1-companies-search
       checked: '2026-09-15'
-      confidence: verified
+      confidence: documented
       note: 0.1 credit per returned company. credits.creditsDeducted is authoritative; empty results are free.
     docs_url: https://dropleads.readme.io/reference/post_api-v1-companies-search
     verified: '2026-09-15'
     example_response: examples/dropleads.companies.search.json
 
   - id: dropleads.companies.search.count
-    capability: companies.count
+    capability: companies.search.count
     platform: companies
     scope: any_account
     domain: companies

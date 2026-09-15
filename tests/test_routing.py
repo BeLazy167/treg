@@ -118,6 +118,18 @@ def test_dropleads_routing_surface_contains_only_verified_single_record_tools():
     assert not any("bulk" in eid or eid.endswith(".count") for eid in expected)
 
 
+def test_dropleads_country_filters_use_each_upstream_schema():
+    catalog = catalog_store.load()
+    _, people_body = catalog.adapters["dropleads.people.search"].to_upstream({
+        "company_domain": "example.com", "country": "US",
+    })
+    _, company_body = catalog.adapters["dropleads.companies.search"].to_upstream({
+        "domain": "example.com", "country": "US",
+    })
+    assert people_body["filters"]["countries"] == ["United States"]
+    assert company_body["filters"]["countries"] == {"include": ["United States"]}
+
+
 def test_identity_variants_derive_and_never_cross():
     contract = catalog_store.load().contracts["people.email.find"]
     ident, variant = canonical_identity(contract, {"full_name": "Patrick Collison", "domain": "stripe.com"})

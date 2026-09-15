@@ -165,7 +165,7 @@ def _observed_cost_micro(mk: MarketplaceCall, body: bytes, headers=None) -> int 
       - dataforseo: a top-level `cost` in USD — including 0 when it decided not to charge (a free
         route, or a request it rejected before metering). That zero is real information and settles the
         call at zero, which is why the test is `>= 0` and not truthiness.
-      - scrapecreators (`credits_charged`), akta, leadmagic and Dropleads (`credits_consumed`): provider
+      - scrapecreators (`credits_charged`), akta and leadmagic (`credits_consumed`): provider
         credits, converted through the provider's credit rate (fx.yaml) — the same conversion
         `cost_view` uses, so a settle can't disagree with the catalog's price. Akta is the one that
         NEEDS this: its enrich route is priced per SECTION requested and its news route adds a
@@ -173,6 +173,9 @@ def _observed_cost_micro(mk: MarketplaceCall, body: bytes, headers=None) -> int 
         charge lives here. LeadMagic answers a miss with 2xx and `credits_consumed: 0` (observed at
         verify time), so honouring the field is what keeps a free miss from billing the estimate;
         it also reports fractions (email verify is 0.25).
+      - Dropleads: REPORTED in provider credits through `credits_charged` for finder/verifier,
+        `credits_consumed` for people enrichment, or `credits.creditsDeducted` for company calls.
+        Each field uses the same Dropleads credit rate from fx.yaml.
       - lusha: `billing.creditsCharged`, one level down — the same reported-credits contract,
         including 0 on a 2xx miss (the captured people.enrich example IS one) and the 2-credit
         company enrich. Converted through the lusha rate like the others.

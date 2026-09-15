@@ -2844,6 +2844,8 @@ async def test_dropleads_byok_wins_and_is_never_metered(
                                          "companyNames": [str(i) for i in range(25)]}, 90_000),
         ("dropleads.companies.search", {"filters": {},
                                          "pagination": {"page": 1, "limit": 50}}, 90_000),
+        ("dropleads.companies.search", {"filters": {},
+                                         "pagination": {"page": 1, "limit": "50"}}, 90_000),
     ],
 )
 def test_dropleads_request_shapes_reserve_exact_valid_maxima(endpoint, body, expected):

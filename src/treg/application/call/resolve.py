@@ -598,6 +598,7 @@ def _marketplace_pricing(
         ):
             details = doc.get("details")
             count = len(details) if isinstance(details, list) else 1
+            # More than 10 is rejected before charging; reserve the maximum valid request.
             return _usd_to_micro(rate * max(1, min(count, 10))), unit
         if endpoint_id == "dropleads.companies.enrich":
             domains = doc.get("domains") if isinstance(doc.get("domains"), list) else []
@@ -606,8 +607,10 @@ def _marketplace_pricing(
             return _usd_to_micro(rate * max(1, min(len(domains) + len(names), 50))), unit
         if endpoint_id == "dropleads.companies.search":
             nested = doc.get("pagination") if isinstance(doc.get("pagination"), dict) else {}
-            asked = nested.get("limit", 20)
-            asked = max(1, min(asked, 50)) if type(asked) is int else 20
+            raw = nested.get("limit", 20)
+            asked = int(str(raw).strip()) if not isinstance(raw, bool) \
+                and str(raw).strip().isdigit() else 20
+            asked = max(1, min(asked, 50))
             return _usd_to_micro(rate * asked), unit
     estimate = _platform_estimate_micro(cost, query, body)
     unit = (_usd_to_micro(cost["usd"])

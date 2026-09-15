@@ -663,6 +663,8 @@ def test_dropleads_catalog_surface_is_bounded_and_excludes_internal_routes():
         for ep in rows
     )
     assert {ep.get("host") for ep in rows if ep.get("host")} == {"api.dropleads.io"}
+    assert catalog.by_id["dropleads.companies.search.count"]["capability"] == \
+        "companies.search.count"
     assert catalog.by_id["dropleads.people.enrich"]["test_request"]["body"] == {
         "name": "Jane Doe",
         "organization_name": "Example",

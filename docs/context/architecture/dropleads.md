@@ -65,7 +65,8 @@ Seven adapters join existing routed tools and therefore the corresponding Enrich
 work-email finding, phone finding, email verification, people search, simple person enrichment,
 company search and company enrichment. Count and bulk endpoints remain direct tools. Verified
 person enrichment has a distinct catalog capability rather than silently changing the ordinary
-person-enrichment contract.
+person-enrichment contract. Company count reuses the existing `companies.search.count` capability,
+so it compares with other providers that count the same search result set.
 
 ## Pricing and settlement
 
@@ -82,6 +83,12 @@ documented `status: not_found` response omits its numeric field and settles at z
 Missing or malformed charge evidence falls back to the catalog estimate rather than inventing a
 free call. Request-time reservation counts `details` for 10-item people batches, combines
 `domains + companyNames` up to 50 for company enrichment, and caps company-search pagination at 50.
+Numeric string limits use the same bound, so a request for `"50"` cannot reserve only the default
+20 rows. People search sends `filters.countries` as a list; company search sends the provider's
+different `{include: [...]}` country object. Live three-way count checks proved both shapes.
+For people, the list reduced the total while the include object matched the unfiltered total. For
+companies, the include object reduced the total while the list matched the unfiltered total. Both
+APIs therefore return 200 but silently ignore the other API's country shape.
 
 ## Capacity and observed behavior
 
@@ -91,12 +98,22 @@ PAYG and `usePayg` fields are descriptive only. The default policy is `credits /
 setting and calls the shared collector table. Do not expose its balance call as a catalog tool.
 
 Live verification on 2026-09-15 exercised all fourteen documented routes from a 100-credit free
-account and ended at 94.6 credits. Finder, verifier, single/bulk person enrichment and company
-responses reconciled to their reported charge fields; tested misses were free. People search and
-count agreed on totals. People search accepted a requested limit above 50 but returned at most 50.
+account and ended at 94.6 credits. The retained PR ledger proves positive charges for email
+verification and simple person enrichment, so those two price blocks use observed provenance.
+The other paid rates remain documented until equivalent endpoint-specific billing evidence is
+retained; their response shapes still support exact settlement when they report a charge. Tested
+misses were free. People search and count agreed on totals. People search accepted a requested
+limit above 50 but returned at most 50.
 Both people bulk routes rejected 0 and 11 inputs; company enrichment rejected more than 50 combined
 identities. Prime balance and API-host consumption can reconcile with delay, so per-call settlement
 uses response evidence rather than before/after wallet reads.
+
+The same live checks confirmed that both count routes return root-level `{success, count}`. Their
+saved examples keep that current response shape; they contain no person or account data.
+
+A live request with a deliberately invalid key on 2026-09-16 returned HTTP 401 with
+`{"error":"Unauthorized","message":"Invalid API key format"}`. This confirms that Dropleads
+rejects a bogus credential before the catalog connection tests interpret its response.
 
 Observed headers were 60/minute on the Prime host and 30,000 on the contact host for this account.
 They are catalog notes, not universal provider limits and not a new shared limiter policy. No empty
