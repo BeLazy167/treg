@@ -612,24 +612,16 @@ def _marketplace_pricing(
                 and str(raw).strip().isdigit() else 20
             asked = max(1, min(asked, 50))
             return _usd_to_micro(rate * asked), unit
-    if provider == "prospeo":
-        doc = _json_object(body)
-        credit = _usd_to_micro(float(cost.get("usd") or 0))
-        if endpoint_id in (
-            "prospeo.people.enrich.bulk",
-            "prospeo.companies.enrich.bulk",
-        ):
-            records = doc.get("data")
-            count = len(records) if isinstance(records, list) else 1
-            count = max(1, min(count, 50))
-            _, _, _, per_record_rider = _credit_modifiers(cost, query, doc)
-            return credit * count + _usd_to_micro(
-                per_record_rider * catalog_store.load().credit_rates[provider]
-            ) * count, credit
-        return _platform_estimate_micro(cost, query, body), credit
     estimate = _platform_estimate_micro(cost, query, body)
-    unit = (_usd_to_micro(cost["usd"])
-            if cost.get("type") in ("per_result", "quota_rows") and cost.get("usd") else 0)
+    credit_rate = (catalog_store.load().credit_rates.get(provider)
+                   if cost.get("currency") == "credit" else None)
+    if credit_rate and cost.get("type") in ("per_result", "quota_rows"):
+        unit = _usd_to_micro(credit_rate)
+    elif cost.get("type") == "per_success" and cost.get("usd"):
+        unit = _usd_to_micro(cost["usd"])
+    else:
+        unit = (_usd_to_micro(cost["usd"])
+                if cost.get("type") in ("per_result", "quota_rows") and cost.get("usd") else 0)
     if provider == "quickenrich":
         credit = _usd_to_micro(float(cost.get("usd") or 0))
         if endpoint_id == "quickenrich.people.search.domain":
@@ -669,12 +661,19 @@ def _marketplace_pricing(
             credits = -(-asked // 10)  # ceil division: whole credits, minimum 1
             return _usd_to_micro(credits * rate), _usd_to_micro(rate)
         return estimate, unit
-    if provider != "aviato" and not cost.get("modifiers"):
+    record_count = None
+    if provider == "prospeo" and endpoint_id in (
+        "prospeo.people.enrich.bulk",
+        "prospeo.companies.enrich.bulk",
+    ):
+        records = _json_object(body).get("data")
+        record_count = max(1, min(len(records) if isinstance(records, list) else 1, 50))
+    if provider != "aviato" and not cost.get("modifiers") and record_count is None:
         return estimate, unit
 
     # Credit-priced providers with a `cost.modifiers` block (Aviato, cloro): the request decides
     # the price, so the reserve is base + every triggered rider, converted at the provider's rate.
-    rate = catalog_store.load().credit_rates.get(provider)
+    rate = credit_rate
     if not rate:
         return estimate, unit
     def credit_micro(credits):
@@ -686,6 +685,12 @@ def _marketplace_pricing(
         return 0, 0
     credits = float(cost.get("value") or 0) + added
     settled_credits = float(cost.get("value") or 0) + settled_added
+    if record_count is not None:
+        # Prospeo's bulk routes price the base and optional mobile rider per submitted record.
+        # The request shape selects the count; every credit number remains catalog-declared.
+        return credit_micro(credits + per_result) * record_count, credit_micro(
+            float(cost.get("value") or 0)
+        )
     if endpoint_id in ("aviato.companies.enrich.bulk", "aviato.people.enrich.bulk"):
         lookups = doc.get("lookups") if isinstance(doc.get("lookups"), list) else []
         per_record = credit_micro(credits)

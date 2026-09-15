@@ -105,6 +105,9 @@ and no overflow route is claimed.
 Starter request limits are 5/second, 300/minute and 2,000/day for enrichment; 1/second, 30/minute and
 1,000/day for search. Suggestions reported a separate free allowance. These request limits are
 operational facts, while the account-information balance is the shared monthly credit allowance.
+Because capacity smoothing is currently provider-wide, `policy._RATE_LIMITS` uses the stricter
+1/second search rate for every platform-key Prospeo call; enrichment is conservatively slower than
+its own 5/second allowance. Own-key calls bypass platform metering and this shared-key limiter.
 
 ## Live evidence ledger
 

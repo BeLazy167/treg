@@ -231,6 +231,11 @@ async def test_prospeo_balance_collector_uses_remaining_credits(remaining, expec
             assert "plan STARTER" in row["note"]
 
 
+def test_prospeo_policy_smooths_at_the_stricter_shared_key_rate():
+    row = policy.default_policy("prospeo", has_key=True)
+    assert row.rate_limit == {"limit": 1, "window_s": 1, "source": "docs"}
+
+
 @pytest.mark.parametrize('remaining,expected', [(300, 300), (0, 0), (None, None), (-1, None), ('unlimited', None), (True, None)])
 async def test_quickenrich_subscription_allowance_from_free_discovery(remaining, expected):
     def reply(request):

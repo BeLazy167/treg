@@ -569,7 +569,8 @@ adapters:
       body.filters.person_job_title.match_mode: "choose(title, 'CONTAINS', null)"
       body.filters.person_location_search.include: "list(country_name(country))"
     const: {body.page: 1}
-    out: {people: results, count: "len(results)"}
+    # Prospeo fixes pages at 25, so there is no honest `limit` input to forward. Return its total.
+    out: {people: results, count: pagination.total_count}
     miss: "results == []"
   exa.people.search:
     accepts: [[q]]
@@ -854,7 +855,8 @@ adapters:
       body.filters.company_technology.include: "list(technology)"
       body.filters.company_location_search.include: "list(country_name(country))"
     const: {body.page: 1}
-    out: {companies: results, count: "len(results)"}
+    # Prospeo fixes pages at 25, so there is no honest `limit` input to forward. Return its total.
+    out: {companies: results, count: pagination.total_count}
     miss: "results == []"
   exa.companies.search:
     accepts: [[q]]

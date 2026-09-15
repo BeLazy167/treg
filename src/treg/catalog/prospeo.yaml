@@ -24,7 +24,7 @@ endpoints:
     path: /enrich-person
     name: Find a verified work email
     summary: Find a verified work email and the matching person and company profile.
-    input: &single_person_email_input
+    input:
       bodyType: json
       body:
         only_verified_email: {type: boolean, required: true, enum: [true]}
@@ -178,10 +178,10 @@ endpoints:
     path: /enrich-company
     name: Company lookup and enrichment
     summary: Enrich a company with firmographic, funding, technology and hiring data.
-    input: &single_company_input
+    input:
       bodyType: json
       body:
-        data: &company_identity
+        data:
           type: object
           required: true
           example: {company_website: intercom.com}
@@ -240,7 +240,7 @@ endpoints:
     path: /search-person
     name: Search people
     summary: Search Prospeo's people database with person, role, company, location and contact-availability filters.
-    input: &search_input
+    input:
       bodyType: json
       body:
         filters:

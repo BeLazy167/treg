@@ -118,6 +118,12 @@ non-finite or non-numeric value is unknown. The observation note carries the cur
 credits and `next_quota_renewal_date`. Default policy is
 `monthly_quota / quota_reset / api`; no auto-funding behavior is inferred.
 
+The shared Starter key has two endpoint families: enrichment permits 5 requests/second while
+search permits 1 request/second. `_RATE_LIMITS` therefore defaults Prospeo to the conservative
+provider-wide 1/second rate until smoothing becomes endpoint-aware. This protects routed search
+calls from avoidable 429s at the cost of intentionally slowing platform enrichment; BYOK does not
+use the shared-key limiter.
+
 `scripts/provider_balances.py` requires no Prospeo branch. The typed
 `platform_key_prospeo` setting makes `all_platform_providers()` discover it, and `BALANCE_ROUTES`
 selects the shared collector. The collector reads its key setting independently of the serving

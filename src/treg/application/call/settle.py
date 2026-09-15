@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import math
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from collections.abc import Callable
 
@@ -159,7 +160,8 @@ def _prospeo_cost_micro(mk: MarketplaceCall, doc: dict) -> int | None:
         "prospeo.companies.enrich.bulk",
     ):
         credits = doc.get("total_cost")
-        if isinstance(credits, (int, float)) and not isinstance(credits, bool) and credits >= 0:
+        if (isinstance(credits, (int, float)) and not isinstance(credits, bool)
+                and math.isfinite(credits) and credits >= 0):
             return int(credits * mk.unit_micro + 0.5)
         return None
     if mk.endpoint_id in ("prospeo.people.search", "prospeo.companies.search"):

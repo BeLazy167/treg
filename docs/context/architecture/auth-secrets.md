@@ -479,3 +479,13 @@ companion tool; both bind the same secret. `CatalogTarget` separately permits ca
 companion host. `platform_key_dropleads` supplies the optional shared key, and the platform-provider
 allow-list remains required. An organization's own key has priority and is never metered by treg.
 See [Dropleads](dropleads.md) for the approved hosts and public tool surface.
+
+
+## Prospeo key connection
+
+`PROSPEO` uses the standard pasted-key connection path and injects the raw `X-KEY` header at
+`https://api.prospeo.io`. Its explicit `GET /account-information` probe accepts a valid Starter
+account and rejects a garbage key with `INVALID_API_KEY`; the account route remains internal rather
+than becoming a catalog tool. `platform_key_prospeo` supplies the optional shared key, gated by the
+platform-provider allow-list. An organization's own key keeps priority and is never metered by treg.
+See [Prospeo](prospeo.md) for the public surface and live verification evidence.

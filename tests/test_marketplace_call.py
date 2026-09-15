@@ -2906,6 +2906,14 @@ def test_prospeo_settles_only_from_response_evidence(endpoint, doc, expected):
     assert call_settle._observed_cost_micro(mk, json.dumps(doc).encode()) == expected
 
 
+@pytest.mark.parametrize("total_cost", [float("inf"), float("-inf"), float("nan")])
+def test_prospeo_bulk_non_finite_cost_keeps_the_estimate(total_cost):
+    mk = _mk("prospeo", endpoint_id="prospeo.people.enrich.bulk",
+             cost_type="per_result", unit_micro=24_500)
+    body = json.dumps({"error": False, "total_cost": total_cost}).encode()
+    assert call_settle._observed_cost_micro(mk, body) is None
+
+
 @pytest.mark.parametrize(
     "doc,expected",
     [

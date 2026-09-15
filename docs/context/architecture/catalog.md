@@ -61,6 +61,7 @@ sources:
   - src/treg/catalog/examples/millionverifier.people.email.verify.json
   - src/treg/catalog/examples/millionverifier.account.usage.json
   - src/treg/catalog/adapters.yaml
+  - src/treg/catalog/prospeo.yaml
   - tests/test_route_cost_ceiling.py
   - src/treg/catalog/tomba.yaml
   - src/treg/catalog/examples/tomba.people.email.verify.json
@@ -2151,6 +2152,17 @@ email verification, people search and enrichment, and company search and enrichm
 routed tools and Enrich Arena. The count and synchronous bulk tools stay direct. The provider uses
 the existing `CatalogTarget` allow-list for its second API host; catalog data cannot send a
 credential to another host. See [Dropleads](dropleads.md) for the surface, prices and live evidence.
+
+
+## Prospeo integration
+
+`prospeo.yaml` adds nine people and company tools on both own and platform keys. Six verified
+adapters add email finding, phone finding, person/company enrichment and person/company search to
+the routed tools and Enrich Arena; bulk enrichment and search suggestions stay direct-only. Search
+pages are fixed at 25 upstream, so adapters cannot forward the contract `limit`; they expose
+Prospeo's `pagination.total_count` while relaying the native result page. The account-information
+route remains internal for key verification and capacity. See [Prospeo](prospeo.md) for pricing,
+settlement, plan limits and live evidence.
 
 
 ### Verified additional routing categories
