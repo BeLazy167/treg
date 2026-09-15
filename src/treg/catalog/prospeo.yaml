@@ -176,7 +176,7 @@ endpoints:
     domain: companies
     method: POST
     path: /enrich-company
-    name: Enrich a company
+    name: Company lookup and enrichment
     summary: Enrich a company with firmographic, funding, technology and hiring data.
     input: &single_company_input
       bodyType: json
@@ -202,7 +202,7 @@ endpoints:
     domain: companies
     method: POST
     path: /bulk-enrich-company
-    name: Bulk enrich companies
+    name: Bulk company lookup and enrichment
     summary: Synchronously enrich up to 50 companies.
     input:
       bodyType: json
@@ -276,7 +276,7 @@ endpoints:
     domain: companies
     method: POST
     path: /search-company
-    name: Search companies
+    name: Company lookup and search
     summary: Search Prospeo's company database with firmographic, funding, technology and growth filters.
     input:
       bodyType: json
