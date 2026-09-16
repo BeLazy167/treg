@@ -205,7 +205,8 @@ async def _observed_or_empty(
 @app.get("/catalog/search")
 async def catalog_search(q: str = "", limit: int = 25,
                          observations: endpoint_stats.EndpointObservationReader = Depends(
-                             _endpoint_observation_reader)) -> dict:
+                             _endpoint_observation_reader),
+                         db: AsyncSession = Depends(get_session)) -> dict:
     """Open: free-text search across the whole catalog — the DISCOVER half of the loop.
 
     An agent that knows what it wants ("tiktok comments") shouldn't have to guess which platform
@@ -220,12 +221,21 @@ async def catalog_search(q: str = "", limit: int = 25,
     ranked, total, tie_truncated = catalog_store.rank_band(q, cat, min(100, limit * 4))
     stats = await _observed_or_empty(observations, [ep["id"] for ep, _ in ranked])
     ranked = catalog_store.rerank(ranked, stats, cat)
+    # Listed hub tools (docs/hub-listing-decisions.md): scored with the same tokens and idf, merged
+    # by score with no boost; their evidence is the 30-day ok rate of runs by others.
+    from ..application import hub as hub_app
+    hub_ranked, hub_stats = await hub_app.search_listed(db, q, cat)
+    if hub_ranked:
+        stats = {**stats, **hub_stats}
+        ranked = catalog_store.merge_by_score(ranked, hub_ranked)
+        total += len(hub_ranked)
     results = [
-        catalog_store.endpoint_view(ep, _provider_display(ep["provider"]), cat)
-        | catalog_store.endpoint_context(ep, cat)
         # The evidence that decided the order, shown rather than merely applied: a caller comparing
         # two rows should be able to see WHY one is above the other.
-        | {"score": score, "observed": stats.get(ep["id"])}
+        (dict(ep) | {"score": score, "observed": stats.get(ep["id"])}) if ep.get("kind") == "hub" else
+        (catalog_store.endpoint_view(ep, _provider_display(ep["provider"]), cat)
+         | catalog_store.endpoint_context(ep, cat)
+         | {"score": score, "observed": stats.get(ep["id"])})
         for ep, score in ranked
     ]
     results = catalog_store.group_routed(results, max_children=catalog_store.MAX_ROUTED_CHILDREN)[:limit]
@@ -241,8 +251,11 @@ async def catalog_search(q: str = "", limit: int = 25,
                  "still missing? POST /tool-requests {\"capability\": \"<what you need>\"} — "
                  "requests steer which provider gets added next"]
     else:
-        hints = [f"treg catalog get {results[0]['id']}   # params, cost and an example response",
-                 f"{catalog_store.call_template(cat.by_id.get(results[0]['id'], ranked[0][0]))}   # run it — key injected server-side"]
+        top = results[0]
+        call_line = (f"treg call {top['id']} --data '{{...}}'" if top.get("kind") == "hub"
+                     else catalog_store.call_template(cat.by_id.get(top['id'], ranked[0][0])))
+        hints = [f"treg catalog get {top['id']}   # params, cost and an example response",
+                 f"{call_line}   # run it — key injected server-side"]
         routed_row = next((r for r in results if r.get("kind") == "routed"), None)
         if routed_row is not None:
             hints.insert(1, f"{routed_row['id']} is ROUTED: treg picks among {len(routed_row.get('routed_children') or [])} "

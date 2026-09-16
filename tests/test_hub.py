@@ -1006,3 +1006,37 @@ async def test_listing_switches_default_off_and_flip_without_a_version_bump(clie
     token = (await clients.post("/users", json={"email": "stranger@example.com"})).json()["token"]
     assert (await clients.patch(f"/hub/tools/{tool_id}", json={"listed": True},
                                 headers={"X-Treg-Token": token})).status_code == 404
+
+
+# ---------------------------------------------------------------------------------------------
+# Phase 10.2: a listed hub tool appears in catalog search (docs/hub-listing-decisions.md, decision 2).
+
+Q_OWN_WORDS = "decision makers verified emails"     # the test tool's own summary words
+
+
+async def test_a_listed_hub_tool_appears_in_search_and_unlisted_or_retired_does_not(clients: AsyncClient, hub_on, platform_on, monkeypatch):
+    pub = await _live_tool_with_readme(clients, monkeypatch, price=0.01)
+    tool_id = pub["tool_id"]
+    ids = [r["id"] for r in (await clients.get("/catalog/search", params={"q": Q_OWN_WORDS})).json()["results"]]
+    assert tool_id not in ids                                                      # unlisted by default
+    assert (await clients.patch(f"/hub/tools/{tool_id}", json={"listed": True})).status_code == 200
+    body = (await clients.get("/catalog/search", params={"q": Q_OWN_WORDS})).json()
+    row = [r for r in body["results"] if r["id"] == tool_id][0]
+    assert row["kind"] == "hub" and row["provider"] and row["price_line"].startswith("seller ")
+    assert row["cost"]["usd"] == 0.01 and "score" in row and "script" not in row and "uses" not in row
+    assert body["hints"][0] == f"treg catalog get {tool_id}   # params, cost and an example response" or tool_id in json.dumps(body["hints"])
+    assert (await clients.delete(f"/hub/tools/{tool_id}")).status_code == 200      # retired never appears
+    ids = [r["id"] for r in (await clients.get("/catalog/search", params={"q": Q_OWN_WORDS})).json()["results"]]
+    assert tool_id not in ids
+
+
+async def test_mcp_catalog_search_returns_a_listed_hub_tool(clients: AsyncClient, hub_on, platform_on, monkeypatch):
+    from tests.test_mcp import _call_tool, mcp_session
+    pub = await _live_tool_with_readme(clients, monkeypatch, price=0.01)
+    tool_id = pub["tool_id"]
+    await clients.patch(f"/hub/tools/{tool_id}", json={"listed": True})
+    token = (await clients.post("/users", json={"email": "searcher@example.com"})).json()["token"]
+    async with mcp_session(clients) as c:
+        out = await _call_tool(c, "catalog_search", {"query": Q_OWN_WORDS, "limit": 10}, token=token)
+    row = [r for r in out["results"] if r["endpoint_id"] == tool_id][0]
+    assert row["kind"] == "hub" and row["no_key_needed"] is True and row["usd_per_call"] == 0.01

@@ -4972,6 +4972,8 @@ def _catalog_search(query: str, args, cfg) -> None:
                  f"(routed and by-id)")
 
     for e in rows:
+        if e.get("kind") == "hub":      # a listed hub tool: say so, and whose it is
+            e = {**e, "summary": f"hub · by {e.get('provider', '')} — {e.get('summary') or ''}"}
         if e.get("kind") == "routed":
             _close_group()
             open_group = e
