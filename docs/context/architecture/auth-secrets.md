@@ -45,6 +45,10 @@ and its explicit waterfall-host companion without exposing the credential. See
 
 `SUMBLE` uses the standard pasted Bearer-key path and a free technology-search miss probe; garbage-key rejection was verified through the local connection API. See [Sumble](sumble.md).
 
+`GETLEADSIO` uses the standard pasted Bearer-key path at `app.getleads.io`. Its free fair-use probe
+rejects bad keys with 401 and accepts a valid zero-credit account. The same route supplies capacity
+data; it is not a public catalog tool. See [GetLeads.io](getleadsio.md).
+
 Financial Datasets uses the standard pasted-key and platform-key paths with a raw `X-API-KEY`
 header. `OAuthProvider.probe_url` points at the smallest practical price-snapshot request and
 `probe_path` remains empty. The absolute URL therefore verifies a pasted key only during connect;

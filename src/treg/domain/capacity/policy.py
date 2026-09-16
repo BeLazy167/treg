@@ -36,6 +36,7 @@ _KNOWN: dict[str, tuple[str, str, str]] = {
     "quickenrich": ("monthly_quota", "quota_reset", "api"),
     "prospeo": ("monthly_quota", "quota_reset", "api"),
     "wiza": ("credits", "manual", "api"),
+    "getleadsio": ("credits", "manual", "api"),
     "sumble": ("monthly_quota", "quota_reset", "api"),
     "predictleads": ("monthly_quota", "quota_reset", "api"),
     "companyenrich": ("credits", "manual", "api"),
@@ -86,6 +87,7 @@ _RATE_LIMITS: dict[str, dict] = {
     "leadmagic": {"limit": 300, "window_s": 60, "source": "docs"},
     "crustdata": {"limit": 30, "window_s": 60, "source": "headers"},
     "tikhub": {"limit": 30, "window_s": 1, "source": "docs"},
+    "getleadsio": {"limit": 100, "window_s": 60, "source": "docs"},
 }
 
 

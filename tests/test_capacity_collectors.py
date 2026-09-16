@@ -245,7 +245,7 @@ def test_no_balance_api_includes_expected_providers():
 def test_implemented_collectors_are_registered_and_do_not_overlap_absent_list():
     """A collector that parses a vendor must be on BALANCE_ROUTES, and a provider
     cannot be both 'we collect' and 'there is no balance API'."""
-    for provider in ("akta", "brightdata", "crustdata", "dropleads", "prospeo", "wiza"):
+    for provider in ("akta", "brightdata", "crustdata", "dropleads", "getleadsio", "prospeo", "wiza"):
         assert provider in collectors.BALANCE_ROUTES
         assert provider not in collectors.NO_BALANCE_API
     overlap = set(collectors.BALANCE_ROUTES.keys()) & set(collectors.NO_BALANCE_API.keys())
@@ -299,6 +299,29 @@ async def test_prospeo_balance_collector_uses_remaining_credits(remaining, expec
             assert row["value"] == expected
             assert row["unit"] == "credits"
             assert "plan STARTER" in row["note"]
+
+
+@pytest.mark.parametrize("remaining,expected", [(997, 997), (0, 0), (-1, None), (True, None)])
+async def test_getleadsio_balance_collector_uses_fair_use_credits(remaining, expected):
+    def serve(request):
+        assert request.url.path == "/api/v1/usage/fair-use"
+        assert request.headers["authorization"] == "Bearer test-key"
+        return httpx.Response(200, json={"ok": True, "credits_remaining": remaining})
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(serve)) as upstream:
+        if expected is None:
+            with pytest.raises(ValueError):
+                await collectors._getleadsio(upstream, "test-key")
+        else:
+            row = await collectors._getleadsio(upstream, "test-key")
+            assert row["value"] == expected
+            assert row["unit"] == "credits"
+            assert "Live Leads wallet is not included" in row["note"]
+
+
+def test_getleadsio_policy_uses_the_documented_default_rate():
+    row = policy.default_policy("getleadsio", has_key=True)
+    assert row.rate_limit == {"limit": 100, "window_s": 60, "source": "docs"}
 
 
 def test_prospeo_policy_smooths_at_the_stricter_shared_key_rate():

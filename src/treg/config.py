@@ -186,6 +186,7 @@ class Settings(BaseSettings):
     platform_key_quickenrich: str = ""  # Bearer; monthly subscription credits, not auto-top-up
     platform_key_prospeo: str = ""  # X-KEY; Starter monthly subscription credits
     platform_key_wiza: str = ""  # Bearer; prepaid API credits, no vendor auto-top-up
+    platform_key_getleadsio: str = ""  # Bearer; 1,000 promotional database credits, capped treg trial
     platform_key_leadmagic: str = ""
     platform_key_lusha: str = ""
     platform_key_pdl: str = ""

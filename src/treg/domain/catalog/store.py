@@ -83,10 +83,11 @@ class Catalog:
     # this is. The rate itself still lives in `credit_rates` like any other — pricing machinery
     # neither knows nor cares that the rate is ours.
     shared_plans: dict[str, dict] = field(default_factory=dict)
-    # service -> calls/team/day for rates treg set to ZERO (fx.yaml `kind: treg_trial`): a capped
-    # free taste served on treg's own free-tier key. The allowance lives beside the zero because at
-    # $0 the price gives no brake — the cap is the only congestion control, so an entry without one
-    # is invalid (check_fx). api._enforce_trial_allowance reads this.
+    # service -> paid calls/team/day for rates treg set to ZERO (fx.yaml `kind: treg_trial`): a
+    # capped free taste served on treg's own free-tier key. Endpoints whose catalog cost is `free`
+    # do not consume it. The allowance lives beside the zero because at $0 the price gives no brake
+    # — the cap is the only per-team congestion control, so an entry without one is invalid
+    # (check_fx). application.call.reserve._enforce_trial_allowance reads this.
     trial_pools: dict[str, int] = field(default_factory=dict)
     # provider service -> meter name -> USD per one unit of that meter (fx.yaml `unit_rates_usd`).
     # Providers that bill in a proprietary meter (Semrush API units, Majestic's three pools, Moz's

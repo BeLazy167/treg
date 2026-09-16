@@ -23,7 +23,7 @@ from treg import oauth_providers as P
 def test_key_providers_are_offerable_without_deployment_credentials():
     """The user brings the key, so treg holds no app of its own — a key provider must be offerable,
     not shown as 'not configured' the way an unset OAuth provider is."""
-    for svc in ("apollo", "pdl", "akta", "hunter", "sumble", "harvestapi", "dropleads", "quickenrich", "prospeo", "wiza", "contactout", "millionverifier", "bounceban", "trykitt", "crunchbase", "tikhub", "brightdata", "semrush",
+    for svc in ("apollo", "pdl", "akta", "hunter", "sumble", "harvestapi", "dropleads", "quickenrich", "prospeo", "wiza", "getleadsio", "contactout", "millionverifier", "bounceban", "trykitt", "crunchbase", "tikhub", "brightdata", "semrush",
                 "justoneapi", "dataforseo", "seranking", "moz", "majestic", "serpstat", "exa",
                 "cloro",
                 "lusha", "coresignal", "diffbot", "thecompaniesapi", "leadmagic", "fiber-ai",
@@ -150,6 +150,55 @@ async def test_prospeo_connect_provisions_a_single_catalog_host(clients, monkeyp
     tools = {tool["name"]: tool for tool in (await clients.get("/tools")).json()}
     assert set(tools) == {"prospeo"}
     assert tools["prospeo"]["base_url"] == "https://api.prospeo.io"
+
+
+def test_getleadsio_registry_uses_bearer_and_the_free_usage_probe(monkeypatch):
+    monkeypatch.setenv("TREG_PLATFORM_KEY_GETLEADSIO", "PLATFORM-GETLEADSIO")
+    monkeypatch.setenv("TREG_PLATFORM_PROVIDERS", "getleadsio")
+    settings = Settings(_env_file=None)
+    provider = P.get("getleadsio")
+    assert provider.base_url == "https://app.getleads.io"
+    assert provider.probe_path == "/api/v1/usage/fair-use"
+    assert provider.probe_method == "GET"
+    assert provider.token_header == "Authorization"
+    assert provider.token_format == "Bearer {secret}"
+    assert settings.platform_key_for("getleadsio") == "PLATFORM-GETLEADSIO"
+    assert P.platform_bindings(provider) == [{
+        "platform_setting": "platform_key_getleadsio",
+        "injector": "env",
+        "location": "header",
+        "name": "Authorization",
+        "format": "Bearer {secret}",
+    }]
+
+
+async def test_getleadsio_connect_rejects_a_bad_key_and_provisions_the_catalog_host(
+        clients, monkeypatch):
+    def probe(request):
+        assert request.url.host == "app.getleads.io"
+        assert request.url.path == "/api/v1/usage/fair-use"
+        key = request.headers["authorization"]
+        if key == "Bearer bad":
+            return httpx.Response(401, json={"ok": False, "message": "Invalid API key"})
+        return httpx.Response(200, json={"ok": True, "credits_remaining": 997})
+
+    async with AsyncClient(transport=httpx.MockTransport(probe)) as upstream:
+        monkeypatch.setattr(app.state, "http", upstream)
+        bad = await clients.post(
+            "/connections/token", json={"provider": "getleadsio", "token": "bad"}
+        )
+        assert bad.status_code == 422
+        good = await clients.post(
+            "/connections/token", json={"provider": "getleadsio", "token": "own-key"}
+        )
+        assert good.status_code == 200, good.text
+
+    tools = {tool["name"]: tool for tool in (await clients.get("/tools")).json()}
+    assert set(tools) == {"getleadsio"}
+    assert tools["getleadsio"]["base_url"] == "https://app.getleads.io"
+    binding = tools["getleadsio"]["bindings"][0]
+    assert binding["name"] == "Authorization"
+    assert binding["format"] == "Bearer {secret}"
 
 
 def test_aigc_token_providers_are_offerable_without_deployment_credentials():

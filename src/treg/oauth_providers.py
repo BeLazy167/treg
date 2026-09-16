@@ -1417,6 +1417,24 @@ WIZA = OAuthProvider(
     probe_path="/api/meta/credits", probe_method="GET",
 )
 
+GETLEADSIO = OAuthProvider(
+    service="getleadsio", display_name="GetLeads.io", auth_kind="key",
+    token_label="API key", token_placeholder="your GetLeads.io API key",
+    token_header="Authorization", token_format="Bearer {secret}",
+    setup_url="https://app.getleads.io/",
+    setup_action_label="Get your GetLeads.io API key",
+    setup_steps=("Sign in to GetLeads.io and open the API-key settings.",
+                 "Create or copy an API key and paste it here."),
+    setup_note=("Search, enrichment and lookups use plan credits. Connection verification reads "
+                "the fair-use and remaining-credit status for free."),
+    auth_uri="", token_uri="", scopes={}, client_id_setting="", client_secret_setting="",
+    category="Enrichment",
+    summary="Search a business-contact database, enrich people, and find company contacts and signals.",
+    base_url="https://app.getleads.io", docs_url="https://www.getleads.io/docs/",
+    # Live 2026-09-16: bogus Bearer 401; valid key 200; the documented route costs zero credits.
+    probe_path="/api/v1/usage/fair-use", probe_method="GET",
+)
+
 TRYKITT = OAuthProvider(
     service="trykitt",
     display_name="Kitt AI",
@@ -3071,7 +3089,7 @@ REGISTRY: dict[str, OAuthProvider] = {
         GOOGLE_ADS, YOUTUBE,
         LINKEDIN, SLACK, X, TIKTOK, FACEBOOK, INSTAGRAM, META_ADS,
         # API-key providers
-        APOLLO, PDL, AKTA, HUNTER, SUMBLE, HARVESTAPI, DROPLEADS, QUICKENRICH, PROSPEO, WIZA, TRYKITT, CONTACTOUT, MILLIONVERIFIER, BOUNCEBAN, CRUNCHBASE, MINIMAX, OPENROUTER, REPLICATE,
+        APOLLO, PDL, AKTA, HUNTER, SUMBLE, HARVESTAPI, DROPLEADS, QUICKENRICH, PROSPEO, WIZA, GETLEADSIO, TRYKITT, CONTACTOUT, MILLIONVERIFIER, BOUNCEBAN, CRUNCHBASE, MINIMAX, OPENROUTER, REPLICATE,
         REAPI, PIAPI,
         TIKHUB, BRIGHTDATA, SEMRUSH, JUSTONEAPI,
         SCRAPECREATORS,

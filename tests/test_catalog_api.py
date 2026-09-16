@@ -1106,7 +1106,8 @@ def test_trial_pools_flow_from_fx_to_eligibility_and_display():
     from treg.domain.catalog import store as cs
 
     c = cs.load()
-    assert c.trial_pools == {"finnhub": 50, "twelvedata": 20, "tiingo": 20}
+    assert c.trial_pools == {"finnhub": 50, "twelvedata": 20, "tiingo": 20,
+                             "getleadsio": 5}
     ep = c.by_id["finnhub.quote"]
     assert c.platform_eligible(ep)
     cost = c.cost_view(ep["cost"], "finnhub")

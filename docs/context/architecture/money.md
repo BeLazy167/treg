@@ -601,12 +601,18 @@ shared plan" - `cost_view`, holds, caps and settlement needed zero changes. What
 
 A third treg-set rate, `kind: treg_trial` (fx.yaml): a provider served on treg's own FREE-tier key
 at exactly $0, capped per team per day (`trial_calls_per_team_day`, enforced by
-`api._enforce_trial_allowance` - successes only, fail-closed, refusal 429 `trial_allowance_reached`
-with a connect-your-own-key hint). The strategy: the pool is the demand probe - a hot pool is the
-buy signal for the provider's commercial tier, negotiated with real volume numbers. Failed calls
-never burn allowance (the same line billability draws), and another org's usage never touches this
-org's pool (tested). At $0 the allowance is the only brake, so the validator refuses a trial entry
-without one.
+`_enforce_trial_allowance` - successful platform calls with a non-free catalog cost only,
+fail-closed, refusal 429 `trial_allowance_reached` with a connect-your-own-key hint). Free discovery
+tools, failed calls and own-key calls never burn the allowance; another org's usage never touches
+this org's pool (tested). The strategy: the pool is the demand probe - a hot pool is the buy signal
+for the provider's commercial tier, negotiated with real volume numbers. At $0 the allowance is the
+only per-team brake, so the validator refuses a trial entry without one.
+
+GetLeads.io uses this contract at five successful credit-using platform calls per team per day; its
+free search-count and filter-discovery tools do not consume the allowance. Its one-time promotional
+database credits have no published USD replacement price, so $0 describes treg's limited trial, not
+a vendor credit valuation. The separately priced Live Leads wallet is not substituted for that
+missing database-credit price.
 
 ## Idempotency and retries
 

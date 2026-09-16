@@ -1772,6 +1772,15 @@ def trial_on(monkeypatch):
     get_settings.cache_clear()
 
 
+@pytest.fixture()
+def getleadsio_trial_on(monkeypatch):
+    monkeypatch.setenv("TREG_PLATFORM_KEY_GETLEADSIO", "PLATFORM-GETLEADSIO")
+    monkeypatch.setenv("TREG_PLATFORM_PROVIDERS", "getleadsio")
+    get_settings.cache_clear()
+    yield
+    get_settings.cache_clear()
+
+
 async def test_a_trial_call_is_served_keyless_and_charges_NOTHING(clients: AsyncClient, trial_on,
                                                                   monkeypatch):
     monkeypatch.setattr(call_service, "relay", _fake_relay(200, b'{"c": 231.5, "pc": 230.1}'))
@@ -1791,7 +1800,8 @@ async def test_the_trial_allowance_bites_at_the_fx_number(clients: AsyncClient, 
     async with session_maker() as db:
         for i in range(50):
             db.add(CallRecord(org_id=1, user_email="u@example.com", tool_name="finnhub.quote",
-                              method="GET", path="/quote", status_code=200))
+                              method="GET", path="/quote", status_code=200,
+                              credential_tier="platform"))
         for i in range(10):  # failures do not consume the allowance
             db.add(CallRecord(org_id=1, user_email="u@example.com", tool_name="finnhub.quote",
                               method="GET", path="/quote", status_code=502))
@@ -1818,6 +1828,22 @@ async def test_failures_alone_never_exhaust_a_trial(clients: AsyncClient, trial_
     assert (await clients.get("/call/finnhub.quote?symbol=AAPL")).status_code == 200
 
 
+async def test_own_key_history_never_consumes_a_later_platform_trial(
+        clients: AsyncClient, trial_on, monkeypatch):
+    from treg.models import CallRecord
+
+    async with session_maker() as db:
+        for _ in range(50):
+            db.add(CallRecord(
+                org_id=1, user_email="u@example.com", tool_name="finnhub.quote",
+                method="GET", path="/quote", status_code=200,
+                credential_tier="credential",
+            ))
+        await db.commit()
+    monkeypatch.setattr(call_service, "relay", _fake_relay(200, b'{"c": 1}'))
+    assert (await clients.get("/call/finnhub.quote?symbol=AAPL")).status_code == 200
+
+
 async def test_another_orgs_usage_never_burns_MY_trial(clients: AsyncClient, trial_on, monkeypatch):
     """The allowance is per TEAM. Another org's fifty calls must not touch this org's pool — the
     multi-tenancy assertion, and the one failure here that would be unfair rather than merely
@@ -1830,10 +1856,110 @@ async def test_another_orgs_usage_never_burns_MY_trial(clients: AsyncClient, tri
         for i in range(50):
             db.add(CallRecord(org_id=other.json()["org_id"], user_email="other@example.com",
                               tool_name="finnhub.quote", method="GET", path="/quote",
-                              status_code=200))
+                              status_code=200, credential_tier="platform"))
         await db.commit()
     monkeypatch.setattr(call_service, "relay", _fake_relay(200, b'{"c": 1}'))
     assert (await clients.get("/call/finnhub.quote?symbol=AAPL")).status_code == 200
+
+
+async def test_getleadsio_platform_call_is_free_and_preserves_the_requested_limit(
+        clients: AsyncClient, getleadsio_trial_on):
+    before = await _balance(clients)
+    result = await clients.post("/call/getleadsio.people.search", json={
+        "filters": {"domains": ["example.com"]}, "limit": 5000, "offset": 0,
+    })
+    assert result.status_code == 200, result.text
+    assert result.json()["auth"] == "Bearer PLATFORM-GETLEADSIO"
+    assert json.loads(result.json()["body"])["limit"] == 5000
+    assert await _balance(clients) == before
+
+
+async def test_getleadsio_own_key_wins_and_is_unmetered(
+        clients: AsyncClient, getleadsio_trial_on):
+    await clients.post("/secrets", json={"name": "getleadsio", "value": "OWN-GETLEADSIO"})
+    before = await _balance(clients)
+    result = await clients.post("/call/getleadsio.people.search", json={
+        "filters": {"domains": ["example.com"]}, "limit": 10,
+    })
+    assert result.status_code == 200, result.text
+    assert result.json()["auth"] == "Bearer OWN-GETLEADSIO"
+    assert await _balance(clients) == before
+    assert (await _telemetry(clients))["credential_tier"] == "credential"
+
+
+async def test_getleadsio_trial_allowance_is_five_successful_calls_per_team_day(
+        clients: AsyncClient, getleadsio_trial_on, monkeypatch):
+    from treg.models import CallRecord
+
+    async with session_maker() as db:
+        for _ in range(5):
+            db.add(CallRecord(
+                org_id=1, user_email="u@example.com",
+                tool_name="getleadsio.people.search", method="POST",
+                path="/api/v1/contacts/search", status_code=200,
+                credential_tier="platform",
+            ))
+        await db.commit()
+    monkeypatch.setattr(call_service, "relay", _fake_relay(200, b'{"ok":true}'))
+    before = await _balance(clients)
+    result = await clients.post("/call/getleadsio.people.search", json={
+        "filters": {"domains": ["example.com"]}, "limit": 1,
+    })
+    assert result.status_code == 429, result.text
+    detail = result.json()["detail"]
+    assert detail["error"] == "trial_allowance_reached"
+    assert detail["allowance_per_day"] == 5
+    assert await _balance(clients) == before
+
+
+async def test_getleadsio_free_calls_do_not_consume_the_paid_trial_allowance(
+        clients: AsyncClient, getleadsio_trial_on):
+    from treg.models import CallRecord
+
+    async with session_maker() as db:
+        for _ in range(5):
+            db.add(CallRecord(
+                org_id=1, user_email="u@example.com",
+                tool_name="getleadsio.people.search.count", method="POST",
+                path="/api/v1/contacts/search/count", status_code=200,
+                credential_tier="platform",
+            ))
+        await db.commit()
+    result = await clients.post("/call/getleadsio.people.search", json={
+        "filters": {"domains": ["example.com"]}, "limit": 1,
+    })
+    assert result.status_code == 200, result.text
+
+
+async def test_getleadsio_free_calls_still_work_after_the_paid_trial_allowance(
+        clients: AsyncClient, getleadsio_trial_on):
+    from treg.models import CallRecord
+
+    async with session_maker() as db:
+        for _ in range(5):
+            db.add(CallRecord(
+                org_id=1, user_email="u@example.com",
+                tool_name="getleadsio.people.search", method="POST",
+                path="/api/v1/contacts/search", status_code=200,
+                credential_tier="platform",
+            ))
+        await db.commit()
+    result = await clients.post("/call/getleadsio.people.search.count", json={
+        "filters": {"domains": ["example.com"]},
+    })
+    assert result.status_code == 200, result.text
+
+
+@pytest.mark.parametrize("status", [400, 500])
+async def test_getleadsio_failed_platform_calls_never_move_money(
+        clients: AsyncClient, getleadsio_trial_on, monkeypatch, status):
+    monkeypatch.setattr(call_service, "relay", _fake_relay(status, b'{"ok":false}'))
+    before = await _balance(clients)
+    result = await clients.post("/call/getleadsio.people.search", json={
+        "filters": {"domains": ["example.com"]}, "limit": 1,
+    })
+    assert result.status_code == status
+    assert await _balance(clients) == before
 
 
 # ---- X: the catalog price and the metered price are the same number ----------------------------

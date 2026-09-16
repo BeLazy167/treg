@@ -257,6 +257,7 @@ _UNRECORDED_SIGNATURE = {
     "dropleads",  # free trial was not exhausted; no provider-specific 402 body recorded
     "prospeo",  # Starter allowance was not exhausted; no provider-specific body was forced
     "wiza",  # The funded grant was not exhausted; no provider-specific body was forced
+    "getleadsio",  # promotional allocation was not exhausted; bare 402 remains the generic signal
     "millionverifier",  # funded-account exhaustion not observed; trial still has credits
     "bounceban",  # verification credits remain; exhaustion was not forced and no overflow is claimed
     # Bare 402 is already the generic balance signal; the real empty-Credits body was not forced.

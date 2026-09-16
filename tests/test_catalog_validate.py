@@ -721,3 +721,15 @@ def test_bounceban_catalog_has_one_platform_tool_and_complete_safe_byok_lifecycl
     waterfall = catalog.by_id["bounceban.people.email.verify.waterfall"]
     assert waterfall["host"] == "api-waterfall.bounceban.com"
     assert waterfall["platform_blocked"]
+
+
+def test_getleadsio_original_routes_are_available_to_byok_and_platform_callers():
+    catalog = catalog_store.load()
+    rows = [ep for ep in catalog.endpoints if ep["provider"] == "getleadsio"]
+    assert len(rows) == 12
+    assert not any(ep["path"] in {
+        "/api/v1/usage/fair-use", "/api/v1/contacts/health"
+    } for ep in rows)
+    assert all(catalog.platform_eligible(ep) for ep in rows)
+    assert not any(ep["id"].endswith(".trial") for ep in rows)
+    assert not any(ep.get("platform_request") or ep.get("platform_blocked") for ep in rows)
