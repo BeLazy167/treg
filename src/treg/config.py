@@ -406,6 +406,10 @@ class Settings(BaseSettings):
     # ingestion key (safe to expose to the browser); host defaults to EU cloud.
     posthog_key: str = ""
     posthog_host: str = "https://eu.i.posthog.com"
+    # The code identity stamped on every analytics event as `build`. Empty means "use the commit the
+    # host exposes, else the installed package version" (analytics.build_id), so an operator only
+    # sets TREG_BUILD when the platform does not publish a commit variable.
+    build: str = ""
     # Intercom Messenger (support chat; treg's own workspace). Empty app_id = OFF, so self-hosted
     # instances never load the widget. The app_id is public (visible in page source); the secret
     # signs user_hash for identity verification and must never reach the browser.

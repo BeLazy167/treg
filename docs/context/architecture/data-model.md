@@ -447,7 +447,14 @@ payment); it queues up to `_MAX_PENDING` events (drop-newest past the bound) and
 micro-batches them (`_BATCH_MAX` per POST, at most every `_FLUSH_INTERVAL_S`) via a per-flush httpx
 client - no semaphore, because HTTP to PostHog never touches the DB pool. **Empty `posthog_key` = the
 module is off** (self-hosters and the test suite send nothing). `$groups: {team: org_slug}` mirrors the
-browser's `posthog.group('team', slug)`. Attributed product events use the caller's email and team group,
+browser's `posthog.group('team', slug)`. Every event also carries `build` (`TREG_BUILD`, else the
+commit variable the host exports, else the installed package version; `build_id`) and
+`archive_config` (a 12-hex digest of the archive settings that change what a call does:
+mode, serving allowlist and percentage, repeat price, age ceilings, body storage, change
+observation; `archive_config_id`), and the lifespan emits one `service_started` per process with
+the role and those archive settings. They exist so an analysis can be bounded to one code version
+or one cache configuration instead of a remembered deploy time: a property that an older build
+never emitted reads as null there, and without the boundary that null looks like a state. Attributed product events use the caller's email and team group,
 so they join the same PostHog person/group the SPA identifies. A pre-identity `call_intake_failed` event
 instead uses the fixed `treg-server` identity and no team because authentication could not obtain a DB
 connection. Emitters:
