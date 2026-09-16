@@ -196,6 +196,16 @@ Arena discover it from that adapter. Multipart upload, destructive bulk deletion
 funded Check API are not catalog tools. See [BounceBan](bounceban.md) for the endpoint evidence,
 credential shape, capacity policy, and exclusions.
 
+## ZeroBounce email verification (2026-09-17)
+
+ZeroBounce adds single email validation plus BYOK-only credit and usage reads. Single validation is
+the only platform-eligible tool. Its one-credit `per_success` price uses the supplied $69 / 5,000
+replacement rate. The verified adapter adds it to `treg.people.email.verify`: unknown is a free
+routed miss, while invalid and risk verdicts remain answers. Batch is excluded because live tests
+showed that it needs the key in its JSON body, which the faithful relay does not rewrite. File,
+state-changing, and ambiguous-price operations are also outside the safe first surface. See
+[ZeroBounce](zerobounce.md) for the inventory and evidence.
+
 MoltSets adds 17 verified data tools: nine single-result shared-plan offers and eight BYOK-only
 variable, batch, or dual-meter tools. See [MoltSets](moltsets.md) for the boundary and evidence.
 

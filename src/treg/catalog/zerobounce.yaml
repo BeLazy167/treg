@@ -1,0 +1,88 @@
+# Safe first ZeroBounce surface. The documented API was inventoried across validation, batch/file,
+# scoring, finder, domain-search, activity, filters, usage and account operations. Only single
+# validation is platform eligible. Batch requires api_key inside its JSON body: all three official
+# hosts accepted that documented sandbox shape, while the query-bound shape supported by treg was
+# rejected by API Shield with HTTP 403. File lifecycles need multipart/binary contracts and account
+# ownership; filter writes and file deletion mutate account state. Finder has 20/1/0-credit result
+# branches and Activity Data has no stable public per-call rate. They stay outside this first PR.
+provider: zerobounce
+source:
+  docs: https://www.zerobounce.net/docs/email-validation-api-quickstart
+  curated: '2026-09-17'
+pricing_url: https://www.zerobounce.net/pricing
+limits: "Single validation is documented at 80,000 requests per 10 seconds; API usage at 800 requests/hour; credit balance at 80,000 requests/hour. treg conservatively spaces shared-key calls at 25/second. Repeated bad requests can cause temporary provider blocks."
+proposed_capabilities: {}
+endpoints:
+  - id: zerobounce.people.email.verify
+    cache:
+      ignore_paths: [processed_at]
+    domain: contacts
+    capability: people.email.verify
+    platform: people
+    scope: any_account
+    method: GET
+    path: /v2/validate
+    name: Verify an email address
+    summary: Check mailbox deliverability and risk status in real time
+    input:
+      queryParams:
+        email: {type: string, required: true, format: email, example: "valid@example.com"}
+        ip_address: {type: string, required: false, note: "optional signup IP address for location fields"}
+        timeout: {type: integer, required: false, min: 3, max: 60, default: 30, note: "seconds before an unknown/greylisted result"}
+      note: "Returns valid, invalid, catch-all, unknown, spamtrap, abuse or do_not_mail. Unknown is a routed miss and is not charged. The platform tool omits Activity Data and Verify+ switches so its price remains one validation credit per non-unknown result. Use documented example.com sandbox addresses for free tests."
+    test_request: {queryParams: {email: "valid@example.com", timeout: 10}}
+    cost:
+      type: per_success
+      value: 1
+      currency: credit
+      per: 1
+      unit: result
+      source: docs
+      source_url: https://www.zerobounce.net/pricing
+      checked: '2026-09-17'
+      confidence: verified
+      note: "One purchased validation credit per non-unknown result at the supplied $69 / 5,000-credit replacement rate. Official docs say unknown results consume no credit. Live sandbox valid/invalid/unknown and real invalid/catch-all-related responses showed zero balance delta; that can reflect sandbox, cached, free or refunded behavior and does not replace the documented retail rate."
+    verified: '2026-09-17'
+    example_response: examples/zerobounce.people.email.verify.json
+    docs_url: https://www.zerobounce.net/docs/email-validation-api-quickstart/v2-validate-emails
+
+  - id: zerobounce.account.credits
+    kind: account
+    domain: account
+    capability: account.usage
+    platform: account
+    scope: own_account
+    method: GET
+    path: /v2/getcredits
+    name: Check validation-credit balance
+    summary: Read the remaining ZeroBounce validation credits
+    input:
+      note: "No parameters. A bad key can return HTTP 200 with Credits=-1; treg's connection flow uses the usage probe instead, and the capacity collector rejects this sentinel."
+    test_request: {queryParams: {}}
+    cost: {type: free, value: 0, currency: USD, unit: call, source: docs, source_url: https://www.zerobounce.net/docs/email-validation-api-quickstart/v2-credit-balance, checked: '2026-09-17', confidence: verified, note: "Free balance read; also used for platform capacity collection."}
+    platform_blocked: "This exposes the credential owner's account balance; connect your own ZeroBounce key."
+    verified: '2026-09-17'
+    example_response: examples/zerobounce.account.credits.json
+    docs_url: https://www.zerobounce.net/docs/email-validation-api-quickstart/v2-credit-balance
+
+  - id: zerobounce.account.usage
+    kind: account
+    domain: account
+    capability: account.usage
+    platform: account
+    scope: own_account
+    method: GET
+    path: /v2/getapiusage
+    name: Read email-validation API usage
+    summary: Count validation results and sub-statuses over a date range
+    input:
+      queryParams:
+        start_date: {type: string, required: true, format: date, note: "inclusive date in YYYY-MM-DD format"}
+        end_date: {type: string, required: true, format: date, note: "inclusive date in YYYY-MM-DD format"}
+      note: "The response is an aggregate for the requested range. The API documents no cursor or pagination."
+    test_request: {queryParams: {start_date: "2026-01-01", end_date: "2026-12-31"}}
+    cost: {type: free, value: 0, currency: USD, unit: call, source: docs, source_url: https://www.zerobounce.net/docs/email-validation-api-quickstart/v2-get-api-usage, checked: '2026-09-17', confidence: verified, note: "Free usage aggregate; also used as the connection probe."}
+    platform_blocked: "This exposes the credential owner's account usage; connect your own ZeroBounce key."
+    verified: '2026-09-17'
+    example_response: examples/zerobounce.account.usage.json
+    docs_url: https://www.zerobounce.net/docs/email-validation-api-quickstart/v2-get-api-usage

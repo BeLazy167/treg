@@ -60,6 +60,9 @@ _KNOWN: dict[str, tuple[str, str, str]] = {
     "twelvedata": ("requests", "subscription", "api"),
     "financialdatasets": ("credits", "auto_recharge", "manual"),
     "bounceban": ("credits", "manual", "api"),
+    # Auto-Pay is vendor-managed; treg neither reads nor changes its settings. Capacity still
+    # comes from the exact balance API rather than guessing future automatic purchases.
+    "zerobounce": ("credits", "auto_recharge", "api"),
     # Neither aggregator exposes a balance endpoint at its documented path (plan §7).
     "overflow:orthogonal": ("cash", "manual", "manual"),
     "overflow:monid": ("cash", "manual", "manual"),
@@ -76,6 +79,8 @@ _RATE_LIMITS: dict[str, dict] = {
     # The only platform-served tool is standard single verification, documented at 100/s. Keep
     # the shared key at one quarter of that allowance; BYOK calls bypass this limiter.
     "bounceban": {"limit": 25, "window_s": 1, "source": "docs"},
+    # The public allowance is far higher; keep a conservative shared-key pace.
+    "zerobounce": {"limit": 25, "window_s": 1, "source": "policy"},
     # One shared key serves both 5/s enrichment and 1/s search routes. Until smoothing becomes
     # endpoint-aware, protect the stricter search allowance and accept conservative enrichment.
     "prospeo": {"limit": 1, "window_s": 1, "source": "docs"},

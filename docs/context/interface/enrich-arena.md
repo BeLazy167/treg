@@ -188,6 +188,11 @@ result such as a pending `verifying` body as a routing miss. Public estimates us
 upstream cost before the configured platform margin. Waterfall and bulk BounceBan tools remain BYOK
 only and do not enter Arena.
 
+ZeroBounce also joins email verification through its verified single-validation adapter. It maps
+only `status=valid` to true, preserves the provider's other verdicts as negative answers, and treats
+unknown as a miss. Public estimates use the fixed $0.0138 upstream replacement cost before the
+configured platform margin. Account reads and the excluded batch/file surface do not enter Arena.
+
 Email inputs require a nonempty mailbox and dotted domain. Malformed domain/LinkedIn URLs,
 invalid ports, embedded credentials and non-web schemes return validation errors before pricing
 or charging, including malformed bracketed hosts that URL parsing would otherwise reject with an exception.
