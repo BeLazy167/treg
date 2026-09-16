@@ -52,6 +52,12 @@ inferred, and no overflow route is claimed. See [BounceBan](../architecture/boun
 
 `collectors._sumble` reads `credits_remaining` from a free technology-search miss. Its monthly allowance and optional vendor top-ups remain separate from per-call pricing; no renewal date or auto-funding status is assumed. See [Sumble](../architecture/sumble.md).
 
+`collectors._getleadsio` reads numeric nonnegative `credits_remaining` from the free fair-use route.
+It represents the promotional database-credit allocation, not the separate Live Leads wallet.
+Default smoothing is the documented 100 requests per minute. No empty-account response was forced,
+so the exhaustion signature remains unrecorded and no overflow route is claimed. See
+[GetLeads.io](../architecture/getleadsio.md).
+
 Financial Datasets uses the existing capacity path with `_KNOWN` policy
 `credits / auto_recharge / manual`. The official API publishes no free balance or usage endpoint,
 so `NO_BALANCE_API` reports its upstream remainder as `no API`; the dashboard is not scraped and a

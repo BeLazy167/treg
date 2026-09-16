@@ -196,6 +196,10 @@ credential shape, capacity policy, and exclusions.
 
 Sumble adds the full v9 surface with verified platform operations and explicit BYOK restrictions. See [Sumble](sumble.md) for schemas, pricing rules, routing and live evidence.
 
+GetLeads.io adds 15 direct contact-data tools. Six have bounded access to a $0, five-successful-call
+daily treg trial; the full and batch routes remain BYOK-only. Internal account routes, stateful
+exports and monitoring are excluded. See [GetLeads.io](getleadsio.md) for the boundary and evidence.
+
 ## Financial Datasets v1 and v2 (2026-09-15)
 
 `financialdatasets.yaml` adds 36 direct tools to the existing Market data / Stock Market Data

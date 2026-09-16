@@ -1772,6 +1772,15 @@ def trial_on(monkeypatch):
     get_settings.cache_clear()
 
 
+@pytest.fixture()
+def getleadsio_trial_on(monkeypatch):
+    monkeypatch.setenv("TREG_PLATFORM_KEY_GETLEADSIO", "PLATFORM-GETLEADSIO")
+    monkeypatch.setenv("TREG_PLATFORM_PROVIDERS", "getleadsio")
+    get_settings.cache_clear()
+    yield
+    get_settings.cache_clear()
+
+
 async def test_a_trial_call_is_served_keyless_and_charges_NOTHING(clients: AsyncClient, trial_on,
                                                                   monkeypatch):
     monkeypatch.setattr(call_service, "relay", _fake_relay(200, b'{"c": 231.5, "pc": 230.1}'))
@@ -1834,6 +1843,80 @@ async def test_another_orgs_usage_never_burns_MY_trial(clients: AsyncClient, tri
         await db.commit()
     monkeypatch.setattr(call_service, "relay", _fake_relay(200, b'{"c": 1}'))
     assert (await clients.get("/call/finnhub.quote?symbol=AAPL")).status_code == 200
+
+
+async def test_getleadsio_bounded_trial_is_free_and_uses_the_platform_bearer(
+        clients: AsyncClient, getleadsio_trial_on):
+    before = await _balance(clients)
+    result = await clients.post("/call/getleadsio.people.search.trial", json={
+        "filters": {"domains": ["example.com"]}, "limit": 1, "offset": 0,
+    })
+    assert result.status_code == 200, result.text
+    assert result.json()["auth"] == "Bearer PLATFORM-GETLEADSIO"
+    assert await _balance(clients) == before
+
+
+async def test_getleadsio_full_search_is_byok_only_and_trial_limit_is_fixed(
+        clients: AsyncClient, getleadsio_trial_on):
+    full = await clients.post("/call/getleadsio.people.search", json={
+        "filters": {"domains": ["example.com"]}, "limit": 1,
+    })
+    assert full.status_code == 404
+    assert "connect" in str(full.json()["detail"]).lower()
+
+    unbounded = await clients.post("/call/getleadsio.people.search.trial", json={
+        "filters": {"domains": ["example.com"]}, "limit": 2,
+    })
+    assert unbounded.status_code in {400, 422}
+
+
+async def test_getleadsio_own_key_wins_and_is_unmetered(
+        clients: AsyncClient, getleadsio_trial_on):
+    await clients.post("/secrets", json={"name": "getleadsio", "value": "OWN-GETLEADSIO"})
+    before = await _balance(clients)
+    result = await clients.post("/call/getleadsio.people.search", json={
+        "filters": {"domains": ["example.com"]}, "limit": 10,
+    })
+    assert result.status_code == 200, result.text
+    assert result.json()["auth"] == "Bearer OWN-GETLEADSIO"
+    assert await _balance(clients) == before
+    assert (await _telemetry(clients))["credential_tier"] == "credential"
+
+
+async def test_getleadsio_trial_allowance_is_five_successful_calls_per_team_day(
+        clients: AsyncClient, getleadsio_trial_on, monkeypatch):
+    from treg.models import CallRecord
+
+    async with session_maker() as db:
+        for _ in range(5):
+            db.add(CallRecord(
+                org_id=1, user_email="u@example.com",
+                tool_name="getleadsio.people.search.trial", method="POST",
+                path="/api/v1/contacts/search", status_code=200,
+            ))
+        await db.commit()
+    monkeypatch.setattr(call_service, "relay", _fake_relay(200, b'{"ok":true}'))
+    before = await _balance(clients)
+    result = await clients.post("/call/getleadsio.people.search.trial", json={
+        "filters": {"domains": ["example.com"]}, "limit": 1,
+    })
+    assert result.status_code == 429, result.text
+    detail = result.json()["detail"]
+    assert detail["error"] == "trial_allowance_reached"
+    assert detail["allowance_per_day"] == 5
+    assert await _balance(clients) == before
+
+
+@pytest.mark.parametrize("status", [400, 500])
+async def test_getleadsio_failed_platform_calls_never_move_money(
+        clients: AsyncClient, getleadsio_trial_on, monkeypatch, status):
+    monkeypatch.setattr(call_service, "relay", _fake_relay(status, b'{"ok":false}'))
+    before = await _balance(clients)
+    result = await clients.post("/call/getleadsio.people.search.trial", json={
+        "filters": {"domains": ["example.com"]}, "limit": 1,
+    })
+    assert result.status_code == status
+    assert await _balance(clients) == before
 
 
 # ---- X: the catalog price and the metered price are the same number ----------------------------

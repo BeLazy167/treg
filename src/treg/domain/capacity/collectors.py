@@ -172,6 +172,21 @@ async def _wiza(c, key):
     }
 
 
+async def _getleadsio(c, key):
+    d = await _get(c, "https://app.getleads.io/api/v1/usage/fair-use",
+                   headers={"Authorization": f"Bearer {key}"})
+    remaining = d.get("credits_remaining") if isinstance(d, dict) and d.get("ok") is True else None
+    if isinstance(remaining, bool) or not isinstance(remaining, (int, float)) \
+            or not math.isfinite(remaining) or remaining < 0:
+        raise ValueError("GetLeads.io returned no valid remaining-credit balance")
+    return {
+        "value": remaining,
+        "unit": "credits",
+        "note": ("Promotional database-credit allocation; no published USD replacement price. "
+                 "The separate Live Leads wallet is not included."),
+    }
+
+
 async def _hunter(c, key):
     d = await _get(c, "https://api.hunter.io/v2/account", params={"api_key": key})
     req = (d.get("data") or {}).get("requests", {})
@@ -529,6 +544,7 @@ BALANCE_ROUTES = {
     "quickenrich": _quickenrich,
     "prospeo": _prospeo,
     "wiza": _wiza,
+    "getleadsio": _getleadsio,
     "sumble": _sumble,
     "trykitt": _trykitt,
     "contactout": _contactout,

@@ -608,6 +608,11 @@ never burn allowance (the same line billability draws), and another org's usage 
 org's pool (tested). At $0 the allowance is the only brake, so the validator refuses a trial entry
 without one.
 
+GetLeads.io uses this contract at five successful calls per team per day. Its one-time promotional
+database credits have no published USD replacement price, so $0 describes treg's limited trial,
+not a vendor credit valuation. The separately priced Live Leads wallet is not substituted for that
+missing database-credit price.
+
 ## Idempotency and retries
 
 `application.call.idempotency` prevents a lost successful response from causing a second upstream
