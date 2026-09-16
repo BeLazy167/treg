@@ -1046,10 +1046,40 @@ async def test_daily_cap_refuses_when_it_cannot_be_verified(clients: AsyncClient
         raise RuntimeError("ledger unavailable")
 
     monkeypatch.setattr(ledger, "spent_today", _boom)
-    r = await clients.get(f"/call/{EP}?aweme_id=7")
-    assert r.status_code == 429
-    assert "refusing to spend" in r.json()["detail"]
-    assert await _balance(clients) == 1_000_000
+    monkeypatch.setenv("TREG_PLATFORM_DAILY_CAP_USD", "1")
+    get_settings.cache_clear()
+    try:
+        r = await clients.get(f"/call/{EP}?aweme_id=7")
+        assert r.status_code == 429
+        assert "refusing to spend" in r.json()["detail"]
+        assert await _balance(clients) == 1_000_000
+    finally:
+        get_settings.cache_clear()
+
+
+async def test_no_daily_cap_by_default_and_the_team_can_raise_past_any_deployment_default(
+        clients: AsyncClient, platform_on, monkeypatch):
+    """With no limit set anywhere, the ledger is never consulted and the balance is the bound. A
+    team's own figure wins over the deployment default in BOTH directions."""
+    async def _boom(db, org_id):
+        raise RuntimeError("must not be consulted when no cap applies")
+
+    real_spent_today = ledger.spent_today
+    monkeypatch.setattr(ledger, "spent_today", _boom)
+    assert (await clients.get(f"/call/{EP}?aweme_id=7")).status_code == 200
+    monkeypatch.setattr(ledger, "spent_today", real_spent_today)
+
+    monkeypatch.setenv("TREG_PLATFORM_DAILY_CAP_USD", "0.0015")   # default: one call, not two
+    get_settings.cache_clear()
+    try:
+        r = await clients.get(f"/call/{EP}?aweme_id=7")
+        assert r.status_code == 429 and r.json()["detail"]["error"] == "platform_daily_cap_reached"
+        org_id = (await clients.get("/orgs")).json()[0]["org_id"]
+        raised = await clients.patch(f"/orgs/{org_id}/settings", json={"daily_cap_micro": 10 * EP_MICRO})
+        assert raised.status_code == 200, raised.text
+        assert (await clients.get(f"/call/{EP}?aweme_id=7")).status_code == 200
+    finally:
+        get_settings.cache_clear()
 
 
 async def test_the_platform_key_never_appears_anywhere(clients: AsyncClient, platform_on):

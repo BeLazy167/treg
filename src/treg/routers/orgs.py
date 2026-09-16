@@ -1307,9 +1307,9 @@ async def get_org_settings(
     if caller.org_id != org_id:
         raise HTTPException(status_code=403, detail="not your org")
     org = caller.org
-    return {"daily_cap_micro": _effective_daily_cap(org),
+    return {"daily_cap_micro": _effective_daily_cap(org),  # 0 = no limit
             "daily_cap_set_by_team": int(org.daily_cap_micro or 0) or None,
-            "platform_ceiling_micro": get_settings().platform_daily_cap_micro,
+            "platform_default_micro": get_settings().platform_daily_cap_micro,  # 0 = none
             "platform_overflow": not org.platform_overflow_disabled,
             "budget_dims": _budget_dims_of(org), "primary_dim": _primary_dim_of(caller)}
 
@@ -1319,26 +1319,18 @@ async def set_org_settings(
     org_id: int, body: OrgSettingsIn,
     caller: Caller = Depends(require_member), db: AsyncSession = Depends(get_session),
 ) -> dict:
-    """Set the team's own spend ceiling and which tag keys carry budgets. Admin+.
+    """Set the team's own daily spend limit and which tag keys carry budgets. Admin+.
 
-    A team may LOWER its ceiling freely; raising it past the platform ceiling is refused rather than
-    silently clamped, because a builder who thinks they set $500/day and actually got $5 discovers it
-    as an outage in the middle of their launch.
+    The limit is the team's own rail, so it moves in either direction: any positive figure, or 0 to
+    follow the deployment default (no limit, by default). Nothing is clamped silently — the value
+    stored is the value sent.
     """
     _require_admin_of(org_id, caller)
     org = caller.org
     sent = body.model_fields_set
     if "daily_cap_micro" in sent and body.daily_cap_micro is not None:
-        ceiling = get_settings().platform_daily_cap_micro
         if body.daily_cap_micro < 0:
             raise HTTPException(status_code=422, detail="daily_cap_micro must be 0 or more")
-        if body.daily_cap_micro > ceiling:
-            raise HTTPException(status_code=403, detail={
-                "error": "above_platform_ceiling", "requested_micro": body.daily_cap_micro,
-                "ceiling_micro": ceiling,
-                "message": (f"${ledger.usd(ceiling):g}/day is the ceiling we allow for a team. Ask us "
-                            f"to raise it — reselling volume is a conversation, not a setting."),
-            })
         org.daily_cap_micro = body.daily_cap_micro
     if "platform_overflow" in sent and body.platform_overflow is not None:
         org.platform_overflow_disabled = not body.platform_overflow

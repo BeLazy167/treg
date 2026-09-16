@@ -254,18 +254,18 @@ class Settings(BaseSettings):
     # it by default" are separate questions, and the second one is answered by traffic, not by
     # argument.
     routed_discovery: str = "on"
-    # Per-org, per-UTC-day ceiling on tier-4 spend, and the CEILING a team may raise its own
-    # `Org.daily_cap_micro` to. Enforced FAIL-CLOSED (unlike the soft per-user call cap): a query
-    # error refuses the call rather than letting an unbounded amount of our money out. It is a
-    # blast-radius limit on a runaway agent or a mispriced catalog entry, not a billing control —
-    # the balance is what a team actually spends against.
+    # DEFAULT per-org, per-UTC-day limit on tier-4 spend, for a team that has not set its own
+    # `Org.daily_cap_micro`. 0 = no default limit. A team may set its own figure to anything,
+    # including 0 for no limit — the limit is the team's protection against a runaway agent
+    # draining a balance that auto-top-up keeps refilling, and that is the team's call to make.
+    # Enforced FAIL-CLOSED when one applies (unlike the soft per-user call cap): a query error
+    # refuses the call rather than letting an unbounded amount out.
     #
-    # Raised 100 -> 500 on 2026-08-29. At 100 an ordinary day's work tripped it: a benchmark agent
-    # exploring the catalog spends ~$0.10 a query, and 26 of 32 briefs came back empty because every
-    # call after the ceiling 429'd — the team had $92 of balance and could not use it. The rail is
-    # still here, and it is still ours to raise per team; it just should not fire before a real
-    # workload does.
-    platform_daily_cap_usd: float = 500.0
+    # History: 100 -> 500 on 2026-08-29 (ordinary benchmark work tripped it with balance to spare),
+    # then 500 -> none in 2026-09. In two weeks the platform-wide figure fired only on two prepaid
+    # teams mid-workload (thousands of refused calls against a funded balance) and never on abuse;
+    # the prepaid balance and the auto-top-up monthly cap already bound what a team can spend.
+    platform_daily_cap_usd: float = 0.0
     # OAuth providers whose UPSTREAM bill lands on treg's developer app rather than the connected
     # user (X moved to pay-per-use in Feb 2026: the app owner is billed per resource read / per post
     # written, whoever's token made the call). Calls through a registry connect of a provider named
