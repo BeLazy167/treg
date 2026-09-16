@@ -352,7 +352,9 @@ Server side (`domain.identity.access`): `require_identity` (who, from token OR s
     it; the setup webhook then arms the policy. A team that already has a mandate sees a read-only
     "auto top-up is on" line instead. The preselected card is `topup.default_usd`, which is per-org:
     one preset above the last manual top-up, capped at $50 (see [money](../architecture/money.md)).
-  - **Team settings** — deliberately JUST the **Danger zone** (leave / delete), visible to EVERY role
+  - **Team settings** — the daily spend limit, a **Team name and slug** form (admin+, `renameOrg` →
+    `PATCH /orgs/{id}`; on a slug change the active slug in `localStorage`/`cfg.orgs` follows the
+    new one and the page reloads its lists) and the **Danger zone** (leave / delete), visible to EVERY role
     (leaving is self-service, and `loadOrgAdmin` lands a non-admin here). New team / Join by code /
     Paste token live only in the sidebar picker — cut from this tab on founder review; a personal
     team shows a one-line explainer instead of an empty page.

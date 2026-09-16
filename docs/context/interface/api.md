@@ -849,6 +849,7 @@ if returning the hold itself fails, the money comes back when the hold is reaped
 | `GET /calls/{id}/result` | what one call asked and what came back - the archive's copy; recorded catalog 2xx only (platform or own key), `stored: false` + `note` otherwise |
 | `GET /orgs/{id}/usage/by-tag?key=&days=` | per-value spend for one tag key. **Money from the ledger**; admin+ |
 | `GET/PUT/DELETE /orgs/{id}/budgets[/{dim}/{val}]` | per-tag limits and blocking; admin+ |
+| `PATCH /orgs/{id}` | (admin+) rename the team: `name` and/or `slug`; the old slug stays an alias so existing keys keep working |
 | `GET/PATCH /orgs/{id}/settings` | the team's daily spend cap, budget dimensions and primary dimension |
 
 `PUT /orgs/{id}/budgets/{dim}/{val}` is an upsert that leaves unsent fields alone - a PUT that only

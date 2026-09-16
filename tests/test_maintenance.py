@@ -105,6 +105,8 @@ def _seed_connection(env: dict[str, str]) -> None:
         """
         import asyncio
 
+        from sqlalchemy import insert, text
+
         from treg import oauth_providers
         from treg.infra.db import session_maker
         from treg.models import Org, Secret, Tool
@@ -113,11 +115,13 @@ def _seed_connection(env: dict[str, str]) -> None:
             provider = oauth_providers.get("google-analytics")
             assert provider is not None
             async with session_maker() as db:
-                org = Org(name="Upgrade Test", slug="upgrade-test")
-                db.add(org)
-                await db.flush()
+                # The org table at 0026 predates columns the current model carries.
+                present = {r[1] for r in (await db.execute(text("PRAGMA table_info(org)"))).all()}
+                values = {k: v for k, v in Org(name="Upgrade Test", slug="upgrade-test").model_dump().items()
+                          if k in present and v is not None}
+                org_id = (await db.execute(insert(Org.__table__).values(**values))).inserted_primary_key[0]
                 secret = Secret(
-                    org_id=org.id,
+                    org_id=org_id,
                     name="google-analytics",
                     owner="owner@example.test",
                     kind="oauth",
@@ -127,7 +131,7 @@ def _seed_connection(env: dict[str, str]) -> None:
                 db.add(secret)
                 await db.flush()
                 db.add(Tool(
-                    org_id=org.id,
+                    org_id=org_id,
                     name="google-analytics",
                     owner="owner@example.test",
                     base_url=provider.base_url,

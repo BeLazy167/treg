@@ -2589,6 +2589,22 @@ a:hover{text-decoration-color:var(--muted)}
                 </div>
 
 
+            <!-- TEAM NAME + SLUG. Admin+. The old slug stays an alias server-side, so copied keys,
+                 ~/.treg and MCP pins keep working; the CLI just needs `treg org use <new-slug>`. -->
+            <div v-if="canAdmin && !isPersonal(activeOrg)" style="margin-top:18px;border-top:1px solid var(--line);padding-top:14px">
+              <span class="lbl" style="margin:0">Team name and slug</span>
+              <p class="sub" style="margin:4px 0 8px;font-size:12px">
+                The slug is the team's id in <code>X-Treg-Org</code>, <code>treg org use</code> and MCP. Changing it
+                keeps existing keys working; run <code>treg org use {{renameSlug||activeSlugNow}}</code> to re-pin the CLI.
+              </p>
+              <div class="field" style="max-width:560px">
+                <input v-model="renameName" placeholder="team name" maxlength="80" style="max-width:220px"/>
+                <input v-model="renameSlug" placeholder="slug" maxlength="40" style="max-width:180px"/>
+                <button class="btn primary" :disabled="renameBusy || (!renameName && !renameSlug)" @click="renameOrg">{{renameBusy?'…':'Save'}}</button>
+              </div>
+              <p v-if="renameErr" class="sub" style="color:var(--red);margin:4px 0 0;font-size:12px">{{renameErr}}</p>
+            </div>
+
             <template v-if="!isPersonal(activeOrg)">
             <div class="lbl" style="margin-top:14px;color:var(--red)">Danger zone</div>
             <div style="display:flex;gap:22px;flex-wrap:wrap;align-items:flex-start">
@@ -3946,6 +3962,7 @@ createApp({
       billing:null, billingBusy:false, topupAmount:10, autoAmount:10, autoThreshold:5, autoConsent:false, autoOpen:false,
       topupOpen:false, topupPick:10, topupOther:null, topupAuto:true, topupErr:'',
       capCfg:null, capUsd:0, capBusy:false, capErr:'',
+      renameName:'', renameSlug:'', renameBusy:false, renameErr:'',
       budgets:[], budDims:[], budDim:'', budVal:'', budDaily:'', budBusy:false, budErr:'',
       bhist:{items:[],loading:false,ok:true},   // past top-ups + their invoice/receipt links; ok=false means Stripe was unreachable, amounts are still right
       // Referral program. Seeded with the same SHAPE the API returns (terms/totals/cap present and
@@ -4999,6 +5016,16 @@ createApp({
       try{ await this.api('/orgs/'+this.activeOrgId+'/leave',{method:'POST'});
         this.forgetActiveOrg(); await this.loadAll(); }
       catch(e){ this.orgErr='Leave failed: '+(e.detail||e.status); } },
+    async renameOrg(){ this.renameBusy=true; this.renameErr='';
+      const body={}; if(this.renameName.trim()) body.name=this.renameName.trim(); if(this.renameSlug.trim()) body.slug=this.renameSlug.trim();
+      try{ const r=await this.api('/orgs/'+this.activeOrgId,{method:'PATCH', headers:{'content-type':'application/json'}, body:JSON.stringify(body)});
+        const old=this.activeSlugNow;
+        if(this.sessionMode){ this.activeSlug=r.org; localStorage.setItem('treg-active',r.org); }
+        else if(r.org!==old){ this.cfg.orgs[r.org]=Object.assign({},this.cfg.orgs[old],{name:r.name}); delete this.cfg.orgs[old]; this.cfg.active=r.org; this.save(); }
+        else { this.cfg.orgs[old].name=r.name; this.save(); }
+        this.renameName=''; this.renameSlug=''; await this.loadAll(); }
+      catch(e){ this.renameErr=this._errMsg(e, 'could not rename the team'); }
+      finally{ this.renameBusy=false; } },
     async deleteOrg(){ if(this.confirmDel!==this.activeSlugNow) return;
       try{ await this.api('/orgs/'+this.activeOrgId+'?confirm='+encodeURIComponent(this.activeSlugNow),{method:'DELETE'});
         this.confirmDel=''; this.forgetActiveOrg(); await this.loadAll(); }

@@ -220,6 +220,7 @@ _CONTROL_ROUTE_KEYS: frozenset[RouteKey] = frozenset({
     ('/orgs/{org_id}/members/{user_id}', ('PATCH',), 'set_member_role'),
     ('/orgs/{org_id}/leave', ('POST',), 'leave_org'),
     ('/orgs/{org_id}', ('DELETE',), 'delete_org'),
+    ('/orgs/{org_id}', ('PATCH',), 'rename_org'),
     ('/orgs/{org_id}/public-token', ('POST',), 'create_public_token'),
     ('/orgs/{org_id}/public-token', ('DELETE',), 'delete_public_token'),
     ('/orgs/{org_id}/agents', ('POST',), 'create_agent'),
