@@ -176,8 +176,9 @@ documented in [Wiza](../architecture/wiza.md).
 - **`collectors.py`** — the providers' *free* balance/quota calls (`coroutine(client, key) →
   {value, unit, note}`), shared with `scripts/provider_balances.py`. Providers such as DataForSEO,
   TikHub, Brightdata, and Kitt AI report balances in USD; other meters include credits, rows, and searches. `NO_BALANCE_API`
-  names the 8 providers that publish no meter (dashboard-only) so they read as "no API", never as a
-  broken key.
+  names the 9 providers that publish no free standalone meter so they read as "no API", never as a
+  broken key. Scrubby reports `remaining_credits` only on verification responses; collection never
+  spends a verification merely to obtain that value.
   `provider_balance()` never raises — a failure is a row. It reads the *setting*, not
   `platform_key_for`: the tier-4 allow-list is a serving kill switch, and a provider just switched
   off is exactly one whose last balance we still want.

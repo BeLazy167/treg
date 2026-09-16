@@ -307,6 +307,12 @@ adapters:
     in: {email: body.email}
     out: {valid: "status == 'valid'", status: status}
     miss: "status == null"
+  scrubby.people.email.verify:
+    accepts: [[email]]
+    in: {email: body.email}
+    out: {valid: "result == 'Valid'", status: result}
+    # Invalid, Risky and Unknown are useful verdicts. Only a missing verdict is a miss.
+    miss: "result == null"
   trykitt.people.email.verify:
     accepts: [[email]]
     in: {email: body.email}
