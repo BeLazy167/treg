@@ -1398,6 +1398,25 @@ PROSPEO = OAuthProvider(
     probe_path="/account-information", probe_method="GET",
 )
 
+WIZA = OAuthProvider(
+    service="wiza", display_name="Wiza", auth_kind="key",
+    token_label="API key", token_placeholder="your Wiza API key",
+    token_header="Authorization", token_format="Bearer {secret}",
+    setup_url="https://wiza.co/app/settings/api",
+    setup_action_label="Get your Wiza API key",
+    setup_steps=("Sign in to Wiza and open Settings → API.",
+                 "Generate or copy an API key and paste it here."),
+    setup_note=("Search and enrich people and companies with prepaid API credits. "
+                "Connection verification reads the API credit balance for free."),
+    auth_uri="", token_uri="", scopes={}, client_id_setting="", client_secret_setting="",
+    category="Enrichment",
+    summary="Search professional profiles and companies, enrich company data, and run contact reveal jobs.",
+    base_url="https://wiza.co", docs_url="https://docs.wiza.co/",
+    # Live 2026-09-16: a bogus Bearer key returned 401; the assigned key returned 200.
+    # This route is internal and is also the free capacity collector.
+    probe_path="/api/meta/credits", probe_method="GET",
+)
+
 TRYKITT = OAuthProvider(
     service="trykitt",
     display_name="Kitt AI",
@@ -3018,7 +3037,7 @@ REGISTRY: dict[str, OAuthProvider] = {
         GOOGLE_ADS, YOUTUBE,
         LINKEDIN, SLACK, X, TIKTOK, FACEBOOK, INSTAGRAM, META_ADS,
         # API-key providers
-        APOLLO, PDL, AKTA, HUNTER, SUMBLE, HARVESTAPI, DROPLEADS, QUICKENRICH, PROSPEO, TRYKITT, CONTACTOUT, MILLIONVERIFIER, CRUNCHBASE, MINIMAX, OPENROUTER, REPLICATE,
+        APOLLO, PDL, AKTA, HUNTER, SUMBLE, HARVESTAPI, DROPLEADS, QUICKENRICH, PROSPEO, WIZA, TRYKITT, CONTACTOUT, MILLIONVERIFIER, CRUNCHBASE, MINIMAX, OPENROUTER, REPLICATE,
         REAPI, PIAPI,
         TIKHUB, BRIGHTDATA, SEMRUSH, JUSTONEAPI,
         SCRAPECREATORS,

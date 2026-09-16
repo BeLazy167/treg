@@ -175,7 +175,7 @@ def test_no_balance_api_includes_expected_providers():
 def test_implemented_collectors_are_registered_and_do_not_overlap_absent_list():
     """A collector that parses a vendor must be on BALANCE_ROUTES, and a provider
     cannot be both 'we collect' and 'there is no balance API'."""
-    for provider in ("akta", "brightdata", "crustdata", "dropleads", "prospeo"):
+    for provider in ("akta", "brightdata", "crustdata", "dropleads", "prospeo", "wiza"):
         assert provider in collectors.BALANCE_ROUTES
         assert provider not in collectors.NO_BALANCE_API
     overlap = set(collectors.BALANCE_ROUTES.keys()) & set(collectors.NO_BALANCE_API.keys())

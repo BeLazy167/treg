@@ -256,6 +256,7 @@ _UNRECORDED_SIGNATURE = {
     "quickenrich",  # subscription exhaustion not observed; do not spend the trial to force it
     "dropleads",  # free trial was not exhausted; no provider-specific 402 body recorded
     "prospeo",  # Starter allowance was not exhausted; no provider-specific body was forced
+    "wiza",  # The funded grant was not exhausted; no provider-specific body was forced
     "millionverifier",  # funded-account exhaustion not observed; trial still has credits
     # Bare 402 is already the generic balance signal; the real empty-Credits body was not forced.
     "financialdatasets",

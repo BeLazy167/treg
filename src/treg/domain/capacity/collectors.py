@@ -157,6 +157,21 @@ async def _prospeo(c, key):
     }
 
 
+async def _wiza(c, key):
+    d = await _get(c, "https://wiza.co/api/meta/credits",
+                   headers={"Authorization": f"Bearer {key}"})
+    credits = d.get("credits") if isinstance(d, dict) else None
+    remaining = credits.get("api_credits") if isinstance(credits, dict) else None
+    if (isinstance(remaining, bool) or not isinstance(remaining, (int, float))
+            or not math.isfinite(remaining) or remaining < 0):
+        raise ValueError("Wiza returned no valid API credit balance")
+    return {
+        "value": remaining,
+        "unit": "API credits",
+        "note": "Prepaid API credits; vendor auto-top-up is not enabled",
+    }
+
+
 async def _hunter(c, key):
     d = await _get(c, "https://api.hunter.io/v2/account", params={"api_key": key})
     req = (d.get("data") or {}).get("requests", {})
@@ -503,6 +518,7 @@ BALANCE_ROUTES = {
     "harvestapi": _harvestapi,
     "quickenrich": _quickenrich,
     "prospeo": _prospeo,
+    "wiza": _wiza,
     "sumble": _sumble,
     "trykitt": _trykitt,
     "contactout": _contactout,
