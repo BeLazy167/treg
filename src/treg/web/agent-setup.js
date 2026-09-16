@@ -47,7 +47,7 @@
     </div>`
   };
   const examples=[
-      {k:'trend',cat:'Trending videos pattern', logo:'tiktok',  prompt:'Use treg to pull today\'s trending TikTok videos (video links included)'},
+      {k:'ugc',  cat:'Make UGC videos',         logo:'tiktok',  prompt:'Follow '+location.origin+'/skills/ugc/SKILL.md through treg to make UGC videos for my product'},
       {k:'enr',  cat:'Get contact emails',      logo:'people', avatar:'https://pbs.twimg.com/profile_images/1131851609774985216/OcsssQ9J_400x400.png', prompt:'Use treg to find the work email of Peter Steinberger'},
       {k:'serp', cat:'Keyword volume',          logo:'google',  prompt:'Use treg to pull real monthly search volume and top related keywords worth targeting for my business'},
       {k:'soc',  cat:'Scrape linkedin',         logo:'linkedin',prompt:'Use treg to look up linkedin.com/in/jasonzhoudesign'},
