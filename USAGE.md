@@ -466,7 +466,8 @@ credential that stops working and webhooks the owner (if a `webhook_url` was set
 A hub tool is one your team publishes for other people's agents: a JSON steps recipe, or a
 script in a sandbox. Every step runs through your own tools and keys; a caller pays the metered
 steps plus the price you set, and the price lands on your balance as credit. Callable the moment
-it is published, by id `<team-slug>.<name>`; shared by the page `/hub/<id>`, never listed in search.
+it is published, by id `<team-slug>.<name>`; shared by the page `/hub/<id>`. A new tool is not in
+search until you list it.
 
 ```
 treg hub init <name> [--script] [--dir D]   write the files: recipe.json, run.js (scripts), check.json, README.md
@@ -476,7 +477,16 @@ treg hub ls                                 your team's hub tools, every version
 treg hub earnings <id> [--days N] [--csv]   what one tool earned, per day (sales only; never who called)
 treg hub price <id> <usd>                   change the price for later runs; no version bump; 0 = free
 treg hub retire <id>                        every version off the call road; history and earnings stay readable
+treg hub list <id> · treg hub unlist <id>   show the newest live version in catalog search, or take it out
+treg hub log <id> --public on|off           show or hide the run log on the share page (default on)
 ```
+
+**Listing and the public run log.** Both are switches on the newest live version, and neither bumps
+the version. `list` puts the tool in `treg catalog search` and `catalog_search`, marked `hub` with
+your team, the price label and the 30-day success rate, ranked by relevance with no boost; unlisted,
+failed and retired tools never appear. The share page's run log shows the last 20 runs and runs per
+day for 30 days: time, outcome, duration, steps, units and the price paid, and never who called,
+the inputs, or the output. The dashboard has the same two switches under Hub → a tool → Listing.
 
 The folder may carry a fifth file, `data.csv` (≤ 50 MB): the script reads it as `ctx.data`. A
 script gets `ctx.inputs`, `ctx.call(target, {method, query, body, headers})`, `ctx.csv(text)`,
