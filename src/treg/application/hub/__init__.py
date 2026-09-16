@@ -208,6 +208,7 @@ def view(row: HubTool) -> dict[str, Any]:
         "tool_id": row.tool_id, "version": row.version, "kind": row.kind, "status": row.status,
         "summary": row.summary, "writes": row.writes, "price_usd": row.price_micro / 1_000_000,
         "pricing": row.manifest.get("pricing", {"mode": "flat", "price_usd": row.price_micro / 1_000_000}),
+        "listed": bool(row.listed), "public_log": bool(row.public_log),
         "price_label": price_label(row.manifest),
         "uses": row.manifest.get("uses", []), "inputs": row.manifest.get("inputs", {}),
         "output": row.manifest.get("output", {}), "limits": row.manifest.get("limits", {}),
@@ -263,5 +264,24 @@ async def set_price(db: AsyncSession, *, org_id: int, tool_id: str, price_usd: f
     row.price_micro = micro
     row.manifest = {**row.manifest, "price_usd": micro / 1_000_000,
                     "pricing": {"mode": "flat", "price_usd": micro / 1_000_000}}
+    db.add(row)
+    return row
+
+
+async def set_flags(db: AsyncSession, *, org_id: int, tool_id: str,
+                    listed: bool | None = None, public_log: bool | None = None) -> HubTool | None:
+    """The two distribution switches (docs/hub-listing-decisions.md, 2026-09-16), on the newest live
+    version, no version bump: `listed` (appears in catalog search) and `public_log` (the share page
+    shows the recent-runs log). A switch given as None is left alone. Returns the row, or None when
+    the team has no such live tool. Does not commit."""
+    row = (await db.execute(select(HubTool).where(
+        HubTool.tool_id == tool_id, HubTool.org_id == org_id, HubTool.status == "live")
+        .order_by(HubTool.version.desc()).limit(1))).scalars().first()
+    if row is None:
+        return None
+    if listed is not None:
+        row.listed = bool(listed)
+    if public_log is not None:
+        row.public_log = bool(public_log)
     db.add(row)
     return row

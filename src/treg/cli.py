@@ -5313,6 +5313,36 @@ def cmd_hub_retire(args, cfg) -> None:
     _kv("tool", f"{d['tool_id']}  ({d['versions']} version{'s' if d['versions'] != 1 else ''} off the call road; history kept)")
 
 
+def _hub_flag(args, cfg, field: str, value: bool, section: str, line: str) -> None:
+    with _client(cfg) as c:
+        r = c.patch(f"/hub/tools/{args.tool_id}", json={field: value})
+    if r.status_code != 200:
+        _hub_report(r, json_out=getattr(args, "json", False))
+    d = r.json()
+    if getattr(args, "json", False):
+        print(json.dumps(d, indent=2)); return
+    _section(section)
+    _kv("tool", f"{d['tool_id']}  v{d['version']}")
+    _kv(field, line)
+
+
+def cmd_hub_list(args, cfg) -> None:
+    _hub_flag(args, cfg, "listed", True, "Listed",
+              "on — the newest live version appears in catalog search (treg catalog search, catalog_search)")
+
+
+def cmd_hub_unlist(args, cfg) -> None:
+    _hub_flag(args, cfg, "listed", False, "Unlisted",
+              "off — callable by id and share link only; not in search")
+
+
+def cmd_hub_log(args, cfg) -> None:
+    on = args.public == "on"
+    _hub_flag(args, cfg, "public_log", on, "Public run log " + ("on" if on else "off"),
+              ("on — the share page shows the last 20 runs and runs per day (never who called, never inputs)"
+               if on else "off — the share page shows no run log"))
+
+
 def cmd_hub_price(args, cfg) -> None:
     with _client(cfg) as c:
         r = c.patch(f"/hub/tools/{args.tool_id}", json={"price_usd": args.price_usd})
@@ -5335,11 +5365,11 @@ def cmd_hub_ls(args, cfg) -> None:
     _section("Your hub tools")
     if not rows:
         _dim("  none yet — treg hub init <name>"); return
-    print(f"  {_M}{'TOOL':<44}{'VER':>3}  {'STATUS':<8}{'KIND':<7}{'PRICE':<26}USES{_R}")
+    print(f"  {_M}{'TOOL':<44}{'VER':>3}  {'STATUS':<8}{'KIND':<7}{'PRICE':<28}USES{_R}")
     for t in rows:
         colour = _G if t["status"] == "live" else _AM if t["status"] == "failed" else _M
         price = t.get("price_label") or (f"${t['price_usd']:.6g}/run" if t.get("price_usd") else "free")
-        print(f"  {t['tool_id']:<44}{t['version']:>3}  {colour}{t['status']:<8}{_R}{t['kind']:<7}{price:<26}{', '.join(t['uses'])[:40]}")
+        print(f"  {t['tool_id']:<44}{t['version']:>3}  {colour}{t['status']:<8}{_R}{t['kind']:<7}{price:<28}{', '.join(t['uses'])[:40]}")
 
 
 def cmd_feedback_get(args, cfg) -> None:
@@ -6421,6 +6451,16 @@ def build_parser() -> argparse.ArgumentParser:
                  "treg hub price acme.leads-db 0.02", "treg hub price acme.leads-db 0   # free")
     h_price.add_argument("tool_id"); h_price.add_argument("price_usd", type=float)
     h_price.set_defaults(fn=cmd_hub_price)
+    h_list = mk(hs, "list", "List one of your tools in the catalog: it appears in search (newest live version, no version bump).",
+                "treg hub list <team>.<name>")
+    h_list.add_argument("tool_id"); h_list.set_defaults(fn=cmd_hub_list)
+    h_unlist = mk(hs, "unlist", "Take one of your tools out of search; it stays callable by id and share link.",
+                  "treg hub unlist <team>.<name>")
+    h_unlist.add_argument("tool_id"); h_unlist.set_defaults(fn=cmd_hub_unlist)
+    h_log = mk(hs, "log", "Show or hide the public run log on your tool's share page (default on).",
+               "treg hub log <team>.<name> --public off")
+    h_log.add_argument("tool_id"); h_log.add_argument("--public", choices=["on", "off"], required=True)
+    h_log.set_defaults(fn=cmd_hub_log)
     h_ret = mk(hs, "retire", "Take one of your tools off the call road (every version); history and earnings stay readable.",
                "treg hub retire acme.leads-db")
     h_ret.add_argument("tool_id")

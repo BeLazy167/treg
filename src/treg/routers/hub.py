@@ -346,8 +346,12 @@ async def retire_hub_tool(
 
 
 class PriceIn(BaseModel):
+    """One PATCH, three knobs of the newest live version, none bumps the version: the seller's
+    price, and the two distribution switches (docs/hub-listing-decisions.md). At least one."""
     model_config = ConfigDict(extra="forbid")
-    price_usd: float
+    price_usd: float | None = None
+    listed: bool | None = None
+    public_log: bool | None = None
 
 
 @app.patch("/hub/tools/{tool_id}")
@@ -355,18 +359,34 @@ async def set_hub_tool_price(
     tool_id: str, body: PriceIn, caller: Caller = Depends(require_member),
     db: AsyncSession = Depends(get_session),
 ) -> dict:
-    """Change the seller's price of the newest live version; applies to later runs, no version bump."""
+    """Change the seller's price and/or the listing switches of the newest live version; applies
+    to later runs, no version bump. The reply carries exactly the fields that were set."""
     _require_hub()
     _require_can_register(caller)
+    if body.price_usd is None and body.listed is None and body.public_log is None:
+        raise HTTPException(status_code=422, detail={"error": "manifest_invalid", "field": "body",
+                                                     "rule": "give price_usd, listed or public_log"})
     base, _ = hub_app.split_id(tool_id)
+    row = None
     try:
-        row = await hub_app.set_price(db, org_id=caller.org_id, tool_id=base, price_usd=body.price_usd)
+        if body.price_usd is not None:
+            row = await hub_app.set_price(db, org_id=caller.org_id, tool_id=base, price_usd=body.price_usd)
+        if body.listed is not None or body.public_log is not None:
+            row = await hub_app.set_flags(db, org_id=caller.org_id, tool_id=base,
+                                          listed=body.listed, public_log=body.public_log)
     except ManifestError as exc:
         raise HTTPException(status_code=422, detail={"error": "manifest_invalid", "field": exc.field, "rule": exc.rule}) from None
     if row is None:
         raise HTTPException(status_code=404, detail=f"your team has no live hub tool {base!r}")
     await db.commit()
-    return {"tool_id": base, "version": row.version, "price_usd": row.price_micro / 1_000_000}
+    out: dict = {"tool_id": base, "version": row.version}
+    if body.price_usd is not None:
+        out["price_usd"] = row.price_micro / 1_000_000
+    if body.listed is not None:
+        out["listed"] = bool(row.listed)
+    if body.public_log is not None:
+        out["public_log"] = bool(row.public_log)
+    return out
 
 
 @app.get("/hub/tools/{tool_id}/health")

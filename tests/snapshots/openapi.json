@@ -744,15 +744,42 @@
       },
       "PriceIn": {
         "additionalProperties": false,
+        "description": "One PATCH, three knobs of the newest live version, none bumps the version: the seller's\nprice, and the two distribution switches (docs/hub-listing-decisions.md). At least one.",
         "properties": {
+          "listed": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Listed"
+          },
           "price_usd": {
-            "title": "Price Usd",
-            "type": "number"
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Price Usd"
+          },
+          "public_log": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Public Log"
           }
         },
-        "required": [
-          "price_usd"
-        ],
         "title": "PriceIn",
         "type": "object"
       },
@@ -6792,7 +6819,7 @@
         "summary": "Get Hub Tool"
       },
       "patch": {
-        "description": "Change the seller's price of the newest live version; applies to later runs, no version bump.",
+        "description": "Change the seller's price and/or the listing switches of the newest live version; applies\nto later runs, no version bump. The reply carries exactly the fields that were set.",
         "operationId": "set_hub_tool_price_hub_tools__tool_id__patch",
         "parameters": [
           {

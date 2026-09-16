@@ -1181,6 +1181,9 @@ class HubTool(SQLModel, table=True):
     # upload, a replacement is a new version; the script reads it as ctx.data. Declared LAST
     # (migration 0037).
     data: str | None = Field(default=None)
+    # Phase 10 (docs/hub-listing-decisions.md): distribution switches, flipped without a version bump.
+    listed: bool = Field(default=False)              # true = appears in catalog search (newest live version)
+    public_log: bool = Field(default=True)           # true = the share page shows the recent-runs log
 
 
 class HubRun(SQLModel, table=True):

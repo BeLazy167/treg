@@ -980,3 +980,29 @@ async def test_earnings_report_carries_the_average_price(clients: AsyncClient, h
     csv = (await clients.get(f"/hub/tools/{tool_id}/earnings", params={"format": "csv"})).text
     assert csv.splitlines()[0] == "day,runs,ok,failed,earned_usd,avg_price_usd"
     assert csv.splitlines()[1].endswith(",0.020000,0.010000")
+
+
+# ---------------------------------------------------------------------------------------------
+# Phase 10.1: the two distribution switches (docs/hub-listing-decisions.md).
+
+async def test_listing_switches_default_off_and_flip_without_a_version_bump(clients: AsyncClient, hub_on, platform_on, monkeypatch):
+    pub = await _live_tool_with_readme(clients, monkeypatch, price=0.01)
+    tool_id = pub["tool_id"]
+    one = (await clients.get(f"/hub/tools/{tool_id}")).json()
+    assert one["listed"] is False and one["public_log"] is True            # the defaults
+    r = await clients.patch(f"/hub/tools/{tool_id}", json={"listed": True})
+    assert r.status_code == 200 and r.json() == {"tool_id": tool_id, "version": 1, "listed": True}
+    r = await clients.patch(f"/hub/tools/{tool_id}", json={"public_log": False})
+    assert r.status_code == 200 and r.json() == {"tool_id": tool_id, "version": 1, "public_log": False}
+    one = (await clients.get(f"/hub/tools/{tool_id}")).json()
+    assert one["version"] == 1 and one["listed"] is True and one["public_log"] is False
+    mine = [t for t in (await clients.get("/hub/tools/mine")).json() if t["tool_id"] == tool_id][0]
+    assert mine["listed"] is True and mine["public_log"] is False
+    # a price-only PATCH keeps its exact old reply shape
+    r = await clients.patch(f"/hub/tools/{tool_id}", json={"price_usd": 0.05})
+    assert r.json() == {"tool_id": tool_id, "version": 1, "price_usd": 0.05}
+    # an empty body names the rule; another team's tool is 404
+    assert (await clients.patch(f"/hub/tools/{tool_id}", json={})).status_code == 422
+    token = (await clients.post("/users", json={"email": "stranger@example.com"})).json()["token"]
+    assert (await clients.patch(f"/hub/tools/{tool_id}", json={"listed": True},
+                                headers={"X-Treg-Token": token})).status_code == 404
