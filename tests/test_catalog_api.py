@@ -1441,3 +1441,47 @@ async def test_catalog_get_hunter_domain_search_quotes_the_credit(clients: Async
     row = next(r for r in search["results"] if r["id"] == "hunter.companies.emails")
     assert row["cost"]["display_usd"] == 0.0245
     assert row["cost"]["usd"] == 0.00245
+
+
+INSTAGRAM_REELS_SEARCH_ID = "scrapecreators.x.v2-instagram-reels-search"
+INSTAGRAM_REELS_DATE_POSTED = ["last-week", "last-month", "last-year"]
+
+
+def test_scrapecreators_instagram_reels_search_date_posted_enum():
+    """Feedback #381: GET /v2/instagram/reels/search only accepts week/month/year windows.
+
+    catalog_get used to advertise example last-hour (Google's generic date_posted
+    set). Upstream OpenAPI enum is last-week | last-month | last-year; hour/day
+    windows are unsupported because Google does not index Instagram reels
+    reliably there. Sibling scrapecreators date_posted fields keep their own
+    windows. Settlement is unchanged.
+
+    Ref: https://docs.scrapecreators.com/openapi.json
+    """
+    cat = cs.load()
+    ep = cat.by_id[INSTAGRAM_REELS_SEARCH_ID]
+    assert ep["path"] == "/v2/instagram/reels/search"
+    field = ep["input"]["queryParams"]["date_posted"]
+    assert field["enum"] == INSTAGRAM_REELS_DATE_POSTED
+    assert field["example"] == "last-week"
+    note = field["note"].lower()
+    assert "hour" in note and "day" in note
+    assert "not supported" in note or "unsupported" in note
+
+    google = cat.by_id["scrapecreators.x.v1-google-search"]["input"]["queryParams"]["date_posted"]
+    assert google.get("enum") is None
+    assert google["example"] == "last-hour"
+    linkedin = cat.by_id["scrapecreators.x.v1-linkedin-search-posts"]["input"]["queryParams"]["date_posted"]
+    assert linkedin.get("enum") is None
+
+
+async def test_catalog_get_scrapecreators_instagram_reels_search_date_posted(
+        clients: AsyncClient):
+    """Feedback #381: catalog_get must not advertise last-hour on this reels search."""
+    body = (await clients.get(f"/catalog/endpoints/{INSTAGRAM_REELS_SEARCH_ID}")).json()
+    field = body["endpoint"]["input"]["queryParams"]["date_posted"]
+    assert field["enum"] == INSTAGRAM_REELS_DATE_POSTED
+    assert field["example"] == "last-week"
+    note = field["note"].lower()
+    assert "hour" in note and "day" in note
+    assert "not supported" in note or "unsupported" in note
