@@ -13,7 +13,7 @@ limits: Free-tier capacity is variable; observed HTTP 418 temporary throttling. 
 endpoints:
 - id: trykitt.people.email.find
   cache:
-    ignore_paths: ["jobId"]
+    ignore_paths: ["jobId", "credits"]
   domain: contacts
   capability: people.email.find
   platform: people
@@ -89,7 +89,7 @@ endpoints:
   docs_url: https://documenter.getpostman.com/view/479833/2s93m62NHf
 - id: trykitt.people.email.verify
   cache:
-    ignore_paths: ["jobId"]
+    ignore_paths: ["jobId", "credits"]
   domain: contacts
   capability: people.email.verify
   platform: people
