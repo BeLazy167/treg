@@ -568,6 +568,7 @@ def _lifespan(role: AppRole):
             if mcp_reader_bound:
                 _mcp.configure_endpoint_observation_reader(endpoint_observations)
             fault_handler = analytics.install_fault_handler()
+            analytics.capture_service_started(role)
             try:
                 if role == "control" or _mcp is None:
                     yield

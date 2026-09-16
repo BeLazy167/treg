@@ -59,7 +59,8 @@ metadata; the resolver and relay contain no provider-specific anonymous path rul
 
 Cache experiment metadata is attached to the existing `tool_called` event by the call-service
 capture funnel: outcome/reason, comparison and TTL policy, rollout percentage, lookup duration,
-and candidate age/window, plus `cache_price` (`full` | `repeat` | `free`) on a hit. It contains
+and candidate age/window, plus `cache_price` (`full` | `repeat` | `free`) on a hit, and, like
+every server event, the `build` and `archive_config` fingerprints from `analytics.py`. It contains
 no response/request content or cache key. The stable team/endpoint rollout runs before archive
 DB lookup (open to every endpoint and team by default); unselected calls retain
 the normal relay and money path. Own-key catalog calls take part too: a storable own-key 2xx is
