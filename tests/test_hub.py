@@ -1071,3 +1071,13 @@ async def test_the_public_log_hides_when_the_maker_switches_it_off(clients: Asyn
     assert (await clients.patch(f"/hub/tools/{tool_id}", json={"public_log": False})).status_code == 200
     assert "Recent runs" not in (await clients.get(f"/hub/{tool_id}")).text
     assert "## Recent runs" not in (await clients.get(f"/hub/{tool_id}.md")).text
+
+
+# ---------------------------------------------------------------------------------------------
+# Phase 10.4: the dashboard's Listing tab carries the two switches.
+
+async def test_the_dashboard_carries_the_listing_tab(clients: AsyncClient, hub_on):
+    page = (await clients.get("/app")).text
+    for needle in ("Listed in the catalog", "Public run log on the share page", "setHubFlag('listed'", "setHubFlag('public_log'",
+                   "hub.tab==='listing'"):
+        assert needle in page, needle
