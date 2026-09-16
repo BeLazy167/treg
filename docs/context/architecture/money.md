@@ -444,11 +444,11 @@ command, not a URL.
 
 ## The spend ceiling (`application.call.reserve`)
 
-`_enforce_platform_daily_cap` is a per-org, per-UTC-day ceiling on platform spend, and it is
-**fail-closed** - unlike the per-user call cap, which may let a few extra through under load. A query
-that cannot answer refuses the call, because this one meters *our* money. The balance alone is not
-enough: auto-top-up refills it, so the cap is the blast radius of both a runaway agent and a pricing
-mistake in the catalog.
+`_enforce_platform_daily_cap` is a per-org, per-UTC-day limit on platform spend, applied only when
+one is set (the team's own figure, else the deployment default, which is none). When one applies it
+is **fail-closed** - unlike the per-user call cap, which may let a few extra through under load. A
+query that cannot answer refuses the call. When none applies the ledger is not consulted: the
+prepaid balance and the auto-top-up monthly cap are the bounds on what a team can spend.
 
 An endpoint whose price is unknown never reaches this path at all: `catalog_store.platform_eligible`
 requires `cost_view(...)["usd"] is not None`, so "we don't know" is refused rather than served free -
@@ -742,12 +742,14 @@ the only budgets and reports it touches are the builder's own. When a token will
 a 403, because otherwise the holder could retag their calls and walk out of their own budget, which is
 the entire point of giving them a scoped token.
 
-### The per-org daily cap has two owners
+### The per-org daily cap is the team's
 
-`budget_policy._effective_daily_cap` takes the minimum of the team's `Org.daily_cap_micro`
-and the deployment's `platform_daily_cap_usd` ceiling (default $500/day). The team can lower its
-limit and inspect it through `GET /orgs/{id}/settings`. A request above the platform ceiling is
-refused, not silently clamped.
+`budget_policy._effective_daily_cap` is the team's `Org.daily_cap_micro` when set, else the
+deployment's `platform_daily_cap_usd` default (0 = no limit, the shipped default). The team sets
+any figure in either direction through `PATCH /orgs/{id}/settings`, 0 meaning "follow the
+default", and inspects it through `GET` (`daily_cap_micro` 0 = no limit, plus
+`platform_default_micro`). Nothing is clamped. The limit was once also a platform ceiling the
+team could not raise; that fired only on funded teams mid-workload and never on abuse, so it went.
 
 The check itself, `ledger.spent_today`, is the most-run query on the platform: every metered call,
 inside the reserve transaction, on an api-pool connection, fail-closed. Its cost is therefore the
