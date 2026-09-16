@@ -3022,6 +3022,13 @@ async def skill_md():
     return _serve_md("skill.md")
 
 
+@app.get("/skills/ugc/SKILL.md", include_in_schema=False)
+async def make_ugc_skill_md():
+    """The make-ugc orchestrator skill: the /ugc workflow as a file an agent can follow. Served from
+    the bundled copy (`.agents/skills/make-ugc` is a symlink to it) so the two never drift."""
+    return _serve_md("skills/make-ugc/SKILL.md")
+
+
 @app.get("/feedback.md", include_in_schema=False)
 async def feedback_md():
     return _serve_md("feedback.md")
@@ -3377,15 +3384,15 @@ public_docs_router = APIRouter()
 app = public_docs_router
 
 
-def _skill_frontmatter() -> dict[str, str]:
+def _skill_frontmatter(name: str = "skill.md") -> dict[str, str]:
     """The bundled skill's frontmatter, read at request time rather than duplicated in code — the
     description is what drives discovery in every registry, and a second copy of it would drift."""
-    f = _WEB_DIR / "skill.md"
+    f = _WEB_DIR / name
     if not f.exists():
-        raise HTTPException(status_code=404, detail="skill.md not bundled")
+        raise HTTPException(status_code=404, detail=f"{name} not bundled")
     text = _fill_headline(f.read_text(encoding="utf-8"))
     if not text.startswith("---"):
-        raise HTTPException(status_code=404, detail="skill.md has no frontmatter")
+        raise HTTPException(status_code=404, detail=f"{name} has no frontmatter")
     out: dict[str, str] = {}
     for line in text.split("---", 2)[1].strip().splitlines():
         key, _, value = line.partition(":")
@@ -3402,11 +3409,11 @@ async def well_known_skills_index():
     — the same skill the plugins ship and `install.sh` drops, reached by whoever asks the domain.
     """
     fm = _skill_frontmatter()
-    return JSONResponse({"skills": [{
-        "name": fm.get("name", "treg"),
-        "description": fm.get("description", ""),
-        "files": ["SKILL.md"],
-    }]})
+    ugc = _skill_frontmatter("skills/make-ugc/SKILL.md")
+    return JSONResponse({"skills": [
+        {"name": fm.get("name", "treg"), "description": fm.get("description", ""), "files": ["SKILL.md"]},
+        {"name": ugc.get("name", "make-ugc"), "description": ugc.get("description", ""), "files": ["SKILL.md"]},
+    ]})
 
 
 @app.get("/.well-known/skills/treg/SKILL.md", include_in_schema=False)
@@ -3415,6 +3422,12 @@ async def well_known_skill_md():
     canonical `/skill.md` uses, so `{BASE}` is templated to the serving host here too — a self-hosted
     registry advertises ITSELF, not treg.to."""
     return _serve_md("skill.md")
+
+
+@app.get("/.well-known/skills/make-ugc/SKILL.md", include_in_schema=False)
+async def well_known_make_ugc_md():
+    """The second entry `index.json` promises; the same file as /skills/ugc/SKILL.md."""
+    return _serve_md("skills/make-ugc/SKILL.md")
 
 
 @app.get("/connect-demo", include_in_schema=False)
