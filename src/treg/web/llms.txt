@@ -366,8 +366,9 @@ A hub tool is one your team publishes for other people's agents: a JSON steps re
 a sandbox. Every step runs through the team's own tools and keys; a caller pays the metered steps
 plus the price the maker set (`price_usd`), and the price lands on the maker's balance as `earned`
 credit, spendable at once. Callable the moment it is published, by id `<team-slug>.<name>`:
-`POST {BASE}/call/<id>` with the inputs as a JSON body → `{run_id, output, usage, trace}`. Not
-listed in search; the maker shares the id or the page `{BASE}/hub/<id>` (`.md` for agents).
+`POST {BASE}/call/<id>` with the inputs as a JSON body → `{run_id, output, usage, trace}`. A new
+tool is not in search; the maker shares the id or the page `{BASE}/hub/<id>` (`.md` for agents), and
+may LIST it (`treg hub list <id>`) so it appears in `catalog_search` as a `kind: "hub"` row.
 
 - Make one: `treg hub init <name> [--script]` writes four files (recipe.json, run.js, check.json,
   README.md); `treg hub run . --input k=v` runs the folder for real, nothing stored; `treg hub
@@ -389,6 +390,10 @@ listed in search; the maker shares the id or the page `{BASE}/hub/<id>` (`.md` f
   add`), list the tool in `uses`, name it in `ctx.call`. The script never sees the key.
 - Read any hub tool's contract with `GET {BASE}/catalog/endpoints/<id>` (`catalog_get`,
   `treg catalog get`): inputs, output, price line, health, the call line.
+- **Listing and the run log** (the maker's two switches, no version bump): `treg hub list <id>` puts
+  the newest live version in catalog search (`treg hub unlist` takes it out); `treg hub log <id>
+  --public off` hides the run log on the share page. The page's log shows the last 20 runs and runs
+  per day: time, outcome, ms, steps, units, price paid — never who called, never inputs or output.
 - Versions: the newest live one serves; `<id>@N` pins one for 30 days after a newer lands.
   `treg hub earnings <id>` shows runs and credit per day.
 <!--/hub-->

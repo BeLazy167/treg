@@ -1,6 +1,6 @@
 ---
 title: The tool hub — tools a maker publishes, made of other tools
-status: built (phases 1–9, 2026-09-09/14; pricing flexibility 9.1–9.5, decisions in `docs/hub-pricing-decisions.md`); behind `hub_enabled` (TREG_HUB_ENABLED), off in production until the final merge
+status: built (phases 1–10, 2026-09-09/14; pricing flexibility 9.1–9.5 (`docs/hub-pricing-decisions.md`), listing + public run log 10.1–10.5 (`docs/hub-listing-decisions.md`)); behind `hub_enabled` (TREG_HUB_ENABLED), off in production until the final merge
 sources:
   - src/treg/domain/hub/__init__.py
   - src/treg/domain/hub/manifest.py
@@ -242,11 +242,17 @@ publishing a version with a `pricing` block.
   `treg catalog get`) answers for a hub id with the public contract (`kind: "hub"`, summary,
   inputs, output, the price line (`price_label`: the mode and the worst case; `cost.usd` is the
   worst case), health, version, `call_template`, the page URL, the readme);
-  never the script, the maker's tools or a key. Search never lists a hub tool.
+  never the script, the maker's tools or a key. Search lists a hub tool only when its maker set
+  `listed` (10.2): the newest live version is scored by `catalog_store.score_extra` with the catalog's
+  own tokens, aliases, platform boost, idf and admission gate, then merged by score with no boost
+  (`merge_by_score`, catalog rows first on a tie). The row is the public contract plus its 30-day ok
+  rate from runs by others; unlisted, failed and retired never appear.
 - **The public share page** `GET /hub/<id>` (and `.md`; `@N`): the contract for a person or an
   agent on the public stylesheet; the price as the mode and the worst case ("seller $X per unit,
-  up to $Y per run"; the schema.org Offer carries the worst case); the check trace as shape only
-  (never what each step called);
+  up to $Y per run"; the schema.org Offer carries the worst case); the RUN LOG when the maker left
+  `public_log` on (10.3): the last 20 runs by others and runs per day over 30 days, each row time,
+  outcome, ms, steps, `units` and the price paid, and never the caller, the inputs or the output;
+  the check trace as shape only (never what each step called);
   "made of N tools (names and keys hidden)"; reliability over 30 days; older versions still
   callable; readable without sign-in; `noindex`, not in the sitemap.
 - **The dashboard** (`web/index.html`): a Hub view for the maker (the list; a detail with
@@ -254,7 +260,9 @@ publishing a version with a `pricing` block.
   and the run page `/app/runs/<run_id>`, opened on load in both sign-in modes. Files are
   read-only in the dashboard: a new version comes from the terminal or the agent.
 - **The CLI:** `treg hub init` scaffolds a `pricing` block (`flat`, 0); `treg hub ls` shows the price
-  label; `treg hub earnings` prints the average price per successful run.
+  label; `treg hub earnings` prints the average price per successful run; `treg hub list | unlist`
+  and `treg hub log --public on|off` flip the two distribution switches (`HubTool.listed`,
+  `HubTool.public_log`, migration 0038), which the dashboard's Listing tab also carries.
 
 ## The case study (2026-09-09) and what it taught
 

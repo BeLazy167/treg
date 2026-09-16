@@ -208,8 +208,9 @@ Only tools this org has registered resolve. Discover them with `treg tool ls` ·
 **A hub tool is a tool your team publishes, made of other tools:** a JSON steps recipe, or a script
 that runs in a sandbox. Every step runs through the team's own tools and keys; a caller pays the
 metered steps plus the price you set, and the price lands on your balance as credit. The tool is
-callable at once by id, `<team-slug>.<name>`, from any agent with a treg token. Nothing is listed in
-search: you share the id or the page `{BASE}/hub/<id>`.
+callable at once by id, `<team-slug>.<name>`, from any agent with a treg token. A new tool is NOT in
+search: you share the id or the page `{BASE}/hub/<id>`. List it with `treg hub list <id>` and it
+appears in `catalog_search` too, marked `kind: "hub"`, ranked by relevance like any endpoint.
 
 **One folder, four files** — `treg hub init <name> --script` writes a neutral skeleton:
 
@@ -256,6 +257,8 @@ The caller pays your price plus the metered steps; the caller's `X-Treg-Run-Max-
 treg hub run . --input domain=figma.com   # a real run on your own token; nothing stored; read the trace
 treg hub publish .                        # validate, run check.json once on your balance, live on pass
 treg hub ls · treg hub earnings <id>      # your tools; what one earned, per day
+treg hub list <id> · treg hub unlist <id>  # show it in catalog search, or take it out (no version bump)
+treg hub log <id> --public off             # hide the run log on your share page (default: shown)
 ```
 
 A refusal names the exact field and rule to fix (`uses[0]: 'supabase' is not one of your team's

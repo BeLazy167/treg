@@ -95,7 +95,9 @@ agents then built against a constitution that was wrong.
   the run's catalog step cost); a variable price reserves the declared maximum and settles the real
   amount, refunding the rest (`docs/hub-pricing-decisions.md`). A script runs in a separate process
   with no network; `ctx.call` is its only road out and `uses` in the manifest names every host it
-  may reach. See `docs/context/architecture/hub.md`.
+  may reach. A hub tool is out of catalog search until its maker lists it (`listed`), and its share
+  page shows a run log of outcomes only unless the maker turns `public_log` off
+  (`docs/hub-listing-decisions.md`). See `docs/context/architecture/hub.md`.
 - **Money.** Everything is **integer micro-USD** - never floats, never cents. The Stripe SDK lives
   only in `infra/stripe.py`, orchestration in `application/billing.py`, and `reconcile.py` is
   read-only. See `docs/context/architecture/money.md`.
