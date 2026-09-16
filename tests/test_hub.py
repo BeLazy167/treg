@@ -1040,3 +1040,34 @@ async def test_mcp_catalog_search_returns_a_listed_hub_tool(clients: AsyncClient
         out = await _call_tool(c, "catalog_search", {"query": Q_OWN_WORDS, "limit": 10}, token=token)
     row = [r for r in out["results"] if r["endpoint_id"] == tool_id][0]
     assert row["kind"] == "hub" and row["no_key_needed"] is True and row["usd_per_call"] == 0.01
+
+
+# ---------------------------------------------------------------------------------------------
+# Phase 10.3: the public run log (docs/hub-listing-decisions.md, decisions 3-5).
+
+async def test_the_public_page_shows_recent_runs_and_never_the_caller_inputs_or_output(clients: AsyncClient, hub_on, platform_on, monkeypatch):
+    pub = await _live_tool_with_readme(clients, monkeypatch, price=0.01)
+    tool_id = pub["tool_id"]
+    # a stranger calls twice; the relay now answers with a marker that must never reach the page
+    monkeypatch.setattr(call_service, "relay", _fake_relay(200, b'{"data": {"domain": "OUTPUT-MARKER-77"}}'))
+    hdr = {"X-Treg-Token": (await clients.post("/users", json={"email": "stranger-log@example.com"})).json()["token"]}
+    for _ in range(2):
+        assert (await clients.post(f"/call/{tool_id}", json={"domain": "INPUT-MARKER-55"}, headers=hdr)).status_code == 200
+    page = (await clients.get(f"/hub/{tool_id}")).text
+    assert "Recent runs" in page and "2 runs, 2 ok, 0 failed" in page and page.count("<span class=\"ok\">ok</span>") == 2
+    assert "$0.01" in page and "runs per day" in page
+    for leak in ("stranger-log@example.com", "INPUT-MARKER-55", "OUTPUT-MARKER-77"):
+        assert leak not in page, leak
+    md = (await clients.get(f"/hub/{tool_id}.md")).text
+    assert "## Recent runs (30 days: 2 runs, 2 ok, 0 failed)" in md and "| ok |" in md
+    for leak in ("stranger-log@example.com", "INPUT-MARKER-55", "OUTPUT-MARKER-77"):
+        assert leak not in md, leak
+
+
+async def test_the_public_log_hides_when_the_maker_switches_it_off(clients: AsyncClient, hub_on, platform_on, monkeypatch):
+    pub = await _live_tool_with_readme(clients, monkeypatch, price=0.01)
+    tool_id = pub["tool_id"]
+    assert "Recent runs" in (await clients.get(f"/hub/{tool_id}")).text          # on by default
+    assert (await clients.patch(f"/hub/tools/{tool_id}", json={"public_log": False})).status_code == 200
+    assert "Recent runs" not in (await clients.get(f"/hub/{tool_id}")).text
+    assert "## Recent runs" not in (await clients.get(f"/hub/{tool_id}.md")).text
