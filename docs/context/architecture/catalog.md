@@ -127,6 +127,8 @@ sources:
   - src/treg/catalog/dataforseo.yaml
   - src/treg/catalog/dataforseo.extended.yaml
   - tests/test_dataforseo_constraints.py
+  - src/treg/catalog/scrapecreators.yaml
+  - src/treg/catalog/scrapecreators.extended.yaml
   - src/treg/catalog/diffbot.yaml
   - src/treg/catalog/diffbot.extended.yaml
   - src/treg/catalog/tikhub.extended.yaml
@@ -1540,6 +1542,17 @@ The catalog field note (and `input.note`) now require `enable_browser_rendering=
 JS-only audits omit `browser_preset`. Settlement is unchanged. Enforced by
 `test_instant_pages_browser_preset_requires_browser_rendering` and
 `test_catalog_get_dataforseo_page_audit_names_browser_preset_dependency`.
+
+### ScrapeCreators Instagram reels search `date_posted`
+
+ScrapeCreators' OpenAPI for `GET /v2/instagram/reels/search` restricts `date_posted` to
+`last-week`, `last-month`, and `last-year`. Hour and day windows are not supported because
+Google does not index Instagram reels reliably in those windows. Feedback #381:
+`scrapecreators.x.v2-instagram-reels-search` advertised `example: last-hour` with no enum,
+so agents sent an invalid filter. Catalog-only: the field now names that three-value enum
+and example `last-week`. Sibling `date_posted` fields (Google search, LinkedIn posts) keep
+their own windows. Enforced by `test_scrapecreators_instagram_reels_search_date_posted_enum`
+and `test_catalog_get_scrapecreators_instagram_reels_search_date_posted`.
 
 ## Choosing between providers (`domain/catalog/stats.py`)
 
