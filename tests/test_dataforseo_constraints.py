@@ -179,6 +179,44 @@ def test_core_live_endpoints_document_single_task_constraint(endpoint_id):
     )
 
 
+GOOGLE_AI_MODE_LIVE_ID = "dataforseo.x.serp-google-ai-mode-live-advanced"
+
+
+def test_google_ai_mode_live_documents_single_task_constraint():
+    """Feedback #94: /serp/google/ai_mode/live/advanced accepts exactly one task.
+
+    catalog_get reused the generic "ARRAY of task objects — one object per task"
+    note, so agents batched keywords and got HTTP 200 with the first task OK and
+    per-task 40000 "You can set only one task at a time" on the rest. Same class
+    as backlinks/summary/live (#102 / #487). Settlement is unchanged; do not
+    auto-split a multi-task array.
+
+    Ref: https://docs.dataforseo.com/v3/serp/google/ai_mode/live/advanced/
+    """
+    endpoints = load_dataforseo_endpoints()
+    endpoint = next((ep for ep in endpoints if ep.get("id") == GOOGLE_AI_MODE_LIVE_ID), None)
+    assert endpoint is not None, f"{GOOGLE_AI_MODE_LIVE_ID} not found"
+    assert endpoint.get("path") == "/serp/google/ai_mode/live/advanced"
+
+    note = (endpoint.get("input") or {}).get("note", "")
+    assert "exactly one task" in note.lower() or "exactly 1 task" in note.lower(), (
+        f"{GOOGLE_AI_MODE_LIVE_ID}: input.note must name the single-task cap"
+    )
+    assert "40000" in note, (
+        f"{GOOGLE_AI_MODE_LIVE_ID}: input.note should name the live 40000"
+    )
+    assert "one object per task" not in note.lower(), (
+        f"{GOOGLE_AI_MODE_LIVE_ID}: generic 'one object per task' wording still "
+        "reads as multi-task batching"
+    )
+
+    test_req = endpoint.get("test_request") or {}
+    tasks = test_req.get("body")
+    assert isinstance(tasks, list) and len(tasks) == 1, (
+        f"{GOOGLE_AI_MODE_LIVE_ID}: test_request.body must be a one-element array"
+    )
+
+
 PAGE_AUDIT_ID = "dataforseo.web.page.audit"
 
 
