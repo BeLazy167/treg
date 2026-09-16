@@ -38,6 +38,7 @@ covers (frontmatter `sources:`). Regenerate this index with
 | [The proxy — faithful credential-injecting relay + tool resolution](architecture/proxy-model.md) | shipped | relay.py, ssrf.py, api.py, authorize.py, … |
 | [Sumble — account intelligence, subscription credits and BYOK](architecture/sumble.md) | shipped | sumble.yaml, sumble.extended.yaml, sumble.organizations.json, sumble.py, … |
 | [Super-admin — cross-tenant read + control](architecture/super-admin.md) | shipped | api.py, admin.py, access.py, config.py |
+| [Wiza — synchronous search and company enrichment, BYOK async jobs](architecture/wiza.md) | shipped | wiza.yaml, wiza.people.search.json, wiza.companies.search.json, wiza.companies.enrich.json, … |
 
 ## Interfaces (API · CLI · skill)
 

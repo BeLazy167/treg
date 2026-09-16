@@ -35,6 +35,7 @@ _KNOWN: dict[str, tuple[str, str, str]] = {
     "hunter": ("monthly_quota", "quota_reset", "api"),
     "quickenrich": ("monthly_quota", "quota_reset", "api"),
     "prospeo": ("monthly_quota", "quota_reset", "api"),
+    "wiza": ("credits", "manual", "api"),
     "sumble": ("monthly_quota", "quota_reset", "api"),
     "predictleads": ("monthly_quota", "quota_reset", "api"),
     "companyenrich": ("credits", "manual", "api"),

@@ -572,6 +572,14 @@ adapters:
     # Prospeo fixes pages at 25, so there is no honest `limit` input to forward. Return its total.
     out: {people: results, count: pagination.total_count}
     miss: "results == []"
+  wiza.people.search:
+    accepts: [[title]]
+    in: {title: body.filters.job_title}
+    in_expr: {body.filters.job_title: "choose(title, list(obj('v', title, 's', 'i')), null)"}
+    const: {body.size: 1}
+    test_identity: {title: Founder}
+    out: {people: data.profiles, count: data.total, next_cursor: data.next_page_token}
+    miss: "data.profiles == []"
   exa.people.search:
     accepts: [[q]]
     in:  {q: body.query}
@@ -684,6 +692,14 @@ adapters:
           location: "join(company.location.city, company.location.state, company.location.country)",
           linkedin_url: company.linkedin_url}
     miss: "company == null"
+  wiza.companies.enrich:
+    accepts: [[domain], [name]]
+    in: {domain: body.company_domain, name: body.company_name}
+    out: {name: data.company_name, domain: data.company_domain, website: data.domain,
+          description: data.company_description, industry: data.company_industry,
+          employees: data.company_size, founded: data.company_founded,
+          location: data.company_location, linkedin_url: data.company_linkedin}
+    miss: "data.company_name == null"
   thecompaniesapi.companies.enrich:
     accepts: [[domain]]
     in:  {domain: pathParams.domain}
@@ -858,6 +874,16 @@ adapters:
     # Prospeo fixes pages at 25, so there is no honest `limit` input to forward. Return its total.
     out: {companies: results, count: pagination.total_count}
     miss: "results == []"
+  wiza.companies.search:
+    accepts: [[industry], [technology]]
+    in: {industry: body.filters.company_industry, technology: body.filters.technologies}
+    in_expr:
+      body.filters.company_industry: "choose(industry, list(obj('v', industry, 's', 'i')), null)"
+      body.filters.technologies: "choose(technology, list(obj('v', technology, 's', 'i')), null)"
+    const: {body.size: 1}
+    test_identity: {industry: Computer Software}
+    out: {companies: data.companies, count: data.total, next_cursor: data.next_page_token}
+    miss: "data.companies == []"
   exa.companies.search:
     accepts: [[q]]
     in:  {q: body.query}

@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Wiza">
+  <!-- Neutral placeholder lettermark. Replace only with an official vendor-supplied asset. -->
+  <rect width="64" height="64" rx="14" fill="#111827"/>
+  <path d="M13 18h8l5 27 6-19h7l6 19 5-27h8L50 48h-9l-5.5-17L30 48h-9z" fill="#fff"/>
+</svg>
