@@ -105,7 +105,8 @@ def _seed_connection(env: dict[str, str]) -> None:
         """
         import asyncio
 
-        from sqlalchemy import insert, text
+        from sqlalchemy import insert
+        from sqlalchemy import inspect as sa_inspect
 
         from treg import oauth_providers
         from treg.infra.db import session_maker
@@ -116,7 +117,8 @@ def _seed_connection(env: dict[str, str]) -> None:
             assert provider is not None
             async with session_maker() as db:
                 # The org table at 0026 predates columns the current model carries.
-                present = {r[1] for r in (await db.execute(text("PRAGMA table_info(org)"))).all()}
+                present = {c["name"] for c in await db.run_sync(
+                    lambda sync: sa_inspect(sync.connection()).get_columns("org"))}
                 values = {k: v for k, v in Org(name="Upgrade Test", slug="upgrade-test").model_dump().items()
                           if k in present and v is not None}
                 org_id = (await db.execute(insert(Org.__table__).values(**values))).inserted_primary_key[0]

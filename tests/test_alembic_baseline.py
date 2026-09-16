@@ -9,6 +9,7 @@ from alembic import command
 from alembic.autogenerate import compare_metadata
 from alembic.migration import MigrationContext
 from sqlalchemy import insert, text
+from sqlalchemy import inspect as sa_inspect
 from sqlmodel import SQLModel
 from sqlmodel import select
 
@@ -65,7 +66,8 @@ async def test_alembic_head_has_no_model_drift():
 
 async def _insert_org_at_revision(session, **fields) -> int:
     """Insert an org row using only the columns the CURRENT schema revision has."""
-    present = {row[1] for row in (await session.execute(text("PRAGMA table_info(org)"))).all()}
+    present = {c["name"] for c in await session.run_sync(
+        lambda sync: sa_inspect(sync.connection()).get_columns("org"))}
     values = {k: v for k, v in Org(**fields).model_dump().items() if k in present and v is not None}
     result = await session.execute(insert(Org.__table__).values(**values))
     return result.inserted_primary_key[0]
