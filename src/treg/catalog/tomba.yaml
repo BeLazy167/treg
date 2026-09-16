@@ -45,7 +45,7 @@ proposed_capabilities:
 endpoints:
   - id: tomba.people.email.find
     cache:
-      ignore_paths: ["data.verification.date"]
+      ignore_paths: ["data.verification.date", "data.sources[*].extracted_on", "data.sources[*].last_seen_on"]
     domain: people
     capability: people.email.find
     platform: people
@@ -80,7 +80,7 @@ endpoints:
 
   - id: tomba.people.email.find.linkedin
     cache:
-      ignore_paths: ["data.verification.date"]
+      ignore_paths: ["data.verification.date", "data.sources[*].extracted_on", "data.sources[*].last_seen_on"]
     domain: people
     capability: people.email.find
     platform: people
