@@ -2812,6 +2812,7 @@ _SITEMAP_PAGES: tuple[tuple[str, str, str], ...] = (
     ("/grokbot", "grokbot.html", "0.8"),
     ("/fable", "fable-gtm.html", "0.8"),
     ("/gpt6", "astra.html", "0.8"),
+    ("/ugc", "ugc.html", "0.8"),
     ("/terms", "terms.html", "0.2"),
     ("/privacy", "privacy.html", "0.2"),
     # The outcome pages. Listed WITHOUT a trailing slash on purpose: `/use-cases/<slug>/` 307s to
@@ -3187,6 +3188,18 @@ async def gpt6_page():
     return FileResponse(page, headers={"Cache-Control": "no-cache"})
 
 
+@app.get("/ugc", include_in_schema=False)
+async def ugc_page():
+    """Landing page for the AI-generated UGC workflow article: the five steps (trend pull,
+    JSON-prompt character, Seedance 2.5 talking head, phone demo + cloned voice, hooks at scale)
+    with the generated clips and the bill. Indexed like /people-search: canonical, OG meta,
+    in the sitemap, no-cache so edits land on refresh. Asset paths are relative (media/ugc/…)."""
+    page = _WEB_DIR / "ugc.html"
+    if not page.exists():
+        raise HTTPException(status_code=404, detail="ugc.html not bundled")
+    return FileResponse(page, headers={"Cache-Control": "no-cache"})
+
+
 @app.get("/people-search", include_in_schema=False)
 async def people_search_page():
     """Landing page for the people-search launch ("Claude for people search") — the destination the
@@ -3204,6 +3217,8 @@ async def people_search_page():
 # chronological (newest first), not alphabetical.
 _BLOG_LAUNCHES: list[tuple[str, str, str, str]] = [
     # (slug, title, date, one-line blurb)
+    ("/ugc", "AI UGC Videos for $0.67 a Clip", "2026-09-15",
+     "The five-step workflow: trending hooks, a JSON-prompt character, Seedance 2.5, a cloned voice."),
     ("/gpt6", "GPT-6 and treg.to", "2026-09-08",
      "Codex demo: one prompt, the market read, and the catalog of tools it called."),
     ("/fable", "Claude Fable 5.1 + treg.to", "2026-09-02",
