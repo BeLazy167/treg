@@ -378,6 +378,7 @@ async def _execute_call(request: _ApplicationRequest, upstream_client: httpx.Asy
     request.state.idem_claim = intake.claim
 
     drop_params: set[str] = set()
+    streaming_free_result = False
     served_hit = False  # a cached hit — set where the archive answers instead of the vendor
     # The archive identities of this call's answer (question key + exact bytes), set where the
     # archive records or serves; kept on the audit row so `/calls/{id}/result` can find it.
@@ -511,6 +512,8 @@ async def _execute_call(request: _ApplicationRequest, upstream_client: httpx.Asy
                 org_id=caller.org_id, user_email=caller.email, tool_name=ep["id"],
                 method=request.method, path=rest, status_code=exc.status_code,
                 client=_client_name(request), refused_by=_refusal_kind(exc.status_code),
+                api_key_id=caller.api_key_id, api_key_name=caller.api_key_name,
+                api_key_prefix=caller.api_key_prefix,
                 telemetry={"call_ref": call_ref, "endpoint_id": ep["id"], "provider": "treg",
                            "credential_tier": "routed", **_tag_telemetry(meta)})
             raise
@@ -558,6 +561,8 @@ async def _execute_call(request: _ApplicationRequest, upstream_client: httpx.Asy
                 org_id=caller.org_id, user_email=caller.email, tool_name=ep["id"],
                 method=request.method, path=rest, status_code=mkexc.status_code,
                 client=_client_name(request), refused_by=refused,
+                api_key_id=caller.api_key_id, api_key_name=caller.api_key_name,
+                api_key_prefix=caller.api_key_prefix,
                 telemetry={"call_ref": call_ref,
                            "endpoint_id": ep["id"], "provider": ep.get("provider"),
                            **_tag_telemetry(meta)})
@@ -612,7 +617,7 @@ async def _execute_call(request: _ApplicationRequest, upstream_client: httpx.Asy
     audit_slug = caller.org.slug  # PostHog group key — must match the browser's posthog.group('team', slug)
 
     cache_diagnostics: dict = {"cache_outcome": "not_attempted", "cache_mode": archive.mode(),
-                               "cache_comparison_mode": "strict",
+                               "cache_comparison_mode": "json",
                                "cache_ttl_policy": "adaptive",
                                "cache_rollout_percent": get_settings().archive_serve_percent}
 
@@ -681,6 +686,8 @@ async def _execute_call(request: _ApplicationRequest, upstream_client: httpx.Asy
             org_id=audit_org_id, user_email=audit_email, tool_name=audit_tool,
             method=request.method, path=upstream_url, status_code=status_code,
             client=_client_name(request), refused_by=refused_by, telemetry=telemetry,
+            api_key_id=caller.api_key_id, api_key_name=caller.api_key_name,
+            api_key_prefix=caller.api_key_prefix,
         )
         # Product analytics mirror of the row above.
         props = _tool_called_props(
@@ -918,7 +925,8 @@ async def _execute_call(request: _ApplicationRequest, upstream_client: httpx.Asy
             # for, tagged `cached`; the founder's deferred pricing decision attaches to that tag.
             served = None
             # A probe must reach the vendor: an archived answer proves nothing about capacity.
-            if mk is not None and mk.metered and mk.probe_lock_id is None and archive.serving():
+            if (mk is not None and mk.metered and not mk.streamable_free_result
+                    and mk.probe_lock_id is None and archive.serving()):
                 lookup_started = time.monotonic()
                 try:
                     served = await archive.lookup(
@@ -948,7 +956,10 @@ async def _execute_call(request: _ApplicationRequest, upstream_client: httpx.Asy
                     drop_params=drop_params or None,
                     force_identity=mk is not None and (mk.metered or mk.free_owned_poll),
                 )
-            if served is None and mk is not None and (mk.metered or mk.free_owned_poll):
+            streaming_free_result = (mk is not None and mk.streamable_free_result
+                                     and request.method == "GET" and 200 <= response.status < 300)
+            if (served is None and mk is not None and (mk.metered or mk.free_owned_poll)
+                    and not streaming_free_result):
                 # Settlement reads the body; owned free polls also need it to learn result ownership.
                 # A failure while draining remains an upstream failure on either path.
                 response, body = await _buffer_response(response)
@@ -1114,6 +1125,7 @@ async def _execute_call(request: _ApplicationRequest, upstream_client: httpx.Asy
             else:
                 charged, observed = await _platform_settle(
                     mk, response.status, body, headers=httpx.Headers(response.raw_headers),
+                    observed_override=0 if streaming_free_result else None,
                     # `provider_failed_`, not `call_failed_`: the latter is the branch above, where treg
                     # never got an answer (timeout, SSRF refusal, a failed oauth refresh). Both release a
                     # 502 the same way, so a shared prefix would make the two indistinguishable in the
@@ -1168,7 +1180,8 @@ async def _execute_call(request: _ApplicationRequest, upstream_client: httpx.Asy
             if result_aware else "not_applicable")
         pending = _audit(response.status, observed_micro=observed,
                          charged_micro=None if deferred else charged,
-                         duration_ms=duration_ms, response_bytes=len(body), hit=result.hit,
+                         duration_ms=duration_ms,
+                         response_bytes=None if streaming_free_result else len(body), hit=result.hit,
                          capacity_signal=capacity_signal, error_request=err_request, error_response=err_response,
                          defer_analytics=may_overflow)
         served_via = ""
@@ -1215,7 +1228,8 @@ async def _execute_call(request: _ApplicationRequest, upstream_client: httpx.Asy
             try:
                 await _store_idempotent(idem_key, caller, status_code=response.status, body=body,
                                         media_type=_response_header(response, "content-type"),
-                                        charged_micro=charged, metered=True, call_ref=call_ref)
+                                        charged_micro=charged, metered=not streaming_free_result,
+                                        call_ref=call_ref)
             except asyncio.CancelledError:
                 await _finish_cancelled_call(request, mk, call_ref, response)
                 raise

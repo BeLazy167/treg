@@ -10,9 +10,16 @@ sources:
   - src/treg/web/usecase.css
   - src/treg/web/index.html
   - src/treg/web/landing.html
+  - src/treg/web/terms.html
+  - src/treg/web/usecase-seo.html
+  - src/treg/web/usecase-company.html
+  - src/treg/web/usecase-enrichment.html
+  - src/treg/web/usecase-social.html
+  - src/treg/web/usecase-ads.html
   - src/treg/web/people-search.html
   - src/treg/web/grokbot.html
   - src/treg/web/fable-gtm.html
+  - src/treg/web/ugc.html
   - src/treg/web/astra.html
   - src/treg/web/media/astra/page.css
   - src/treg/web/media/astra/page.js
@@ -42,6 +49,11 @@ answering 405 everywhere, no `og:`/`twitter:` tags or image, no structured data,
 FastAPI's stock Swagger shell — a kilobyte of JavaScript to anything that does not run scripts.
 
 ## The pieces
+
+Signup-credit copy across the dashboard, rendered catalog pages, use-case pages, landing offer
+and terms describes one grant per new verified account, not per team. Extra teams start without
+a new signup grant. Actual eligibility and migration behavior live in
+[money](../architecture/money.md#signup-credit-eligibility).
 
 The landing footer links to the public standalone [Enrich Arena](enrich-arena.md) page. Its query
 form is visible before login; submission is authenticated and metered against team credits.
@@ -76,7 +88,8 @@ server-side first-touch attribution across signup, first successful call and top
 | `/robots.txt` | Bundled file, `{BASE}`-templated. Disallows `/app`, `/login`, auth and OAuth flows, `/call/`, `/mcp`, `/admin`, `/docs/api`. Names the sitemap. |
 | `/sitemap.xml` | **Generated**, not bundled — 80 of its URLs come from the catalog. Static pages take `lastmod` from their file's mtime, shelves from the newest mtime under `src/treg/catalog/`. |
 | `/resources` + `/use-cases/<slug>` | The outcome pages and their hub. Their sitemap rows are spread from `_USE_CASES` rather than listed by hand, so routing a new page lists it — see below. |
-| `/people-search` + `/grokbot` + `/fable` | The launch-campaign landings, bundled files served by their own routes (`FileResponse`, no-cache). All are first-class pages: canonical, OG tags, listed in `_SITEMAP_PAGES` at 0.8 — `/people-search` is "Claude for people search" (the enrichment launch film's destination), `/grokbot` the "Grok Bot for Outreach" animatic plus the six-bot treg team gallery (ICP Map Coach, Lookalike Scout, Rival Watch Desk, SERP Watch Team, Creator Shortlist Crew, and GTM Expert, each linked directly to its `x.ai/bot/…` page). Its nav, hero and closing CTAs remain the pair **"Setup treg"**, primary — signed in it goes to `/app`, signed out it opens the page's own sign-in modal in place (the `/people-search` pattern; the `href` `/app?ref=grokbot` is only the no-JS fallback) and stashes `treg-ref=grokbot` so the first-run welcome preselects Grok Bot, and **"Install plugin"** → the x.ai plugin page, secondary. `/fable` (file `fable-gtm.html`) is the Claude Fable 5.1 launch: one terminal session that reads the market, plans, spawns four agents and shows one result window at a time. Their asset paths are **relative** (`media/…`, `logos/…`) so the same file previews from `file://`; that only holds while the routes stay slashless. All are registered in `bootstrap.py`'s route-ownership manifest like every other route. |
+| `/blog` + `/blog/people-search-bench` | A thin, hand-kept index of the launch pages (`_BLOG_LAUNCHES`, newest first, dated by the day each route shipped) and short posts (`_BLOG_POSTS`); the bench post repeats the four People Search Bench scores from `/grokbot#bench` and links there. Both are `_page()`-rendered, hosted-only, sitemapped (0.7 / 0.6) and in the route manifest. `/agents/grok-bot` (and `.md`) 301 to `/grokbot`: the launch page is the destination, the agent page was never linked as one, and the sitemap lists only `/grokbot`. |
+| `/people-search` + `/grokbot` + `/fable` + `/ugc` | The launch-campaign landings, bundled files served by their own routes (`FileResponse`, no-cache). All are first-class pages: canonical, OG tags, listed in `_SITEMAP_PAGES` at 0.8 — `/people-search` is "Claude for people search" (the enrichment launch film's destination), `/grokbot` the "Grok Bot for Outreach" animatic plus the six-bot treg team gallery (ICP Map Coach, Lookalike Scout, Rival Watch Desk, SERP Watch Team, Creator Shortlist Crew, and GTM Expert, each linked directly to its `x.ai/bot/…` page). Its nav, hero and closing CTAs remain the pair **"Setup treg"**, primary — signed in it goes to `/app`, signed out it opens the page's own sign-in modal in place (the `/people-search` pattern; the `href` `/app?ref=grokbot` is only the no-JS fallback) and stashes `treg-ref=grokbot` so the first-run welcome preselects Grok Bot, and **"Install plugin"** → the x.ai plugin page, secondary. `/fable` (file `fable-gtm.html`) is the Claude Fable 5.1 launch: one terminal session that reads the market, plans, spawns four agents and shows one result window at a time. `/ugc` (file `ugc.html`) is the AI UGC workflow article as a page: an arcads-style hero of generated clips, then the five steps told as one pinned Claude Code session on the left that crossfades between steps while the artifacts scroll on the right (trend grid, a five-model character board with real-image showcases, Seedance talking heads, the demo, hook variants and the bill), then pricing against subscription tools and the catalog grid. Its asset paths are **relative** (`media/…`, `logos/…`) so the same file previews from `file://`; that only holds while the routes stay slashless. All are registered in `bootstrap.py`'s route-ownership manifest like every other route. |
 | `/catalog` | The dashboard SPA, in public mode — the marketplace's Catalog view on an indexable URL. |
 | `/catalog/<slug>` | The same SPA, on the platform view for one shelf. |
 | `/tools/<service>` | The catalog sliced by **vendor**, fully server-rendered (`_page`, no SPA): one public page per provider. Titles lead with API pricing; mixed-access heroes show the full inventory with platform/BYOK counts. Own-account providers get `{Provider}: connect your own account`. The page shows logo, category, blurb from the oauth-provider registry, setup/MCP instructions, all tools for inventories of up to 50, otherwise up to 8 tools per platform (with a catalog link for larger sets), why-treg cards, alternatives, and a metered-vs-own-account FAQ. JSON-LD: BreadcrumbList (with `treg.to` not bare `treg`), ItemList, FAQPage, HowTo. Tool counts and prices are live from `catalog_store`, never hardcoded. No em-dashes in page copy. There is no provider index page: /providers earned no searches and the provider links live in /catalog's prerender instead. `/tools/<service>` is safe from shadowing the API (the API's GETs are `/tools` and `/tools/by-name/…`). A signed-out `GET /app/marketplace/<service>` 302s to `/tools/<service>`. `tests/test_provider_pages.py` pins the route shape. |
@@ -659,8 +672,12 @@ the canonical slug with a 301, exactly like the use-case pages.
 
 The data lives in `agent_pages.WORKFLOWS`, one dict per slug: `steps` are
 `(name, capability, what the agent asks, endpoint the run used, why)` tuples; `run` holds the
-`date`, `rows_in`, the `receipt` label/value pairs, `cost_usd`, the narrative paragraphs and the
-CSV path. **The receipt and the CSV are hand-recorded from a real run and dated** — the page
+`date`, `rows_in` (and an optional `rows_noun`, default "companies", for the "N companies in"
+line), the `receipt` label/value pairs, `cost_usd`, the narrative paragraphs and the
+CSV path. **Prices are never written into the copy**: the step table prints the live catalog
+rate, so a number in `why`, the FAQ or the narrative is a second source of truth that drifts
+(the 2026-09 SEO batch shipped hunter at $0.003 against a catalog $0.01225). The receipt is the
+one place a dollar figure belongs, because it records what one dated run actually cost. **The receipt and the CSV are hand-recorded from a real run and dated** — the page
 prints them verbatim and computes nothing from them; only the per-step prices are live. The CSV is
 shipped in the package at `src/treg/workflow_runs/<slug>.csv` and served at
 `/workflows/<slug>.csv` (404 when the file is missing). The published CSV carries **row-level
@@ -672,9 +689,16 @@ The rule: **a workflow page is not written
 without a real run behind it.** A page whose receipt is a rate card is the thing this page type
 exists to not be.
 
+Six workflows ship as of 2026-09-14: the lead list, and five from the SEO batch (creator
+discovery, creator screening, keyword demand to ad budget, competitor Meta ads, TikTok plus
+Xiaohongshu category intel), each with a run made through the treg CLI on 2026-09-14 and its
+CSV in `workflow_runs/`. Their CSVs carry row numbers and stats, never handles.
+
 Tests: `test_workflow_page_is_served_with_the_crawler_essentials` (crawler plumbing, HowTo with the
 step count, `.md`, `.csv`, hub, 301, sitemap), `test_every_workflow_step_capability_and_endpoint_exist`,
-`test_no_workflow_ships_with_an_empty_section`, `test_workflow_copy_has_no_em_dashes`.
+`test_no_workflow_ships_with_an_empty_section`, `test_workflow_copy_has_no_em_dashes`,
+`test_every_workflow_run_has_its_csv_on_disk` and `test_every_workflow_csv_route_serves` (a
+receipt with no file behind it is exactly the fabricated-run failure these pages exist to avoid).
 
 ## Counts
 

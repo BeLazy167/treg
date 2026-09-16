@@ -408,6 +408,23 @@
   {
     "kind": "APIRoute",
     "methods": [
+      "POST"
+    ],
+    "name": "host_media",
+    "path": "/media"
+  },
+  {
+    "kind": "APIRoute",
+    "methods": [
+      "GET",
+      "HEAD"
+    ],
+    "name": "serve_media",
+    "path": "/m/{token}"
+  },
+  {
+    "kind": "APIRoute",
+    "methods": [
       "GET",
       "HEAD"
     ],
@@ -864,8 +881,35 @@
       "GET",
       "HEAD"
     ],
+    "name": "ugc_page",
+    "path": "/ugc"
+  },
+  {
+    "kind": "APIRoute",
+    "methods": [
+      "GET",
+      "HEAD"
+    ],
     "name": "people_search_page",
     "path": "/people-search"
+  },
+  {
+    "kind": "APIRoute",
+    "methods": [
+      "GET",
+      "HEAD"
+    ],
+    "name": "blog_index",
+    "path": "/blog"
+  },
+  {
+    "kind": "APIRoute",
+    "methods": [
+      "GET",
+      "HEAD"
+    ],
+    "name": "blog_people_search_bench",
+    "path": "/blog/people-search-bench"
   },
   {
     "kind": "APIRoute",
@@ -1553,6 +1597,80 @@
     ],
     "name": "revoke_agent",
     "path": "/orgs/{org_id}/agents/{user_id}"
+  },
+  {
+    "kind": "APIRoute",
+    "methods": [
+      "GET",
+      "HEAD"
+    ],
+    "name": "list_api_keys",
+    "path": "/orgs/{org_id}/api-keys"
+  },
+  {
+    "kind": "APIRoute",
+    "methods": [
+      "POST"
+    ],
+    "name": "create_api_key",
+    "path": "/orgs/{org_id}/api-keys"
+  },
+  {
+    "kind": "APIRoute",
+    "methods": [
+      "PATCH"
+    ],
+    "name": "rename_api_key",
+    "path": "/orgs/{org_id}/api-keys/{key_id}"
+  },
+  {
+    "kind": "APIRoute",
+    "methods": [
+      "POST"
+    ],
+    "name": "disable_api_key",
+    "path": "/orgs/{org_id}/api-keys/{key_id}/disable"
+  },
+  {
+    "kind": "APIRoute",
+    "methods": [
+      "POST"
+    ],
+    "name": "enable_api_key",
+    "path": "/orgs/{org_id}/api-keys/{key_id}/enable"
+  },
+  {
+    "kind": "APIRoute",
+    "methods": [
+      "POST"
+    ],
+    "name": "revoke_api_key",
+    "path": "/orgs/{org_id}/api-keys/{key_id}/revoke"
+  },
+  {
+    "kind": "APIRoute",
+    "methods": [
+      "POST"
+    ],
+    "name": "rotate_api_key",
+    "path": "/orgs/{org_id}/api-keys/{key_id}/rotate"
+  },
+  {
+    "kind": "APIRoute",
+    "methods": [
+      "POST"
+    ],
+    "name": "hide_api_key",
+    "path": "/orgs/{org_id}/api-keys/{key_id}/hide"
+  },
+  {
+    "kind": "APIRoute",
+    "methods": [
+      "GET",
+      "HEAD"
+    ],
+    "name": "list_api_key_events",
+    "path": "/orgs/{org_id}/api-keys/{key_id}/events"
   },
   {
     "kind": "APIRoute",

@@ -24,11 +24,12 @@ sources:
   - src/treg/web/index.html
   - src/treg/web/skill.md
   - src/treg/web/llms.txt
-  - src/treg/alembic/versions/0033_hub_tools.py
-  - src/treg/alembic/versions/0034_hub_runs.py
-  - src/treg/alembic/versions/0035_hubtool_check_result.py
-  - src/treg/alembic/versions/0036_hubrun_output.py
-  - src/treg/alembic/versions/0037_hubtool_data.py
+  - src/treg/alembic/versions/0039_hub_tools.py
+  - src/treg/alembic/versions/0040_hub_runs.py
+  - src/treg/alembic/versions/0041_hubtool_check_result.py
+  - src/treg/alembic/versions/0042_hubrun_output.py
+  - src/treg/alembic/versions/0043_hubtool_data.py
+  - src/treg/alembic/versions/0044_hubtool_listed_public_log.py
   - docs/hub-recipes/data-sheets/run.js
   - docs/hub-recipes/data-csv/run.js
   - tests/test_hub.py
@@ -135,7 +136,7 @@ one-process production deploy): the fifth is 429 `hub_busy` with `retry_after_s`
 The reply: `{run_id, recipe: "<id>@<v>", output, usage: {cost_micro, steps_micro, price_micro,
 steps, ms}, trace, log}` with `X-Treg-Run-Id` (= the parent call id), `X-Treg-Steps`,
 `X-Treg-Cost-Micro` (the total). `Idempotency-Key` covers the whole run through the parent's
-store. `HubRun` (migrations 0034, 0036) keeps one row per run: status, steps, cost, price,
+store. `HubRun` (migrations 0040, 0042) keeps one row per run: status, steps, cost, price,
 duration, masked inputs, trace, log, error, and the output of a successful run; deleted with the
 calling team.
 
@@ -175,7 +176,7 @@ carrying the maker's identity headers, so the steps are charged to the maker's b
 normal prices and never the seller's price. Pass (every `check.fields` present and non-empty,
 `min_rows` met; `health.verdict_from` is the one rule) ⇒ `live`, and the 201 carries the call
 line and the share page; fail ⇒ the version is kept as `failed` with the reason in
-`check_result` (migration 0035). `PUT /hub/tools/{id}` publishes a new version (the name must
+`check_result` (migration 0041). `PUT /hub/tools/{id}` publishes a new version (the name must
 match the id). `POST /hub/run` is the dry run behind `treg hub run .`: the files plus `inputs`,
 run for real as the maker, nothing stored, version 0 on every trace. `PATCH /hub/tools/{id}`
 `{price_usd}` changes the newest live version's price for later runs, no version bump. `DELETE
@@ -262,7 +263,7 @@ publishing a version with a `pricing` block.
 - **The CLI:** `treg hub init` scaffolds a `pricing` block (`flat`, 0); `treg hub ls` shows the price
   label; `treg hub earnings` prints the average price per successful run; `treg hub list | unlist`
   and `treg hub log --public on|off` flip the two distribution switches (`HubTool.listed`,
-  `HubTool.public_log`, migration 0038), which the dashboard's Listing tab also carries.
+  `HubTool.public_log`, migration 0044), which the dashboard's Listing tab also carries.
 
 ## The case study (2026-09-09) and what it taught
 

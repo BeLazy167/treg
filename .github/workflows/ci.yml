@@ -96,6 +96,7 @@ jobs:
         run: >-
           uv run --frozen python -m pytest -v -o faulthandler_timeout=300
           tests/callmatrix
+          tests/test_team_limit.py
           tests/test_ledger.py
           tests/test_ledger_claim_review.py
           tests/test_asynctasks.py
@@ -109,6 +110,7 @@ jobs:
           tests/test_archive_r2.py
           tests/test_call_cancellation.py
           tests/test_call_pool_discipline.py
+          tests/test_api_keys.py
           tests/test_postgres_reset.py
           tests/test_marketplace_call.py
           tests/test_capacity_overflow_spend.py

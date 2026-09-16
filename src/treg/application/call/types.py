@@ -57,6 +57,7 @@ _BLAME_BY_KIND: dict[str, Blame] = {
     "connect_failed": "upstream",
     "read_timeout": "upstream",
     "stream_interrupted": "upstream",
+    "response_buffer_limit": "treg",
     "refresh_failed": "org_connection",
     "credential_missing": "org_connection",
     "authorization_required": "org_connection",
@@ -152,6 +153,10 @@ class CallerSnapshot:
     membership: MembershipSnapshot
     user: UserSnapshot
     org: OrgSnapshot
+    api_key_id: int | None = None
+    api_key_name: str | None = None
+    api_key_prefix: str | None = None
+    api_key_generation: int | None = None
 
     @property
     def org_id(self) -> int:
@@ -169,6 +174,7 @@ class CallerSnapshot:
     def capture(cls, caller: Any) -> "CallerSnapshot":
         membership = caller.membership
         org = caller.org
+        key = getattr(caller, "api_key", None)
         return cls(
             membership=MembershipSnapshot(
                 id=membership.id,
@@ -200,6 +206,10 @@ class CallerSnapshot:
                 autotopup_monthly_cap_micro=org.autotopup_monthly_cap_micro,
                 first_call_at=org.first_call_at,
             ),
+            api_key_id=key.id if key else None,
+            api_key_name=key.name if key else None,
+            api_key_prefix=key.safe_prefix if key else None,
+            api_key_generation=key.default_generation if key else None,
         )
 
 

@@ -2,6 +2,44 @@
 title: Endpoint catalog — what you can DO with a connected key, and which provider should do it
 status: shipped
 sources:
+  - src/treg/catalog/financialdatasets.yaml
+  - src/treg/catalog/examples/financialdatasets.company.facts.json
+  - src/treg/catalog/examples/financialdatasets.company.facts.ciks.json
+  - src/treg/catalog/examples/financialdatasets.company.facts.tickers.json
+  - src/treg/catalog/examples/financialdatasets.earnings.json
+  - src/treg/catalog/examples/financialdatasets.earnings.tickers.json
+  - src/treg/catalog/examples/financialdatasets.filings.json
+  - src/treg/catalog/examples/financialdatasets.filings.ciks.json
+  - src/treg/catalog/examples/financialdatasets.filings.tickers.json
+  - src/treg/catalog/examples/financialdatasets.filings.types.json
+  - src/treg/catalog/examples/financialdatasets.financial-metrics.json
+  - src/treg/catalog/examples/financialdatasets.financial-metrics.snapshot.json
+  - src/treg/catalog/examples/financialdatasets.financial-metrics.snapshot.tickers.json
+  - src/treg/catalog/examples/financialdatasets.financials.json
+  - src/treg/catalog/examples/financialdatasets.financials.balance-sheets.json
+  - src/treg/catalog/examples/financialdatasets.financials.cash-flow-statements.json
+  - src/treg/catalog/examples/financialdatasets.financials.income-statements.json
+  - src/treg/catalog/examples/financialdatasets.financials.income-statements.segments.json
+  - src/treg/catalog/examples/financialdatasets.financials.search.screener.json
+  - src/treg/catalog/examples/financialdatasets.financials.search.screener.filters.json
+  - src/treg/catalog/examples/financialdatasets.insider-trades.json
+  - src/treg/catalog/examples/financialdatasets.index-funds.json
+  - src/treg/catalog/examples/financialdatasets.index-funds.tickers.json
+  - src/treg/catalog/examples/financialdatasets.institutional-holdings.json
+  - src/treg/catalog/examples/financialdatasets.institutional-holdings.investors.json
+  - src/treg/catalog/examples/financialdatasets.institutional-holdings.tickers.json
+  - src/treg/catalog/examples/financialdatasets.ipos.json
+  - src/treg/catalog/examples/financialdatasets.kpi.guidance.json
+  - src/treg/catalog/examples/financialdatasets.kpi.metrics.json
+  - src/treg/catalog/examples/financialdatasets.kpi.non-gaap.json
+  - src/treg/catalog/examples/financialdatasets.macro.interest-rates.json
+  - src/treg/catalog/examples/financialdatasets.macro.interest-rates.banks.json
+  - src/treg/catalog/examples/financialdatasets.news.json
+  - src/treg/catalog/examples/financialdatasets.prices.json
+  - src/treg/catalog/examples/financialdatasets.prices.snapshot.json
+  - src/treg/catalog/examples/financialdatasets.prices.snapshot.tickers.json
+  - src/treg/catalog/examples/financialdatasets.prices.tickers.json
+  - tests/test_financialdatasets.py
   - src/treg/catalog/quickenrich.yaml
   - src/treg/catalog/quickenrich.extended.yaml
   - src/treg/catalog/examples/quickenrich.companies.search.json
@@ -23,6 +61,7 @@ sources:
   - src/treg/catalog/examples/millionverifier.people.email.verify.json
   - src/treg/catalog/examples/millionverifier.account.usage.json
   - src/treg/catalog/adapters.yaml
+  - src/treg/catalog/prospeo.yaml
   - tests/test_route_cost_ceiling.py
   - src/treg/catalog/tomba.yaml
   - src/treg/catalog/examples/tomba.people.email.verify.json
@@ -40,6 +79,7 @@ sources:
   - scripts/catalog_validate.py
   - src/treg/catalog/aliases.yaml
   - src/treg/catalog/fx.yaml
+  - src/treg/catalog/cloro.yaml
   - src/treg/catalog/aviato.yaml
   - src/treg/catalog/crustdata.yaml
   - src/treg/catalog/examples/aviato.companies.acquisitions.json
@@ -84,7 +124,11 @@ sources:
   - src/treg/catalog/companyenrich.yaml
   - src/treg/catalog/oceanio.yaml
   - src/treg/catalog/akta.extended.yaml
+  - src/treg/catalog/dataforseo.yaml
   - src/treg/catalog/dataforseo.extended.yaml
+  - tests/test_dataforseo_constraints.py
+  - src/treg/catalog/diffbot.yaml
+  - src/treg/catalog/diffbot.extended.yaml
   - src/treg/catalog/tikhub.extended.yaml
   - src/treg/catalog/examples/minimax.video-gen.result.retrieve.json
   - src/treg/catalog/examples/minimax.video-gen.from_image.json
@@ -92,14 +136,37 @@ sources:
   - src/treg/catalog/openrouter.yaml
   - src/treg/catalog/openrouter.extended.yaml
   - src/treg/catalog/examples/openrouter.x.alibaba-wan-3-0.json
+  - src/treg/catalog/examples/openrouter.video-gen.seedance-2-5.json
   - src/treg/catalog/replicate.yaml
   - src/treg/catalog/replicate.extended.yaml
+  - src/treg/catalog/reapi.yaml
+  - src/treg/catalog/piapi.yaml
+  - src/treg/catalog/examples/replicate.image-gen.nano-banana-pro.json
+  - src/treg/catalog/examples/replicate.image-gen.gpt-image-2.json
+  - src/treg/catalog/examples/replicate.image-gen.gpt-image-2-5-flare.json
+  - src/treg/catalog/examples/replicate.image-gen.gpt-image-2-5-sunburst.json
+  - src/treg/catalog/examples/reapi.tasks.get.json
+  - src/treg/catalog/examples/reapi.video-gen.seedance-2-5.json
+  - src/treg/catalog/examples/reapi.video-gen.seedance-2-5.unrestricted.json
+  - src/treg/catalog/examples/reapi.image-gen.gpt-image-2-5.json
+  - src/treg/catalog/examples/reapi.image-gen.gpt-image-2.json
+  - src/treg/catalog/examples/reapi.image-gen.gemini-3-pro-image.json
+  - src/treg/catalog/examples/piapi.task.get.json
+  - src/treg/catalog/examples/piapi.video-gen.seedance-2-5.json
+  - src/treg/catalog/examples/piapi.video-gen.seedance-2-5.less-restriction.json
+  - src/treg/catalog/examples/piapi.image-gen.gemini-3-pro-image.json
+  - src/treg/catalog/examples/piapi.image-gen.gpt-image-2-5.json
+  - src/treg/catalog/examples/piapi.image-gen.gpt-image-2.json
   - src/treg/catalog/examples/replicate.image-gen.flux-schnell.json
   - src/treg/domain/catalog/__init__.py
   - src/treg/domain/catalog/store.py
+  - src/treg/catalog/hunter.yaml
+  - src/treg/mcp.py
   - src/treg/domain/money/settlement.py
   - src/treg/domain/catalog/stats.py
   - src/treg/infra/catalog_observations.py
+  - src/treg/application/catalog_stats.py
+  - src/treg/alembic/versions/0038_endpoint_day_stats.py
   - src/treg/routers/catalog.py
   - tests/test_aigc_pr_b.py
   - tests/test_catalog_api.py
@@ -113,6 +180,65 @@ related:
 # Endpoint catalog — platform-grouped operations per provider
 
 Sumble adds the full v9 surface with verified platform operations and explicit BYOK restrictions. See [Sumble](sumble.md) for schemas, pricing rules, routing and live evidence.
+
+## Financial Datasets v1 and v2 (2026-09-15)
+
+`financialdatasets.yaml` adds 36 direct tools to the existing Market data / Stock Market Data
+catalog: 22 data operations and 14 dataset-specific discovery helpers. Company facts and the other
+standard data requests settle at $0.02 per successful platform call; KPI metrics, KPI guidance,
+non-GAAP data, and IPOs settle at $0.16. The 14 discovery helpers are free because their verified
+public upstream routes use the generic anonymous platform fallback. BYOK calls retain the normal
+unmetered precedence and still win before that fallback.
+
+Company, fundamentals, filing, ownership, earnings, news, and equity-price inputs are described as
+US stock tickers; the Index Funds data tool instead accepts an ETF or index-fund ticker or a held
+US security ticker. The free ticker, CIK, filing-type, investor, screener-filter, and bank helpers use
+the existing `utility` kind because they enumerate valid inputs rather than return the primary
+financial result; the dashboard folds them into its management/utility accordion while they remain
+directly callable. treg does not call them as hidden preflights. Each one declares
+`platform_auth: anonymous`, so the shared resolver builds a virtual tool with no credential binding;
+there is no Financial Datasets branch in the relay. Each data input with a matching included helper
+names that exact utility tool ID in its agent-facing note, so dashboard and CLI users can discover
+valid values without assuming one dataset's coverage applies to another. Interest-rate data covers
+the provider's listed major central banks globally. The catalog does not claim forex, options, or
+general multi-asset coverage.
+
+Seventeen list endpoints accept the provider's opaque `cursor`. Their agent-facing input notes tell
+callers to take it from the response `next_page_url` and omit the original filters on the next call,
+because the cursor preserves those filters. treg still relays the cursor and response unchanged.
+
+Only `financialdatasets.prices.snapshot` joins a routed capability. Its adapter maps
+`treg.stocks.quote.live`'s `symbol` to `queryParams.ticker`, uppercases it, reads the required numeric
+`snapshot.price`, and preserves the provider object as `quote`. No new routed contract, category,
+provider-specific router, or response model is introduced. Captured fixtures and
+`tests/test_financialdatasets.py` verify the direct surface, fixed settlement, BYOK behavior, and
+the existing quote route. One live request for each of the original 34 direct tools returned HTTP
+`200` on 2026-09-15. A second pass captured the 18 response fixtures that were not already present;
+the V2 checks described below supplied the two new fixtures, so every verified tool now has live
+response evidence. The responses exposed no usage, credit, charge,
+rate-limit, pagination-header, or request-ID evidence; paginated response bodies expose
+`next_page_url` when another page exists. The provider later settled one authenticated 34-tool pass
+at $1.24, including $0.26 for the 13 discovery requests. Three complete anonymous discovery passes
+returned 200 without changing the provider balance; a separate authenticated 13-request pass cost
+exactly $0.26. This proves that omitting the key, rather than a zero rate on keyed traffic, makes the
+discovery surface free.
+
+That free result is conditional on the request having no caller-supplied provider credential. The
+anonymous virtual tool injects no key, but the faithful relay does not strip caller headers. A
+caller who sends `X-API-KEY` can therefore spend that key's Financial Datasets Credits.
+
+V2 adds `financialdatasets.index-funds` and its anonymous
+`financialdatasets.index-funds.tickers` discovery helper. The data tool supports both provider
+query directions: a fund ticker returns constituents and weights, while a held security ticker
+returns funds that hold it. `as_of` and `asset_class` apply only to the fund-ticker direction. The
+provider returns at most ten rows per page even when `limit` is larger; callers continue with the
+opaque cursor from `next_page_url`. Live checks returned 200 for the SPY fund direction, the AAPL
+holding direction, both pages of an eleven-row request, and the anonymous ticker helper. The
+authenticated Index Funds request settled at the existing standard $0.02 rate; anonymous ticker
+discovery did not use the provider account. Invalid requests with neither query direction or both
+`ticker` and `holding` returned HTTP 400, so per-success settlement releases their holds. All 36
+Financial Datasets documentation links were matched to the provider's current index and returned
+HTTP 200 after its move from `/api-reference/` to route-specific `/api/` pages.
 
 The computed cost view uses a `cost.table` fallback as its scalar validated upper bound for
 eligibility and compact displays. Runtime charging evaluates the first matching row against request
@@ -282,7 +408,14 @@ buffering, callback receiver, or proxy branch is added. Crustdata's required
 platform-key call.
 
 Variable prices use the existing reserve→settle path. Crustdata reserves the documented maximum
-for the requested record count and settles the exact `X-Credits-Used` response header. Aviato's
+for the requested record count and settles the exact `X-Credits-Used` response header. cloro
+(2026-09-07) is the second header-reporting provider: every billed response carries
+`X-Credits-Charged`, the catalog value is the price of the full-surface `test_request` (an upper
+bound — the ChatGPT ads/shopping include family and the Google AI Overview flags are +2 each), the
+top-level `state` body field is a generic `cost.modifiers` rider, and the header settles the exact
+charge. The header is absent on cloro's free routes and on a failed extraction, which it does not
+bill, so an absent header settles as unreported rather than as zero. The `cost.modifiers` reserve
+path is open to any credit-priced provider with a fx.yaml rate, not only Aviato. Aviato's
 preview calls reserve zero; observed email/rescrape add-ons are declared in each endpoint's generic
 `cost.modifiers` map and derived from request flags; synchronous bulk
 calls reserve per lookup and settle per returned successful record. Simple people search reserves
@@ -400,7 +533,20 @@ memberless, reserved for hand-picked models (see capabilities.yaml). Both AI gen
 therefore render as ONE flat model wall; the same model reachable over several routes (MiniMax
 direct, OpenRouter, Replicate all serve Hailuo) sits adjacent under model-led names, which is the
 comparison that actually means something. The per-model capability is the join key that lets those
-routes merge onto one row if that comparison is later curated.
+routes merge onto one row if that comparison is later curated. reAPI and PiAPI are the first pair
+to share join keys on purpose: both files propose `video-gen.seedance-2-5.generate`,
+`video-gen.seedance-2-5-unrestricted.generate`, `image-gen.gpt-image-2-5.generate`,
+`image-gen.gpt-image-2.generate` and `image-gen.gemini-3-pro-image.generate`, so the two routes to
+one model sit on one row with their prices side by side. The `-unrestricted` key names the Less Restriction route (reAPI `content_filter: false`, PiAPI's `seedance-2.5-less-restriction` task): the
+only route on which a real person's photo is accepted as the subject reference, which is the whole
+reason those resellers are listed beside the official-rate OpenRouter route. OpenRouter's Seedance 2.5
+is curated into `openrouter.yaml` on the same join key (its generated extended twin is therefore
+skipped by the ingester's curated-model rule), so the default-filter row compares three routes and
+the Less Restriction row two. Replicate's official `google/nano-banana-pro`, `openai/gpt-image-2` and both
+`openai/gpt-image-2.5-*` models are curated into `replicate.yaml` on the image keys the same way (per
+output image by quality or resolution, from the model pages' price criteria), so each image model
+row compares reAPI, PiAPI and Replicate. Merged rows are titled by the capability description, which for these
+per-model keys is the plain model name ("Seedance 2.5"), not a sentence.
 
 ## Schema
 
@@ -537,7 +683,13 @@ A `cost.table` also prices out as a range: at load time `_table_floor` computes 
 (a `times` row at its field's declared `min`) into `cost.table_min`, and `cost_view` exposes it as
 `usd_min` beside `usd`, which stays the validated ceiling (what reserve and eligibility read). Every
 price surface - the wall, `treg catalog search`, the dashboard, `/access` - shows `$low-$high` for a
-table rather than the worst case alone.
+table rather than the worst case alone. A table whose every row multiplies by a `duration` field is
+a video model sold per second, and `$0.47-$13.9/success` (shortest clip at the cheapest resolution
+up to the longest at the dearest) reads as nonsense beside a vendor page saying `$0.12/s`; so
+`_table_rate` records the row span as `cost.table_rate`, `cost_view` serves it as `rate_usd_min`,
+`rate_usd`, `rate_unit: s`, and the dashboard and CLI quote `$0.119-$0.462/s` for those rows while
+`usd`/`usd_min` keep pricing the whole call for reserve. `type: per_success` on these rows is the
+billing rule (a failed generation is not charged), not the display unit.
 
 The validator checks the effective descriptor. Dotted JSON paths are syntactically valid; success and
 failure are non-empty, disjoint lists; `interval` is positive; poll has exactly one of `endpoint`
@@ -584,6 +736,15 @@ MiniMax's curated Hailuo routes intentionally use the v1 three-step protocol: su
 the terminal values `Success`/`Fail`, then pass the returned `file_id` to
 `GET /v1/files/retrieve`. The v2 generation path serves the H3 family and is not a protocol upgrade
 for the Hailuo models in this listing.
+
+reAPI answers every submission with a bare `{id, status}` and reports the charge on the poll body
+(`usage.credits`, 1 credit = $0.001); video rows keep the file-level descriptor (`output.video_urls`)
+and image rows replace it whole for `output.image_urls`. PiAPI wraps its task routes in
+`{code, data}` (HTTP 200 with `code` 400 on a bad request, hence the provider-wide `expect`), but
+its OpenAI-shaped `/api/v1/images/generations/async` route answers the bare task object, so those
+two rows override both `id_from` and `expect` (`error.code` 0). PiAPI's `meta.usage` counts
+"points" at ten million per dollar; it is read for the evidence ledger, not settled on, because
+`usd` is the only usage unit the settlement engine accepts.
 
 OpenRouter ingest reads `/api/v1/videos/models`, emits one extended row per model on the shared
 `POST /videos` route, and converts duration-based `pricing_skus` into price tables with
@@ -683,13 +844,19 @@ Rules:
   state, which every other check happily passed. A never-verified entry straight out of ingest has
   neither a request nor a state key and is left alone.
 - Ids are unique across the WHOLE catalog, both tiers, all providers.
-- Two optional fields exist only in this tier, both added for the first-party OAuth providers:
-  - `host: <fqdn>` — this route is NOT on the provider's `base_url`, and its `path` is relative to
-    the named host instead. Google splits one product across sibling `*.googleapis.com` services
-    (GA4 reporting vs GA4 admin; six separate My Business services) while an `OAuthProvider` names
-    one host. The same OAuth token calls them all, so the endpoints are real and worth listing —
-    but the auto-provisioned tool is bound to `base_url`, so calling one needs a second tool bound
-    to that host. Absence of `host` means "callable through the provisioned tool".
+- Two optional fields exist only in this tier, both added for providers with split surfaces:
+  - `host: <fqdn>` describes an additional API root for an endpoint whose `path` is not relative to
+    the provider's primary `base_url`. It becomes executable only when the provider explicitly opts
+    in with `OAuthProvider.catalog_targets`; otherwise historical host metadata remains inert and
+    calling still uses the provider's primary profile. The catalog cannot authorize a host by itself.
+    `OAuthProvider.catalog_targets` must map the exact hostname to a safe HTTPS base URL and any
+    credential-profile override. `profile_for_catalog_host` rejects missing, duplicate, malformed,
+    credential-bearing, port-bearing, query-bearing, and fragment-bearing targets before reserve or
+    relay. The endpoint path is joined after the approved base URL's existing prefix, so primary KG
+    paths and alternate Extract paths do not duplicate or erase version prefixes. Diffbot uses this
+    for its KG, Extract, Web Search, and Natural Language host families; Web Search's target also
+    changes query-token injection to its documented Bearer header. Absence of `host` retains the
+    primary provider profile and `base_url`.
   - `scope_gap: <one line>` — the credential treg's OAuth app obtains CANNOT call this, and this is
     the scope that is missing. These are listed rather than dropped on purpose: the set of gaps is
     the answer to "which scopes should we add to the registered app", and it is only visible if the
@@ -826,8 +993,14 @@ which is the whole reason the provenance keys exist.
 
 **`per` and `unit`.** Read a block as "`value` `currency` per `per` `unit`". SpyFu bills a CPM, so
 `value: 2.00, per: 1000, unit: row` — and `cost_view` divides, serving `usd: 0.002` per row. Hunter
-charges 1 credit per 10 emails (`per: 10, unit: record`), Akta 1.5 credits per 50 reviews. Without
-`per`, every one of those had to be either wrong or rounded into prose.
+Domain Search charges 1 SEARCH credit per 1–10 emails returned (`per: 10, unit: record`), so `usd`
+is the linear slice ($0.00245/email) that reserve can scale with `limit`. A live hit does not sell
+that slice: it bills one whole credit (~$0.0245) for one email or ten (observed 2026-07-31).
+`cost.display` with `grouped` + `round_up` advertises the credit (`display_usd: 0.0245`, "started
+10 emails"); `Catalog.advertised_usd` is what `catalog_search` / `catalog_get` put on
+`usd_per_call`. Settlement still reads `usd` and the derived email-count rule — display only.
+Akta bills 1.5 credits per 50 reviews the same `per` way. Without `per`, every one of those had
+to be either wrong or rounded into prose.
 
 **Three kinds of denomination convert, and they convert differently:**
 
@@ -896,11 +1069,12 @@ indistinguishable, downstream, from "price unknown".
 pricing to these keys, and is re-runnable — the extended tier is regenerated wholesale, so
 provenance typed by hand into a generated file would not survive the next `catalog_ingest.py`.
 
-#### Platform-eligible — when treg may spend its OWN key on a call
+#### Platform-eligible — when treg may serve a catalog fallback
 
-`Catalog.platform_eligible(endpoint)` is the single predicate behind prepaid/platform-key access
-(tier 4 of the credential ladder in `api.py`). One implementation, so the API, the validator and
-the proxy cannot drift. It requires ALL of:
+`Catalog.platform_eligible(endpoint)` is the single predicate behind catalog fallback access.
+Most eligible rows use prepaid platform-key tier 4. A row with `platform_auth: anonymous` instead
+uses the provider's verified public route without a credential. One implementation keeps the API,
+validator and proxy in agreement. Eligibility requires ALL of:
 
 - `cost_view(...)["usd"]` is not None — the charge is machine-computable;
 - `cost.confidence` is `verified` OR `documented` (policy widened 2026-07-31: a rate the provider
@@ -912,8 +1086,22 @@ the proxy cannot drift. It requires ALL of:
 The live-called `verified:` stamp is no longer required (same 2026-07-31 change): a broken route
 fails unbilled under `per_success`/`per_result` billing, providers that report in-band settle at 0,
 and the fail-closed daily platform cap bounds whatever remains — coverage beats caution now that
-the reserve/settle machinery is proven. Eligibility alone still spends nothing: the provider must
-ALSO be keyed and allow-listed (`platform_key_for`).
+the reserve/settle machinery is proven. Eligibility alone still enables nothing. A normal platform
+call requires a configured key and the provider allow-list (`platform_key_for`). An anonymous
+fallback requires only the same provider allow-list (`platform_provider_enabled`) because it loads
+no provider key.
+
+`platform_auth: anonymous` is deliberately narrower than ordinary eligibility. Catalog validation
+accepts it only for live-verified, free `GET` operations with `scope: any_account`, no provider
+authorization metadata, and no shared async-resource lifecycle. Resolution preserves the normal
+team-tool then team-credential precedence. Only when both miss does `_anonymous_offer` create a
+virtual tool with an empty binding list and credential tier `anonymous`. The faithful relay then
+forwards the caller's request without injecting a provider credential. This is generic catalog
+metadata; the call runtime contains no provider or path list.
+
+Routed ranking assigns separate priority to the four tiers: team tool or credential first,
+anonymous fallback second, and paid platform-key access third. This keeps the own-key guarantee
+intact if an anonymous endpoint later receives a verified routing adapter.
 
 The doctrine is asymmetric on purpose: **a missing or unknown price reads as "refuse", never as
 free.** An endpoint with no `cost` block at all is therefore not platform-eligible without anything
@@ -1284,6 +1472,45 @@ the core file's paths are relative to it (`/serp/google/organic/live/regular`). 
 two spellings — every DataForSEO route curated in core is also present in the extended file under
 a different id. Fixing that belongs in `catalog_ingest.py` and needs a regeneration.
 
+### DataForSEO Live routes accept one task, not a batch
+
+DataForSEO's generic POST is "an array of task objects", and Standard `/task_post` really does
+batch up to 100. Every **Live** route in `dataforseo.yaml` (and the vendor's Backlinks / SERP
+Live docs) does not: "each Live API call can contain only one task." Extra array elements come
+back as per-task status `40000` ("You can set only one task at a time") and `$0`. Feedback #102 /
+#103: `dataforseo.web.backlinks.summary` (`/backlinks/summary/live`) reused the generic note and
+the provider `limits` line "up to 100 tasks per POST array", so agents batched domains. The
+fix is documentation only — `input.note` and `limits` name the single-task cap; multi-target
+work is a `bulk_*` live route (many targets *inside* one task), e.g. `dataforseo.web.url.metrics`
+(`/backlinks/bulk_ranks/live`). Do not auto-split a multi-task array into billed calls.
+
+### DataForSEO Google Trends explore/live rejects `item_types`
+
+Vendor docs still list `item_types` (`google_trends_graph`, `google_trends_map`,
+`google_trends_topics_list`, `google_trends_queries_list`) on
+`/keywords_data/google_trends/explore/live`. A live POST with that field returns HTTP 200 +
+task status `40501 Invalid Field: 'item_types'` and `$0`. Feedback #125 / #127:
+`dataforseo.x.keywords-data-google-trends-explore-live` documented the field, so agents sent
+`google_trends_queries_list` then switched to SerpAPI. The catalog omits the field;
+`input.note` says not to send it. Related-query discovery is `serpapi.x.google-trends` with
+`data_type: RELATED_QUERIES`. The neighboring DataForSEO Trends explore live route
+(`dataforseo.x.keywords-data-dataforseo-trends-explore-live`) never listed `item_types`; no
+DataForSEO sibling in the catalog answers related queries. Enforced by
+`test_google_trends_explore_live_omits_item_types`.
+
+### DataForSEO Instant Pages `browser_preset` needs `enable_browser_rendering`
+
+Vendor Instant Pages docs (`/on_page/instant_pages`) still say set `enable_javascript` *or*
+`enable_browser_rendering` to use `browser_preset`. A live POST with `browser_preset` and
+neither (or only `enable_javascript`) returns HTTP 200 + task status `40501` requiring
+`enable_browser_rendering`. Feedback #234 / #235: `dataforseo.web.page.audit` advertised
+`browser_preset` as `"desktop | mobile | tablet"` with `enable_browser_rendering` as a
+separate Core Web Vitals toggle, so agents sent the preset alone and burned a failed call.
+The catalog field note (and `input.note`) now require `enable_browser_rendering=true`;
+JS-only audits omit `browser_preset`. Settlement is unchanged. Enforced by
+`test_instant_pages_browser_preset_requires_browser_rendering` and
+`test_catalog_get_dataforseo_page_audit_names_browser_preset_dependency`.
+
 ## Choosing between providers (`domain/catalog/stats.py`)
 
 307 capabilities are served by more than one provider, and prices inside one capability differ by up
@@ -1325,8 +1552,8 @@ acceptable entry exists.
 
 Refresh is process-level singleflight. Concurrent misses join one shared Task, duplicate endpoint ids
 already in flight are not queued again, and the Task batches the requested ids. Its
-`PostgresEndpointObservationReader` opens an independent session only around `stats.observed()` and
-closes it as soon as the two queries finish. HTTP `/catalog/search`, both MCP catalog-search tools,
+`PostgresEndpointObservationReader` opens an independent session only around one small read and
+closes it as soon as that finishes. HTTP `/catalog/search`, both MCP catalog-search tools,
 routed planning in `application.call.route.build_plan`, and the prose pages that print observed stats
 (`/use-cases/*`, `/workflows` and `/workflows/*`) receive the same reader instance from bootstrap, so
 their request paths have no observation DB dependency, check out zero connections, and join the same
@@ -1335,6 +1562,37 @@ entries, backs off before retry, and never changes the Catalog response status; 
 cached entry is honest emptiness. The adapter exposes entry-level `fresh`, `stale`, and `miss`
 counters plus `refresh` and `refresh_failure` counts. Its invalidation story is the two TTLs: deploys
 and process restarts begin cold, and no cross-instance correctness depends on the cache.
+
+**The evidence is folded once, off the request path** (`application/catalog_stats.py`, run by the
+`treg-worker catalog stats` cron). Refreshing straight from `callrecord` meant every web process
+re-aggregating thirty days of audit rows for an endpoint and its siblings whenever its cache
+expired, and again from cold after each deploy: on a large audit table that is tens of seconds per
+pass, each pass evicting the pages the money path needs. The worker instead
+walks the audit table by primary key from a persisted cursor (`EndpointStatCursor`) and folds each
+row into one `EndpointDayStat` bucket per endpoint per UTC day: counts, the newest success, the
+`hit`/per-success tallies, and a uniform reservoir of at most `stats.LATENCY_SAMPLE` successful
+durations. Rows younger than sixty seconds wait for the next run so an audit insert that commits
+late is never skipped; a plain tool call (no `endpoint_id`) and a treg refusal (`refused_by`) are
+not evidence and are not folded, exactly as the live query excludes them. The first run bisects the
+primary key to the first row inside the window rather than reading older pages, consumes at most
+`--max-rows` per run, and the reader keeps computing the live aggregate until a run reports it
+has caught up (`caught_up_at`), so a deployment that never schedules the worker behaves as before.
+The same fallback applies when the worker stops: a cursor not updated for `STALE_AFTER_S` (two
+hours) sends the reader back to the live aggregate with a warning, so a dead cron degrades to the
+old cost rather than to buckets that silently age out of the window. Each batch is one
+transaction under the cursor row's lock and re-reads every bucket it touches inside that lock;
+nothing about a bucket is carried between batches, so two overlapping runs (a slow backfill
+still going when the next schedule fires) serialize cleanly instead of one erasing the other's
+fold with the cursor already past the rows.
+Once caught up, an observation is the sum of that endpoint's day buckets from the day of the
+window's start onward (`stats.window_days`, at most one day more evidence than the live cut,
+never less), published through the same `stats.publish` floors the live path uses; the fold and
+the SQL are held equal by `tests/test_catalog_stats_refresh.py`. Merging days weights each
+day's latency sample by the calls it stands for (`Tally.merge`, `Tally.percentile`): a reservoir
+is uniform within its day, so a busy day's four hundred samples must count for its thousands of
+calls, or the window's p95 would be the quiet days'. Buckets older than the window
+are pruned at the end of each caught-up run. `stats.Tally` is the one shape all three paths
+share: a day, a merged window, or the live aggregate.
 
 Five rules worth keeping:
 
@@ -1601,9 +1859,12 @@ to choose (`docs/CAPABILITY-ROUTING-PLAN.md`). Everything else in the catalog st
   the advisory quote was too low or the child uses overflow. A budget refusal skips that candidate
   without using the provider-error retry allowance; if every candidate is skipped, return 402
   `route_max_cost`. A retained weak answer keeps its own outcome when later candidates are skipped.
+  When the waterfall ends with some candidates skipped due to max-cost, the response includes
+  `_treg.capped: true` and `X-Treg-Route-Capped: true` — a partial miss is distinguishable from an
+  exhaustive one, so callers can raise their budget if needed (feedback #131, 2026-09).
   Response: `{output, raw, _treg: {served_by, provider, tier,
-  outcome, tried[], charged_micro}}`, `X-Treg-Served-By`, `X-Treg-Providers-Tried`,
-  `X-Treg-Route-Outcome`, `X-Treg-Cost-Micro` = the sum, one `X-Treg-Call-Id`. The parent owns
+  outcome, tried[], charged_micro, capped?}}`, `X-Treg-Served-By`, `X-Treg-Providers-Tried`,
+  `X-Treg-Route-Outcome`, `X-Treg-Route-Capped?`, `X-Treg-Cost-Micro` = the sum, one `X-Treg-Call-Id`. The parent owns
   the idempotency label (a success, or a terminal failure after a paid child, replays without
   touching a provider) and writes one audit row
   (`credential_tier: routed`) beside the children's.
@@ -1752,6 +2013,27 @@ to choose (`docs/CAPABILITY-ROUTING-PLAN.md`). Everything else in the catalog st
   Leadsforge and Fiber contact lookup success flags no longer populate `verified`: neither
   flag is an explicit mailbox deliverability verdict. The field remains absent when unknown.
 
+## Archive comparison declarations
+
+The effective `cache:` block accepts `ignore_paths: [...]` alongside `max_age_s`. The default is
+an empty list. Provider-header inheritance and whole-block endpoint override follow the existing
+cache policy rules. `store._validate_cache` rejects an invalid list or path during catalog loading,
+including provider-header declarations even when endpoint blocks override them.
+
+Paths are case-sensitive dot-separated property names matching `[A-Za-z0-9_][A-Za-z0-9_-]*`, with
+`[*]` suffixes for arbitrary array elements: `request_id`, `data.items[*].updated_at`, or
+`matrix[*][*].request-id`. Leading digits are allowed, e.g. `2fa_enabled`. A root array can use `[*].request_id`. Empty lists are valid; null,
+non-lists, non-string members, empty paths, numeric indices, plain `*`, `$` prefixes, spaces,
+empty segments, escaping and recursive wildcards are rejected. Keys containing literal dots or
+brackets are deliberately not addressable in this first grammar. Missing paths are harmless.
+
+`archive._normalized_hash` removes only these paths from a parsed copy for TTL equality. It never
+changes archived or served data, raw hashes, deduplication or hit/miss classification. Without a
+nonempty list, exact byte comparison remains authoritative. No shipped endpoint has an ignore
+list; use the bounded `archive_change_observed` reports and HogQL in [archive](archive.md) as
+human review input, then add a justified declaration in a separate PR.
+
+
 ## Security
 
 PII IS THE HARD RULE. This repo is public, and every captured example ships in it. Three checks
@@ -1779,6 +2061,7 @@ long strings clipped, ~10 KB cap) by the verifier, then human-reviewed for PII b
 |---|---|---|---|
 | dataforseo | google, web | Basic (login:password base64) | SEO: web.backlinks.*, web.url.metrics |
 | exa (2026-08-27) | web, people, companies | `x-api-key` header; dollar-priced, settles from `costDollars.total` | Search: web.search*, web.contents.get, web.similar, web.answer; Enrichment: people.search, companies.search |
+| cloro (2026-09-07) | ai-search, google | `Authorization: Bearer sk_live_…`; credit-priced ($0.0004, Hobby metered rate), settles from `X-Credits-Charged` | AEO: ai-search.chatgpt.scrape, ai-search.copilot.scrape (new), ai-search.perplexity.answer, ai-search.gemini.scrape; SERP: google.serp.organic, google.serp.news, google.serp.ai_mode (overlaps dataforseo/serpapi extended) |
 | moz | web | Basic (AccessID:SecretKey base64), POST JSON API | SEO: web.backlinks.*, web.url.metrics |
 | tikhub | tiktok (+instagram, youtube, x) | Bearer key | Social: tiktok.* |
 | justoneapi | tiktok (+instagram, xiaohongshu, weibo) | `?token=` query param | Social: tiktok.* |
@@ -1829,9 +2112,12 @@ See [ContactOut](contactout.md) for request limitations, derived settlement and 
 `Catalog.cost_view` reads optional provider-neutral `cost.display` metadata. `unit` names the
 shown unit; `grouped` displays the price for `cost.per` units; `round_up` labels a started block;
 `variable` adds a plus sign for selected additions. It returns computed display USD/unit/suffix
-fields without changing `usd` or settlement. The CLI and web formatters consume those fields.
+fields without changing `usd` or settlement. The CLI and web formatters consume those fields;
+`Catalog.advertised_usd` prefers `display_usd` so MCP `usd_per_call` quotes the chargeable event.
 The validator checks flags and requires grouped prices to declare a positive integer `per`.
-Sumble keeps its billing rules in the existing provider-module pattern, separate from display rules.
+Hunter Domain Search is the credit-block case (`1` credit / `10` emails → `$0.0245/started 10
+emails`). Sumble keeps its billing rules in the existing provider-module pattern, separate from
+display rules.
 
 
 ### Similar-company routing
@@ -1851,3 +2137,42 @@ through `queryParams.phone`. The adapter reads `data.valid`, `data.e164_format`,
 line type and carrier. A boolean false is a returned invalid verdict; a missing verdict is a
 miss. This validates numbering-plan/format details, not line activity or subscriber ownership.
 The single verified adapter is usable by Arena; the two-provider public routing gate stays intact.
+
+
+## HarvestAPI integration
+
+`harvestapi.yaml` adds API-key-only LinkedIn reads with opt-in `strict_query` contracts and three profile variants. See [HarvestAPI](harvestapi.md) for the verified surface, billed misses, pagination traps and adapters.
+
+
+## Dropleads integration
+
+`dropleads.yaml` adds twelve synchronous people and company tools. The balance check and export-cost
+route stay outside the public catalog. Seven verified adapters add email finding, phone finding,
+email verification, people search and enrichment, and company search and enrichment to the existing
+routed tools and Enrich Arena. The count and synchronous bulk tools stay direct. The provider uses
+the existing `CatalogTarget` allow-list for its second API host; catalog data cannot send a
+credential to another host. See [Dropleads](dropleads.md) for the surface, prices and live evidence.
+
+
+## Prospeo integration
+
+`prospeo.yaml` adds nine people and company tools on both own and platform keys. Six verified
+adapters add email finding, phone finding, person/company enrichment and person/company search to
+the routed tools and Enrich Arena; bulk enrichment and search suggestions stay direct-only. Search
+pages are fixed at 25 upstream, so adapters cannot forward the contract `limit`; they expose
+Prospeo's `pagination.total_count` while relaying the native result page. The account-information
+route remains internal for key verification and capacity. See [Prospeo](prospeo.md) for pricing,
+settlement, plan limits and live evidence.
+
+
+### Verified additional routing categories
+
+An adapter can opt into `additional_capabilities` while its endpoint retains its primary
+catalog capability and direct-call ID. `load_routing` verifies each additional contract against
+the same request/response fixture and admits it through `verified_capabilities` only when the
+primary adapter passes, the extra contract exists, the filter definitions match, and the extra
+fixture check passes. Invalid extra contracts do not disable the primary adapter.
+`Catalog.for_capability` includes these verified memberships for both routed tools and Arena.
+No additional provider request, catalog row or billing path is introduced. The Harvest full
+profile adapter also serves `people.enrich`; its company adapter also serves `companies.enrich`.
+The basic profile adapter retains only its LinkedIn category.

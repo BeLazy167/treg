@@ -11,6 +11,8 @@ other MCP server must not spend a treg balance just because it happens to be val
 
 from __future__ import annotations
 
+from conftest import verified_signup
+
 import json
 import time
 
@@ -326,7 +328,7 @@ async def _register(clients, redirect="https://client.test/cb"):
 async def _signed_in(clients, email="oauth-user@superdesign.dev"):
     """A browser session plus the org it belongs to. The consent step is a HUMAN action, so it needs
     a session cookie rather than a token."""
-    r = await clients.post("/users", json={"email": email})
+    r = await verified_signup(clients, json={"email": email})
     assert r.status_code == 200, r.text
     token = r.json()["token"]
     prev = clients.headers.get("X-Treg-Token")
@@ -376,6 +378,8 @@ async def test_the_whole_flow_end_to_end(clients):
         "redirect_uri": "https://client.test/cb", "client_id": client_id,
         "code_verifier": verifier, "resource": mcp_oauth.mcp_resource_url()})
     assert tok.status_code == 200, tok.text
+    assert tok.headers["cache-control"] == "no-store"
+    assert tok.headers["pragma"] == "no-cache"
     access = tok.json()["access_token"]
     assert tok.json()["token_type"] == "Bearer"
 

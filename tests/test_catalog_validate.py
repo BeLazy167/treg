@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import pytest
 
 from scripts import catalog_validate as validator
@@ -603,3 +605,92 @@ def test_generic_price_display_metadata(display, valid):
     errors = []
     validator.check_cost(cost, 'test', errors, [])
     assert (not errors) == valid
+
+
+@pytest.mark.parametrize('patch,valid', [
+    ({}, True), ({'strict_query': 'yes'}, False), ({'method': 'POST'}, False),
+    ({'path': '/{id}'}, False),
+    ({'input': {'queryParams': {'mode': {'enum': [True]}}}}, False),
+])
+def test_strict_query_contract_validation(patch, valid):
+    ep = {'strict_query': True, 'method': 'GET', 'path': '/lookup',
+          'input': {'queryParams': {'mode': {'type': 'string', 'enum': ['true']}}}}
+    errors = []
+    validator.check_strict_query(ep | patch, 'example', errors)
+    assert bool(errors) is not valid
+
+
+@pytest.mark.parametrize('patch,valid', [
+    ({}, True),
+    ({'platform_auth': 'provider'}, False),
+    ({'method': 'POST'}, False),
+    ({'cost': {'type': 'per_success', 'value': 0.02}}, False),
+    ({'verified': ''}, False),
+    ({'scope': 'own_account'}, False),
+    ({'authorization_method': 'oauth'}, False),
+    ({'async': {'poll': {}}}, False),
+])
+def test_anonymous_platform_auth_is_a_verified_free_read_only_contract(patch, valid):
+    ep = {
+        'id': 'example.public.values',
+        'platform_auth': 'anonymous',
+        'method': 'GET',
+        'scope': 'any_account',
+        'cost': {'type': 'free', 'value': 0, 'currency': 'USD', 'unit': 'call'},
+        'verified': '2026-09-15',
+    }
+    errors = []
+    validator.check_platform_auth(ep | patch, 'example', errors)
+    assert (not errors) is valid
+
+
+def test_missing_platform_auth_normalizes_as_absent():
+    normalized = catalog_store._normalize({
+        'id': 'example.public.values',
+        'method': 'GET',
+        'path': '/values',
+    }, 'example', Path('.'))
+    assert normalized['platform_auth'] is None
+
+
+def test_dropleads_catalog_surface_is_bounded_and_excludes_internal_routes():
+    catalog = catalog_store.load()
+    rows = [ep for ep in catalog.endpoints if ep["provider"] == "dropleads"]
+    assert len(rows) == 12
+    assert all(catalog.platform_eligible(ep) for ep in rows)
+    assert not any(
+        "credits/balance" in ep["path"] or "export/cost" in ep["path"]
+        for ep in rows
+    )
+    assert {ep.get("host") for ep in rows if ep.get("host")} == {"api.dropleads.io"}
+    assert catalog.by_id["dropleads.companies.search.count"]["capability"] == \
+        "companies.search.count"
+    assert catalog.by_id["dropleads.people.enrich"]["test_request"]["body"] == {
+        "name": "Jane Doe",
+        "organization_name": "Example",
+        "domain": "example.com",
+    }
+    assert catalog.by_id["dropleads.people.enrich.verified"]["test_request"]["body"] == {
+        "name": "Jane Doe",
+        "organization_name": "Example",
+        "domain": "example.com",
+        "email_verification_type": "valid_and_catchall",
+    }
+
+
+def test_prospeo_catalog_surface_excludes_account_info_and_prices_mobile_at_the_documented_maximum():
+    catalog = catalog_store.load()
+    rows = [ep for ep in catalog.endpoints if ep["provider"] == "prospeo"]
+    assert len(rows) == 9
+    assert not any(ep["path"] == "/account-information" for ep in rows)
+    assert {ep["path"] for ep in rows} == {
+        "/enrich-person", "/bulk-enrich-person", "/enrich-company",
+        "/bulk-enrich-company", "/search-person", "/search-company",
+        "/search-suggestions",
+    }
+    phone = catalog.by_id["prospeo.people.phone.find"]
+    assert not phone.get("platform_blocked")
+    assert phone["cost"]["value"] == 10
+    bulk_mobile = catalog.by_id["prospeo.people.enrich.bulk"]["cost"]["modifiers"]
+    assert bulk_mobile["enrich_mobile"]["add_credits_per_result"] == 9
+    assert all(catalog.platform_eligible(ep) for ep in rows)

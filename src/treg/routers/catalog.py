@@ -32,6 +32,14 @@ def _provider_display(service: str) -> str:
     return p.display_name if p else service
 
 
+def _run_hint(ep: dict) -> str:
+    auth = (
+        "no provider key required" if ep.get("platform_auth") == "anonymous"
+        else "key injected server-side"
+    )
+    return f"{catalog_store.call_template(ep)}   # run it — {auth}"
+
+
 def _platform_rows() -> list[dict]:
     """The platform shelves, busiest first — one builder shared by the JSON route below and the
     server-rendered /catalog page, so the two can never disagree about what is on the shelf."""
@@ -252,10 +260,12 @@ async def catalog_search(q: str = "", limit: int = 25,
                  "requests steer which provider gets added next"]
     else:
         top = results[0]
-        call_line = (f"treg call {top['id']} --data '{{...}}'" if top.get("kind") == "hub"
-                     else catalog_store.call_template(cat.by_id.get(top['id'], ranked[0][0])))
-        hints = [f"treg catalog get {top['id']}   # params, cost and an example response",
-                 f"{call_line}   # run it — key injected server-side"]
+        # A hub tool has no catalog row and no provider key: its call line is the tool id, and the
+        # maker's own keys serve its steps (docs/hub-listing-decisions.md).
+        run_hint = (f"treg call {top['id']} --data '{{...}}'   # run it — the maker's keys serve it"
+                    if top.get("kind") == "hub"
+                    else _run_hint(cat.by_id.get(top['id'], ranked[0][0])))
+        hints = [f"treg catalog get {top['id']}   # params, cost and an example response", run_hint]
         routed_row = next((r for r in results if r.get("kind") == "routed"), None)
         if routed_row is not None:
             hints.insert(1, f"{routed_row['id']} is ROUTED: treg picks among {len(routed_row.get('routed_children') or [])} "
@@ -393,7 +403,7 @@ async def catalog_endpoint(
         **({"routing": routing} if routing is not None else {}),
         "call_template": catalog_store.call_template(ep),
         "example_response": example,
-        "hints": [f"{catalog_store.call_template(ep)}   # run it — key injected server-side"]
+        "hints": [_run_hint(ep)]
                  + ([f"when treg's own {ep['provider']} account is out this may be served through the "
                      f"overflow relay ({overflow['overflow_via']}) and bill "
                      f"${overflow['overflow_price_usd']:g} per {overflow['overflow_price_unit']} instead "

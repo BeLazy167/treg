@@ -6,9 +6,10 @@ from sqlalchemy import delete, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 
-from ... import crypto
 from ...models import (
     AdConversion,
+    ApiKey,
+    ApiKeyEvent,
     ArenaEvaluation,
     ArenaRun,
     AsyncResourceRecord,
@@ -20,6 +21,7 @@ from ...models import (
     DenyRule,
     Feedback,
     CallReview,
+    Media,
     Hold,
     HubRun,
     HubTool,
@@ -43,7 +45,25 @@ from ...models import (
     User,
 )
 from ..identity import session as sess
-from ..identity.access import _membership_by_token, _resolve_org
+from ..identity import api_keys as managed_keys
+from ..identity.access import _membership_by_token, _resolve_org, lock_user
+
+
+MAX_OWNED_TEAMS = 10
+
+
+class OwnedTeamLimitReached(Exception):
+    """The account already owns the maximum number of teams."""
+
+
+async def require_owned_team_slot(db: AsyncSession, user_id: int) -> None:
+    """Hold the user lock through the ownership insert and its commit. No reservation counter."""
+    await lock_user(db, user_id)
+    owned = (await db.execute(select(Membership.id).where(
+        Membership.user_id == user_id, Membership.role == "owner",
+    ).limit(MAX_OWNED_TEAMS))).scalars().all()
+    if len(owned) >= MAX_OWNED_TEAMS:
+        raise OwnedTeamLimitReached
 
 
 def _slugify(text: str) -> str:
@@ -60,18 +80,28 @@ async def _unique_slug(base: str, db: AsyncSession) -> str:
 async def _make_org_membership(
     db: AsyncSession, user: User, name: str, slug_base: str, role: str, webhook_url: str | None = None
 ) -> tuple[Org, str]:
-    """Create an Org + an owner/role Membership for `user`, minting a fresh org-scoped token.
-    Returns (org, plaintext token). Caller commits.
+    """Create an Org + human Membership with only its signed default credential.
+
+    The non-null legacy column stays empty until its later removal. The returned team-pinned
+    identity token preserves the existing create-org response contract without manufacturing a
+    second, hash-backed ``legacy_human`` key for a brand-new membership. Caller commits.
     """
+    if role == "owner":
+        await require_owned_team_slot(db, user.id)
     org = Org(name=name, slug=await _unique_slug(slug_base, db))
     db.add(org)
     await db.flush()
-    token = crypto.new_token()
-    db.add(
-        Membership(
+    membership = Membership(
             user_id=user.id, org_id=org.id, role=role,
-            token_hash=crypto.hash_token(token), webhook_url=webhook_url,
+            token_hash="", webhook_url=webhook_url,
         )
+    db.add(membership)
+    await db.flush()
+    default = await managed_keys.ensure_default_key(db, membership, user)
+    token = sess.make_identity(
+        user.id, user.token_version, org=org.slug,
+        key_generation=default.default_generation if default else None,
+        scope=sess.TEAM_SCOPE,
     )
     return org, token
 
@@ -84,10 +114,11 @@ async def list_user_orgs(
     if x_treg_token and (membership := await _membership_by_token(x_treg_token, db)):
         current = membership.org_id
     else:
-        # X-Treg-Org wins, then a team-pinned identity token's claim, matching require_member.
-        ref = x_treg_org or (
-            (sess.read_identity_claims(x_treg_token) or {}).get("org", "") if x_treg_token else ""
-        )
+        claims = sess.read_identity_claims(x_treg_token) if x_treg_token else None
+        # A newly typed Default key is authoritative for its team. Legacy unmarked identity tokens
+        # keep header-first selection during the migration window.
+        ref = ((claims or {}).get("org", "") if (claims or {}).get("scope") == sess.TEAM_SCOPE
+               else x_treg_org or (claims or {}).get("org", ""))
         org = await _resolve_org(ref, db)
         current = org.id if org else None
     memberships = (
@@ -136,6 +167,7 @@ async def list_user_orgs(
 ORG_SCOPED_MODELS = (
     ArenaEvaluation, ArenaRun,
     Tool, Secret, Bundle, PendingOAuth, CallRecord, RunRecord, Invite, DenyRule, Project,
+    ApiKeyEvent, ApiKey,
     CapabilityPin,
     TagBudget,
     TagSpend,  # before the money tables it attributes: its rows reference a Hold that is about to go
@@ -146,6 +178,7 @@ ORG_SCOPED_MODELS = (
     Feedback,
     HubTool,      # a maker's published tools go with the team that owned them
     CallReview,
+    Media,        # hosted reference files expire on their own; a deleted team's go now
     AdConversion,  # pending Google Ads conversions belong to the team they'd be attributed to
     Membership,   # last: it is what makes the caller a member of the org being deleted
 )
@@ -225,7 +258,9 @@ async def drop_member_deny_rules(db: AsyncSession, user_id: int, org_id: int | N
     return len(stale)
 
 
-async def delete_membership(db: AsyncSession, membership: Membership) -> None:
+async def delete_membership(
+    db: AsyncSession, membership: Membership, *, actor_email: str = "",
+) -> None:
     """Delete one membership and the caller-scoped state that has no meaning without it.
 
     The explicit IdempotentCall delete keeps SQLite tests honest even though their fast schema does
@@ -233,6 +268,10 @@ async def delete_membership(db: AsyncSession, membership: Membership) -> None:
     membership-removal door cannot turn token revocation into a 500 by forgetting this helper.
     Does not commit.
     """
+    user = await db.get(User, membership.user_id)
+    await managed_keys.revoke_membership_keys(db, membership, actor_email=(
+        actor_email or (user.email if user is not None else membership.created_by)
+    ))
     await db.execute(delete(IdempotentCall).where(
         IdempotentCall.membership_id == membership.id))
     await drop_member_deny_rules(db, membership.user_id, membership.org_id)

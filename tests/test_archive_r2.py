@@ -89,10 +89,56 @@ async def test_upload_precedes_pointer_and_call_does_not_wait(clients, r2, monke
     assert len(props) == 1 and props[0]['upload_status'] == 'uploaded'
     assert props[0]['upload_ms'] >= 0
     assert props[0]['dropped'] is False
+    assert props[0]['failure_phase'] is None
+    for phase in ('compare_sem_wait', 'compare', 'record_key_wait', 'record_sem_wait', 'record_db'):
+        assert props[0][phase + '_ms'] >= 0
 
 
-@pytest.mark.parametrize('mode,expected_rows', [('both', 1), ('r2', 1)])
-async def test_upload_failure_never_publishes_r2_pointer(clients, r2, monkeypatch, mode, expected_rows):
+@pytest.mark.parametrize('phase', ['record_key_wait', 'record_sem_wait', 'record_db'])
+async def test_call_reports_where_archive_db_deadline_expires(clients, r2, monkeypatch, phase):
+    # The upstream answer and R2 object succeed even when archive indexing cannot finish.
+    monkeypatch.setattr(archive, '_STORE_TIMEOUT_S', .05)
+    blocked = asyncio.Lock()
+    await blocked.acquire()
+    if phase == 'record_key_wait':
+        monkeypatch.setattr(archive, '_get_key_lock', lambda key: blocked)
+    elif phase == 'record_sem_wait':
+        comparison_sem = asyncio.Semaphore(2)
+        calls = 0
+        def get_sem():
+            nonlocal calls
+            calls += 1
+            return comparison_sem if calls == 1 else blocked
+        monkeypatch.setattr(archive, '_get_sem', get_sem)
+    else:
+        async def blocked_store(**kwargs):
+            await asyncio.Event().wait()
+        monkeypatch.setattr(archive, '_store_locked', blocked_store)
+    reports = []
+    monkeypatch.setattr(service.analytics, 'capture',
+                        lambda who, name, props, **kw: reports.append(props)
+                        if name == 'archive_body_stored' else None)
+    try:
+        response = await clients.get(URL)
+        assert response.status_code == 200 and response.content == RAW
+        await archive.drain()
+    finally:
+        blocked.release()
+    assert r2.objects[archive.content_hash(RAW)] == RAW
+    assert await snapshots() == []
+    assert len(reports) == 1
+    report = reports[0]
+    assert report['drop_reason'] == 'record_timeout' and report['dropped'] is True
+    assert report['failure_phase'] == phase
+    assert report[phase + '_ms'] >= 40
+    if phase != 'record_db':
+        assert report['record_db_ms'] is None
+    if phase == 'record_key_wait':
+        assert report['record_sem_wait_ms'] is None
+
+
+@pytest.mark.parametrize('mode', ['both', 'r2'])
+async def test_upload_failure_falls_back_to_db_without_r2_pointer(clients, r2, monkeypatch, mode):
     monkeypatch.setattr(get_settings(), 'archive_body_write', mode)
     r2.fail_puts = 100
     events = []
@@ -101,12 +147,39 @@ async def test_upload_failure_never_publishes_r2_pointer(clients, r2, monkeypatc
     assert response.content == RAW and response.status_code == 200
     await archive.drain()
     rows = await snapshots()
-    assert len(rows) == expected_rows and all(row.body_storage == ('db' if mode == 'both' else None) for row in rows)
+    assert len(rows) == 1 and rows[0].body_storage == 'db'
+    assert archive._unpack(rows[0].body, rows[0].enc) == RAW
+    assert not r2.objects
     props = [p for name, p in events if name == 'archive_body_stored']
     assert len(props) == 1
     assert props[0]['drop_reason'] == 'store_error'
     assert props[0]['upload_status'] == 'failed'
-    assert props[0]['dropped'] is (mode == 'r2')
+    assert props[0]['upload_attempts'] == 2
+    assert props[0]['upload_retry_reason'] == 'store_error'
+    assert props[0]['upload_retry_recovered'] is False
+    assert props[0]['storage'] == 'db'
+    assert props[0]['dropped'] is False
+
+
+async def test_r2_only_upload_admission_failure_falls_back_to_db(clients, r2, monkeypatch):
+    monkeypatch.setattr(get_settings(), 'archive_body_write', 'r2')
+    monkeypatch.setattr(get_settings(), 'archive_r2_max_pending', 0)
+    events = []
+    monkeypatch.setattr(service.analytics, 'capture',
+                        lambda who, name, props, **kw: events.append((name, props)))
+
+    response = await clients.get(URL)
+    assert response.content == RAW and response.status_code == 200
+    await archive.drain()
+
+    rows = await snapshots()
+    assert len(rows) == 1 and rows[0].body_storage == 'db'
+    assert archive._unpack(rows[0].body, rows[0].enc) == RAW
+    assert r2.put_calls == 0 and not r2.objects
+    report = next(p for name, p in events if name == 'archive_body_stored')
+    assert report['upload_status'] == 'dropped'
+    assert report['drop_reason'] == 'upload_queue_full'
+    assert report['storage'] == 'db' and report['dropped'] is False
 
 
 async def test_r2_queue_has_independent_concurrency_and_sheds_observably(clients, r2, monkeypatch):
@@ -121,6 +194,7 @@ async def test_r2_queue_has_independent_concurrency_and_sheds_observably(clients
     monkeypatch.setattr(service.analytics, 'capture', capture)
     try:
         for i in range(4):
+            monkeypatch.setattr(service, 'relay', _fake_relay(200, RAW + b' ' * i))
             await clients.get(URL + '&count=' + str(i))
         # Wait for the DB fallback's completion event, not an arbitrary scheduling delay.
         await asyncio.wait_for(dropped.wait(), 5)
@@ -129,7 +203,7 @@ async def test_r2_queue_has_independent_concurrency_and_sheds_observably(clients
     finally:
         r2.gate.set()
     await archive.drain()
-    assert len(await snapshots()) == 4 and len(r2.objects) == 1
+    assert len(await snapshots()) == 4 and len(r2.objects) == 3
     assert len([p for name, p in events if name == 'tool_called']) == 4
 
 
@@ -246,7 +320,10 @@ async def test_checksum_mismatch_is_not_published(clients, r2, monkeypatch):
     monkeypatch.setattr(get_settings(), 'archive_body_write', 'r2')
     await clients.get(URL)
     await archive.drain()
-    assert (await snapshots())[0].body_storage is None
+    row = (await snapshots())[0]
+    assert row.body_storage == 'db'
+    assert archive._unpack(row.body, row.enc) == RAW
+    assert not r2.objects
 
 
 @pytest.mark.parametrize('path', ['/calls', '/calls/{ref}'])
@@ -282,6 +359,32 @@ async def test_upload_timeout_and_byte_shedding_are_observable(clients, r2, monk
     await clients.get(URL, headers={'Cache-Control': 'no-cache'})
     await archive.drain()
     assert any(p.get('drop_reason') == 'upload_bytes_full' for _, p in events)
+
+
+async def test_upload_timeout_retries_once_and_recovers(clients, r2, monkeypatch):
+    monkeypatch.setattr(get_settings(), 'archive_r2_timeout_s', 0.08)
+    events, calls = [], 0
+    real_put = r2.put
+    async def timeout_once(body, **kwargs):
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            await asyncio.sleep(1)
+        return await real_put(body, **kwargs)
+    monkeypatch.setattr(r2, 'put', timeout_once)
+    monkeypatch.setattr(archive_bodies.random, 'uniform', lambda low, high: 0.001)
+    monkeypatch.setattr(service.analytics, 'capture',
+                        lambda who, name, props, **kw: events.append((name, props)))
+
+    assert (await clients.get(URL)).content == RAW
+    await archive.drain()
+
+    row = (await snapshots())[0]
+    report = next(props for name, props in events if name == 'archive_body_stored')
+    assert calls == 2 and row.body_storage == 'both'
+    assert report['upload_attempts'] == 2
+    assert report['upload_retry_reason'] == 'timeout'
+    assert report['upload_retry_recovered'] is True
 
 
 async def test_obstore_client_uses_one_request_and_checks_hash_and_size():
@@ -425,13 +528,17 @@ async def test_obstore_factory_configuration_and_missing_objects(monkeypatch, wr
 
 @pytest.mark.parametrize('path', ['lookup', 'result', 'terminal'])
 @pytest.mark.parametrize('reason,level', [('not_found', 'WARNING'), ('timeout', 'WARNING'),
-                                         ('permission_denied', 'ERROR'), ('hash_mismatch', 'ERROR')])
+                                         ('permission_denied', 'ERROR'), ('hash_mismatch', 'ERROR'),
+                                         ('rate_limited', 'WARNING'), ('upstream_error', 'WARNING')])
 async def test_read_fallback_reason_level_and_diagnostics(r2, monkeypatch, caplog, path, reason, level):
     from treg.infra.object_store import ObjectStoreError
     monkeypatch.setattr(get_settings(), 'archive_body_read_' + path, 'r2-first')
     monkeypatch.setattr(get_settings(), 'archive_r2_read_timeout_s', 0.01)
     monkeypatch.setattr(get_settings(), 'archive_r2_timeout_s', 30.0)
+    calls = 0
     async def fail(key):
+        nonlocal calls
+        calls += 1
         if reason == 'timeout':
             await asyncio.sleep(1)
         elif reason == 'not_found':
@@ -445,12 +552,47 @@ async def test_read_fallback_reason_level_and_diagnostics(r2, monkeypatch, caplo
     assert await archive_bodies.read(p, path, diagnostics=diagnostics) == RAW
     assert diagnostics['cache_body_source'] == 'db'
     assert diagnostics['cache_body_fallback_reason'] == reason
+    retryable = reason in {'timeout', 'rate_limited', 'upstream_error'}
+    assert calls == diagnostics['cache_r2_attempts'] == (2 if retryable else 1)
+    assert diagnostics['cache_r2_retry_reason'] == (reason if retryable else 'none')
+    assert diagnostics['cache_r2_retry_recovered'] is False
     assert 0 <= diagnostics['cache_r2_read_ms'] < 500
     assert archive_bodies.outcomes['read_fallback_' + path] == before + 1
     record = [r for r in caplog.records if 'archive R2 read fallback' in r.message][-1]
     assert record.levelname == level and f'path={path}' in record.message
     assert reason in record.message and RAW.decode() not in record.message
     assert p.content_hash not in record.message
+
+
+@pytest.mark.parametrize('reason', ['timeout', 'store_error'])
+async def test_read_transient_failure_retries_once_and_recovers(r2, monkeypatch, reason):
+    from treg.infra.object_store import ObjectStoreError
+    monkeypatch.setattr(get_settings(), 'archive_body_read_lookup', 'r2-first')
+    monkeypatch.setattr(get_settings(), 'archive_r2_read_timeout_s', 0.08)
+    digest = archive.content_hash(RAW)
+    r2.objects[digest] = RAW
+    calls = 0
+    real_get = r2.get
+    async def fail_once(key):
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            if reason == 'timeout':
+                await asyncio.sleep(1)
+            raise ObjectStoreError(reason)
+        return await real_get(key)
+    monkeypatch.setattr(r2, 'get', fail_once)
+    monkeypatch.setattr(archive_bodies.random, 'uniform', lambda low, high: 0.001)
+    diagnostics = {}
+
+    pointer = archive_bodies.BodyPointer(digest, 'both', RAW, None)
+    assert await archive_bodies.read(pointer, 'lookup', diagnostics=diagnostics) == RAW
+    assert calls == 2
+    assert diagnostics['cache_body_source'] == 'r2'
+    assert diagnostics['cache_body_fallback_reason'] == 'none'
+    assert diagnostics['cache_r2_attempts'] == 2
+    assert diagnostics['cache_r2_retry_reason'] == reason
+    assert diagnostics['cache_r2_retry_recovered'] is True
 
 
 @pytest.mark.parametrize('fallback', [False, True])
@@ -640,6 +782,65 @@ async def test_db_deadline_reports_timeout_not_cancelled(clients, r2, monkeypatc
     assert any('record_timeout' in record.message for record in caplog.records)
 
 
+@pytest.mark.parametrize('phase', [
+    'compare_sem_wait', 'compare', 'record_key_wait', 'record_sem_wait', 'record_db',
+    'observe_sem_wait', 'observe',
+])
+async def test_cancelled_record_reports_elapsed_phase(clients, r2, monkeypatch, phase):
+    entered = asyncio.Event()
+    class BlockedGate(asyncio.Semaphore):
+        async def acquire(self):
+            entered.set()
+            return await super().acquire()
+    blocked_gate = BlockedGate(0)
+    async def blocked_work(*args, **kwargs):
+        entered.set()
+        await asyncio.Event().wait()
+    sem = asyncio.Semaphore(2)
+    key_lock = asyncio.Lock()
+    sem_calls = 0
+    def get_sem():
+        nonlocal sem_calls
+        sem_calls += 1
+        blocked_call = {'compare_sem_wait': 1, 'record_sem_wait': 2, 'observe_sem_wait': 3}.get(phase)
+        return blocked_gate if sem_calls == blocked_call else sem
+    monkeypatch.setattr(archive, '_get_sem', get_sem)
+    monkeypatch.setattr(archive, '_get_key_lock',
+                        lambda key: blocked_gate if phase == 'record_key_wait' else key_lock)
+    if phase == 'compare':
+        monkeypatch.setattr(archive, '_ignored_matches', blocked_work)
+    elif phase == 'record_db':
+        monkeypatch.setattr(archive, '_store_locked', blocked_work)
+    elif phase == 'observe':
+        monkeypatch.setattr(archive, '_observe_change', blocked_work)
+    # A prior version ensures the post-commit observation phases are reached.
+    if phase.startswith('observe'):
+        await archive._store(method='GET', endpoint_id=EP, provider='tikhub', url=URL,
+                             caller_body=b'', headers={}, status_code=200,
+                             media_type='application/json', body=b'{"before":1}',
+                             plan=archive_bodies.WritePlan('db'))
+        sem_calls = 0
+    reports = []
+    task = asyncio.create_task(archive._store(
+        method='GET', endpoint_id=EP, provider='tikhub', url=URL, caller_body=b'',
+        headers={}, status_code=200, media_type='application/json', body=RAW,
+        plan=archive_bodies.WritePlan('db'),
+        observation=archive_bodies.StorageReport(emit=reports.append)))
+    try:
+        await asyncio.wait_for(entered.wait(), 2)
+        await asyncio.sleep(.01)
+    finally:
+        task.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await task
+    assert len(reports) == 1
+    assert reports[0]['drop_reason'] == 'cancelled'
+    assert reports[0]['failure_phase'] == phase
+    assert reports[0][phase + '_ms'] > 0
+    assert reports[0]['dropped'] is (not phase.startswith('observe'))
+    assert sem._value == 2 and not key_lock.locked() and blocked_gate._value == 0
+
+
 async def test_cancel_before_start_reports_once(clients, r2, monkeypatch):
     reports = []
     archive.record(method='GET', endpoint_id=EP, provider='tikhub', url=URL,
@@ -650,6 +851,8 @@ async def test_cancel_before_start_reports_once(clients, r2, monkeypatch):
         task.cancel()
     await archive.drain()
     assert len(reports) == 1 and reports[0]['drop_reason'] == 'cancelled'
+    assert reports[0]['failure_phase'] is None
+    assert reports[0]['record_key_wait_ms'] is None and reports[0]['record_db_ms'] is None
 
 
 @pytest.mark.parametrize('error,reason', [
@@ -672,3 +875,338 @@ async def test_object_boundary_classifies_put_and_get_by_type(error, reason):
         with pytest.raises(ObjectStoreError) as caught:
             await store.get(archive.content_hash(RAW))
         assert str(caught.value) == reason
+
+
+async def test_same_body_refetch_skips_duplicate_put(clients, r2, monkeypatch):
+    events = []
+    monkeypatch.setattr(service.analytics, 'capture', lambda who, name, props, **kw: events.append((name, props)))
+    for _ in range(2):
+        response = await clients.get(URL, headers={'Cache-Control': 'no-cache'})
+        assert response.content == RAW
+        await archive.drain()
+    assert r2.put_calls == 1
+    assert len(await snapshots()) == 2
+    reports = [p for name, p in events if name == 'archive_body_stored']
+    assert [p['upload_status'] for p in reports] == ['uploaded', 'skipped_duplicate']
+    assert all(p['storage'] == 'both' and not p['dropped'] for p in reports)
+
+
+@pytest.mark.parametrize('write_mode', ['both', 'r2'])
+async def test_new_and_identical_calls_skip_unused_normalization(clients, r2, monkeypatch, write_mode):
+    monkeypatch.setattr(get_settings(), 'archive_body_write', write_mode)
+    if write_mode == 'r2':
+        monkeypatch.setattr(get_settings(), 'archive_body_read_lookup', 'r2-first')
+    normalized = []
+    real_normalize = archive._normalized_hash
+    def normalize(body, paths):
+        normalized.append(body)
+        return real_normalize(body, paths)
+    monkeypatch.setattr(archive, '_normalized_hash', normalize)
+    for _ in range(2):
+        response = await clients.get(URL, headers={'Cache-Control': 'no-cache'})
+        assert response.status_code == 200 and response.content == RAW
+        await archive.drain()
+        assert normalized == []
+
+    # Default JSON equality still applies when the raw bytes actually differ.
+    reformatted = b'  ' + RAW + b'\n'
+    monkeypatch.setattr(service, 'relay', _fake_relay(200, reformatted))
+    assert (await clients.get(URL, headers={'Cache-Control': 'no-cache'})).content == reformatted
+    await archive.drain()
+    assert RAW in normalized and reformatted in normalized
+    async with db.session_maker() as s:
+        key = (await s.execute(select(ArchiveKey))).scalar_one()
+        assert key.stable_seen == 2 and key.change_seen == 0
+    rows = await snapshots()
+    assert len(rows) == 3
+    assert [row.content_hash for row in rows] == [archive.content_hash(raw) for raw in (RAW, RAW, reformatted)]
+
+
+async def test_concurrent_same_body_calls_share_one_put(clients, r2):
+    r2.gate = asyncio.Event()
+    try:
+        for i in range(8):
+            assert (await clients.get(URL + '&count=' + str(i))).content == RAW
+        await asyncio.wait_for(r2.entered.wait(), 2)
+        await asyncio.sleep(0)
+        assert r2.put_calls == 1
+    finally:
+        r2.gate.set()
+    await archive.drain()
+    rows = await snapshots()
+    assert len(rows) == 8 and all(row.body_storage == 'both' for row in rows)
+    assert r2.put_calls == 1 and not archive_bodies._inflight
+
+
+@pytest.mark.parametrize('status', [429, 500, 503])
+@pytest.mark.parametrize('exhausted', [False, True])
+async def test_transient_put_retry_and_db_fallback(clients, r2, monkeypatch, status, exhausted, caplog):
+    r2.put_failures = [status] * (2 if exhausted else 1)
+    events, delays = [], []
+    def jitter(low, high):
+        assert archive_bodies._upload_sem()._value == get_settings().archive_r2_upload_concurrency
+        delays.append((low, high))
+        return 0.001
+    monkeypatch.setattr(archive_bodies.random, 'uniform', jitter)
+    monkeypatch.setattr(service.analytics, 'capture', lambda who, name, props, **kw: events.append((name, props)))
+    assert (await clients.get(URL)).content == RAW
+    await archive.drain()
+    assert r2.put_calls == 2 and delays == [(1.0, 1.5)]
+    row = (await snapshots())[0]
+    assert archive._unpack(row.body, row.enc) == RAW
+    report = next(p for name, p in events if name == 'archive_body_stored')
+    reason = 'rate_limited' if status == 429 else 'upstream_error'
+    if exhausted:
+        assert row.body_storage == 'db' and not r2.objects
+        assert report['upload_status'] == 'failed' and report['drop_reason'] == reason
+        assert reason in caplog.text
+        assert archive.content_hash(RAW) not in archive_bodies._uploaded
+    else:
+        assert row.body_storage == 'both' and report['upload_status'] == 'uploaded'
+        assert report['upload_retry_recovered'] is True
+    assert report['upload_attempts'] == 2
+    assert report['upload_retry_reason'] == reason
+    assert report['dropped'] is False
+
+
+@pytest.mark.parametrize('mode', ['both', 'r2'])
+async def test_retry_jitter_stays_inside_existing_upload_budget(clients, r2, monkeypatch, mode):
+    monkeypatch.setattr(get_settings(), 'archive_body_write', mode)
+    monkeypatch.setattr(get_settings(), 'archive_r2_timeout_s', 0.02)
+    r2.put_failures = [429]
+    events = []
+    monkeypatch.setattr(service.analytics, 'capture', lambda who, name, props, **kw: events.append((name, props)))
+    await clients.get(URL)
+    await archive.drain()
+    assert r2.put_calls == 1 and (await snapshots())[0].body_storage == 'db'
+    report = next(p for name, p in events if name == 'archive_body_stored')
+    assert report['drop_reason'] == 'timeout' and report['upload_ms'] < 500
+    assert not archive_bodies._inflight and not archive_bodies._uploaded
+
+
+async def test_recent_upload_lru_is_bounded_and_resets_with_store(r2, monkeypatch):
+    monkeypatch.setattr(archive_bodies, '_RECENT_UPLOADS', 2)
+    async def put(raw):
+        return await archive_bodies.prepare(raw, archive.content_hash(raw), mode='both',
+                                            observation=archive_bodies.StorageReport())
+    for raw in (b'a', b'b', b'a', b'c'):
+        assert (await put(raw)).storage == 'both'
+    assert len(archive_bodies._uploaded) == 2 and r2.put_calls == 3
+    assert archive.content_hash(b'b') not in archive_bodies._uploaded
+    await put(b'b')
+    assert r2.put_calls == 4
+    replacement = MemoryObjectStore()
+    archive_bodies.configure(replacement)
+    await put(b'b')
+    assert replacement.put_calls == 1
+
+
+@pytest.mark.parametrize('cancel_leader', [False, True])
+async def test_singleflight_cancellation_releases_waiters(r2, cancel_leader):
+    r2.gate = asyncio.Event()
+    async def put():
+        return await archive_bodies.prepare(RAW, archive.content_hash(RAW), mode='both',
+                                            observation=archive_bodies.StorageReport())
+    leader = asyncio.create_task(put())
+    await asyncio.wait_for(r2.entered.wait(), 2)
+    follower = asyncio.create_task(put())
+    await asyncio.sleep(0)
+    cancelled, remaining = (leader, follower) if cancel_leader else (follower, leader)
+    cancelled.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await cancelled
+    r2.gate.set()
+    plan = await asyncio.wait_for(remaining, 2)
+    assert plan.storage == ('db' if cancel_leader else 'both')
+    assert not archive_bodies._inflight
+    assert (await put()).storage == 'both'
+    assert r2.put_calls == (2 if cancel_leader else 1)
+
+
+@pytest.mark.parametrize('path', ['lookup', 'result', 'terminal', 'put'])
+async def test_store_error_logs_only_underlying_exception_class(r2, monkeypatch, caplog, path):
+    from treg.infra.object_store import ObjectStoreError
+    async def fail(*args, **kwargs):
+        raise ObjectStoreError('store_error', exception_type='GenericError')
+    if path == 'put':
+        monkeypatch.setattr(r2, 'put', fail)
+        plan = await archive_bodies.prepare(RAW, archive.content_hash(RAW), mode='both',
+                                            observation=archive_bodies.StorageReport())
+        assert plan.reason == 'store_error'
+    else:
+        monkeypatch.setattr(get_settings(), 'archive_body_read_' + path, 'r2-first')
+        monkeypatch.setattr(r2, 'get', fail)
+        pointer = archive_bodies.BodyPointer(archive.content_hash(RAW), 'both', RAW, None)
+        assert await archive_bodies.read(pointer, path) == RAW
+    assert 'exception_type=GenericError' in caplog.text
+    assert RAW.decode() not in caplog.text and archive.content_hash(RAW) not in caplog.text
+
+
+@pytest.mark.parametrize('status,reason', [(429, 'rate_limited'), (500, 'upstream_error'),
+                                         (503, 'upstream_error'), (400, 'store_error')])
+async def test_real_obstore_http_status_classification(status, reason):
+    from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+    from threading import Thread
+    from obstore.exceptions import GenericError
+    from obstore.store import S3Store
+    from treg.infra.object_store import R2ObjectStore, ObjectStoreError
+
+    calls = []
+    class Handler(BaseHTTPRequestHandler):
+        def fail(self):
+            calls.append(self.command)
+            self.rfile.read(int(self.headers.get('Content-Length', 0)))
+            self.send_response(status)
+            self.end_headers()
+            if self.command != 'HEAD':
+                self.wfile.write(b'<Error><Code>TestError</Code><Message>private-body-token</Message></Error>')
+        do_PUT = do_GET = do_HEAD = fail
+        def log_message(self, *args):
+            pass
+
+    server = ThreadingHTTPServer(('127.0.0.1', 0), Handler)
+    thread = Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        sdk = S3Store('test', config={'endpoint': f'http://127.0.0.1:{server.server_port}',
+                                      'region': 'auto', 'access_key_id': 'test', 'secret_access_key': 'test'},
+                      client_options={'allow_http': True}, retry_config={'max_retries': 0})
+        store = R2ObjectStore(sdk, 1000, status_errors=(GenericError,))
+        key = archive.content_hash(RAW)
+        for operation in (lambda: store.put(RAW, content_hash=key), lambda: store.get(key), lambda: store.head(key)):
+            before = len(calls)
+            with pytest.raises(ObjectStoreError) as caught:
+                await operation()
+            assert len(calls) == before + 1  # real SDK max_retries=0, including HTTP 429
+            assert caught.value.reason == reason
+            assert str(caught.value) == reason
+            assert caught.value.exception_type == 'GenericError'
+    finally:
+        await asyncio.to_thread(server.shutdown)
+        server.server_close()
+        thread.join()
+
+
+async def test_generic_sdk_body_cannot_spoof_http_status():
+    from obstore.exceptions import GenericError
+    from treg.infra.object_store import R2ObjectStore
+    store = R2ObjectStore(None, 1000, status_errors=(GenericError,))
+    for text in ('503 secret-body', 'Server returned non-2xx status code: 429 secret-body',
+                 'Generic S3 error: Error performing GET https://test/abc in 1ms - '
+                 'Server returned non-2xx status code: 400 Bad Request: '
+                 'Server returned non-2xx status code: 429 Too Many Requests'):
+        error = store._failure(GenericError(text))
+        assert error.reason == 'store_error' and str(error) == 'store_error'
+
+
+async def test_same_query_burst_bypasses_upload_queue_budget(clients, r2, monkeypatch):
+    # A burst of identical search results, before any upload can finish. Duplicates must not
+    # consume the distinct-upload budget even before the first background task starts.
+    monkeypatch.setattr(get_settings(), 'archive_r2_max_pending', 1)
+    monkeypatch.setattr(get_settings(), 'archive_r2_max_pending_bytes', len(RAW))
+    r2.gate = asyncio.Event()
+    reports = []
+    for _ in range(300):
+        archive.record(method='GET', endpoint_id=EP, provider='tikhub', url=URL,
+                       caller_body=b'', headers={}, status_code=200, media_type='application/json', body=RAW,
+                       observation=archive_bodies.StorageReport(emit=reports.append))
+    assert len(archive_bodies._pending) == 1
+    assert archive_bodies._pending_bytes == len(RAW)
+    try:
+        await asyncio.wait_for(r2.entered.wait(), 2)
+        assert r2.put_calls == 1
+    finally:
+        r2.gate.set()
+    await archive.drain()
+    rows = await snapshots()
+    assert len(rows) == 300 and len({row.key_id for row in rows}) == 1
+    assert len(reports) == 300 and all(p['storage'] == 'both' and not p['dropped'] for p in reports)
+    assert r2.put_calls == 1 and not archive_bodies._queued_hashes
+    assert archive_bodies._pending_bytes == 0
+
+
+async def test_cached_hash_bypasses_saturated_upload_queue(clients, r2, monkeypatch):
+    await clients.get(URL)
+    await archive.drain()
+    monkeypatch.setattr(get_settings(), 'archive_r2_max_pending', 0)
+    response = await clients.get(URL, headers={'Cache-Control': 'no-cache'})
+    await archive.drain()
+    assert response.content == RAW and r2.put_calls == 1
+    assert all(row.body_storage == 'both' for row in await snapshots())
+
+
+async def test_singleflight_shares_exhausted_retry_result(r2, monkeypatch):
+    r2.gate = asyncio.Event()
+    r2.put_failures = [429, 429]
+    monkeypatch.setattr(archive_bodies.random, 'uniform', lambda low, high: 0.001)
+    async def put():
+        return await archive_bodies.prepare(RAW, archive.content_hash(RAW), mode='both',
+                                            observation=archive_bodies.StorageReport())
+    tasks = [asyncio.create_task(put()) for _ in range(30)]
+    await asyncio.wait_for(r2.entered.wait(), 2)
+    r2.gate.set()
+    plans = await asyncio.gather(*tasks)
+    assert all(plan.storage == 'db' and plan.reason == 'rate_limited' for plan in plans)
+    assert r2.put_calls == 2 and not archive_bodies._uploaded and not archive_bodies._inflight
+    assert (await put()).storage == 'both' and r2.put_calls == 3
+
+
+async def test_change_observation_reads_r2_only_without_db_connection(clients, r2, monkeypatch):
+    monkeypatch.setattr(get_settings(), 'archive_body_read_lookup', 'r2-first')
+    monkeypatch.setattr(get_settings(), 'archive_body_write', 'r2')
+    monkeypatch.setattr(get_settings(), 'archive_mode', 'shadow')
+    events = []
+    monkeypatch.setattr(service.analytics, 'capture', lambda who, name, props, **kw: events.append((name, props)))
+    for body in (RAW, RAW.replace(b'hello', b'world')):
+        monkeypatch.setattr(service, 'relay', _fake_relay(200, body))
+        assert (await clients.get(URL)).content == body
+        await archive.drain()
+    rows = await snapshots()
+    assert all(row.body is None and row.body_storage == 'r2' for row in rows)
+    observed = [p for name, p in events if name == 'archive_change_observed']
+    assert len(observed) == 1
+    assert observed[0]['changed_paths'] == ['data.comments[*].text']
+
+
+async def test_ignore_learning_reads_r2_only_without_db_connection(clients, r2, monkeypatch):
+    monkeypatch.setattr(get_settings(), 'archive_body_read_lookup', 'r2-first')
+    from treg.domain.catalog import store
+    monkeypatch.setattr(get_settings(), 'archive_body_write', 'r2')
+    monkeypatch.setattr(get_settings(), 'archive_mode', 'shadow')
+    monkeypatch.setitem(store.load().by_id[EP], 'cache',
+                        {'mode': 'transient', 'ignore_paths': ['data.comments[*].text']})
+    for body in (RAW, RAW.replace(b'hello', b'world')):
+        monkeypatch.setattr(service, 'relay', _fake_relay(200, body))
+        assert (await clients.get(URL)).content == body
+        await archive.drain()
+    async with db.session_maker() as s:
+        key = (await s.execute(select(ArchiveKey))).scalar_one()
+        assert (key.stable_seen, key.change_seen) == (1, 0)
+    assert all(row.body is None for row in await snapshots())
+
+
+@pytest.mark.parametrize('read_mode', ['db', 'r2-first'])
+async def test_observation_uses_background_fallback_and_lookup_switch(clients, r2, monkeypatch, read_mode):
+    from contextlib import asynccontextmanager
+    monkeypatch.setattr(get_settings(), 'archive_body_read_lookup', read_mode)
+    calls = []
+    @asynccontextmanager
+    async def background():
+        calls.append('background')
+        class Session:
+            async def get(self, *args):
+                return None
+        yield Session()
+    def api():
+        pytest.fail('observation must never use API pool')
+    class Store:
+        async def get(self, *args):
+            calls.append('r2')
+            return None
+    monkeypatch.setattr(db, 'background_session_maker', background)
+    monkeypatch.setattr(db, 'session_maker', api)
+    monkeypatch.setattr(archive_bodies, '_store', Store())
+    pointer = archive_bodies.BodyPointer(archive.content_hash(RAW), 'both', None, None, 1)
+    assert await archive_bodies.read(pointer, 'observation') is None
+    assert calls == (['r2', 'background'] if read_mode == 'r2-first' else ['background'])
+    assert archive_bodies._r2_first('observation') == (read_mode == 'r2-first')

@@ -10,6 +10,8 @@ Pure collection: nothing here touches the database or the request path. The work
 
 from __future__ import annotations
 
+import math
+
 import httpx
 
 from ...config import get_settings, platform_setting_name
@@ -89,6 +91,38 @@ async def _sumble(c, key):
             "note": "Monthly allowance plus purchased credits; renewal date and auto-top-up state not reported."}
 
 
+async def _harvestapi(c, key):
+    d = await _get(c, "https://api.harvestapi.io/users/my-api-user",
+                   headers={"X-API-Key": key})
+    usage = d.get("usage") if isinstance(d, dict) else None
+    remaining = usage.get("balance") if isinstance(usage, dict) else None
+    if type(remaining) not in (int, float) or not math.isfinite(remaining) or remaining < 0:
+        remaining = None
+    return {"value": remaining, "unit": "USD",
+            "note": "Prepaid wallet; usage.balance is remaining, user.totalBalance is not. "
+                    "Starter: 5 concurrent requests and queue of 10; no RPM cap. "
+                    "Auto top-up is managed in HarvestAPI."}
+
+
+async def _dropleads(c, key):
+    d = await _get(c, "https://prime.dropleads.io/api/v2/prime-db/credits/balance",
+                   headers={"X-API-Key": key})
+    credits = d.get("credits") if isinstance(d, dict) and d.get("success") is True else None
+    remaining = credits.get("totalAvailable") if isinstance(credits, dict) else None
+    if (type(remaining) not in (int, float) or not math.isfinite(remaining)
+            or remaining < 0):
+        remaining = None
+    subscription = credits.get("subscription") if isinstance(credits, dict) else None
+    payg = credits.get("payg") if isinstance(credits, dict) else None
+    use_payg = credits.get("usePayg") if isinstance(credits, dict) else None
+    return {
+        "value": remaining,
+        "unit": "credits",
+        "note": f"subscription {subscription}, PAYG {payg}, use PAYG {use_payg}; "
+                "totalAvailable is the spendable balance",
+    }
+
+
 async def _quickenrich(c, key):
     # Free discovery carries the remaining subscription allowance; no account endpoint exists.
     r = await c.post("https://app.quickenrich.io/api/employees/contact-finder",
@@ -104,6 +138,23 @@ async def _quickenrich(c, key):
         return {"value": None, "unit": "credits", "note": "No finite subscription allowance reported; check QuickEnrich plan"}
     return {"value": remaining, "unit": "credits",
             "note": "Subscription allowance; resets at renewal, no auto-top-up. Reset date not reported."}
+
+
+async def _prospeo(c, key):
+    d = await _get(c, "https://api.prospeo.io/account-information",
+                   headers={"X-KEY": key})
+    response = d.get("response") if isinstance(d, dict) and d.get("error") is False else None
+    remaining = response.get("remaining_credits") if isinstance(response, dict) else None
+    if isinstance(remaining, bool) or not isinstance(remaining, (int, float)) \
+            or not math.isfinite(remaining) or remaining < 0:
+        raise ValueError("Prospeo returned no valid remaining-credit balance")
+    return {
+        "value": remaining,
+        "unit": "credits",
+        "note": (f"plan {response.get('current_plan', 'unknown')}, "
+                 f"{response.get('used_credits', 'unknown')} used, renews "
+                 f"{response.get('next_quota_renewal_date', 'unknown')}"),
+    }
 
 
 async def _hunter(c, key):
@@ -426,6 +477,7 @@ BALANCE_ROUTES = {
     "akta": _akta,
     "brightdata": _brightdata,
     "crustdata": _crustdata,
+    "dropleads": _dropleads,
     "fiber_ai": _fiber_ai,
     "spyfu": _spyfu,
     "icypeas": _icypeas,
@@ -448,7 +500,9 @@ BALANCE_ROUTES = {
     "moz": _moz,
     "seranking": _seranking,
     "hunter": _hunter,
+    "harvestapi": _harvestapi,
     "quickenrich": _quickenrich,
+    "prospeo": _prospeo,
     "sumble": _sumble,
     "trykitt": _trykitt,
     "contactout": _contactout,
@@ -475,6 +529,9 @@ NO_BALANCE_API = {
            "returns historical costs, not remaining balance; dashboard only",
     "finnhub": "no account/usage endpoint and no rate-limit headers (checked 2026-08-31) — "
                "per-minute limits only, nothing to read back",
+    "financialdatasets": "no free balance or usage endpoint in the official API "
+                         "(checked www.financialdatasets.ai/openapi.json 2026-09-15) — "
+                         "prepaid Credits are visible in the vendor dashboard only",
     "justoneapi": "balance available only via MCP server (get_account_balance tool), no public REST "
                   "endpoint documented (checked docs.justoneapi.com 2026-08-31) — dashboard only",
     "marketstack": "no usage endpoint (checked 2026-08-31) — monthly quota in the dashboard, "

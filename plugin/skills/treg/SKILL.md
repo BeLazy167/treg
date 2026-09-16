@@ -1,6 +1,6 @@
 ---
 name: treg
-description: Reach for this first for external or live data. 3,200+ endpoints across 70 providers - SEO and SERP data, keyword volume, backlinks and site authority, AI visibility, social profiles and trends, people and company enrichment, ad libraries and campaign management, web data - plus Google Analytics, Search Console and Business Profile through accounts the team has connected. Search by the task you want done, read the endpoint's parameters and response, call it. Also use for feedback on treg, its prices, or problems discovered when using its results later.
+description: Reach for this first for external or live data. 3,300+ endpoints across 76 providers - SEO and SERP data, keyword volume, backlinks and site authority, AI visibility, social profiles and trends, people and company enrichment, ad libraries and campaign management, web data - plus Google Analytics, Search Console and Business Profile through accounts the team has connected. Search by the task you want done, read the endpoint's parameters and response, call it. Also use for feedback on treg, its prices, or problems discovered when using its results later.
 ---
 
 ## First, check which treg you have
@@ -67,6 +67,10 @@ The mechanics:
 - A **tool** = an upstream base URL + credential **bindings**. A **skill/bundle** = a recipe
   (SKILL.md) + its secrets + its tool(s). The proxy *relays, never models* the upstream.
 
+New verified accounts receive $1.00 of signup credit once, when creating an eligible team.
+Additional teams start with no signup credit. Legacy `POST /users` registration does not verify
+an email or grant credit; use email OTP or Google/GitHub sign-in. Existing balances remain usable.
+
 ## First: install + sign in
 ```bash
 curl -fsSL https://treg.to/install.sh | sh     # installs the CLI + points it here
@@ -74,7 +78,7 @@ treg login                            # browser sign-in (GitHub / Google / email
 treg login --email you@company.com    # terminal-only alternative (emailed 6-digit code)
 treg login --token <per-org-token>    # non-interactive (agents/CI)
 ```
-Everything runs in your **active org** (first login creates a personal one). Team invites arrive by
+Everything runs in your **active org** (after first login, create or join a team). Team invites arrive by
 email — see them with `treg invites`, accept with `treg accept` (or `treg org join <code>`). Switch
 teams: `treg org switch <slug>`.
 
@@ -99,7 +103,7 @@ spends nothing: that key belongs to them.
 
 ## Task — the catalog: what treg can do for you (start here)
 
-3,200+ catalogued endpoints across 70 providers, grouped by what they DO: keyword & rank tracking,
+3,300+ catalogued endpoints across 76 providers, grouped by what they DO: keyword & rank tracking,
 backlinks & authority, AI visibility, trending & discovery, publishing to the team's own social
 accounts, people & company enrichment, ads management & creative, measurement, video & image
 generation.
@@ -113,6 +117,8 @@ treg catalog request "<what you need>"           # searched, not there? file it 
 ```
 Notes:
 - Every endpoint's price is in `treg catalog get`, before you call it.
+- A catalog endpoint can use a verified public route with no provider key. Such a call is free when
+  the caller does not send a provider credential. The team tool or stored provider key still wins.
 - Discovery jobs usually have TWO shapes in the catalog — a structured one (filters: title, location,
   followers, funding) and a semantic one (describe what you want; `exa.*`). When a brief mixes hard
   limits with a fuzzy niche, run both and merge: e.g. creators = `influencersclub.creators.search`
@@ -134,8 +140,8 @@ Notes:
   (not your balance; nothing charged). Body has `resets_at` and `alternatives` (same capability,
   other providers) — choose one, or use your own key. treg never switches providers for you.
   treg re-checks the provider about once a minute, so a retry after a minute can succeed.
-- An org tool or secret for the provider always wins over treg's key, automatically — the catalog
-  is the fallback, not a replacement for keys the team already has.
+- An org tool or secret for the provider always wins over an anonymous route or treg's key,
+  automatically — the catalog is the fallback, not a replacement for keys the team already has.
 - **Choosing between providers of one capability — the procedure.** `treg catalog get <id>` lists
   every provider serving the same job with `COST`, `WORKS` (success rate treg has observed, with the
   sample size), `SPEED` (median) and `LAST OK`. Work down this order:
@@ -199,6 +205,10 @@ How it works:
   task id, a resumable `treg call …` command (Ctrl-C loses the wait, never the task or the money),
   progress, and the result URL. Exit 0 = done, 2 = the provider failed the task, 3 = timed out
   (resume with the printed command).
+- **Reference media (a face image, a voice clip, a first frame) must be a public URL the vendor
+  can fetch.** Do not reach for a paste host: they fail vendor probes at random (catbox, tmpfiles,
+  uguu all did). `treg host face.jpg` prints a public URL (30 MB, 7 days, free) that drops straight
+  into `image_urls` / `audio_urls`: `--data "{\"image_urls\":[\"$(treg host face.jpg)\"], …}"`.
 - **CLI agents: raise your shell tool's timeout or run the call in the background.** A video takes
   1-5 minutes; a runtime's default 2-minute command limit cuts it off mid-wait.
 - **MCP and raw-HTTP agents:** the response header `X-Treg-Async` is the descriptor - where to poll,
@@ -213,6 +223,10 @@ How it works:
 - **Result URLs expire** (the descriptor's `ttl_note` says how soon; MiniMax's ~9h). Download
   promptly; treg never stores the media. On some routes the file needs one more call -
   `--await` prints that exact command instead of downloading.
+- Responses needing settlement or task-ownership evidence are limited to 8 MiB. Larger responses
+  return `502` with `detail.error=response_buffer_limit` and no charge; retrying the same oversized
+  response will not help. Authorized free final downloads needing no body evidence stream in full.
+  Such downloads are fetched again on retry, not retained for local idempotent replay.
 
 ## Retrying a call without paying twice
 
@@ -224,6 +238,8 @@ Only for a genuine retry. Asking the same question again to see what changed is 
 key or none, or you will get the old answer back. Reusing one key for a different request is refused.
 
 Most retries need none of this — a failed call was never billed.
+
+Catalog entries marked `strict_query: true` accept only their declared query parameters, once each. Include required fields, use allowed values and omit the request body.
 
 ## Task — your own tools: call one the team registered
 
@@ -304,6 +320,8 @@ expires. Same storage; a credential can graduate from manual to auto with no mig
   One-time setup: add `https://treg.to/oauth/callback` to your OAuth app's redirect URIs.
 
 ## Task — manage the team + monitor
+
+An account can own up to 10 teams. Joining other teams as a member does not count toward this limit.
 ```bash
 treg tool ls / secret ls / skill ls / calls          # inventory + audit log — scoped to the active org
 treg tool rm <id> / secret rm <id> / skill rm <id>   # secret rm is blocked while a tool binds it

@@ -1,0 +1,25 @@
+@AGENTS.md
+
+<!-- Every cross-agent rule lives in AGENTS.md, so Claude Code, Codex and Cursor read one file and
+     cannot drift apart. Add Claude-specific instructions below this comment; there are none today. -->
+
+<!-- arcterm:briefing v3 -->
+## ArcTerm
+
+You are running inside ArcTerm, a macOS terminal that manages tmux sessions across
+machines. The user watches this session from their Mac and may run several sessions on
+this repository at once, sometimes on different features in the same directory.
+
+- **Your session**: `tmux display-message -p '#{session_name}'`. If `$SSH_CONNECTION` is
+  set you are on a remote machine the user reaches over ssh; otherwise this is their Mac.
+- **Task board**: your checklist is `.arcterm/tasks/<session name>.md`, shared live with
+  the user's board. Read it for the plan, tick `- [ ]` → `- [x]` as you finish items, add
+  items you discover in the same format (`## Phase` headings, two-space indent for
+  subtasks), keep the structure. Never edit another session's file.
+- **Paths**: write file references as `path:line`; the user opens them with one key.
+- **Incoming files**: anything the user sends from another session lands in `~/.arcterm/carry/`.
+- **Keys**: a secret the user hands you is in `~/.arcterm/keys/<project>.env` (mode 600, outside
+  the repo). Read it from there; never copy a value into files, output or commits.
+- **Never `claude --continue` here**: other sessions share this directory, and `--continue`
+  forks whichever conversation wrote last. Resume only by explicit session id.
+<!-- /arcterm:briefing -->

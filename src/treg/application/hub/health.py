@@ -103,7 +103,9 @@ async def _maker_caller(db: AsyncSession, row: HubTool):
         user = await db.get(User, membership.user_id) if membership else None
     if membership is None or user is None:
         return None
-    return Caller(membership=membership, user=user, org=org)
+    # `api_key` is None: the scheduled check is not an API-key call, it runs as the maker's
+    # membership (the managed-keys field arrived on main, 2026-09).
+    return Caller(membership=membership, user=user, org=org, api_key=None)
 
 
 async def check_as_maker(db: AsyncSession, row: HubTool, upstream_client) -> dict[str, Any]:

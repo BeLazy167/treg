@@ -12,6 +12,7 @@ from treg.api import app
 from treg.config import Settings
 from treg.domain.catalog import store as catalog_store
 import dataclasses
+import pytest
 
 from httpx import AsyncClient
 
@@ -22,7 +23,7 @@ from treg import oauth_providers as P
 def test_key_providers_are_offerable_without_deployment_credentials():
     """The user brings the key, so treg holds no app of its own — a key provider must be offerable,
     not shown as 'not configured' the way an unset OAuth provider is."""
-    for svc in ("apollo", "pdl", "akta", "hunter", "sumble", "quickenrich", "contactout", "millionverifier", "trykitt", "crunchbase", "tikhub", "brightdata", "semrush",
+    for svc in ("apollo", "pdl", "akta", "hunter", "sumble", "harvestapi", "dropleads", "quickenrich", "prospeo", "contactout", "millionverifier", "trykitt", "crunchbase", "tikhub", "brightdata", "semrush",
                 "justoneapi", "dataforseo", "seranking", "moz", "majestic", "serpstat", "exa",
                 "cloro",
                 "lusha", "coresignal", "diffbot", "thecompaniesapi", "leadmagic", "fiber-ai",
@@ -30,7 +31,7 @@ def test_key_providers_are_offerable_without_deployment_credentials():
                 "icypeas", "leadsforge", "influencersclub", "crustdata", "aviato",
                 "spyfu", "apify", "meta-ad-library", "serpapi",
                 "coingecko", "polygon", "finnhub", "twelvedata", "fmp", "eodhd", "marketstack",
-                "tiingo"):
+                "tiingo", "financialdatasets"):
         p = P.get(svc)
         assert p is not None, svc
         assert p.auth_kind == "key", svc
@@ -46,6 +47,7 @@ def test_key_providers_appear_in_the_marketplace_listing():
     assert listing["semrush"]["category"] == "SEO"
     assert listing["tikhub"]["category"] == "Social media"
     assert listing["coingecko"]["category"] == "Market data"
+    assert listing["financialdatasets"]["category"] == "Market data"
     assert listing["minimax"]["category"] == "AI generation"
     assert listing["openrouter"]["auth_kind"] == "token"
     assert listing["replicate"]["base_url"] == "https://api.replicate.com/v1"
@@ -53,8 +55,103 @@ def test_key_providers_appear_in_the_marketplace_listing():
     assert "Market data" in P.CATEGORY_ORDER
 
 
+def test_dropleads_registry_uses_the_standard_key_provider_paths(monkeypatch):
+    monkeypatch.setenv("TREG_PLATFORM_KEY_DROPLEADS", "PLATFORM-DROPLEADS")
+    monkeypatch.setenv("TREG_PLATFORM_PROVIDERS", "dropleads")
+    settings = Settings(_env_file=None)
+    provider = P.get("dropleads")
+    assert provider.base_url == "https://prime.dropleads.io"
+    assert provider.probe_path == "/api/v2/prime-db/credits/balance"
+    assert provider.catalog_targets[0].host == "api.dropleads.io"
+    assert provider.extra_tools[0]["suffix"] == "contact"
+    assert settings.platform_key_for("dropleads") == "PLATFORM-DROPLEADS"
+    assert P.platform_bindings(provider) == [{
+        "platform_setting": "platform_key_dropleads",
+        "injector": "env",
+        "location": "header",
+        "name": "X-API-Key",
+        "format": "{secret}",
+    }]
+
+
+async def test_dropleads_connect_provisions_both_approved_hosts(clients, monkeypatch):
+    def probe(request):
+        assert request.url.host == "prime.dropleads.io"
+        assert request.url.path == "/api/v2/prime-db/credits/balance"
+        assert request.headers["x-api-key"] in ("bad", "own-key")
+        if request.headers["x-api-key"] == "bad":
+            return httpx.Response(401, json={"message": "Invalid API key"})
+        return httpx.Response(
+            200, json={"success": True, "credits": {"totalAvailable": 0}}
+        )
+
+    async with AsyncClient(transport=httpx.MockTransport(probe)) as upstream:
+        monkeypatch.setattr(app.state, "http", upstream)
+        bad = await clients.post(
+            "/connections/token", json={"provider": "dropleads", "token": "bad"}
+        )
+        assert bad.status_code == 422
+        good = await clients.post(
+            "/connections/token", json={"provider": "dropleads", "token": "own-key"}
+        )
+        assert good.status_code == 200, good.text
+
+    tools = {tool["name"]: tool for tool in (await clients.get("/tools")).json()}
+    assert set(tools) == {"dropleads", "dropleads-contact"}
+    assert tools["dropleads"]["base_url"] == "https://prime.dropleads.io"
+    assert tools["dropleads-contact"]["base_url"] == "https://api.dropleads.io"
+    assert tools["dropleads"]["bindings"] == tools["dropleads-contact"]["bindings"]
+
+
+def test_prospeo_registry_uses_account_information_without_exposing_it(monkeypatch):
+    monkeypatch.setenv("TREG_PLATFORM_KEY_PROSPEO", "PLATFORM-PROSPEO")
+    monkeypatch.setenv("TREG_PLATFORM_PROVIDERS", "prospeo")
+    settings = Settings(_env_file=None)
+    provider = P.get("prospeo")
+    assert provider.base_url == "https://api.prospeo.io"
+    assert provider.probe_path == "/account-information"
+    assert provider.probe_method == "GET"
+    assert provider.token_header == "X-KEY"
+    assert settings.platform_key_for("prospeo") == "PLATFORM-PROSPEO"
+    assert P.platform_bindings(provider) == [{
+        "platform_setting": "platform_key_prospeo",
+        "injector": "env",
+        "location": "header",
+        "name": "X-KEY",
+        "format": "{secret}",
+    }]
+
+
+async def test_prospeo_connect_provisions_a_single_catalog_host(clients, monkeypatch):
+    def probe(request):
+        assert request.url.host == "api.prospeo.io"
+        assert request.url.path == "/account-information"
+        key = request.headers["x-key"]
+        if key == "bad":
+            return httpx.Response(400, json={"error": True, "error_code": "INVALID_API_KEY"})
+        return httpx.Response(200, json={
+            "error": False,
+            "response": {"current_plan": "STARTER", "remaining_credits": 10},
+        })
+
+    async with AsyncClient(transport=httpx.MockTransport(probe)) as upstream:
+        monkeypatch.setattr(app.state, "http", upstream)
+        bad = await clients.post(
+            "/connections/token", json={"provider": "prospeo", "token": "bad"}
+        )
+        assert bad.status_code == 422
+        good = await clients.post(
+            "/connections/token", json={"provider": "prospeo", "token": "own-key"}
+        )
+        assert good.status_code == 200, good.text
+
+    tools = {tool["name"]: tool for tool in (await clients.get("/tools")).json()}
+    assert set(tools) == {"prospeo"}
+    assert tools["prospeo"]["base_url"] == "https://api.prospeo.io"
+
+
 def test_aigc_token_providers_are_offerable_without_deployment_credentials():
-    for service in ("minimax", "openrouter", "replicate"):
+    for service in ("minimax", "openrouter", "replicate", "reapi"):
         provider = P.get(service)
         assert provider is not None
         assert provider.auth_kind == "token"
@@ -63,6 +160,10 @@ def test_aigc_token_providers_are_offerable_without_deployment_credentials():
     assert P.get("minimax").probe_method == "POST"
     assert P.get("minimax").probe_json == {}
     assert P.get("minimax").probe_reject_statuses == (401, 403)
+    # reAPI has no free account route: an unknown task id is 404 on a valid key, 401 on a bad one.
+    assert P.get("reapi").probe_path == "/tasks/probe"
+    assert P.get("reapi").probe_reject_statuses == (401, 403)
+    assert P.get("piapi").auth_kind == "key" and P.get("piapi").token_header == "X-API-Key"
 
 
 # ---- connect-by-key ----------------------------------------------------------------------
@@ -358,3 +459,76 @@ def test_contactout_platform_binding(contactout_platform):
         }
     ]
     assert "contactout.account.usage" not in catalog_store.load().by_id
+
+
+@pytest.mark.parametrize("status", [200, 402])
+async def test_financialdatasets_connect_accepts_only_valid_key_outcomes_without_health_probe(
+    clients, monkeypatch, status,
+):
+    """200 and 402 prove the key reached the prepaid account.
+
+    The absolute connect-only probe must also stay out of the saved Tool health metadata: replaying
+    a paid data request from recurring health would consume Credits.
+    """
+    def probe(request):
+        assert request.url.path == "/prices/snapshot"
+        assert request.url.params["ticker"] == "AAPL"
+        assert request.headers["X-API-KEY"] == "valid-empty-key"
+        return httpx.Response(status, json={"detail": "Insufficient credits"})
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(probe)) as upstream:
+        monkeypatch.setattr(app.state, "http", upstream)
+        response = await clients.post(
+            "/connections/token",
+            json={"provider": "financialdatasets", "token": "valid-empty-key"},
+        )
+        assert response.status_code == 200, response.text
+        tool = next(t for t in (await clients.get("/tools")).json()
+                    if t["name"] == "financialdatasets")
+        assert tool["health_check"] is None
+        assert tool["bindings"][0]["name"] == "X-API-KEY"
+
+
+@pytest.mark.parametrize("status", [201, 301, 400, 401, 403, 404, 409, 422, 429, 500, 503])
+async def test_financialdatasets_connect_rejects_any_other_status(clients, monkeypatch, status):
+    def probe(request):
+        assert request.headers["X-API-KEY"] == "invalid-key"
+        return httpx.Response(status, json={"detail": "Invalid API key"})
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(probe)) as upstream:
+        monkeypatch.setattr(app.state, "http", upstream)
+        response = await clients.post(
+            "/connections/token",
+            json={"provider": "financialdatasets", "token": "invalid-key"},
+        )
+        assert response.status_code == 422, response.text
+        assert not [t for t in (await clients.get("/tools")).json()
+                    if t["name"] == "financialdatasets"]
+
+
+def test_financialdatasets_registry_and_platform_key_configuration(monkeypatch):
+    provider = P.get("financialdatasets")
+    assert provider.base_url == "https://api.financialdatasets.ai"
+    assert provider.token_header == "X-API-KEY"
+    assert provider.probe_url == (
+        "https://api.financialdatasets.ai/prices/snapshot?ticker=AAPL"
+    )
+    assert provider.probe_path == ""
+    assert 200 not in provider.probe_reject_statuses
+    assert 402 not in provider.probe_reject_statuses
+    assert all(
+        status in provider.probe_reject_statuses
+        for status in (201, 301, 400, 401, 403, 404, 409, 422, 429, 500, 503)
+    )
+
+    monkeypatch.setenv("TREG_PLATFORM_KEY_FINANCIALDATASETS", "platform-test-key")
+    monkeypatch.setenv("TREG_PLATFORM_PROVIDERS", "financialdatasets")
+    settings = Settings(_env_file=None)
+    assert settings.platform_key_for("financialdatasets") == "platform-test-key"
+    assert P.platform_bindings(provider) == [{
+        "platform_setting": "platform_key_financialdatasets",
+        "injector": "env",
+        "location": "header",
+        "name": "X-API-KEY",
+        "format": "{secret}",
+    }]

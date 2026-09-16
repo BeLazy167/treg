@@ -11,6 +11,7 @@ import json
 
 import pytest
 from httpx import AsyncClient
+from conftest import funded_user
 
 from treg.config import get_settings
 from treg.domain.hub import ManifestError, validate, validate_check
@@ -724,7 +725,7 @@ async def test_price_edit_applies_to_later_runs_without_a_version_bump(clients: 
     bad = await clients.patch(f"/hub/tools/{tool_id}", json={"price_usd": 500})
     assert bad.status_code == 422 and bad.json()["detail"]["field"] == "price_usd"
     # a stranger pays the new price
-    token = (await clients.post("/users", json={"email": "buyer@example.com"})).json()["token"]
+    token = (await funded_user(clients, "buyer@example.com"))["token"]
     run = await clients.post(f"/call/{tool_id}", json={"domain": "x"}, headers={"X-Treg-Token": token})
     assert run.status_code == 200 and run.json()["usage"]["price_micro"] == 50_000
 
@@ -803,7 +804,7 @@ async def test_the_worker_hub_check_walks_every_live_tool(clients: AsyncClient, 
 async def test_a_run_is_readable_by_its_caller_and_its_maker_with_different_views(clients: AsyncClient, hub_on, platform_on, monkeypatch):
     pub = await _live_tool_with_readme(clients, monkeypatch, price=0.01)
     tool_id = pub["tool_id"]
-    token = (await clients.post("/users", json={"email": "reader@example.com"})).json()["token"]
+    token = (await funded_user(clients, "reader@example.com"))["token"]
     h = {"X-Treg-Token": token}
     run = await clients.post(f"/call/{tool_id}", json={"domain": "figma.com"}, headers=h)
     run_id = run.json()["run_id"]
@@ -816,7 +817,7 @@ async def test_a_run_is_readable_by_its_caller_and_its_maker_with_different_view
     theirs = (await clients.get(f"/hub/runs/{run_id}")).json()
     assert theirs["you_are"] == "maker" and "output" not in theirs and "caller_email" not in theirs and "log" in theirs
     # a third team: 404
-    other = (await clients.post("/users", json={"email": "third@example.com"})).json()["token"]
+    other = (await funded_user(clients, "third@example.com"))["token"]
     assert (await clients.get(f"/hub/runs/{run_id}", headers={"X-Treg-Token": other})).status_code == 404
     # a failed run: the caller's error carries the step and status, not the upstream body; the maker gets it whole
     monkeypatch.setattr(call_service, "relay", _fake_relay(500, b'{"vendor": "secret error body"}'))
@@ -833,7 +834,7 @@ async def test_a_run_is_readable_by_its_caller_and_its_maker_with_different_view
 
 async def test_the_makers_list_carries_health_and_thirty_day_numbers(clients: AsyncClient, hub_on, platform_on, monkeypatch):
     pub = await _live_tool_with_readme(clients, monkeypatch, price=0.02)
-    token = (await clients.post("/users", json={"email": "buyer2@example.com"})).json()["token"]
+    token = (await funded_user(clients, "buyer2@example.com"))["token"]
     for _ in range(2):
         assert (await clients.post(f"/call/{pub['tool_id']}", json={"domain": "x"}, headers={"X-Treg-Token": token})).status_code == 200
     mine = (await clients.get("/hub/tools/mine")).json()
@@ -882,7 +883,7 @@ async def _publish_priced(clients, monkeypatch, pricing, *, n=5):
 async def test_per_unit_run_charges_units_times_price(clients: AsyncClient, hub_on, platform_on, monkeypatch):
     tool_id = await _publish_priced(clients, monkeypatch,
                                     {"mode": "per_unit", "per_unit_usd": 0.002, "max_price_usd": 0.5}, n=5)
-    token = (await clients.post("/users", json={"email": "b1@example.com"})).json()["token"]
+    token = (await funded_user(clients, "b1@example.com"))["token"]
     run = await clients.post(f"/call/{tool_id}", json={"domain": "x"}, headers={"X-Treg-Token": token})
     assert run.status_code == 200, run.text
     assert run.json()["usage"]["price_micro"] == 10_000        # 5 units x $0.002
@@ -892,7 +893,7 @@ async def test_per_unit_run_charges_units_times_price(clients: AsyncClient, hub_
 async def test_per_unit_price_is_capped_at_max(clients: AsyncClient, hub_on, platform_on, monkeypatch):
     tool_id = await _publish_priced(clients, monkeypatch,
                                     {"mode": "per_unit", "per_unit_usd": 0.2, "max_price_usd": 0.5}, n=5)
-    token = (await clients.post("/users", json={"email": "b2@example.com"})).json()["token"]
+    token = (await funded_user(clients, "b2@example.com"))["token"]
     run = await clients.post(f"/call/{tool_id}", json={"domain": "x"}, headers={"X-Treg-Token": token})
     assert run.json()["usage"]["price_micro"] == 500_000       # 5 x $0.2 = $1.0, capped at $0.5
 
@@ -900,7 +901,7 @@ async def test_per_unit_price_is_capped_at_max(clients: AsyncClient, hub_on, pla
 async def test_cost_plus_charges_markup_of_step_cost(clients: AsyncClient, hub_on, platform_on, monkeypatch):
     tool_id = await _publish_priced(clients, monkeypatch,
                                     {"mode": "cost_plus", "markup_percent": 50, "max_price_usd": 0.5}, n=3)
-    token = (await clients.post("/users", json={"email": "b4@example.com"})).json()["token"]
+    token = (await funded_user(clients, "b4@example.com"))["token"]
     run = await clients.post(f"/call/{tool_id}", json={"domain": "x"}, headers={"X-Treg-Token": token})
     assert run.json()["usage"]["steps_micro"] == 1_000
     assert run.json()["usage"]["price_micro"] == 500          # 50% of $0.001
@@ -911,7 +912,7 @@ async def test_variable_run_moves_money_on_both_teams(clients: AsyncClient, hub_
                                     {"mode": "per_unit", "per_unit_usd": 0.002, "max_price_usd": 0.5}, n=5)
     seller_org = (await clients.get("/orgs")).json()[0]["org_id"]
     seller_before = (await clients.get(f"/orgs/{seller_org}/balance")).json()["balance_micro"]
-    hdr = {"X-Treg-Token": (await clients.post("/users", json={"email": "b5@example.com"})).json()["token"]}
+    hdr = {"X-Treg-Token": (await funded_user(clients, "b5@example.com"))["token"]}
     buyer_org = (await clients.get("/orgs", headers=hdr)).json()[0]["org_id"]
     buyer_before = (await clients.get(f"/orgs/{buyer_org}/balance", headers=hdr)).json()["balance_micro"]
     await clients.post(f"/call/{tool_id}", json={"domain": "x"}, headers=hdr)
@@ -926,7 +927,7 @@ async def test_a_failed_variable_run_pays_the_seller_nothing(clients: AsyncClien
                                     {"mode": "per_unit", "per_unit_usd": 0.002, "max_price_usd": 0.5}, n=5)
     seller_org = (await clients.get("/orgs")).json()[0]["org_id"]
     seller_before = (await clients.get(f"/orgs/{seller_org}/balance")).json()["balance_micro"]
-    hdr = {"X-Treg-Token": (await clients.post("/users", json={"email": "b6@example.com"})).json()["token"]}
+    hdr = {"X-Treg-Token": (await funded_user(clients, "b6@example.com"))["token"]}
     buyer_org = (await clients.get("/orgs", headers=hdr)).json()[0]["org_id"]
     buyer_before = (await clients.get(f"/orgs/{buyer_org}/balance", headers=hdr)).json()["balance_micro"]
     monkeypatch.setattr(call_service, "relay", _fake_relay(500, b'{"error": "down"}'))   # the step now fails
@@ -971,7 +972,7 @@ async def test_earnings_report_carries_the_average_price(clients: AsyncClient, h
     """9.4: avg_price_micro = earned / successful runs, per day and overall, and in the CSV."""
     tool_id = await _publish_priced(clients, monkeypatch,
                                     {"mode": "per_unit", "per_unit_usd": 0.002, "max_price_usd": 0.5}, n=5)
-    hdr = {"X-Treg-Token": (await clients.post("/users", json={"email": "b7@example.com"})).json()["token"]}
+    hdr = {"X-Treg-Token": (await funded_user(clients, "b7@example.com"))["token"]}
     for _ in range(2):                                             # two sales at 5 units x $0.002
         assert (await clients.post(f"/call/{tool_id}", json={"domain": "x"}, headers=hdr)).status_code == 200
     d = (await clients.get(f"/hub/tools/{tool_id}/earnings")).json()
@@ -1003,7 +1004,7 @@ async def test_listing_switches_default_off_and_flip_without_a_version_bump(clie
     assert r.json() == {"tool_id": tool_id, "version": 1, "price_usd": 0.05}
     # an empty body names the rule; another team's tool is 404
     assert (await clients.patch(f"/hub/tools/{tool_id}", json={})).status_code == 422
-    token = (await clients.post("/users", json={"email": "stranger@example.com"})).json()["token"]
+    token = (await funded_user(clients, "stranger@example.com"))["token"]
     assert (await clients.patch(f"/hub/tools/{tool_id}", json={"listed": True},
                                 headers={"X-Treg-Token": token})).status_code == 404
 
@@ -1035,7 +1036,7 @@ async def test_mcp_catalog_search_returns_a_listed_hub_tool(clients: AsyncClient
     pub = await _live_tool_with_readme(clients, monkeypatch, price=0.01)
     tool_id = pub["tool_id"]
     await clients.patch(f"/hub/tools/{tool_id}", json={"listed": True})
-    token = (await clients.post("/users", json={"email": "searcher@example.com"})).json()["token"]
+    token = (await funded_user(clients, "searcher@example.com"))["token"]
     async with mcp_session(clients) as c:
         out = await _call_tool(c, "catalog_search", {"query": Q_OWN_WORDS, "limit": 10}, token=token)
     row = [r for r in out["results"] if r["endpoint_id"] == tool_id][0]
@@ -1050,7 +1051,7 @@ async def test_the_public_page_shows_recent_runs_and_never_the_caller_inputs_or_
     tool_id = pub["tool_id"]
     # a stranger calls twice; the relay now answers with a marker that must never reach the page
     monkeypatch.setattr(call_service, "relay", _fake_relay(200, b'{"data": {"domain": "OUTPUT-MARKER-77"}}'))
-    hdr = {"X-Treg-Token": (await clients.post("/users", json={"email": "stranger-log@example.com"})).json()["token"]}
+    hdr = {"X-Treg-Token": (await funded_user(clients, "stranger-log@example.com"))["token"]}
     for _ in range(2):
         assert (await clients.post(f"/call/{tool_id}", json={"domain": "INPUT-MARKER-55"}, headers=hdr)).status_code == 200
     page = (await clients.get(f"/hub/{tool_id}")).text

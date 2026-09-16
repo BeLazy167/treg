@@ -27,11 +27,16 @@ sources:
 
   - src/treg/alembic/versions/0011_callrecord_archive_link.py
   - src/treg/alembic/versions/0015_idempotentcall_membership_cascade.py
+  - src/treg/alembic/versions/0034_managed_api_keys.py
+  - src/treg/alembic/versions/0035_default_key_generation.py
+  - src/treg/alembic/versions/0036_activity_key_indexes.py
+  - src/treg/alembic/versions/0038_endpoint_day_stats.py
   - src/treg/maintenance.py
   - src/treg/web/sitetrack.js
   - src/treg/models.py
   - src/treg/alembic/versions/0031_archive_result_admission.py
   - src/treg/alembic/versions/0032_archive_body_storage.py
+  - src/treg/alembic/versions/0033_signup_promo_eligibility.py
   - src/treg/timeutil.py
   - src/treg/infra/db.py
   - src/treg/domain/referrals.py
@@ -42,6 +47,7 @@ sources:
   - src/treg/application/auth.py
   - tests/test_postgres_reset.py
   - tests/test_alembic_expand_safety.py
+  - tests/test_api_keys.py
 related:
   - architecture/archive.md
   - architecture/proxy-model.md
@@ -81,12 +87,22 @@ verified upload finishes outside any DB session; `content_hash` is the object na
 backfill, body-column removal or destructive migration occurs. Double-write rows retain their DB
 body/carrier; R2-only rows require no carrier pointer. See [archive](archive.md#body-storage-and-r2-double-writing).
 
+Revision `0033` adds nullable `User.email_verified_at` and non-null `signup_promo_available`,
+with a retained database default of false for existing rows and old writers. New application users
+explicitly insert true. No balances or historical money entries change. Successful email proof sets
+verification; only the atomic identity claim consumes availability, committed with the signup grant.
+See [signup eligibility](money.md#signup-credit-eligibility).
+
 ## Registry tables
 
 - **`Feedback`** - durable team-scoped problem reports and suggestions. Contains the submitted
   category/message/references, authenticated org and user attribution, and the references verified
   against that team's call records or ledger. Revision `0025`; `domain.feedback` owns inserts;
   `application.feedback` commits. Team deletion removes these rows. See [feedback](feedback.md).
+- **`Media`** - a reference file a member hosted for a vendor to fetch (`treg host`): opaque
+  token, org, media type, size, the bytes, created and expiry. Revision `0037`;
+  `application.media` is the only writer and sweeps expired rows on each upload. Team deletion
+  removes these rows. See [media](media.md).
 - **`FeedbackHandling` / `FeedbackHandlingEvent`** - internal current processing state and
   versioned history (revision 0030), owned by this schema and written only by the private admin
   service. Both cascade from the original report. See [feedback](feedback.md).
@@ -124,13 +140,29 @@ uses this metadata, never the encrypted token's shape.
   fake onboarding teammate - can't log in, excluded from stats), `created_at`. (The token + role moved
   to `Membership`; a user in N orgs has N memberships.)
 - **`Membership`** - links a user to an org: `user_id`, `org_id`, `role` (owner|admin|member),
-  `token_hash` (SHA-256 of the bearer token, shown once), `webhook_url` (health alerts POST here),
+  `token_hash` (the compatibility hash for the first bearer credential), `webhook_url` (health alerts POST here),
   `daily_call_cap` (per-user, per-day usage cap; **-1 = unlimited**, the default - see
   `governance/usage.enforce_daily_cap`) with `calls_today` / `calls_today_day`, the counter that cap
   is checked against (one conditional UPDATE per capped event, revision 0024; only capped members are
   counted, the roster reads the journal); unique `(user_id, org_id)`. **A token = a `(user, org)`
   pair.** `ROLE_RANK` orders the roles.
-- **`Invite`** - a one-time join code: `org_id, email, role, code_hash (idx), status`
+- **`ApiKey`** — a credential control row. It keeps `org_id`, nullable `membership_id`, the retained
+  identity label, kind, name, safe prefix, optional unique SHA-256 hash, state, `default_generation`, lifecycle times,
+  creator, and replacement id. A human membership has one `default_human` row for signed identity
+  keys and can have many `additional_human` rows. A scoped agent has one current `agent` row.
+  `legacy_human` rows keep old stored membership tokens working during the compatibility release;
+  new human memberships leave the old token-hash field empty and do not create legacy rows.
+  Revoked rows stay for audit. Additional/agent rotation marks the predecessor hidden from the normal inventory while
+  retaining its replacement link, events, and Activity snapshots. Membership removal clears their
+  membership link. Default rotation instead increments the same row's generation and invalidates only
+  that team's prior signed token. `last_used_at` is
+  throttled, best-effort display metadata; it is not written in the authentication transaction.
+- **`ApiKeyEvent`** — the key administration audit trail: team, key, actor, retained identity,
+  action, and time. It never stores the complete key.
+- **Activity key snapshot** — `CallRecord` and `RunRecord` keep nullable `api_key_id`, name, and safe
+  prefix. Old records stay unassigned. New records keep their safe key identity after rotation,
+  revoke, hide, or membership removal.
+- **`Invite`** — a one-time join code: `org_id, email, role, code_hash (idx), status`
   (pending|accepted|revoked), `invited_by`. Carries a SECOND split secret, `email_token_hash (idx,
   nullable)` - the inbox-only sign-in token embedded ONLY in the invite email's link (the
   admin-visible code is join-only, never an auth factor); nulled on first use (one sign-in per link),
@@ -176,17 +208,26 @@ uses this metadata, never the encrypted token's shape.
   Poll rows remain available by call reference and in admin diagnostics, but `/calls` excludes
   them before pagination. No migration or historical reclassification is required.
 
-  **Its indexes are the platform's throughput.** It is the largest table (2.94M rows / 1.68 GB on
-  prod 2026-09-06) and every question asked of it is "… since <time>", so a `created_at` that no
+  **Its indexes are the platform's throughput.** It is the largest table and every time-window
+  question needs a compatible `created_at` index. Without one,
   index carried meant the planner chose an index for the other column and filtered the date in
-  memory - reading an endpoint's or an org's WHOLE history to answer a 30-day one. Revision 0020
-  adds `(endpoint_id, created_at)` for the catalog observation refresh (`domain/catalog/stats.py`,
-  which had read 1.60 BILLION tuples across 570k scans) and `(org_id, created_at)` for the
-  per-member daily counts (`routers/orgs.py`, 295M across 70k); 0016 already pairs
+  memory, reading an endpoint's or an org's whole history to answer a bounded one. Revision 0020
+  adds `(endpoint_id, created_at)` for the catalog observation refresh and `(org_id, created_at)`
+  for the per-member daily counts; 0016 already pairs
   `(endpoint_id, id)` for the newest-N feed and 0012 a partial index on `cached`. The cost of
   getting this wrong is not a slow page: all three connection pools share one Postgres, so a scan
   here queues every other query and the API pool empties into `503 treg_saturated` - see
-  [deploy](../ops/deploy.md) § Three pools. The table has no retention sweep yet, so it only grows.
+  [deploy](../ops/deploy.md) § Database pools. The table has no retention sweep yet, so it only grows.
+
+  **Nothing on the request path aggregates it any more.** The two readers that did, the catalog's
+  observed reliability and the Arena's rolling insights, are scheduled `treg-worker` commands
+  that walk it incrementally by primary key. Revision 0038 adds their catalog half:
+  `EndpointDayStat` (one row per endpoint per UTC day: counts, newest success, hit tallies and a
+  bounded latency sample; primary key `(endpoint_id, day)`, indexed by `day` for the window prune)
+  and the single-row `EndpointStatCursor` (`cursor_id`, the `created_at` watermark and
+  `caught_up_at`, which is what lets the reader fall back to the live aggregate until the worker
+  has caught up). `application/catalog_stats.py` is the only writer of both; see
+  [catalog](catalog.md) § Choosing between providers.
 
   **`LedgerEntry` is the other one, and it was the larger.** It is append-only and never pruned
   (4.38M rows / 2.3 GB on prod 2026-09-06, ~400k rows a day), and `ledger.spent_today` - the
@@ -330,7 +371,7 @@ The API builds a single-binding tool from flat fields via `_flat_binding()`; inj
 Three async SQLAlchemy engines against one database, declared by `POOL_SPECS` and exposed as
 `session_maker` (api), `admin_session_maker` (`/admin/*`) and `background_session_maker` (audit,
 archive writes, the ads worker) - a bulkhead, so no class of work can exhaust another's slots; sizes,
-statement timeouts and the reasoning are in [deploy](../ops/deploy.md) § Three pools. On SQLite all
+statement timeouts and the reasoning are in [deploy](../ops/deploy.md) § Database pools. On SQLite all
 three alias one engine. The post-relay bookkeeping steps of `/call/` use `session_maker`; the request
 session is committed before the relay so none of them ever waits on it, see
 [proxy-model](proxy-model.md) § Connection discipline. The public
@@ -359,7 +400,9 @@ Migration scripts live under `src/treg/alembic/`, inside the shipped wheel. The 
 `alembic.ini` points there for developer CLI use, while `maintenance._alembic_config` resolves the
 installed package resource and supplies the configured database URL. Alembic commands run through
 `asyncio.to_thread` because the environment owns its own `asyncio.run`. On Postgres, `env.py` sets
-`lock_timeout = 5s` before migrations so lock contention fails the deploy cleanly.
+`lock_timeout = 5s` before migrations so lock contention fails an attempt cleanly, and commits each
+revision on its own so `maintenance`'s bounded retry resumes at the revision that timed out (see
+[deploy](../ops/deploy.md)).
 
 The authoritative drift guard upgrades to head, runs Alembic autogenerate against
 `SQLModel.metadata`, and requires an empty diff. Tests keep fast `create_all` fixtures through
@@ -556,3 +599,19 @@ and deduplicated versions. Pruning DB bytes changes `both` to `r2` without reduc
 counts; pruning the last DB copy clears `body_storage` and decrements them. Failed R2-only
 uploads still append a hash-only snapshot with a null location. The retired `volatile_paths`
 column remains for compatibility and no longer appears in admin responses.
+
+
+## Managed-key migration order and Activity indexes
+
+Unpublished managed-key revisions follow the current schema: `0034` adds the key controls,
+events, nullable Activity snapshots, and hash-only backfill; `0035` adds Default-key generation.
+`0034` is the security rollback floor: old server code cannot enforce disabled or revoked keys.
+Neither revision builds an index on the large Activity tables while holding the column DDL locks.
+
+`0036_activity_key_indexes.upgrade` builds partial `(org_id, api_key_id, id)` indexes on
+`callrecord` and `runrecord`, where `api_key_id IS NOT NULL`. They support team/key filters and
+newest-first pagination in `list_calls` and `list_runs`. Historical unassigned rows remain outside
+the index. PostgreSQL uses `CREATE INDEX CONCURRENTLY` in this separate revision after the column
+transactions commit. It retains valid indexes, rebuilds invalid debris from an interrupted build,
+and restores the normal migration timeouts. SQLite creates the same partial indexes normally.
+The PostgreSQL build still scans each table and uses I/O; no production build duration is claimed.

@@ -8,6 +8,7 @@ import json
 
 import pytest
 from httpx import AsyncClient
+from conftest import funded_user
 
 from treg.config import get_settings
 
@@ -376,7 +377,7 @@ async def _invariant(org_id: int) -> None:
 
 async def _second_team(clients: AsyncClient, email: str) -> tuple[dict, int]:
     """A stranger with their own token and the $1 welcome credit."""
-    token = (await clients.post("/users", json={"email": email})).json()["token"]
+    token = (await funded_user(clients, email))["token"]
     h = {"X-Treg-Token": token}
     org_id = (await clients.get("/orgs", headers=h)).json()[0]["org_id"]
     return h, org_id
@@ -603,7 +604,7 @@ async def test_hostile_bodies_and_headers_are_4xx_never_500(
 ):
     tool_id = await _publish(matrix_clients, _manifest(
         steps=[{"name": "a", "call": EP, "input": {"aweme_id": "x"}}], output={"x": "$a.data"}, price_usd=0.01))
-    buyer = (await matrix_clients.post("/users", json={"email": "hostile@example.com"})).json()["token"]
+    buyer = (await funded_user(matrix_clients, "hostile@example.com"))["token"]
     h = {**FAKE, "X-Treg-Token": buyer}
     bomb = "[" * 100_000 + "]" * 100_000
     r = await matrix_clients.post(f"/call/{tool_id}", content=bomb, headers={**h, "content-type": "application/json"})
@@ -623,7 +624,7 @@ async def test_a_crash_inside_the_run_closes_the_price_hold_and_answers_424(
     from treg.application.hub import runner
     tool_id = await _publish(matrix_clients, _manifest(
         steps=[{"name": "a", "call": EP, "input": {"aweme_id": "x"}}], output={"x": "$a.data"}, price_usd=0.05))
-    buyer = (await matrix_clients.post("/users", json={"email": "crash@example.com"})).json()["token"]
+    buyer = (await funded_user(matrix_clients, "crash@example.com"))["token"]
     h = {"X-Treg-Token": buyer}
     org = (await matrix_clients.get("/orgs", headers=h)).json()[0]["org_id"]
     before = (await matrix_clients.get(f"/orgs/{org}/balance", headers=h)).json()["balance_micro"]
@@ -686,7 +687,7 @@ async def test_a_caller_never_reads_the_recipe_or_an_upstream_error_body(
 ):
     tool_id = await _publish(matrix_clients, _manifest(
         steps=[{"name": "a", "call": EP, "input": {"aweme_id": "x"}}], output={"x": "$a.data"}))
-    buyer = (await matrix_clients.post("/users", json={"email": "reader2@example.com"})).json()["token"]
+    buyer = (await funded_user(matrix_clients, "reader2@example.com"))["token"]
     h = {"X-Treg-Token": buyer}
     r = await matrix_clients.post(f"/call/{tool_id}", json={"domain": "x"},
                                   headers={**h, "X-Fake-Status": "500", "X-Fake-Body": '{"vendor": "SECRET-UPSTREAM-BODY"}'})
@@ -738,7 +739,7 @@ async def test_a_version_under_check_is_invisible_to_strangers_and_a_crashed_che
     async with session_maker() as s:
         await s.execute(update(HubTool).where(HubTool.tool_id == tool_id).values(status="checking"))
         await s.commit()
-    buyer = (await matrix_clients.post("/users", json={"email": "guess@example.com"})).json()["token"]
+    buyer = (await funded_user(matrix_clients, "guess@example.com"))["token"]
     assert (await matrix_clients.post(f"/call/{tool_id}@1", json={"domain": "x"}, headers={**FAKE, "X-Treg-Token": buyer})).status_code == 404
     assert (await matrix_clients.post(f"/call/{tool_id}@1", json={"domain": "x"}, headers=FAKE)).status_code == 200   # the maker's own check pins it
     # a crashed check: the version ends `failed`, never `checking` forever

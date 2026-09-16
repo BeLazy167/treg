@@ -5,7 +5,29 @@
 treg is the tool catalog for an agent: one base URL, one token, and the agent can call a curated
 catalog of external endpoints plus its own team's tools without ever holding an API key. The
 load-bearing mechanic is a proxy that makes the caller's **real upstream request**, injects the
-credential server-side and relays the answer verbatim. We never model an upstream API.
+credential server-side when one is required, and relays the answer verbatim. A catalog endpoint
+explicitly verified as public can instead relay with no injected credential. We never model an
+upstream API.
+
+## Paired treg.to checkout
+
+For work on the hosted treg.to service, clone the public `treg` repository and private
+`treg-internal` repository as siblings with those exact directory names. When `../treg-internal`
+exists, treat both repositories as one operational workspace:
+
+- `treg` owns public product code, portable behavior and self-hosting documentation.
+- `treg-internal` owns live production configuration, operational runbooks, incident evidence and
+  private admin tools.
+- Read both repositories before changing production behavior, but never copy credentials, live
+  environment exports, customer data or raw logs between them.
+- Everything committed here is public, comments and commit messages included: describe treg.to
+  only by mechanism, never by its numbers, dates, hosts, instance counts or schedules. Those go to
+  `../treg-internal`.
+- Commit and open PRs separately. State the merge order whenever one PR links to or depends on the
+  other.
+
+Do not clone `treg-internal` inside this repository and do not make it a Git submodule. Start agents
+from the repository that owns the task; the sibling path supplies the other half of treg.to context.
 
 ## Non-negotiables
 
@@ -18,9 +40,12 @@ Everything else in this file is guidance; these are the contract, and they win o
    Keep `reserve` and `settle` separate; read archive pointers, close the session, then fetch bytes.
 4. Plain `/call/` is a faithful relay: the injected credential, the transport headers listed in
    `src/treg/infra/upstream/relay.py`, and (on treg's shared key only) the per-org re-scoping of the
-   caller's `Idempotency-Key` are the only rewrites. Never add upstream-specific modeling or body
-   buffering. Routed endpoints and overflow wrap the child's answer and say so; they never
-   alter it.
+   caller's `Idempotency-Key` are the only rewrites. Never add upstream-specific modeling.
+   A live-verified free catalog endpoint may declare an anonymous fallback; its empty binding list
+   omits credential injection but does not strip or rewrite caller headers.
+   Routed endpoints and overflow wrap the child's answer and say so; they never alter it. Responses needing settlement or ownership evidence are buffered by the application
+   up to 8 MiB; exceeding that limit fails without charging, never returns a successful prefix.
+   Authorized free final fetches needing no body evidence stream in full.
 5. Balances change only through money's five entries: grant, topup, reserve, settle, release.
    There is deliberately no refund or adjustment entry; an ops correction is a grant.
 
@@ -98,6 +123,8 @@ agents then built against a constitution that was wrong.
   may reach. A hub tool is out of catalog search until its maker lists it (`listed`), and its share
   page shows a run log of outcomes only unless the maker turns `public_log` off
   (`docs/hub-listing-decisions.md`). See `docs/context/architecture/hub.md`.
+- **Signup credit.** Once per new verified user, enforced by a user-level atomic claim committed
+  with the grant. Team deletion never restores eligibility; legacy registration is not email proof.
 - **Money.** Everything is **integer micro-USD** - never floats, never cents. The Stripe SDK lives
   only in `infra/stripe.py`, orchestration in `application/billing.py`, and `reconcile.py` is
   read-only. See `docs/context/architecture/money.md`.

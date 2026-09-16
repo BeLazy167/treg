@@ -53,7 +53,8 @@ for _k in (
     # without this a suite run on their laptop could resolve tier 4 and spend actual money on the
     # in-process upstream's echo. Tests that exercise tier 4 set both halves via monkeypatch.
     "PLATFORM_KEY_TRYKITT", "PLATFORM_PROVIDERS", "PLATFORM_KEY_TIKHUB", "PLATFORM_KEY_DATAFORSEO", "PLATFORM_KEY_SCRAPECREATORS",
-    "PLATFORM_KEY_QUICKENRICH", "PLATFORM_KEY_SUMBLE",
+    "PLATFORM_KEY_QUICKENRICH", "PLATFORM_KEY_PROSPEO", "PLATFORM_KEY_SUMBLE", "PLATFORM_KEY_HARVESTAPI", "PLATFORM_KEY_DROPLEADS",
+    "PLATFORM_KEY_FINANCIALDATASETS",
 ):
     os.environ[f"TREG_{_k}"] = ""  # the test upstream is an in-process ASGI transport, not real DNS
 
@@ -311,8 +312,69 @@ def make_upstream(hook_hits: list | None = None) -> FastAPI:
     return up
 
 
-@pytest.fixture
-async def clients():
+async def verified_identity(client, email):
+    """Real OTP proof, capturing mail delivery even when Postgres hides dev codes."""
+    from unittest.mock import patch
+    import httpx
+    from treg import email as email_sender
+
+    delivered = {}
+
+    async def receive(email, code, **kwargs):
+        delivered[email] = code
+
+    previous_cookies = httpx.Cookies(client.cookies)
+    try:
+        with patch.object(email_sender, "send_otp", receive):
+            started = await client.post("/auth/email/start", json={"email": email})
+        assert started.status_code == 200, started.text
+        code = started.json().get("dev_code") or delivered[email]
+        proof = await client.post("/auth/email/verify", json={"email": email, "code": code})
+        assert proof.status_code == 200, proof.text
+        return proof.json()["token"]
+    finally:
+        client.cookies = previous_cookies
+
+
+async def verified_signup(client, *, json, headers=None):
+    """Funded test identity through OTP and team creation, with fixture identity fields."""
+    import httpx
+    from sqlmodel import select
+    from treg.infra.db import session_maker
+    from treg.models import User
+
+    email = json["email"]
+    token = await verified_identity(client, email)
+    response = await client.post("/orgs", json={"name": email},
+        headers={**(headers or {}), "X-Treg-Token": token})
+    if response.status_code != 200:
+        return response
+    async with session_maker() as db:
+        user = (await db.execute(select(User).where(User.email == email))).scalar_one()
+        user_id = user.id
+    return httpx.Response(response.status_code,
+        json={**response.json(), "id": user_id, "email": email}, request=response.request)
+
+
+async def funded_user(client, email, *, micro=1_000_000):
+    """A per-org token whose team holds money.
+
+    `POST /users` is legacy registration: the user it mints is UNVERIFIED, and the signup credit is
+    now verified-only (`claim_signup_promo`), so that team starts at zero. A test that has to PAY
+    for something funds the team here instead of leaning on a promo that no longer arrives.
+    Returns the whole registration body, so `["token"]` and `["org_id"]` both work.
+    """
+    from treg.domain import money
+    from treg.infra.db import session_maker
+
+    body = (await client.post("/users", json={"email": email})).json()
+    async with session_maker() as db:
+        await money.grant(db, body["org_id"], amount_micro=micro, kind="promotional")
+        await db.commit()
+    return body
+
+
+async def drain_background_writes():
     # Postgres needs a session-scoped event loop so asyncpg can safely pool connections. That also
     # lets fire-and-forget audit writes survive between tests, so drain both sides of reset_db():
     # before it, to keep an old write out of the new schema, and after the test, to finish its own.
@@ -322,6 +384,11 @@ async def clients():
     # forgives it) — the serial CI job hung exactly here, 5-minute faulthandler timeouts on
     # whichever archive test ran next (2026-08-28, twice).
     await archive.drain()
+
+
+@pytest.fixture
+async def clients():
+    await drain_background_writes()
     # The archive report's 30s server-side cache would outlive this reset and serve the previous
     # test's numbers — clear it with the schema.
     from treg.routers import admin as admin_routes
@@ -332,13 +399,12 @@ async def clients():
     app.state.http = AsyncClient(transport=ASGITransport(app=make_upstream(app.state.hook_hits)), base_url="http://upstream")
     try:
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://registry") as c:
-            r = await c.post("/users", json={"email": "tim@superdesign.dev"})  # open registration
+            r = await verified_signup(c, json={"email": "tim@superdesign.dev"})
             assert r.status_code == 200, r.text
             c.headers["X-Treg-Token"] = r.json()["token"]  # authed by default from here on
             yield c
     finally:
-        await audit.drain()
-        await archive.drain()
+        await drain_background_writes()
         await app.state.http.aclose()
 
 

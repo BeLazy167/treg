@@ -16,7 +16,8 @@ the user, and it asks for authority the capability doesn't need.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
+from urllib.parse import urlsplit
 
 from .config import platform_setting_name, get_settings
 from .domain.connections import authorization as connection_authorization
@@ -24,6 +25,22 @@ from .domain.connections import authorization as connection_authorization
 
 # Compatibility name for callers that still import provider definitions from this legacy module.
 OAuthAuthorizationMethod = connection_authorization.AuthorizationMethod
+
+
+@dataclass(frozen=True)
+class CatalogTarget:
+    """An additional approved upstream root for this provider's catalog endpoints.
+
+    Catalog YAML may select one by exact hostname, but cannot introduce a new credential target.
+    Empty auth fields inherit the provider's normal injection profile.
+    """
+
+    host: str
+    base_url: str
+    token_location: str = ""
+    token_header: str = ""
+    token_param: str = ""
+    token_format: str = ""
 
 
 @dataclass(frozen=True)
@@ -88,6 +105,10 @@ class OAuthProvider:
     # perfectly well-scoped token.
     token_scopes_header: str = ""
     base_url: str = ""  # upstream API root, so a successful connect can auto-provision the tool
+    # A provider's catalog can span additional API roots. These roots are executable policy, not
+    # catalog data: a YAML `host` only selects an exact entry from this allow-list, so a catalog
+    # edit cannot redirect an injected team or platform credential to an arbitrary host.
+    catalog_targets: tuple[CatalogTarget, ...] = ()
     # Copy-paste sample calls stamped onto the provisioned tool's `examples`, surfaced by
     # `tool ls`. The single most useful thing to carry here is the API VERSION: Google's REST APIs
     # version the URL path (v25/...) and a wrong guess returns an HTML 404, not a hint — agents
@@ -363,6 +384,23 @@ class OAuthProvider:
 
     def profile_for_authorization(self, method: str) -> "OAuthProvider":
         return connection_authorization.provider_profile(self, method)
+
+    def profile_for_catalog_host(self, host: str) -> "OAuthProvider":
+        """Select an explicitly approved catalog target and its credential injection profile."""
+        wanted = str(host or "").strip().lower()
+        matches = [target for target in self.catalog_targets if target.host == wanted]
+        if len(matches) != 1:
+            raise ValueError(f"catalog host {wanted!r} is not uniquely approved for {self.service}")
+        target = matches[0]
+        parsed = urlsplit(target.base_url)
+        if (parsed.scheme != "https" or parsed.netloc != wanted or parsed.hostname != wanted
+                or parsed.username or parsed.password or parsed.query or parsed.fragment):
+            raise ValueError(f"catalog target for {wanted!r} is not a safe HTTPS base URL")
+        overrides = {"base_url": target.base_url}
+        for field in ("token_location", "token_header", "token_param", "token_format"):
+            if value := getattr(target, field):
+                overrides[field] = value
+        return replace(self, **overrides)
 
     def authorization_method_name(self, stored: str) -> str:
         return connection_authorization.method_name(self, stored)
@@ -1274,6 +1312,55 @@ SUMBLE = OAuthProvider(
     # Live 2026-09-09: bogus Bearer 401; valid key 200 with credits_used=0.
 )
 
+HARVESTAPI = OAuthProvider(
+    service="harvestapi", display_name="HarvestAPI", auth_kind="key",
+    token_label="API key", token_placeholder="your HarvestAPI API key",
+    token_header="X-API-Key", token_format="{secret}",
+    setup_url="https://harvestapi.io/",
+    setup_action_label="Get your HarvestAPI API key",
+    setup_steps=("Sign in to HarvestAPI and open Dashboard → API keys.",
+                 "Create an API key and paste it here."),
+    setup_note="LinkedIn data and enrichment using an API key. Connection verification is free.",
+    auth_uri="", token_uri="", scopes={}, client_id_setting="", client_secret_setting="",
+    category="Enrichment",
+    summary="Retrieve LinkedIn profiles, companies, jobs, posts and ads, and find leads and emails.",
+    base_url="https://api.harvestapi.io", docs_url="https://docs.harvestapi.io",
+    probe_path="/users/my-api-user",  # Internal only; live bad key 401, valid key 200.
+)
+
+DROPLEADS = OAuthProvider(
+    service="dropleads", display_name="Dropleads", auth_kind="key",
+    token_label="API key", token_placeholder="your Dropleads API key",
+    token_header="X-API-Key", token_format="{secret}",
+    setup_url="https://app.dropleads.io/",
+    setup_action_label="Get your Dropleads API key",
+    setup_steps=("Sign in to Dropleads and open the API section.",
+                 "Create or copy an API key and paste it here."),
+    setup_note=("People and company searches, enrichment, email finding and verification, and "
+                "mobile finding share the account's credit balance. Connection verification is free."),
+    auth_uri="", token_uri="", scopes={}, client_id_setting="", client_secret_setting="",
+    category="Enrichment",
+    summary="Search and enrich people and companies, find work emails and mobiles, and verify emails.",
+    base_url="https://prime.dropleads.io",
+    docs_url="https://dropleads.readme.io/",
+    probe_path="/api/v2/prime-db/credits/balance",
+    catalog_targets=(
+        CatalogTarget(host="api.dropleads.io", base_url="https://api.dropleads.io"),
+    ),
+    extra_tools=(
+        {"suffix": "contact",
+         "base_url": "https://api.dropleads.io",
+         "examples": [
+             {"method": "POST", "path": "/email-finder",
+              "note": "Find a work email from first_name, last_name and company_domain or company_name."},
+             {"method": "POST", "path": "/mobile-finder",
+              "note": "Find a mobile number from linkedin_url."},
+             {"method": "POST", "path": "/email-verifier",
+              "note": "Verify one email address."},
+         ]},
+    ),
+)
+
 QUICKENRICH = OAuthProvider(
     service="quickenrich", display_name="QuickEnrich", auth_kind="key",
     token_label="API key", token_placeholder="your QuickEnrich API key",
@@ -1290,6 +1377,25 @@ QUICKENRICH = OAuthProvider(
     probe_path="/api/employees/contact-finder", probe_method="POST",
     probe_json={"company_url": {"include": ["treg-probe-nonexistent.invalid"], "exclude": []}, "per_page": 1},
     # Live 2026-09-08: bad key 401; valid free key 200, credits_used=0.
+)
+
+PROSPEO = OAuthProvider(
+    service="prospeo", display_name="Prospeo", auth_kind="key",
+    token_label="API key", token_placeholder="your Prospeo API key",
+    token_header="X-KEY", token_format="{secret}",
+    setup_url="https://app.prospeo.io/",
+    setup_action_label="Get your Prospeo API key",
+    setup_steps=("Sign in to Prospeo and open the API key settings.",
+                 "Create or copy an API key and paste it here."),
+    setup_note=("People and company search and enrichment share the account's monthly credits. "
+                "Connection verification reads account information for free."),
+    auth_uri="", token_uri="", scopes={}, client_id_setting="", client_secret_setting="",
+    category="Enrichment",
+    summary="Search and enrich people and companies, including verified work emails and mobiles.",
+    base_url="https://api.prospeo.io", docs_url="https://prospeo.io/api-docs",
+    # Live 2026-09-16: GET returned 200 for the platform key and 400 INVALID_API_KEY for garbage.
+    # The same free route is the capacity collector; Prospeo's data routes are POST, this one is GET.
+    probe_path="/account-information", probe_method="GET",
 )
 
 TRYKITT = OAuthProvider(
@@ -1425,6 +1531,55 @@ REPLICATE = OAuthProvider(
     base_url="https://api.replicate.com/v1",
     docs_url="https://replicate.com/docs/reference/http",
     probe_path="/account",
+)
+
+REAPI = OAuthProvider(
+    service="reapi",
+    display_name="reAPI",
+    auth_kind="token",
+    token_label="API key",
+    token_placeholder="your reAPI API key",
+    setup_url="https://reapi.ai/dashboard/api-keys",
+    setup_action_label="Get your reAPI API key",
+    setup_steps=(
+        "Sign in to reAPI and open Dashboard → API Keys.",
+        "Create a key and copy it (it is shown once).",
+    ),
+    setup_note="Generations spend prepaid credits (1 credit = $0.001); the task probe is free.",
+    auth_uri="", token_uri="", scopes={},
+    client_id_setting="", client_secret_setting="",
+    category="AI generation",
+    summary="Generate Seedance 2.5 video (with a relaxed content filter) and GPT Image / Gemini images through one async API.",
+    base_url="https://reapi.ai/api/v1",
+    docs_url="https://reapi.ai/docs",
+    # No free account route: a valid key answers the unknown task id with 404, a bad one with 401
+    # ({"error":{"code":10003,"message":"Invalid API key."}}, observed 2026-09-14).
+    probe_path="/tasks/probe",
+    probe_reject_statuses=(401, 403),
+)
+
+PIAPI = OAuthProvider(
+    service="piapi",
+    display_name="PiAPI",
+    auth_kind="key",
+    token_label="API key",
+    token_placeholder="your PiAPI API key",
+    token_header="X-API-Key",
+    token_format="{secret}",
+    setup_url="https://piapi.ai/workspace/key",
+    setup_action_label="Get your PiAPI API key",
+    setup_steps=(
+        "Sign in to PiAPI and open the workspace API key page.",
+        "Copy your API key.",
+    ),
+    setup_note="Generations are paid per task; the account-info probe is free.",
+    auth_uri="", token_uri="", scopes={},
+    client_id_setting="", client_secret_setting="",
+    category="AI generation",
+    summary="Generate Seedance 2.5 video (default or less-restriction) and Nano Banana Pro / GPT Image images through one task API.",
+    base_url="https://api.piapi.ai",
+    docs_url="https://piapi.ai/docs/overview",
+    probe_path="/account/info",  # free; a bad key answers 401 {"message":"Failed to verify api key"}
 )
 
 TIKHUB = OAuthProvider(
@@ -1792,7 +1947,7 @@ DIFFBOT = OAuthProvider(
     auth_kind="key",
     token_label="API token",
     token_placeholder="your Diffbot token",
-    token_location="query",  # token is a query param on every call
+    token_location="query",  # normal Diffbot calls use ?token=; Web Search overrides this below
     token_param="token",
     token_format="{secret}",
     setup_url="https://app.diffbot.com/get-started/",
@@ -1806,6 +1961,14 @@ DIFFBOT = OAuthProvider(
     # Enhance/enrich + DQL live on the KG host; the free account probe lives on the api host, so verify
     # off-host. The provisioned tool points at the KG host (the enrichment value).
     base_url="https://kg.diffbot.com/kg/v3",
+    catalog_targets=(
+        CatalogTarget(host="api.diffbot.com", base_url="https://api.diffbot.com"),
+        CatalogTarget(
+            host="llm.diffbot.com", base_url="https://llm.diffbot.com",
+            token_location="header", token_header="Authorization", token_format="Bearer {secret}",
+        ),
+        CatalogTarget(host="nl.diffbot.com", base_url="https://nl.diffbot.com"),
+    ),
     docs_url="https://docs.diffbot.com/reference/authentication",
     probe_url="https://api.diffbot.com/v4/account",  # token injected as ?token=…
 )
@@ -2615,6 +2778,48 @@ TIINGO = OAuthProvider(
 )
 
 
+FINANCIALDATASETS = OAuthProvider(
+    service="financialdatasets",
+    display_name="Financial Datasets",
+    auth_kind="key",
+    token_label="API key",
+    token_placeholder="your Financial Datasets API key",
+    token_header="X-API-KEY",
+    token_format="{secret}",
+    setup_url="https://www.financialdatasets.ai/",
+    setup_action_label="Get your Financial Datasets API key",
+    setup_steps=(
+        "Create or sign in to a Financial Datasets account.",
+        "Open the dashboard, create an API key, and copy it.",
+    ),
+    setup_note=(
+        "Financial Datasets uses prepaid Credits. Connecting checks one real-time US stock "
+        "snapshot, which is listed at $0.02; an empty-Credits 402 still proves the key is valid."
+    ),
+    auth_uri="", token_uri="",
+    scopes={},
+    client_id_setting="", client_secret_setting="",
+    category="Market data",
+    summary=(
+        "US public-company financial statements, metrics, filings, ownership, earnings, news "
+        "and stock prices, plus major-central-bank interest rates."
+    ),
+    base_url="https://api.financialdatasets.ai",
+    docs_url="https://docs.financialdatasets.ai/",
+    # Discovery helpers accept anonymous requests and cannot validate a pasted key. A snapshot is
+    # the smallest authenticated data request. Keep this absolute and probe_path empty: connect-time
+    # verification only, with no recurring health check saved onto the provisioned tool.
+    probe_url="https://api.financialdatasets.ai/prices/snapshot?ticker=AAPL",
+    probe_path="",
+    # 402 means the key was accepted but its prepaid Credits are empty. Use the existing reject-list
+    # metadata to accept exactly the two observed valid-key outcomes, without changing shared probe
+    # behavior or the recurring health-check schema.
+    probe_reject_statuses=tuple(
+        status for status in range(100, 600) if status not in (200, 402)
+    ),
+)
+
+
 # Alpha Vantage is DELIBERATELY absent. Its API served real quote data to a garbage key (verified
 # live 2026-08-14: bogus key -> HTTP 200 with the IBM quote; even premium endpoints answer 200 with
 # an upsell note), so a pasted key can never be validated at connect — the ScrapeCreators rule:
@@ -2813,7 +3018,8 @@ REGISTRY: dict[str, OAuthProvider] = {
         GOOGLE_ADS, YOUTUBE,
         LINKEDIN, SLACK, X, TIKTOK, FACEBOOK, INSTAGRAM, META_ADS,
         # API-key providers
-        APOLLO, PDL, AKTA, HUNTER, SUMBLE, QUICKENRICH, TRYKITT, CONTACTOUT, MILLIONVERIFIER, CRUNCHBASE, MINIMAX, OPENROUTER, REPLICATE,
+        APOLLO, PDL, AKTA, HUNTER, SUMBLE, HARVESTAPI, DROPLEADS, QUICKENRICH, PROSPEO, TRYKITT, CONTACTOUT, MILLIONVERIFIER, CRUNCHBASE, MINIMAX, OPENROUTER, REPLICATE,
+        REAPI, PIAPI,
         TIKHUB, BRIGHTDATA, SEMRUSH, JUSTONEAPI,
         SCRAPECREATORS,
         # SEO API-key providers
@@ -2824,6 +3030,7 @@ REGISTRY: dict[str, OAuthProvider] = {
         INFLUENCERSCLUB,
         # Market data API-key providers
         COINGECKO, POLYGON, FINNHUB, TWELVEDATA, FMP, EODHD, MARKETSTACK, TIINGO,
+        FINANCIALDATASETS,
         # Advertising: API-key ad intelligence + unconfigured OAuth ad platforms
         SPYFU, APIFY, META_AD_LIBRARY, SERPAPI,
         MICROSOFT_ADS, SNAPCHAT_ADS, TIKTOK_ADS, PINTEREST_ADS,
