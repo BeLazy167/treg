@@ -56,6 +56,7 @@ _KNOWN: dict[str, tuple[str, str, str]] = {
     "apify": ("cash", "manual", "api"),
     "twelvedata": ("requests", "subscription", "api"),
     "financialdatasets": ("credits", "auto_recharge", "manual"),
+    "bounceban": ("credits", "manual", "api"),
     # Neither aggregator exposes a balance endpoint at its documented path (plan §7).
     "overflow:orthogonal": ("cash", "manual", "manual"),
     "overflow:monid": ("cash", "manual", "manual"),
@@ -69,6 +70,7 @@ _QUOTAS: dict[str, dict] = {
     "prospeo": {"limit": None, "period": "billing", "resets_at_rule": "account.next_quota_renewal_date"},
 }
 _RATE_LIMITS: dict[str, dict] = {
+    "bounceban": {"limit": 25, "window_s": 1, "source": "docs"},
     # One shared key serves both 5/s enrichment and 1/s search routes. Until smoothing becomes
     # endpoint-aware, protect the stricter search allowance and accept conservative enrichment.
     "prospeo": {"limit": 1, "window_s": 1, "source": "docs"},

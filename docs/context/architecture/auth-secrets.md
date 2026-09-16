@@ -36,6 +36,13 @@ related:
 
 # Auth & secrets
 
+BounceBan uses a pasted raw `Authorization` header with no `Bearer` prefix. The free
+`GET /v1/account` probe rejected a bogus key with HTTP 401 and accepted the supplied key with HTTP
+200 through the real connection flow. `TREG_PLATFORM_KEY_BOUNCEBAN` supplies the optional shared
+binding; a team's key still wins and remains unmetered. Provisioning includes the standard API tool
+and its explicit waterfall-host companion without exposing the credential. See
+[BounceBan](bounceban.md).
+
 `SUMBLE` uses the standard pasted Bearer-key path and a free technology-search miss probe; garbage-key rejection was verified through the local connection API. See [Sumble](sumble.md).
 
 Financial Datasets uses the standard pasted-key and platform-key paths with a raw `X-API-KEY`

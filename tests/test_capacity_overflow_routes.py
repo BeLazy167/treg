@@ -258,6 +258,7 @@ _UNRECORDED_SIGNATURE = {
     "prospeo",  # Starter allowance was not exhausted; no provider-specific body was forced
     "wiza",  # The funded grant was not exhausted; no provider-specific body was forced
     "millionverifier",  # funded-account exhaustion not observed; trial still has credits
+    "bounceban",  # verification credits remain; exhaustion was not forced and no overflow is claimed
     # Bare 402 is already the generic balance signal; the real empty-Credits body was not forced.
     "financialdatasets",
     "minimax", "oceanio", "openrouter", "replicate", "scrapecreators", "seranking",

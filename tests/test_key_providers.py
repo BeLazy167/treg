@@ -23,7 +23,7 @@ from treg import oauth_providers as P
 def test_key_providers_are_offerable_without_deployment_credentials():
     """The user brings the key, so treg holds no app of its own — a key provider must be offerable,
     not shown as 'not configured' the way an unset OAuth provider is."""
-    for svc in ("apollo", "pdl", "akta", "hunter", "sumble", "harvestapi", "dropleads", "quickenrich", "prospeo", "wiza", "contactout", "millionverifier", "trykitt", "crunchbase", "tikhub", "brightdata", "semrush",
+    for svc in ("apollo", "pdl", "akta", "hunter", "sumble", "harvestapi", "dropleads", "quickenrich", "prospeo", "wiza", "contactout", "millionverifier", "bounceban", "trykitt", "crunchbase", "tikhub", "brightdata", "semrush",
                 "justoneapi", "dataforseo", "seranking", "moz", "majestic", "serpstat", "exa",
                 "cloro",
                 "lusha", "coresignal", "diffbot", "thecompaniesapi", "leadmagic", "fiber-ai",
@@ -48,6 +48,8 @@ def test_key_providers_appear_in_the_marketplace_listing():
     assert listing["tikhub"]["category"] == "Social media"
     assert listing["coingecko"]["category"] == "Market data"
     assert listing["financialdatasets"]["category"] == "Market data"
+    assert listing["bounceban"]["category"] == "Enrichment"
+    assert listing["bounceban"]["auth_kind"] == "key"
     assert listing["minimax"]["category"] == "AI generation"
     assert listing["openrouter"]["auth_kind"] == "token"
     assert listing["replicate"]["base_url"] == "https://api.replicate.com/v1"
@@ -375,6 +377,51 @@ def test_millionverifier_platform_key_configuration(monkeypatch):
     assert P.platform_bindings(P.get("millionverifier")) == [
         {"platform_setting": "platform_key_millionverifier", "injector": "env",
          "location": "query", "name": "api", "format": "{secret}"}]
+
+
+def test_bounceban_registry_and_platform_key_configuration(monkeypatch):
+    monkeypatch.setenv("TREG_PLATFORM_KEY_BOUNCEBAN", "platform-test-key")
+    monkeypatch.setenv("TREG_PLATFORM_PROVIDERS", "bounceban")
+    settings = Settings(_env_file=None)
+    provider = P.get("bounceban")
+    assert provider.base_url == "https://api.bounceban.com"
+    assert provider.probe_path == "/v1/account"
+    assert provider.token_header == "Authorization"
+    assert provider.token_format == "{secret}"
+    assert provider.catalog_targets[0].host == "api-waterfall.bounceban.com"
+    assert settings.platform_key_for("bounceban") == "platform-test-key"
+    assert P.platform_bindings(provider) == [{
+        "platform_setting": "platform_key_bounceban",
+        "injector": "env",
+        "location": "header",
+        "name": "Authorization",
+        "format": "{secret}",
+    }]
+
+
+async def test_bounceban_connect_rejects_bad_key_and_provisions_both_hosts(clients, monkeypatch):
+    def probe(request):
+        assert request.url.host == "api.bounceban.com"
+        assert request.url.path == "/v1/account"
+        key = request.headers["authorization"]
+        if key == "bad-key":
+            return httpx.Response(401, json={"msg": "Invalid API key"})
+        return httpx.Response(200, json={"available_credits": 0, "rate_limit": []})
+
+    async with AsyncClient(transport=httpx.MockTransport(probe)) as upstream:
+        monkeypatch.setattr(app.state, "http", upstream)
+        bad = await clients.post(
+            "/connections/token", json={"provider": "bounceban", "token": "bad-key"})
+        assert bad.status_code == 422
+        good = await clients.post(
+            "/connections/token", json={"provider": "bounceban", "token": "own-key"})
+        assert good.status_code == 200, good.text
+
+    tools = {tool["name"]: tool for tool in (await clients.get("/tools")).json()}
+    assert set(tools) == {"bounceban", "bounceban-waterfall"}
+    assert tools["bounceban"]["base_url"] == "https://api.bounceban.com"
+    assert tools["bounceban-waterfall"]["base_url"] == "https://api-waterfall.bounceban.com"
+    assert tools["bounceban"]["bindings"] == tools["bounceban-waterfall"]["bindings"]
 
 
 async def test_quickenrich_connect_uses_free_authenticated_discovery(clients, monkeypatch):

@@ -108,6 +108,15 @@ def prospeo_platform_on(monkeypatch):
 
 
 @pytest.fixture
+def bounceban_platform_on(monkeypatch):
+    monkeypatch.setenv("TREG_PLATFORM_KEY_BOUNCEBAN", "PLATFORM-BOUNCEBAN")
+    monkeypatch.setenv("TREG_PLATFORM_PROVIDERS", "bounceban")
+    get_settings.cache_clear()
+    yield
+    get_settings.cache_clear()
+
+
+@pytest.fixture
 def diffbot_platform_on(monkeypatch):
     """Enable Diffbot tier 4 without exposing or calling a real provider credential."""
     monkeypatch.setenv("TREG_PLATFORM_KEY_DIFFBOT", "PLATFORM-DIFFBOT-KEY")
@@ -2984,6 +2993,64 @@ async def test_prospeo_platform_email_settles_one_credit(
     assert result.status_code == 200, result.text
     assert result.headers["x-treg-cost-micro"] == "24500"
     assert before - await _balance(clients) == 24_500
+
+
+@pytest.mark.parametrize("doc", [
+    {"id": "task-1", "status": "success", "result": "deliverable", "score": 99,
+     "credits_consumed": 1, "credits_remaining": 9996},
+    {"id": "task-2", "status": "verifying", "try_again_at": 1789516800},
+])
+async def test_bounceban_platform_settles_every_accepted_standard_submission(
+    clients, monkeypatch, bounceban_platform_on, doc,
+):
+    def serve(request):
+        assert request.method == "GET"
+        assert request.url.path == "/v1/verify/single"
+        assert dict(request.url.params) == {"email": "dev@bounceban.com"}
+        assert request.headers["authorization"] == "PLATFORM-BOUNCEBAN"
+        return _dropleads_response(200, doc)
+
+    before = await _balance(clients)
+    async with httpx.AsyncClient(transport=httpx.MockTransport(serve)) as upstream:
+        monkeypatch.setattr(A.app.state, "http", upstream)
+        result = await clients.get(
+            "/call/bounceban.people.email.verify", params={"email": "dev@bounceban.com"})
+    assert result.status_code == 200, result.text
+    assert result.headers["x-treg-cost-micro"] == "4000"
+    assert before - await _balance(clients) == 4_000
+
+
+async def test_bounceban_platform_releases_invalid_input_and_byok_wins_unmetered(
+    clients, monkeypatch, bounceban_platform_on,
+):
+    before = await _balance(clients)
+    async with httpx.AsyncClient(transport=httpx.MockTransport(
+            lambda request: _dropleads_response(400, {"msg": "Invalid email"}))) as upstream:
+        monkeypatch.setattr(A.app.state, "http", upstream)
+        invalid = await clients.get(
+            "/call/bounceban.people.email.verify", params={"email": "not-an-email"})
+    assert invalid.status_code == 400
+    assert invalid.headers["x-treg-cost-micro"] == "0"
+    assert await _balance(clients) == before
+
+    await clients.post("/secrets", json={"name": "bounceban", "value": "OWN-BOUNCEBAN"})
+    seen = []
+
+    def serve(request):
+        seen.append(request.headers["authorization"])
+        return _dropleads_response(200, {
+            "id": "task-3", "status": "success", "result": "undeliverable", "score": 0,
+            "credits_consumed": 1, "credits_remaining": 50,
+        })
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(serve)) as upstream:
+        monkeypatch.setattr(A.app.state, "http", upstream)
+        own = await clients.get(
+            "/call/bounceban.people.email.verify", params={"email": "nobody@example.com"})
+    assert own.status_code == 200, own.text
+    assert seen == ["OWN-BOUNCEBAN"]
+    assert "x-treg-cost-micro" not in own.headers
+    assert await _balance(clients) == before
 
 
 async def test_prospeo_platform_person_enrich_uses_non_free_flag_when_email_is_null(

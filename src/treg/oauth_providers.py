@@ -1483,6 +1483,40 @@ MILLIONVERIFIER = OAuthProvider(
     token_reject_field="error",
 )
 
+BOUNCEBAN = OAuthProvider(
+    service="bounceban",
+    display_name="BounceBan",
+    auth_kind="key",
+    token_label="API key",
+    token_placeholder="your BounceBan API key",
+    token_header="Authorization",
+    token_format="{secret}",
+    setup_url="https://bounceban.com/app/api/settings",
+    setup_action_label="Get your BounceBan API key",
+    setup_steps=(
+        "Sign in to BounceBan and open API settings.",
+        "Create or copy an API key and paste it here.",
+    ),
+    setup_note=("Each completed API verification normally uses one prepaid credit. "
+                "The free account probe checks the verification-credit balance."),
+    auth_uri="", token_uri="", scopes={},
+    client_id_setting="", client_secret_setting="",
+    category="Enrichment",
+    summary="Verify email deliverability, including catch-all and protected mailboxes.",
+    base_url="https://api.bounceban.com",
+    docs_url="https://bounceban.com/public/doc/api.html",
+    probe_path="/v1/account",
+    catalog_targets=(
+        CatalogTarget(host="api-waterfall.bounceban.com",
+                      base_url="https://api-waterfall.bounceban.com"),
+    ),
+    extra_tools=(
+        {"suffix": "waterfall", "base_url": "https://api-waterfall.bounceban.com",
+         "examples": [{"method": "GET", "path": "/v1/verify/single",
+                       "note": "Wait for one email verification result; BYOK only in the catalog."}]},
+    ),
+)
+
 MINIMAX = OAuthProvider(
     service="minimax",
     display_name="MiniMax",
@@ -3037,7 +3071,7 @@ REGISTRY: dict[str, OAuthProvider] = {
         GOOGLE_ADS, YOUTUBE,
         LINKEDIN, SLACK, X, TIKTOK, FACEBOOK, INSTAGRAM, META_ADS,
         # API-key providers
-        APOLLO, PDL, AKTA, HUNTER, SUMBLE, HARVESTAPI, DROPLEADS, QUICKENRICH, PROSPEO, WIZA, TRYKITT, CONTACTOUT, MILLIONVERIFIER, CRUNCHBASE, MINIMAX, OPENROUTER, REPLICATE,
+        APOLLO, PDL, AKTA, HUNTER, SUMBLE, HARVESTAPI, DROPLEADS, QUICKENRICH, PROSPEO, WIZA, TRYKITT, CONTACTOUT, MILLIONVERIFIER, BOUNCEBAN, CRUNCHBASE, MINIMAX, OPENROUTER, REPLICATE,
         REAPI, PIAPI,
         TIKHUB, BRIGHTDATA, SEMRUSH, JUSTONEAPI,
         SCRAPECREATORS,

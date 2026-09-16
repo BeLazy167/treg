@@ -19,6 +19,7 @@ covers (frontmatter `sources:`). Regenerate this index with
 | [Google Ads conversion tracking — capture, outbox, upload](architecture/ads-conversions.md) | shipped | adsconv.py, signup.py, adtrack.js, gtag.js |
 | [Archive - versioned history and cache admission](architecture/archive.md) | building | archive.py, hunter.yaml, results.py, 0031_archive_result_admission.py, … |
 | [Auth & secrets — injectors, encryption, OAuth freshness, health](architecture/auth-secrets.md) | shipped | injectors.py, ssrf.py, crypto.py, oauth.py, … |
+| [BounceBan — email verification, billing boundaries and capacity](architecture/bounceban.md) | shipped | bounceban.yaml, bounceban.people.email.verify.json, bounceban.people.email.verify.waterfall.json, bounceban.people.email.verify.status.json, … |
 | [Endpoint catalog — what you can DO with a connected key, and which provider should do it](architecture/catalog.md) | shipped | financialdatasets.yaml, financialdatasets.company.facts.json, financialdatasets.company.facts.ciks.json, financialdatasets.company.facts.tickers.json, … |
 | [Application composition and deployment roles](architecture/composition.md) | shipped | bootstrap.py, bootstrap_handlers.py, bootstrap_http.py, call_surface.py, … |
 | [ContactOut — LinkedIn enrichment, Starter billing and independent credit pools](architecture/contactout.md) | implemented; live connect and core surface verified, informational capacity monitoring | contactout.yaml, adapters.yaml, contactout.people.email.verify.json, test_routing.py, … |
@@ -54,7 +55,7 @@ covers (frontmatter `sources:`). Regenerate this index with
 | [Onboarding — the first-run demo team (dashboard + CLI)](interface/onboarding.md) | shipped | auth.py, __init__.py, demo.py, cli.py, … |
 | [Search surfaces — robots, sitemap, the crawlable catalog, and the social card](interface/seo.md) | shipped | api.py, web.py, agent_pages.py, robots.txt, … |
 | [Shell mode (treg shell) — transparent CLI interception](interface/shell.md) | shipped | shell.py, cli.py |
-| [The shippable tools-registry skill (3 personas)](interface/skill.md) | shipped | skill.md, web.py, mcp_install.py, build_plugin.py, … |
+| [The shippable tools-registry skill (3 personas)](interface/skill.md) | shipped | skill.md, SKILL.md, web.py, mcp_install.py, … |
 
 ## Ops (deploy, scale)
 

@@ -233,6 +233,16 @@ async def _millionverifier(c, key):
     return {"value": credits, "unit": "credits", "note": ""}
 
 
+async def _bounceban(c, key):
+    d = await _get(c, "https://api.bounceban.com/v1/account",
+                   headers={"Authorization": key})
+    credits = d.get("available_credits") if isinstance(d, dict) else None
+    if (isinstance(credits, bool) or not isinstance(credits, (int, float))
+            or not math.isfinite(credits) or credits < 0):
+        raise ValueError("BounceBan returned no valid verification-credit balance")
+    return {"value": credits, "unit": "verification credits", "note": ""}
+
+
 async def _leadmagic(c, key):
     r = await c.post("https://api.leadmagic.io/v1/credits", headers={"X-API-Key": key})
     r.raise_for_status()
@@ -523,6 +533,7 @@ BALANCE_ROUTES = {
     "trykitt": _trykitt,
     "contactout": _contactout,
     "millionverifier": _millionverifier,
+    "bounceban": _bounceban,
     "leadmagic": _leadmagic,
     "lusha": _lusha,
     "diffbot": _diffbot,
