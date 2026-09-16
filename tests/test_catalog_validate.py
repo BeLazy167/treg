@@ -694,3 +694,30 @@ def test_prospeo_catalog_surface_excludes_account_info_and_prices_mobile_at_the_
     bulk_mobile = catalog.by_id["prospeo.people.enrich.bulk"]["cost"]["modifiers"]
     assert bulk_mobile["enrich_mobile"]["add_credits_per_result"] == 9
     assert all(catalog.platform_eligible(ep) for ep in rows)
+
+
+def test_bounceban_catalog_has_one_platform_tool_and_complete_safe_byok_lifecycle():
+    catalog = catalog_store.load()
+    rows = [ep for ep in catalog.endpoints if ep["provider"] == "bounceban"]
+    assert len(rows) == 9
+    assert {ep["path"] for ep in rows} == {
+        "/v1/verify/single",
+        "/v1/verify/single/status",
+        "/v1/verify/bulk",
+        "/v1/verify/bulk/status",
+        "/v1/verify/bulk/emails",
+        "/v1/verify/bulk/dump",
+        "/v1/verify/bulk/export",
+        "/v1/account",
+    }
+    assert not any(ep["path"] in ("/v1/verify/bulk/file", "/v1/verify/bulk/destroy", "/v1/check")
+                   for ep in rows)
+    eligible = [ep["id"] for ep in rows if catalog.platform_eligible(ep)]
+    assert eligible == ["bounceban.people.email.verify"]
+    direct = catalog.by_id["bounceban.people.email.verify"]
+    assert direct["cost"]["value"] == 1
+    assert catalog.cost_view(direct["cost"], "bounceban")["usd"] == 0.004
+    assert "disable_catchall_verify" not in direct["input"]["queryParams"]
+    waterfall = catalog.by_id["bounceban.people.email.verify.waterfall"]
+    assert waterfall["host"] == "api-waterfall.bounceban.com"
+    assert waterfall["platform_blocked"]

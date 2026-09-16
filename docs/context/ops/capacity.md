@@ -44,6 +44,12 @@ related:
 
 # Provider capacity
 
+BounceBan's collector calls the free `GET /v1/account` route with the raw `Authorization` key and
+reads `available_credits`. Zero and finite nonnegative numbers are exact balances; missing, Boolean,
+string, negative, and non-finite values are unknown. Its policy is `credits / manual / api`, with a
+conservative shared-key rate of 25 requests per second. No reset, renewal, or auto-top-up behavior is
+inferred, and no overflow route is claimed. See [BounceBan](../architecture/bounceban.md).
+
 `collectors._sumble` reads `credits_remaining` from a free technology-search miss. Its monthly allowance and optional vendor top-ups remain separate from per-call pricing; no renewal date or auto-funding status is assumed. See [Sumble](../architecture/sumble.md).
 
 Financial Datasets uses the existing capacity path with `_KNOWN` policy

@@ -1414,6 +1414,104 @@ def test_millionverifier_verdicts(result, valid, miss):
     assert adapter.is_miss({})
 
 
+@pytest.mark.parametrize("result,valid", [
+    ("deliverable", True),
+    ("risky", False),
+    ("undeliverable", False),
+    ("unknown", False),
+])
+def test_bounceban_verdicts_join_existing_email_verification_route(result, valid):
+    cat = catalog_store.load()
+    eid = "bounceban.people.email.verify"
+    routed = cat.by_id["treg.people.email.verify"]["routed_children"]
+    assert eid in routed
+    assert "bounceban.people.email.verify.waterfall" not in routed
+    assert cat.platform_eligible(cat.by_id[eid])
+    for blocked in (
+        "bounceban.people.email.verify.waterfall",
+        "bounceban.people.email.verify.bulk",
+        "bounceban.people.email.verify.bulk.status",
+        "bounceban.people.email.verify.bulk.emails",
+        "bounceban.people.email.verify.bulk.dump",
+        "bounceban.people.email.verify.bulk.export",
+        "bounceban.account.usage",
+    ):
+        assert not cat.platform_eligible(cat.by_id[blocked])
+    adapter = cat.adapters[eid]
+    assert adapter.verified
+    doc = {"status": "success", "result": result, "score": 99}
+    assert adapter.from_upstream(doc) == {"valid": valid, "status": result, "score": 99}
+    assert not adapter.is_miss(doc)
+    assert adapter.is_miss({"id": "task", "status": "verifying"})
+
+
+async def test_bounceban_serves_existing_email_verification_route(clients, monkeypatch):
+    monkeypatch.setenv("TREG_PLATFORM_KEY_BOUNCEBAN", "PLATFORM-BOUNCEBAN")
+    monkeypatch.setenv("TREG_PLATFORM_PROVIDERS", "bounceban")
+    get_settings.cache_clear()
+    seen = []
+    monkeypatch.setattr(call_service, "relay", _relay_by_provider({
+        "bounceban": [(200, {
+            "id": "task", "status": "success", "result": "risky", "score": 62,
+            "credits_consumed": 1, "credits_remaining": 9996,
+        })],
+    }, seen))
+    before = await _balance(clients)
+    response = await clients.post(
+        "/call/treg.people.email.verify", json={"email": "dev@bounceban.com"})
+    assert response.status_code == 200, response.text
+    data = response.json()
+    assert data["output"]["valid"] is False
+    assert data["output"]["status"] == "risky"
+    assert data["output"]["score"] == 62
+    assert data["_treg"]["served_by"] == "bounceban.people.email.verify"
+    assert before - await _balance(clients) == 4_000
+    assert [row[0] for row in seen] == ["bounceban"]
+    get_settings.cache_clear()
+
+
+async def test_bounceban_routed_pending_result_is_a_paid_miss_then_falls_through(
+    clients, monkeypatch,
+):
+    monkeypatch.setenv("TREG_PLATFORM_KEY_BOUNCEBAN", "PLATFORM-BOUNCEBAN")
+    monkeypatch.setenv("TREG_PLATFORM_KEY_TOMBA", "PLATFORM-TOMBA-KEY")
+    monkeypatch.setenv("TREG_PLATFORM_KEY_TOMBA_SECRET", "PLATFORM-TOMBA-SECRET")
+    monkeypatch.setenv("TREG_PLATFORM_PROVIDERS", "bounceban,tomba")
+    get_settings.cache_clear()
+    seen = []
+    monkeypatch.setattr(call_service, "relay", _relay_by_provider({
+        "bounceban": [(200, {
+            "id": "task", "status": "verifying", "try_again_at": 1789516800,
+        })],
+        "tomba": [(200, {
+            "data": {"email": {"status": "valid", "score": 99}},
+        })],
+    }, seen))
+
+    before = await _balance(clients)
+    response = await clients.post(
+        "/call/treg.people.email.verify",
+        json={"email": "dev@bounceban.com"},
+        headers={"X-Treg-Route-Prefer": "bounceban,tomba"},
+    )
+    assert response.status_code == 200, response.text
+    data = response.json()
+    assert data["_treg"]["served_by"] == "tomba.people.email.verify"
+    assert [attempt["outcome"] for attempt in data["_treg"]["tried"]] == ["miss", "hit"]
+    assert [attempt["charged_micro"] for attempt in data["_treg"]["tried"]] == [4_000, 8_900]
+    assert data["_treg"]["charged_micro"] == 12_900
+    assert before - await _balance(clients) == 12_900
+    assert [row[0] for row in seen] == ["bounceban", "tomba"]
+    await audit.drain()
+    async with session_maker() as db:
+        rows = (await db.execute(select(CallRecord).where(
+            CallRecord.provider == "bounceban"))).scalars().all()
+        assert len(rows) == 1
+        assert rows[0].hit is False
+        assert rows[0].cost_charged_micro == 4_000
+    get_settings.cache_clear()
+
+
 async def test_millionverifier_error_falls_through_unbilled(clients, enrichment_on, monkeypatch):
     monkeypatch.setenv("TREG_PLATFORM_KEY_MILLIONVERIFIER", "PLATFORM-MV-KEY")
     monkeypatch.setenv("TREG_PLATFORM_PROVIDERS", "millionverifier,leadmagic")

@@ -30,6 +30,76 @@ async def test_millionverifier_balance_uses_query_key_without_double_counting(mo
         collectors.get_settings.cache_clear()
 
 
+@pytest.mark.parametrize("balance", [0, 9997, 12.5])
+async def test_bounceban_balance_uses_raw_authorization_header(monkeypatch, balance):
+    monkeypatch.setenv("TREG_PLATFORM_KEY_BOUNCEBAN", "private-test-key")
+    collectors.get_settings.cache_clear()
+
+    def reply(request):
+        assert request.url == "https://api.bounceban.com/v1/account"
+        assert request.headers["authorization"] == "private-test-key"
+        return httpx.Response(200, json={
+            "owner_email": "owner@example.com",
+            "available_credits": balance,
+            "rate_limit": [],
+        })
+
+    try:
+        async with httpx.AsyncClient(transport=httpx.MockTransport(reply)) as client:
+            row = await collectors.provider_balance("bounceban", client)
+        assert row == {"provider": "bounceban", "value": balance,
+                       "unit": "verification credits", "note": ""}
+    finally:
+        collectors.get_settings.cache_clear()
+
+
+@pytest.mark.parametrize("balance", [None, -1, True, "9997"])
+async def test_bounceban_balance_rejects_uncertain_values_without_exposing_key(monkeypatch, balance):
+    monkeypatch.setenv("TREG_PLATFORM_KEY_BOUNCEBAN", "private-test-key")
+    collectors.get_settings.cache_clear()
+    try:
+        async with httpx.AsyncClient(transport=httpx.MockTransport(
+                lambda request: httpx.Response(200, json={"available_credits": balance}))) as client:
+            row = await collectors.provider_balance("bounceban", client)
+        assert row["value"] is None
+        assert "valid verification-credit balance" in row["note"]
+        assert "private-test-key" not in str(row)
+    finally:
+        collectors.get_settings.cache_clear()
+
+
+async def test_bounceban_balance_rejects_non_finite_value(monkeypatch):
+    class Response:
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return {"available_credits": float("inf")}
+
+    class Client:
+        async def get(self, *args, **kwargs):
+            return Response()
+
+    monkeypatch.setenv("TREG_PLATFORM_KEY_BOUNCEBAN", "private-test-key")
+    collectors.get_settings.cache_clear()
+    try:
+        row = await collectors.provider_balance("bounceban", Client())
+        assert row["value"] is None
+        assert "valid verification-credit balance" in row["note"]
+        assert "private-test-key" not in str(row)
+    finally:
+        collectors.get_settings.cache_clear()
+
+
+def test_bounceban_capacity_policy_uses_manual_prepaid_credits():
+    row = policy.default_policy("bounceban", has_key=True)
+    assert row.capacity_type == "credits"
+    assert row.funding_mode == "manual"
+    assert row.source == "api"
+    assert row.auto_funding_enabled is False
+    assert row.rate_limit == {"limit": 25, "window_s": 1, "source": "docs"}
+
+
 @pytest.mark.parametrize("status,body", [(200, {"error": "apikey_not_found"}), (401, {}), (200, {})])
 async def test_millionverifier_balance_errors_do_not_expose_key(monkeypatch, status, body):
     monkeypatch.setenv("TREG_PLATFORM_KEY_MILLIONVERIFIER", "private-test-key")

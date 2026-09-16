@@ -179,6 +179,21 @@ related:
 
 # Endpoint catalog — platform-grouped operations per provider
 
+## BounceBan email verification (2026-09-16)
+
+BounceBan adds nine tools across standard single verification, BYOK waterfall verification, BYOK
+single/bulk lifecycle reads, JSON bulk submission, and account usage. Only the standard single tool
+is platform eligible. It has a fixed observed cost of one credit, priced at the supplied acquisition
+rate of $0.004, and uses `per_call` so an accepted `status=verifying` submission is charged while a
+rejected HTTP 400 request releases its hold. Waterfall retries, conditional zero-credit catch-all
+results, bulk refunds, and task ownership make the other lifecycle operations unsafe for a shared
+key, so they remain BYOK only.
+
+The verified adapter adds only the standard endpoint to `treg.people.email.verify`; routing and
+Arena discover it from that adapter. Multipart upload, destructive bulk deletion, and the separately
+funded Check API are not catalog tools. See [BounceBan](bounceban.md) for the endpoint evidence,
+credential shape, capacity policy, and exclusions.
+
 Sumble adds the full v9 surface with verified platform operations and explicit BYOK restrictions. See [Sumble](sumble.md) for schemas, pricing rules, routing and live evidence.
 
 ## Financial Datasets v1 and v2 (2026-09-15)

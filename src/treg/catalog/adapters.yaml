@@ -320,6 +320,13 @@ adapters:
     out: {valid: "result == 'ok'", status: result}
     # Like peer verifiers, risky/invalid verdicts are answers; API errors omit quality.
     miss: "quality == null"
+  bounceban.people.email.verify:
+    accepts: [[email]]
+    in: {email: queryParams.email}
+    out: {valid: "result == 'deliverable'", status: result, score: score}
+    # A standard submission can return status=verifying before the verdict exists. It was billed,
+    # but it is not a routed answer yet, so the existing waterfall may continue.
+    miss: "result == null"
   leadmagic.people.email.verify:
     accepts: [[email]]
     in:  {email: body.email}
