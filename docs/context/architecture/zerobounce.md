@@ -4,8 +4,6 @@ status: implemented; live authentication and response shapes verified
 sources:
   - src/treg/catalog/zerobounce.yaml
   - src/treg/catalog/examples/zerobounce.people.email.verify.json
-  - src/treg/catalog/examples/zerobounce.account.credits.json
-  - src/treg/catalog/examples/zerobounce.account.usage.json
   - src/treg/catalog/adapters.yaml
   - src/treg/catalog/fx.yaml
   - src/treg/config.py
@@ -36,9 +34,9 @@ operations use an `api_key` query parameter. A team's connected key has priority
 
 ## Safe first surface
 
-The catalog exposes synchronous single validation and two account reads. Single validation is the
-only platform-eligible tool. Credit balance and API usage are `own_account` tools because they
-describe the credential owner's account.
+The catalog exposes only synchronous single validation. Credit balance and API usage are internal
+operations because they support registry health rather than an agent job. They do not appear in
+catalog search, provider pages, platform pages, or `/call/`.
 
 The wider documented API includes batch and file validation, scoring, finder, domain search,
 Activity Data, filters, and list evaluation. Batch is excluded because the endpoint needs `api_key`
@@ -64,13 +62,15 @@ hold on upstream errors. No ZeroBounce branch is added to money code.
 
 ## Connection and capacity
 
-The free connection probe reads API usage for a fixed closed date range. A missing or invalid key
-returned HTTP 403; the supplied key returned HTTP 200. The balance route is not used for connection
-validation because a bad key can return HTTP 200 with `Credits=-1`.
+The free connection probe reads API usage for a fixed closed date range directly from
+`/v2/getapiusage`. A missing or invalid key returned HTTP 403; the supplied key returned HTTP 200.
+The operation stays in the provider registry and is not a catalog tool. The balance route is not
+used for connection validation because a bad key can return HTTP 200 with `Credits=-1`.
 
-The capacity collector reads the free balance route. It accepts nonnegative integers and decimal
-strings. It rejects Boolean, missing, malformed, and negative values. It also removes the query key
-from error reporting by replacing upstream HTTP errors with a safe provider message. The policy is
+The capacity collector reads `/v2/getcredits` directly. The operation is not a catalog tool. The
+collector accepts nonnegative integers and decimal strings. It rejects Boolean, missing, malformed,
+and negative values. It also removes the query key from error reporting by replacing upstream HTTP
+errors with a safe provider message. The policy is
 `credits / auto_recharge / api` for vendor-managed Auto-Pay. treg reads the balance but does not
 read or change the Auto-Pay setting. Shared-key calls start at the conservative policy rate of 25
 requests per second.

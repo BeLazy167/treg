@@ -7,8 +7,8 @@
 ## Goal
 
 Add a production-ready ZeroBounce provider without changing the shared relay contract. Give agents
-one platform-eligible email-validation tool, BYOK account reads, the existing
-`treg.people.email.verify` route, and automatic Enrich Arena discovery.
+one platform-eligible email-validation tool, the existing `treg.people.email.verify` route, and
+automatic Enrich Arena discovery.
 
 ## Product boundary
 
@@ -17,8 +17,10 @@ The first release contains these tools:
 | Tool | Upstream operation | Access | Charge |
 |---|---|---|---|
 | `zerobounce.people.email.verify` | `GET /v2/validate` | platform or BYOK | one credit for a non-unknown result |
-| `zerobounce.account.credits` | `GET /v2/getcredits` | BYOK only | free |
-| `zerobounce.account.usage` | `GET /v2/getapiusage` | BYOK only | free |
+
+Two free account operations stay internal. The capacity collector calls `GET /v2/getcredits`, and
+the connection probe calls `GET /v2/getapiusage`. They are not catalog tools because they support
+registry health rather than an agent job.
 
 The documented API also includes batch validation, file validation, file scoring, finder, domain
 search, Activity Data, filters, and list evaluation. These operations are not in this first release.
@@ -35,9 +37,9 @@ ZeroBounce uses `api_key` in the query string for the selected endpoints. A conn
 win over `TREG_PLATFORM_KEY_ZEROBOUNCE` and remain unmetered. A shared key is available only when
 `zerobounce` is in `TREG_PLATFORM_PROVIDERS`.
 
-The connection probe calls the free API-usage route with a closed date range. Live checks returned
-HTTP 403 for a missing or invalid key and HTTP 200 for the supplied key. The credit-balance route is
-not the probe because an invalid key can return HTTP 200 with `Credits=-1`.
+The internal connection probe calls the free API-usage route with a closed date range. Live checks
+returned HTTP 403 for a missing or invalid key and HTTP 200 for the supplied key. The credit-balance
+route is not the probe because an invalid key can return HTTP 200 with `Credits=-1`.
 
 ## Price and settlement
 
@@ -54,10 +56,10 @@ below the 25-credit limit.
 
 ## Capacity and traffic
 
-The capacity collector reads `Credits` from the free balance route. It accepts nonnegative JSON
-integers and decimal strings. It rejects Boolean values, missing or malformed values, negatives,
-and the invalid-key sentinel. It does not include a query key in an error message. The returned note
-states that vendor Auto-Pay is managed upstream and is not read or changed by treg.
+The internal capacity collector reads `Credits` from the free balance route. It accepts nonnegative
+JSON integers and decimal strings. It rejects Boolean values, missing or malformed values,
+negatives, and the invalid-key sentinel. It does not include a query key in an error message. The
+returned note states that vendor Auto-Pay is managed upstream and is not read or changed by treg.
 
 ZeroBounce documents a much higher single-validation request rate. The shared-key policy starts at
 25 requests per second. This is a conservative operational limit, not a claim about the upstream

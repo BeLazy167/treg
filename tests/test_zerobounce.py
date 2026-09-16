@@ -58,18 +58,11 @@ async def _balance(clients):
 def test_zerobounce_catalog_exposes_only_the_safe_first_surface():
     catalog = catalog_store.load()
     endpoints = {eid: ep for eid, ep in catalog.by_id.items() if eid.startswith("zerobounce.")}
-    assert set(endpoints) == {
-        "zerobounce.people.email.verify",
-        "zerobounce.account.credits",
-        "zerobounce.account.usage",
-    }
+    assert set(endpoints) == {"zerobounce.people.email.verify"}
     validation = endpoints["zerobounce.people.email.verify"]
     assert validation["method"] == "GET"
     assert validation["path"] == "/v2/validate"
     assert catalog.cost_view(validation["cost"], "zerobounce")["usd"] == 0.0138
-    for endpoint_id in ("zerobounce.account.credits", "zerobounce.account.usage"):
-        assert endpoints[endpoint_id]["scope"] == "own_account"
-        assert endpoints[endpoint_id]["platform_blocked"]
     assert "zerobounce.people.email.verify.bulk" not in endpoints
 
 
