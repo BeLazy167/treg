@@ -107,6 +107,7 @@ async def test_wiza_capacity_reads_finite_api_credits(remaining):
     assert configured.capacity_type == "credits"
     assert configured.funding_mode == "manual"
     assert configured.auto_funding_enabled is False
+    assert configured.rate_limit == {"limit": 30, "window_s": 60, "source": "docs"}
 
 
 @pytest.mark.parametrize("remaining", [None, True, -1, "unlimited"])
@@ -166,6 +167,27 @@ def test_wiza_catalog_covers_every_official_path_and_blocks_async_platform_use()
     }
     assert all(catalog.by_id[eid]["input"]["body"]["size"]["enum"] == [1]
                for eid in ("wiza.people.search", "wiza.companies.search"))
+    assert all(catalog.by_id[eid]["input"]["body"]["size"]["required"] is True
+               for eid in ("wiza.people.search", "wiza.companies.search"))
+    assert all(catalog.by_id[eid]["input"]["body"]["filters"]["required"] is False
+               for eid in ("wiza.people.search", "wiza.companies.search"))
+
+
+@pytest.mark.parametrize(
+    "endpoint,body",
+    [
+        ("wiza.people.search", {"filters": {"job_title": [{"v": "Founder", "s": "i"}]}}),
+        ("wiza.companies.search", {
+            "filters": {"company_industry": [{"v": "Software", "s": "i"}]},
+        }),
+    ],
+)
+async def test_wiza_platform_search_rejects_an_omitted_required_size(
+    clients, wiza_platform_on, endpoint, body,
+):
+    result = await clients.post(f"/call/{endpoint}", json=body)
+    assert result.status_code == 400
+    assert result.json()["detail"]["error"] == "catalog_parameter_invalid"
 
 
 @pytest.mark.parametrize(

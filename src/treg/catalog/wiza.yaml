@@ -27,14 +27,15 @@ endpoints:
       body:
         filters:
           type: object
-          required: true
+          required: false
           example: {job_company: [{v: Wiza, s: i}]}
           note: >-
-            At least one filter is required. Supported filters include names, titles, role levels,
+            Required on the first page. Supported filters include names, titles, role levels,
             locations, skills, schools, LinkedIn slugs, current and past companies, company size,
             industry, technologies, department size, revenue, funding, company type, summary and
-            founding-year bounds. Use the location and technology helper tools for accepted values.
-        size: {type: integer, required: false, default: 1, min: 1, enum: [1], example: 1}
+            founding-year bounds. Omit filters when using a page token. Use the location and
+            technology helper tools for accepted values.
+        size: {type: integer, required: true, min: 1, enum: [1], example: 1}
         page_token: {type: string, required: false, note: Send the previous next_page_token with size and omit filters.}
       note: This bounded direct tool requests one row for both platform and BYOK calls. A returned row costs 0.5 API credit.
     platform_request:
@@ -77,7 +78,7 @@ endpoints:
             summary, location and radius, industry, NAICS and SIC codes, type, size, technologies,
             growth, department size, founding year, revenue and funding. Omit filters when using a
             page token.
-        size: {type: integer, required: false, default: 1, min: 1, enum: [1], example: 1}
+        size: {type: integer, required: true, min: 1, enum: [1], example: 1}
         page_token: {type: string, required: false, note: Send the previous next_page_token with size and omit filters.}
       note: This bounded direct tool requests one row for both platform and BYOK calls. A returned row costs 0.5 API credit.
     platform_request:
@@ -116,7 +117,7 @@ endpoints:
       currency: credit
       per: 1
       unit: call
-      source: docs
+      source: observed
       source_url: https://docs.wiza.co/api-reference/company-enrichment/company-enrichment
       checked: '2026-09-16'
       confidence: verified

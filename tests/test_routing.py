@@ -158,6 +158,25 @@ def test_prospeo_routing_surface_uses_fixed_single_record_modes():
     assert phone_body["only_verified_mobile"] is True
 
 
+def test_wiza_routing_surface_uses_bounded_single_record_searches():
+    catalog = catalog_store.load()
+    expected = {
+        "wiza.people.search",
+        "wiza.companies.search",
+        "wiza.companies.enrich",
+    }
+    assert {eid for eid in expected if catalog.adapters[eid].verified} == expected
+    _, people_body = catalog.adapters["wiza.people.search"].to_upstream({"title": "Founder"})
+    _, company_body = catalog.adapters["wiza.companies.search"].to_upstream({
+        "technology": "amazon-web-services",
+    })
+    assert people_body == {"filters": {"job_title": [{"v": "Founder", "s": "i"}]}, "size": 1}
+    assert company_body == {
+        "filters": {"technologies": [{"v": "amazon-web-services", "s": "i"}]},
+        "size": 1,
+    }
+
+
 def test_identity_variants_derive_and_never_cross():
     contract = catalog_store.load().contracts["people.email.find"]
     ident, variant = canonical_identity(contract, {"full_name": "Patrick Collison", "domain": "stripe.com"})

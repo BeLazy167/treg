@@ -44,17 +44,6 @@ related:
 
 # Provider capacity
 
-## Wiza prepaid API credits
-
-`collectors._wiza` calls the free `GET /api/meta/credits` route with the Bearer platform key and
-reads `credits.api_credits`. Zero is a valid exhausted balance. A missing, Boolean, negative,
-non-finite or non-numeric value fails the observation instead of becoming an allowance. The default
-policy is `credits / manual / api`; Wiza vendor auto-top-up is not enabled.
-
-The same route verifies pasted keys. The funded grant was not exhausted to manufacture an error,
-so Wiza remains in the acknowledged-unrecorded exhaustion set and has no overflow route. The public
-replacement rate and the platform/BYOK boundary are documented in [Wiza](../architecture/wiza.md).
-
 `collectors._sumble` reads `credits_remaining` from a free technology-search miss. Its monthly allowance and optional vendor top-ups remain separate from per-call pricing; no renewal date or auto-funding status is assumed. See [Sumble](../architecture/sumble.md).
 
 Financial Datasets uses the existing capacity path with `_KNOWN` policy
@@ -143,6 +132,20 @@ reconciliation matched one paid one-credit call beside two free calls without ex
 The Starter allowance was not exhausted, so its provider-specific exhaustion response remains in
 the acknowledged-unrecorded set and no overflow route is claimed. See
 [Prospeo](../architecture/prospeo.md).
+
+## Wiza prepaid API credits
+
+`collectors._wiza` calls the free `GET /api/meta/credits` route with the Bearer platform key and
+reads `credits.api_credits`. Zero is a valid exhausted balance. A missing, Boolean, negative,
+non-finite or non-numeric value fails the observation instead of becoming an allowance. The default
+policy is `credits / manual / api`; Wiza vendor auto-top-up is not enabled.
+
+The same route verifies pasted keys. The funded grant was not exhausted to manufacture an error,
+so Wiza remains in the acknowledged-unrecorded exhaustion set and has no overflow route. Search and
+autocomplete limits are not published. `_RATE_LIMITS` applies the documented company-enrichment
+ceiling of 30 calls per minute to all Wiza platform calls as a conservative shared-key spacer. The
+public replacement rate and platform/BYOK boundary are documented in
+[Wiza](../architecture/wiza.md).
 
 ## Pieces (`src/treg/domain/capacity/`)
 

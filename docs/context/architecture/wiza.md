@@ -19,6 +19,8 @@ sources:
   - tests/test_key_providers.py
   - tests/test_oauth_providers_m3.py
   - tests/test_capacity_overflow_routes.py
+  - tests/test_capacity_collectors.py
+  - tests/test_routing.py
   - tests/conftest.py
 related:
   - architecture/catalog.md
@@ -44,9 +46,10 @@ caller cannot inspect either its own or treg's Wiza balance.
 
 Five synchronous tools allow platform access: one-row prospect search, one-row company search,
 company enrichment, location autocomplete and technology autocomplete. Each search input declares
-`size` as the singleton value 1. This bounds the hold before the request and makes the advertised
-half-credit price exact for a non-empty result. Callers can follow `next_page_token` one row at a
-time. The two autocomplete helpers are authenticated but free.
+`size` as a required singleton value of 1. The request constraint rejects an omitted or different
+value rather than applying a default. This bounds the hold before the request and makes the
+advertised half-credit price exact for a non-empty result. Callers can follow `next_page_token` one
+row at a time. The two autocomplete helpers are authenticated but free.
 
 Seven operations are BYOK-only: start and get an individual reveal; create, inspect and export a
 list; and create or continue a prospect list. These operations create or retrieve asynchronous,
@@ -94,6 +97,12 @@ fetch and does not satisfy that contract.
 Malformed, Boolean, negative or non-finite values fail the observation instead of becoming an
 allowance. The default policy is `credits / manual / api`; vendor auto-top-up is not enabled. The
 funded grant was not exhausted, so no exhaustion response or overflow route is claimed.
+
+Wiza does not publish search or autocomplete rate limits. The shared-key limiter therefore applies
+the documented company-enrichment ceiling of 30 calls per minute to every Wiza platform call. This
+is conservative for enrichment and places free helper traffic under the same bounded smoothing. It
+is not a claim that Wiza gives search the same limit. Removing `wiza` from
+`TREG_PLATFORM_PROVIDERS` remains the immediate serving kill switch; BYOK continues to win.
 
 The live discovery pass used public or synthetic targets and consumed 18.5 API credits. The later
 local dataplane check consumed four more credits: two through the platform key and two after BYOK
