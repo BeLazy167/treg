@@ -36,6 +36,7 @@ sources:
   - src/treg/models.py
   - src/treg/alembic/versions/0031_archive_result_admission.py
   - src/treg/alembic/versions/0032_archive_body_storage.py
+  - src/treg/alembic/versions/0039_archive_own_key_and_repeat_pricing.py
   - src/treg/alembic/versions/0033_signup_promo_eligibility.py
   - src/treg/timeutil.py
   - src/treg/infra/db.py
@@ -86,6 +87,15 @@ legacy DB path). Archive remains the only writer. An R2 location is published on
 verified upload finishes outside any DB session; `content_hash` is the object name. No new index,
 backfill, body-column removal or destructive migration occurs. Double-write rows retain their DB
 body/carrier; R2-only rows require no carrier pointer. See [archive](archive.md#body-storage-and-r2-double-writing).
+Migration `0039` adds nullable `ArchiveSnapshot.origin_org_id` (the team whose own credential
+fetched the answer; NULL = treg's platform key, every row before it - provenance), nullable
+`ArchiveKey.scope` (`org` | `conn` for a key private to an org or a connection; NULL = public,
+every key before it - the sharing scope is also folded into the key hash) and the
+`ArchiveKeyOrg` table, unique on `(org_id, key_hash)`: which teams have paid for which archived
+question, written by archive inside the metered settle transaction and read by lookup to price
+a repeat hit. See [archive](archive.md#own-key-answers),
+[sharing](archive.md#sharing-whose-question-is-it) and
+[pricing a hit](archive.md#pricing-a-hit).
 
 Revision `0033` adds nullable `User.email_verified_at` and non-null `signup_promo_available`,
 with a retained database default of false for existing rows and old writers. New application users
