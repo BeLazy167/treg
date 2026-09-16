@@ -36,6 +36,12 @@ related:
 
 # Auth & secrets
 
+`LIMADATA` uses a pasted raw `x-api-key` header. Its free connection probe sends an invalid empty
+web-search body: the assigned key returns HTTP 400 and a bogus key returns 401. The real local
+connection flow accepted the former and rejected the latter. `TREG_PLATFORM_KEY_LIMADATA` is the
+separate optional shared binding; a team's key still wins and remains unmetered. See
+[LimaData](limadata.md).
+
 BounceBan uses a pasted raw `Authorization` header with no `Bearer` prefix. The free
 `GET /v1/account` probe rejected a bogus key with HTTP 401 and accepted the supplied key with HTTP
 200 through the real connection flow. `TREG_PLATFORM_KEY_BOUNCEBAN` supplies the optional shared

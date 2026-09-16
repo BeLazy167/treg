@@ -258,6 +258,7 @@ _UNRECORDED_SIGNATURE = {
     "prospeo",  # Starter allowance was not exhausted; no provider-specific body was forced
     "aiark",  # funded allowance was not exhausted; no provider-specific body was forced
     "wiza",  # The funded grant was not exhausted; no provider-specific body was forced
+    "limadata",  # Starter credits remain; no provider-specific empty-balance body was forced
     "getleadsio",  # promotional allocation was not exhausted; bare 402 remains the generic signal
     "scrubby",  # funded account not exhausted; no provider-specific empty-balance body recorded
     "millionverifier",  # funded-account exhaustion not observed; trial still has credits

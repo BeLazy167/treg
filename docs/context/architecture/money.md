@@ -44,6 +44,11 @@ related:
 
 # Money
 
+LimaData converts credits at the assigned account's sustainable automatic-top-up replacement rate:
+$100 for 6,667 credits, rounded up to $0.015 per credit. Only fixed, synchronous prices use the
+shared key. Variable charges, a route billed on HTTP 404, extraction modifiers, and asynchronous
+refunds remain BYOK-only, so no LimaData settlement branch is needed. See [LimaData](limadata.md).
+
 MoltSets is the first real `treg_shared_plan` catalog rate: $0.01 per ordinary successful record on
 the flat $27 subscription. Its verified 5,000-record weekly allowance is conservatively 20,000 per
 four-week month, so the disclosed 2,700-call monthly break-even is 13.5% utilization. Generic

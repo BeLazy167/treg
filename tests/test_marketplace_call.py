@@ -144,6 +144,15 @@ def openmart_platform_on(monkeypatch):
     get_settings.cache_clear()
 
 
+@pytest.fixture
+def limadata_platform_on(monkeypatch):
+    monkeypatch.setenv("TREG_PLATFORM_KEY_LIMADATA", "PLATFORM-LIMADATA")
+    monkeypatch.setenv("TREG_PLATFORM_PROVIDERS", "limadata")
+    get_settings.cache_clear()
+    yield
+    get_settings.cache_clear()
+
+
 async def _balance(clients: AsyncClient) -> int:
     org_id = (await clients.get("/orgs")).json()[0]["org_id"]
     return (await clients.get(f"/orgs/{org_id}/balance")).json()["balance_micro"]
@@ -3390,6 +3399,95 @@ async def test_aiark_platform_releases_rejected_request_and_enforces_search_boun
     assert response.json()["detail"]["error"] == "catalog_parameter_invalid"
     assert await _balance(clients) == before
     get_settings.cache_clear()
+
+
+@pytest.mark.parametrize(
+    "endpoint,request_body,response_body,expected_micro",
+    [
+        (
+            "limadata.companies.enrich",
+            {"domain": "example.com"},
+            {"company": {"name": "Example Inc", "domain": "example.com"}},
+            20_000,
+        ),
+        (
+            "limadata.people.email.verify",
+            {"email": "person@example.com"},
+            {"email": "person@example.com", "result": "Risky", "score": 50},
+            6_000,
+        ),
+    ],
+)
+async def test_limadata_platform_success_settles_bounded_price(
+    clients, monkeypatch, limadata_platform_on, endpoint, request_body, response_body,
+    expected_micro,
+):
+    def serve(request):
+        assert request.headers["x-api-key"] == "PLATFORM-LIMADATA"
+        return _dropleads_response(200, response_body)
+
+    before = await _balance(clients)
+    async with httpx.AsyncClient(transport=httpx.MockTransport(serve)) as upstream:
+        monkeypatch.setattr(A.app.state, "http", upstream)
+        result = await clients.post(f"/call/{endpoint}", json=request_body)
+    assert result.status_code == 200, result.text
+    assert result.headers["x-treg-cost-micro"] == str(expected_micro)
+    assert before - await _balance(clients) == expected_micro
+    assert [entry["kind"] for entry in (await _entries(clients))[:2]] == [
+        "settle", "reserve",
+    ]
+
+
+async def test_limadata_platform_releases_error_and_byok_wins(
+    clients, monkeypatch, limadata_platform_on,
+):
+    before = await _balance(clients)
+    real_relay = call_service.relay
+    monkeypatch.setattr(
+        call_service,
+        "relay",
+        _fake_relay(404, json.dumps({"message": "No work email found"}).encode()),
+    )
+    missing = await clients.post(
+        "/call/limadata.people.email.find.name",
+        json={"full_name": "Missing Person", "company_domain": "example.com"},
+    )
+    assert missing.status_code == 404
+    assert missing.headers["x-treg-cost-micro"] == "0"
+    assert await _balance(clients) == before
+    assert [entry["kind"] for entry in (await _entries(clients))[:2]] == [
+        "release", "reserve",
+    ]
+
+    monkeypatch.setattr(call_service, "relay", real_relay)
+    await clients.post("/secrets", json={"name": "limadata", "value": "OWN-LIMADATA"})
+    seen = []
+
+    def serve(request):
+        seen.append(request.headers["x-api-key"])
+        return _dropleads_response(
+            200, {"company": {"name": "Example Inc", "domain": "example.com"}}
+        )
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(serve)) as upstream:
+        monkeypatch.setattr(A.app.state, "http", upstream)
+        own = await clients.post(
+            "/call/limadata.companies.enrich", json={"domain": "example.com"}
+        )
+    assert own.status_code == 200, own.text
+    assert seen == ["OWN-LIMADATA"]
+    assert "x-treg-cost-micro" not in own.headers
+    assert await _balance(clients) == before
+
+
+async def test_limadata_byok_only_operation_cannot_fall_through_to_platform_key(
+    clients, limadata_platform_on,
+):
+    result = await clients.post(
+        "/call/limadata.people.identity.resolve",
+        json={"full_name": "Example Person", "company_domain": "example.com"},
+    )
+    assert result.status_code == 404
 
 
 @pytest.mark.parametrize("doc", [

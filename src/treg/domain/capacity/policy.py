@@ -37,6 +37,7 @@ _KNOWN: dict[str, tuple[str, str, str]] = {
     "prospeo": ("monthly_quota", "quota_reset", "api"),
     "aiark": ("monthly_quota", "quota_reset", "api"),
     "wiza": ("credits", "manual", "api"),
+    "limadata": ("credits", "auto_recharge", "manual"),
     "getleadsio": ("credits", "manual", "api"),
     "sumble": ("monthly_quota", "quota_reset", "api"),
     "moltsets": ("rolling_quota", "subscription", "api"),
@@ -93,6 +94,9 @@ _RATE_LIMITS: dict[str, dict] = {
     # sequential platform calls by about 2s; the limiter's bounded wait is not a strict quota gate.
     # Relax this after real 429 evidence, or when smoothing can vary by endpoint. BYOK bypasses it.
     "wiza": {"limit": 30, "window_s": 60, "source": "docs"},
+    # The Basic v2 docs set a shared one-request/second default. Several routes are exempt, but
+    # provider-wide smoothing cannot express that difference, so shared-key service stays at 1/s.
+    "limadata": {"limit": 1, "window_s": 1, "source": "docs"},
     # Routing-friendly shared-key pace. The 5,000-request/5h rolling allowance is capacity, not a
     # burst rate; encoding it here would make the spacer add 3.6s before every routed attempt.
     "moltsets": {"limit": 10, "window_s": 1, "source": "policy"},

@@ -729,6 +729,50 @@ def test_aiark_catalog_covers_the_selected_documented_surface():
     )["usd"] == 0.026335
 
 
+def test_limadata_catalog_covers_basic_v2_and_keeps_unsafe_calls_byok_only():
+    catalog = catalog_store.load()
+    rows = [ep for ep in catalog.endpoints if ep["provider"] == "limadata"]
+    assert {(ep["method"], ep["path"]) for ep in rows} == {
+        ("POST", "/api/v1/enrich/person"),
+        ("POST", "/api/v1/enrich/company"),
+        ("POST", "/api/v1/database/autocomplete"),
+        ("POST", "/api/v1/database/count_companies"),
+        ("POST", "/api/v1/database/count_people"),
+        ("POST", "/api/v1/database/search_companies"),
+        ("POST", "/api/v1/database/search_people"),
+        ("POST", "/api/v1/database/search_people_employees"),
+        ("POST", "/api/v1/find/ad_audience"),
+        ("POST", "/api/v1/find/audience_identifiers"),
+        ("POST", "/api/v1/find/email_personal"),
+        ("POST", "/api/v1/find/email_verify"),
+        ("POST", "/api/v1/find/email_work"),
+        ("POST", "/api/v1/find/email_work_linkedin"),
+        ("POST", "/api/v1/find/pages_company"),
+        ("POST", "/api/v1/find/phone"),
+        ("POST", "/api/v1/find/profiles_person"),
+        ("POST", "/api/v1/find/reverse_email_lookup"),
+        ("POST", "/api/v1/research/extract"),
+        ("POST", "/api/v1/research/search"),
+        ("POST", "/api/v1/search/web"),
+        ("POST", "/api/v2/batch/ad_audiences"),
+        ("POST", "/api/v2/batch/email_verify"),
+        ("GET", "/api/v2/batch/results"),
+    }
+    platform = {ep["id"] for ep in rows if catalog.platform_eligible(ep)}
+    assert len(rows) == 24 and len(platform) == 15
+    assert {
+        "limadata.people.enrich",
+        "limadata.companies.search",
+        "limadata.people.search",
+        "limadata.people.employees.search",
+        "limadata.people.identity.resolve",
+        "limadata.web.extract",
+        "limadata.people.audience.batch.start",
+        "limadata.people.email.verify.batch.start",
+        "limadata.people.batch.results",
+    }.isdisjoint(platform)
+
+
 def test_zerobounce_catalog_exposes_verified_single_record_tools_only():
     catalog = catalog_store.load()
     rows = [ep for ep in catalog.endpoints if ep["provider"] == "zerobounce"]

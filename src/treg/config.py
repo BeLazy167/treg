@@ -189,6 +189,7 @@ class Settings(BaseSettings):
     platform_key_prospeo: str = ""  # X-KEY; Starter monthly subscription credits
     platform_key_aiark: str = ""  # X-TOKEN; monthly subscription credits with rollover
     platform_key_wiza: str = ""  # Bearer; prepaid API credits, no vendor auto-top-up
+    platform_key_limadata: str = ""  # x-api-key; monthly credits with configured auto top-up
     platform_key_getleadsio: str = ""  # Bearer; 1,000 promotional database credits, capped treg trial
     platform_key_scrubby: str = ""  # x-api-key; prepaid verification credits
     platform_key_zerobounce: str = ""  # api_key query param; PAYG validation credits, Auto-Pay managed upstream

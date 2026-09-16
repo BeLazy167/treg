@@ -314,8 +314,17 @@ async def test_akta_collector_marks_enterprise_accounts():
 
 def test_no_balance_api_includes_expected_providers():
     """Verify the vendors that have no free balance API are documented."""
-    expected = {"aviato", "coresignal", "exa", "financialdatasets", "finnhub", "justoneapi", "marketstack", "scrubby", "tiingo"}
+    expected = {"aviato", "coresignal", "exa", "financialdatasets", "finnhub", "justoneapi", "limadata", "marketstack", "scrubby", "tiingo"}
     assert expected == set(collectors.NO_BALANCE_API.keys())
+
+
+def test_limadata_policy_uses_auto_recharge_and_the_documented_rate():
+    row = policy.default_policy("limadata", has_key=True)
+    assert row.capacity_type == "credits"
+    assert row.funding_mode == "auto_recharge"
+    assert row.auto_funding_enabled is True
+    assert row.source == "manual"
+    assert row.rate_limit == {"limit": 1, "window_s": 1, "source": "docs"}
 
 
 def test_implemented_collectors_are_registered_and_do_not_overlap_absent_list():

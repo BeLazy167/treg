@@ -44,6 +44,11 @@ related:
 
 # Provider capacity
 
+LimaData exposes no free standalone balance API, so capacity reports its credit balance as
+dashboard-only. The assigned account's existing automatic top-up is enabled, and the default policy
+is `credits / auto_recharge / manual`. Shared-key smoothing uses the documented default one request
+per second; BYOK bypasses it. See [LimaData](../architecture/limadata.md).
+
 BounceBan's collector calls the free `GET /v1/account` route with the raw `Authorization` key and
 reads `available_credits`. Zero and finite nonnegative numbers are exact balances; missing, Boolean,
 string, negative, and non-finite values are unknown. Its policy is `credits / manual / api`, with a
