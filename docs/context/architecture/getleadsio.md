@@ -65,16 +65,19 @@ treg does not normalize it into a cross-provider hit or miss.
 GetLeads.io publishes a one-time 1,000 database-credit promotion but no ordinary USD replacement
 price for those credits. The separate Live Leads wallet prices other products and is not evidence
 for database-credit value. The `fx.yaml` entry therefore uses the existing `treg_trial` contract:
-exactly $0, at most five successful calls per team per UTC day, and no claim that $0 is the vendor's
-database-credit price. Failed calls do not consume the daily allowance. This allowance counts
-calls, not returned records or upstream credits: one successful platform call can consume from zero
-to thousands of promotional credits according to the caller's request and the provider's result.
+exactly $0, at most five successful credit-using platform calls per team per UTC day, and no claim
+that $0 is the vendor's database-credit price. Free search-count and filter-discovery calls, failed
+calls and BYOK calls do not consume the daily allowance. This allowance counts paid calls, not
+returned records or upstream credits: one successful platform call can consume from zero to
+thousands of promotional credits according to the caller's request and the provider's result.
 
 `collectors._getleadsio` reads numeric nonnegative `credits_remaining` from the same free fair-use
 route and labels it as the promotional database-credit allocation. Policy records credits with
-manual replenishment and API observation. The documented default request limit is 100 requests per
-minute, which is the platform-key smoothing policy. No exhaustion response was forced, so the
-provider remains in the acknowledged-unrecorded capacity-signature set and has no overflow route.
+manual replenishment and API observation. When a sweep observes zero, the shared capacity guard
+refuses platform calls before reserve with a typed 503 and an own-key instruction; BYOK calls remain
+available. The documented default request limit is 100 requests per minute, which is the
+platform-key smoothing policy. No upstream exhaustion response was forced, so the provider remains
+in the acknowledged-unrecorded capacity-signature set and has no overflow route.
 
 ## Live evidence ledger
 

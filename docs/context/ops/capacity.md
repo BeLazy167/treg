@@ -54,9 +54,10 @@ inferred, and no overflow route is claimed. See [BounceBan](../architecture/boun
 
 `collectors._getleadsio` reads numeric nonnegative `credits_remaining` from the free fair-use route.
 It represents the promotional database-credit allocation, not the separate Live Leads wallet.
-Default smoothing is the documented 100 requests per minute. No empty-account response was forced,
-so the exhaustion signature remains unrecorded and no overflow route is claimed. See
-[GetLeads.io](../architecture/getleadsio.md).
+Default smoothing is the documented 100 requests per minute. An exact observed zero publishes the
+normal exhausted state: platform calls then receive the shared typed 503 with an own-key instruction
+before reserve, while BYOK remains available. No empty-account response was forced, so the upstream
+exhaustion signature remains unrecorded and no overflow route is claimed. See [GetLeads.io](../architecture/getleadsio.md).
 
 Financial Datasets uses the existing capacity path with `_KNOWN` policy
 `credits / auto_recharge / manual`. The official API publishes no free balance or usage endpoint,

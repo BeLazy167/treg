@@ -13,7 +13,7 @@ proposed_capabilities:
   people.count: Count people matching search filters without returning records
   people.search.filters: List the accepted values for a people-search filter
   people.organization_contacts: Find contacts at an organization by domain or role
-  companies.funding.feed: Browse recent company funding announcements
+  companies.funding.feed: Browse the latest funding rounds across all companies
   companies.acquisitions.feed: Browse recent company acquisition announcements
 endpoints:
   - id: getleadsio.people.enrich.from_email
