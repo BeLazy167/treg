@@ -192,6 +192,7 @@ mcp = MCPServer(
 # the advertised type into `anyOf [string, null]`, which is the truth of what we send.
 class SearchResult(TypedDict, total=False):
     endpoint_id: str | None
+    kind: str | None             # "hub" for a listed hub tool (docs/hub-listing-decisions.md); absent otherwise
     name: str | None
     provider: str | None
     usd_per_call: float | None
@@ -625,6 +626,15 @@ async def _catalog_search_impl(
         query, cat, min(100, limit * 4) if _steering else limit)
     stats = await _observed_stats([ep["id"] for ep, _ in ranked])
     ranked = catalog_store.rerank(ranked, stats, cat)
+    # Listed hub tools ride in by score, no boost (docs/hub-listing-decisions.md, decision 2).
+    from .application import hub as hub_app
+    from .infra.db import session_maker
+    async with session_maker() as _s:
+        hub_ranked, hub_stats = await hub_app.search_listed(_s, query, cat)
+    if hub_ranked:
+        stats = {**stats, **hub_stats}
+        ranked = catalog_store.merge_by_score(ranked, hub_ranked)
+        total += len(hub_ranked)
     results = []
     # Same order the HTTP route serves: a capability with a ROUTED row shows the parent first and
     # its children right under it (catalog_store.group_routed), so an agent sees "let treg choose"
@@ -636,9 +646,10 @@ async def _catalog_search_impl(
     ranked = [(r["ep"], r["score"]) for r in grouped][:limit]
     for ep, score in ranked:
         obs = stats.get(ep["id"]) or {}
-        cost = cat.cost_view(ep.get("cost"), ep.get("provider")) or {}
+        cost = (ep.get("cost") if ep.get("kind") == "hub" else cat.cost_view(ep.get("cost"), ep.get("provider"))) or {}
         results.append({
             "endpoint_id": ep["id"],
+            **({"kind": "hub"} if ep.get("kind") == "hub" else {}),
             "name": ep.get("name") or (ep.get("summary") or "")[:70],
             "provider": ep.get("provider"),
             # a generated routed row: treg picks among N children (own keys first, then cheapest
@@ -653,7 +664,7 @@ async def _catalog_search_impl(
             # key. Eligible-but-keyless rows used to advertise `no_key_needed: true` here and then
             # refuse at call time — an agent-facing lie the CLI's /access line never told.
             # a routed row is servable when any child is: its children carry the keys
-            "no_key_needed": cat.platform_eligible(ep) and (
+            "no_key_needed": ep.get("kind") == "hub" or cat.platform_eligible(ep) and (
                 ep.get("kind") == "routed"
                 and any(get_settings().platform_key_for((cat.by_id.get(i) or {}).get("provider"))
                         for i in ep.get("routed_children") or [])

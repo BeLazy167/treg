@@ -268,6 +268,63 @@ async def set_price(db: AsyncSession, *, org_id: int, tool_id: str, price_usd: f
     return row
 
 
+async def search_listed(db: AsyncSession, query: str, cat: Any) -> tuple[list[tuple[dict, float]], dict[str, dict]]:
+    """The listed live hub tools that match `query` (docs/hub-listing-decisions.md, decision 2):
+    the newest live version of every tool with `listed` on, scored by `catalog_store.score_extra`
+    (the catalog's own tokens, idf and gate, no boost). Returns `([(row, score)], stats)`; `stats`
+    is keyed by id with the 30-day ok rate and sample count of runs by OTHERS, the same shape the
+    evidence rerank reads for a catalog row. The row is the public contract: never the script, the
+    maker's tools or a key."""
+    if not enabled() or not query.strip():
+        return [], {}
+    from datetime import timedelta
+    from ...domain.catalog import store as catalog_store
+    from ...domain.hub import price_label
+    from ...models import HubRun
+    from ...timeutil import utcnow_naive
+    rows = (await db.execute(
+        select(HubTool).where(HubTool.listed == True, HubTool.status == "live")  # noqa: E712
+        .order_by(HubTool.tool_id, HubTool.version.desc()))).scalars().all()
+    newest: dict[str, HubTool] = {}
+    for r in rows:
+        newest.setdefault(r.tool_id, r)
+    if not newest:
+        return [], {}
+    org_ids = {r.org_id for r in newest.values()}
+    slugs = {o.id: o.slug for o in (await db.execute(select(Org).where(Org.id.in_(org_ids)))).scalars().all()}
+    since = utcnow_naive() - timedelta(days=30)
+    agg: dict[str, list[int]] = {}
+    for tid, status in (await db.execute(
+            select(HubRun.tool_id, HubRun.status)
+            .where(HubRun.tool_id.in_(list(newest)), HubRun.version > 0, HubRun.started_at >= since,
+                   HubRun.caller_org_id != HubRun.maker_org_id))).all():
+        a = agg.setdefault(tid, [0, 0])
+        a[0] += 1
+        a[1] += 1 if status == "ok" else 0
+    extra = []
+    for tid, r in newest.items():
+        m = r.manifest
+        slug = slugs.get(r.org_id, "")
+        p = m.get("pricing") or {"mode": "flat", "price_usd": r.price_micro / 1_000_000}
+        worst = (float(p["max_price_usd"]) if p.get("mode") in ("per_unit", "cost_plus")
+                 else float(p.get("price_usd", r.price_micro / 1_000_000)))
+        ep = {
+            "id": tid, "kind": "hub", "hub": True, "version": r.version,
+            "name": r.name, "summary": r.summary, "provider": slug, "provider_display": slug,
+            "capability": None, "capability_description": "", "platform": "", "tier": "core", "verified": True,
+            "method": "POST", "path": f"/call/{tid}", "writes": r.writes,
+            "cost": {"type": "per_success", "usd": worst, "currency": "USD", "unit": "run"},
+            "price_line": "seller " + price_label(m) + " + steps", "price_label": price_label(m),
+            "made_of": len(m.get("uses", [])),
+        }
+        fields = [(catalog_store.W_SUMMARY, f"{r.name} {r.summary}".lower()),
+                  (catalog_store.W_PATH, f"{tid} {slug}".lower())]
+        extra.append((ep, fields))
+    scored = catalog_store.score_extra(query, cat, extra)
+    stats = {tid: {"ok_rate": (a[1] / a[0]) if a[0] else None, "samples": a[0]} for tid, a in agg.items()}
+    return scored, stats
+
+
 async def set_flags(db: AsyncSession, *, org_id: int, tool_id: str,
                     listed: bool | None = None, public_log: bool | None = None) -> HubTool | None:
     """The two distribution switches (docs/hub-listing-decisions.md, 2026-09-16), on the newest live
