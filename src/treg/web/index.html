@@ -2873,6 +2873,7 @@ product, including per-customer usage tracking and billing.</pre>
               <button :class="{active:hub.tab==='overview'}" @click="hub.tab='overview'">Overview</button>
               <button :class="{active:hub.tab==='versions'}" @click="hub.tab='versions'">Versions</button>
               <button :class="{active:hub.tab==='price'}" @click="hub.tab='price'">Price</button>
+              <button :class="{active:hub.tab==='listing'}" @click="hub.tab='listing'">Listing</button>
               <button :class="{active:hub.tab==='earnings'}" @click="hub.tab='earnings'; loadHubEarnings()">Earnings</button>
               <button :class="{active:hub.tab==='runs'}" @click="hub.tab='runs'; loadHubHealth()">Runs &amp; log</button>
               <button :class="{active:hub.tab==='health'}" @click="hub.tab='health'; loadHubHealth()">Health</button>
@@ -2915,6 +2916,19 @@ POST {{proxy}}/call/{{hub.tool.tool_id}}    X-Treg-Token · JSON body of inputs<
               <p class="sub">What a caller pays you per successful run, on top of the metered steps. Applies to later runs; every trace stamps the price it paid. No version bump. 0 = free.</p>
               <div class="frow"><label>price_usd</label><input v-model="hub.price" type="number" step="0.001" min="0" max="100" style="max-width:140px"><button class="btn primary sm" :disabled="hub.priceSaving||!canRegister" @click="saveHubPrice()">Save</button></div>
               <p class="sub">Callers see: <b>seller ${{Number(hub.price||0)}} + steps</b> · ${{(Number(hub.price||0)*1000).toFixed(2)}} per 1,000 runs. Earned credit lands on your balance at once. No platform share in the MVP.</p>
+            </template>
+
+            <template v-if="hub.tab==='listing'">
+              <p class="sub">Two switches on the newest live version. Neither bumps the version.</p>
+              <div style="margin:14px 0 4px">
+                <label class="tgl" style="font-size:13.5px"><input type="checkbox" :checked="!!hub.tool.listed" :disabled="hub.flagSaving||!canRegister||hub.tool.status!=='live'" @change="setHubFlag('listed',$event.target.checked)"/><span><b>Listed in the catalog</b></span></label>
+                <p class="sub" style="margin:4px 0 0 21px;max-width:70ch">Off: only someone with the id or the share link can call it. On: it appears in catalog search and <code>catalog_search</code>, marked as a hub tool by your team, ranked by relevance with no boost.</p>
+              </div>
+              <div style="margin:14px 0 4px">
+                <label class="tgl" style="font-size:13.5px"><input type="checkbox" :checked="hub.tool.public_log!==false" :disabled="hub.flagSaving||!canRegister||hub.tool.status!=='live'" @change="setHubFlag('public_log',$event.target.checked)"/><span><b>Public run log on the share page</b></span></label>
+                <p class="sub" style="margin:4px 0 0 21px;max-width:70ch">The last 20 runs and runs per day for 30 days: time, outcome, duration, units and the price paid. Never who called, never the inputs, never the output.</p>
+              </div>
+              <p class="sub">From the terminal: <code>treg hub list {{hub.tool.tool_id}}</code> · <code>treg hub unlist {{hub.tool.tool_id}}</code> · <code>treg hub log {{hub.tool.tool_id}} --public off</code></p>
             </template>
 
             <template v-if="hub.tab==='earnings'">
@@ -4870,6 +4884,14 @@ createApp({
            await this.loadHub(); this.hub.note='Price saved; applies to later runs.'; setTimeout(()=>{ this.hub.note=''; }, 2500); }
       catch(e){ this.hub.err=this.hubErr(e); }
       this.hub.priceSaving=false; },
+    async setHubFlag(field, value){ if(!this.hub.tool) return; this.hub.flagSaving=true; this.hub.err='';
+      try{ const d=await this.api('/hub/tools/'+encodeURIComponent(this.hub.tool.tool_id), {method:'PATCH', headers:{'content-type':'application/json'}, body:JSON.stringify({[field]:!!value})});
+           this.hub.tool={...this.hub.tool, [field]:d[field]}; await this.loadHub();
+           this.hub.note=field==='listed'?(d.listed?'Listed: it appears in catalog search.':'Unlisted: callable by id and share link only.')
+                                         :(d.public_log?'Public run log on.':'Public run log off.');
+           setTimeout(()=>{ this.hub.note=''; }, 2500); }
+      catch(e){ this.hub.err=this.hubErr(e); await this.loadHub(); }
+      this.hub.flagSaving=false; },
     async retireHubTool(){ if(!this.hub.tool) return;
       if(this.hub.confirmRetire!==this.hub.tool.tool_id){ this.hub.confirmRetire=this.hub.tool.tool_id; return; }
       this.hub.confirmRetire=null;
@@ -6081,7 +6103,7 @@ createApp({
     async loadAll(){ this.err=''; this.loading=true;
       try{
         this.myOrgs=await this.api('/orgs');
-        if(!this.sessionMode && !this.me){ const who=await this.api('/auth/me').catch(()=>null); if(who){ this.me=who.email; this.isAdmin=!!who.is_superadmin; } }  // token mode: learn our own email + superadmin flag (isPersonal / join-by-code)
+        if(!this.sessionMode && !this.me){ const who=await this.api('/auth/me').catch(()=>null); if(who){ this.me=who.email; this.isAdmin=!!who.is_superadmin; this.probeHub(); } }  // token mode: learn our own email + superadmin flag (isPersonal / join-by-code)
         // Re-mint the bearer whenever the ACTIVE org changes: the token now bakes the org slug in
         // (so it works as a bare MCP Authorization bearer), and a stale one would name the old team.
         // Stateless mint — cheap, nothing stored, nothing rotated.
@@ -6358,7 +6380,7 @@ createApp({
       } }
     this._restoreAgent();
     const me = await fetch('/auth/me',{credentials:'include',headers:{'ngrok-skip-browser-warning':'1'}}).then(r=>r.ok?r.json():null).catch(()=>null);
-    if(me){ this.sessionMode=true; this.me=me.email; this.isAdmin=!!me.is_superadmin; this.onboarded=!!me.onboarded; this.icHash=me.intercom_user_hash||''; await this.loadAll(); this.analyticsIdentify(); this.initIntercom();
+    if(me){ this.sessionMode=true; this.me=me.email; this.isAdmin=!!me.is_superadmin; this.onboarded=!!me.onboarded; this.icHash=me.intercom_user_hash||''; await this.loadAll(); this.probeHub(); this.analyticsIdentify(); this.initIntercom();
       // Share-born arrival (/app/skills/x?invite_org=N from the invite email): accept silently and
       // enter that team — the emailed "Sign in & accept" click was the consent. Otherwise the normal
       // first-run / invite-banner flow.
