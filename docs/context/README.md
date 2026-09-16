@@ -38,6 +38,7 @@ covers (frontmatter `sources:`). Regenerate this index with
 | [MoltSets — enrichment records, shared-plan pricing and BYOK](architecture/moltsets.md) | shipped | moltsets.yaml, moltsets.people.search.json, moltsets.companies.search.json, moltsets.linkedin.profile.search.json, … |
 | [Money — prepaid balance, the ledger, Stripe, and the reports that check it](architecture/money.md) | shipped | __init__.py, settlement.py, __init__.py, models.py, … |
 | [Multi-tenancy — orgs, memberships, invites, per-org scoping](architecture/multi-tenancy.md) | shipped | models.py, api.py, caller_metadata.py, auth.py, … |
+| [Openmart — business search, asynchronous enrichment and BYOK boundaries](architecture/openmart.md) | shipped | openmart.yaml, openmart.businesses.search.json, openmart.businesses.search.ids.json, openmart.businesses.lookup.openmart.json, … |
 | [Prospeo — people and company enrichment](architecture/prospeo.md) | shipped | prospeo.yaml, prospeo.people.email.find.json, prospeo.people.phone.find.json, prospeo.people.enrich.json, … |
 | [The proxy — faithful credential-injecting relay + tool resolution](architecture/proxy-model.md) | shipped | relay.py, ssrf.py, api.py, authorize.py, … |
 | [Scrubby — quick and deep email verification](architecture/scrubby.md) | implemented; live authentication, billing and asynchronous behavior verified | scrubby.yaml, scrubby.people.email.verify.json, scrubby.people.email.verify.bulk.json, scrubby.people.email.verify.bulk.results.json, … |

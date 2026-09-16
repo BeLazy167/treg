@@ -264,6 +264,7 @@ _UNRECORDED_SIGNATURE = {
     "bounceban",  # verification credits remain; exhaustion was not forced and no overflow is claimed
     "zerobounce",  # credits remain; exhaustion was not forced and no overflow is claimed
     "moltsets",  # rolling allowance exhaustion was not forced; no overflow route claimed
+    "openmart",  # funded subscription was not exhausted; every catalog operation is BYOK-only
     # Bare 402 is already the generic balance signal; the real empty-Credits body was not forced.
     "financialdatasets",
     "minimax", "oceanio", "openrouter", "replicate", "scrapecreators", "seranking",

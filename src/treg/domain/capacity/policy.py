@@ -40,6 +40,7 @@ _KNOWN: dict[str, tuple[str, str, str]] = {
     "getleadsio": ("credits", "manual", "api"),
     "sumble": ("monthly_quota", "quota_reset", "api"),
     "moltsets": ("rolling_quota", "subscription", "api"),
+    "openmart": ("credits", "subscription", "api"),
     "scrubby": ("credits", "manual", "manual"),
     "predictleads": ("monthly_quota", "quota_reset", "api"),
     "companyenrich": ("credits", "manual", "api"),
@@ -95,6 +96,9 @@ _RATE_LIMITS: dict[str, dict] = {
     # Routing-friendly shared-key pace. The 5,000-request/5h rolling allowance is capacity, not a
     # burst rate; encoding it here would make the spacer add 3.6s before every routed attempt.
     "moltsets": {"limit": 10, "window_s": 1, "source": "policy"},
+    # The provider publishes 15-25 requests/s by endpoint family. Use the strictest ceiling while
+    # smoothing remains provider-wide. All direct tools are BYOK-only today.
+    "openmart": {"limit": 15, "window_s": 1, "source": "docs"},
     "sumble": {"limit": 10, "window_s": 1, "source": "docs"},
     "scrubby": {"limit": 25, "window_s": 1, "source": "docs"},
     "leadsforge": {"limit": 120, "window_s": 60, "source": "headers"},
