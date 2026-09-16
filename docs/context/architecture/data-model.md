@@ -352,8 +352,9 @@ uses this metadata, never the encrypted token's shape.
   step) names the admin who minted an agent; `''` for door/invite joins.
 
 - **`CapacityPolicy` / `CapacitySnapshot`** - what each treg-owned vendor account (tier 4) meters and
-  how it is funded, and the append-only observations of what it has left. Written by the worker's
-  `treg-worker capacity sweep` only, never by the call path; the sweep also publishes a per-provider
+  how it is funded, and the append-only observations of what it has left. `capacity_type` includes
+  `rolling_quota` for allowances measured over moving windows rather than calendar resets. Written
+  by the worker's `treg-worker capacity sweep` only, never by the call path; the sweep also publishes a per-provider
   latest state into `Ephemeral` under `capacity:state:<provider>`, which the dataplane reads on a
   TTL beside its own breaker locks (`capacity:lock:<key>`, written by the call path only). Numbers
   only - never a credential. See `ops/capacity.md`. Alembic revision `0005` creates these two tables.

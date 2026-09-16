@@ -1312,6 +1312,24 @@ SUMBLE = OAuthProvider(
     # Live 2026-09-09: bogus Bearer 401; valid key 200 with credits_used=0.
 )
 
+MOLTSETS = OAuthProvider(
+    service="moltsets", display_name="MoltSets", auth_kind="key",
+    token_label="API key", token_placeholder="ms_…",
+    token_header="Authorization", token_format="Bearer {secret}",
+    setup_url="https://app.moltsets.com/dashboard/api_keys",
+    setup_action_label="Get your MoltSets API key",
+    setup_steps=("Sign in to MoltSets and open the API Keys dashboard.",
+                 "Create an API key and copy it."),
+    setup_note="Successful data matches consume enrichment or search records; misses and connection verification are free. Phone hits also consume a phone token.",
+    auth_uri="", token_uri="", scopes={}, client_id_setting="", client_secret_setting="",
+    category="Enrichment",
+    summary="Search and enrich people and companies, resolve contact details, and create audience identifiers.",
+    base_url="https://api.moltsets.com/api/v1/tools",
+    docs_url="https://docs.moltsets.com/",
+    probe_path="/get_account", probe_method="POST", probe_json={},
+    # Live 2026-09-16: bogus Bearer 401; valid key 200. Account calls consume no records.
+)
+
 HARVESTAPI = OAuthProvider(
     service="harvestapi", display_name="HarvestAPI", auth_kind="key",
     token_label="API key", token_placeholder="your HarvestAPI API key",
@@ -3089,7 +3107,7 @@ REGISTRY: dict[str, OAuthProvider] = {
         GOOGLE_ADS, YOUTUBE,
         LINKEDIN, SLACK, X, TIKTOK, FACEBOOK, INSTAGRAM, META_ADS,
         # API-key providers
-        APOLLO, PDL, AKTA, HUNTER, SUMBLE, HARVESTAPI, DROPLEADS, QUICKENRICH, PROSPEO, WIZA, GETLEADSIO, TRYKITT, CONTACTOUT, MILLIONVERIFIER, BOUNCEBAN, CRUNCHBASE, MINIMAX, OPENROUTER, REPLICATE,
+        APOLLO, PDL, AKTA, HUNTER, SUMBLE, MOLTSETS, HARVESTAPI, DROPLEADS, QUICKENRICH, PROSPEO, WIZA, GETLEADSIO, TRYKITT, CONTACTOUT, MILLIONVERIFIER, BOUNCEBAN, CRUNCHBASE, MINIMAX, OPENROUTER, REPLICATE,
         REAPI, PIAPI,
         TIKHUB, BRIGHTDATA, SEMRUSH, JUSTONEAPI,
         SCRAPECREATORS,

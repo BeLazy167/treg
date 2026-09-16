@@ -38,6 +38,7 @@ _KNOWN: dict[str, tuple[str, str, str]] = {
     "wiza": ("credits", "manual", "api"),
     "getleadsio": ("credits", "manual", "api"),
     "sumble": ("monthly_quota", "quota_reset", "api"),
+    "moltsets": ("rolling_quota", "subscription", "api"),
     "predictleads": ("monthly_quota", "quota_reset", "api"),
     "companyenrich": ("credits", "manual", "api"),
     "apollo": ("credits", "manual", "api"),
@@ -82,6 +83,9 @@ _RATE_LIMITS: dict[str, dict] = {
     # sequential platform calls by about 2s; the limiter's bounded wait is not a strict quota gate.
     # Relax this after real 429 evidence, or when smoothing can vary by endpoint. BYOK bypasses it.
     "wiza": {"limit": 30, "window_s": 60, "source": "docs"},
+    # Routing-friendly shared-key pace. The 5,000-request/5h rolling allowance is capacity, not a
+    # burst rate; encoding it here would make the spacer add 3.6s before every routed attempt.
+    "moltsets": {"limit": 10, "window_s": 1, "source": "policy"},
     "sumble": {"limit": 10, "window_s": 1, "source": "docs"},
     "leadsforge": {"limit": 120, "window_s": 60, "source": "headers"},
     "leadmagic": {"limit": 300, "window_s": 60, "source": "docs"},

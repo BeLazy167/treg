@@ -50,6 +50,13 @@ string, negative, and non-finite values are unknown. Its policy is `credits / ma
 conservative shared-key rate of 25 requests per second. No reset, renewal, or auto-top-up behavior is
 inferred, and no overflow route is claimed. See [BounceBan](../architecture/bounceban.md).
 
+`collectors._moltsets` reads the free account envelope and reports the tighter rolling enrichment
+record remainder, with both enrichment/search request and record pools in its note. Missing
+enrichment windows produce unknown capacity rather than substituting the separate token/phone
+balance. Its `rolling_quota` type means the quota is measured over rolling windows; the explicit
+10/second smoothing policy is a routing pace, not a reinterpretation of the 5,000-request/5h
+capacity allowance. See [MoltSets](../architecture/moltsets.md).
+
 `collectors._sumble` reads `credits_remaining` from a free technology-search miss. Its monthly allowance and optional vendor top-ups remain separate from per-call pricing; no renewal date or auto-funding status is assumed. See [Sumble](../architecture/sumble.md).
 
 `collectors._getleadsio` reads numeric nonnegative `credits_remaining` from the free fair-use route.
@@ -210,7 +217,8 @@ documented privately.
 
 ## Data
 
-`CapacityPolicy` (one row per account; `capacity_type`, `source`, `funding_mode`, auto-funding
+`CapacityPolicy` (one row per account; `capacity_type` is `cash`, `credits`, `requests`,
+`monthly_quota`, `rolling_quota`, `subscription`, or `unknown`; `source`, `funding_mode`, auto-funding
 fields, runway thresholds, `usd_per_unit_micro` NULL = never invent a dollar figure, `rate_limit`
 + `quota` JSON, `enabled` ⇔ a key exists) and `CapacitySnapshot` (append-only observations:
 `remaining`, `total`, `unit`, `resets_at`, `source`, `confidence`, `note`, `error`). Written by the

@@ -181,6 +181,7 @@ class Settings(BaseSettings):
     platform_key_bounceban: str = ""  # raw key in Authorization; prepaid verification credits
     platform_key_hunter: str = ""
     platform_key_sumble: str = ""  # Bearer; Pro monthly credits, optional vendor auto-top-up
+    platform_key_moltsets: str = ""  # Bearer; shared subscription fair-use pools, no auto-top-up
     platform_key_harvestapi: str = ""  # X-API-Key; prepaid USD wallet
     platform_key_dropleads: str = ""  # X-API-Key; PAYG credits priced in fx.yaml
     platform_key_quickenrich: str = ""  # Bearer; monthly subscription credits, not auto-top-up

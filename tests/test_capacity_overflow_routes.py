@@ -260,6 +260,7 @@ _UNRECORDED_SIGNATURE = {
     "getleadsio",  # promotional allocation was not exhausted; bare 402 remains the generic signal
     "millionverifier",  # funded-account exhaustion not observed; trial still has credits
     "bounceban",  # verification credits remain; exhaustion was not forced and no overflow is claimed
+    "moltsets",  # rolling allowance exhaustion was not forced; no overflow route claimed
     # Bare 402 is already the generic balance signal; the real empty-Credits body was not forced.
     "financialdatasets",
     "minimax", "oceanio", "openrouter", "replicate", "scrapecreators", "seranking",

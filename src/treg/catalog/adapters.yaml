@@ -90,6 +90,13 @@ adapters:
             body.validateEmails: true}
     out: {email: "output.profile.emails[0].email"}
     miss: "output.profile.emails == []"
+  moltsets.people.email.find.name:
+    accepts: [[full_name, domain], [first_name, last_name, domain]]
+    in: {full_name: body.name, first_name: body.first_name, last_name: body.last_name,
+         domain: body.company_domain}
+    out: {email: results.email, linkedin_url: results.linkedin_url,
+          verified: "results.risk_score == 'A'"}
+    miss: "status != 'ok'"
 
   # ---- instagram.user.profile ---------------------------------------------------------------
   tikhub.instagram.user.profile:
@@ -411,6 +418,29 @@ adapters:
     in:  {linkedin_url: queryParams.linkedinURL, email: queryParams.email}
     out: {full_name: fullName, linkedin_url: URLs.linkedin}
     miss: "fullName == null"
+  moltsets.people.enrich.name:
+    accepts: [[full_name, domain], [first_name, last_name, domain]]
+    in: {full_name: body.name, first_name: body.first_name, last_name: body.last_name,
+         domain: body.company_domain}
+    out: {full_name: results.full_name, first_name: results.first_name, last_name: results.last_name,
+          title: results.title, company: results.company, company_domain: results.company_domain,
+          linkedin_url: results.linkedin_url}
+    miss: "status != 'ok'"
+  moltsets.people.enrich.email:
+    accepts: [[email]]
+    in: {email: body.email}
+    out: {full_name: "join(results.first_name, results.last_name)", first_name: results.first_name,
+          last_name: results.last_name, title: results.title,
+          company: results.current_company, company_domain: results.current_company_url,
+          linkedin_url: results.linkedinurl, location: results.country}
+    miss: "status != 'ok'"
+  moltsets.people.enrich.linkedin:
+    accepts: [[linkedin_url]]
+    in: {linkedin_url: body.linkedin_url}
+    out: {full_name: results.full_name, first_name: results.first_name, last_name: results.last_name,
+          title: results.title, company: results.company.name, company_domain: results.company.website_url,
+          linkedin_url: results.linkedin_url, location: results.country}
+    miss: "status != 'ok'"
 
   # ---- instagram.user.posts -----------------------------------------------------------------
   tikhub.instagram.user.posts:

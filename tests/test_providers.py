@@ -48,6 +48,15 @@ def test_bearer_vs_header_auth_shapes(tmp_path):
     assert d["ANTHROPIC_API_KEY"].auth == {"shape": "api_key_header", "header": "x-api-key"}
 
 
+def test_moltsets_env_key_is_detected_as_bearer(tmp_path):
+    env = _write_env(tmp_path, "MOLTSETS_API_KEY=ms_example\n")
+    [detected] = prov.scan_env(env)
+    assert detected.provider == "MoltSets"
+    assert detected.auth == {"shape": "bearer"}
+    assert detected.base_url == "https://api.moltsets.com/api/v1/tools"
+    assert prov.CATALOG_VERSION == 14
+
+
 def test_app_prefix_is_transparent(tmp_path):
     # A TREG_/APP_ prefix must not hide the provider token.
     env = _write_env(tmp_path, "TREG_RESEND_API_KEY=x\n")
