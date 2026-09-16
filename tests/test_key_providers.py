@@ -23,7 +23,7 @@ from treg import oauth_providers as P
 def test_key_providers_are_offerable_without_deployment_credentials():
     """The user brings the key, so treg holds no app of its own — a key provider must be offerable,
     not shown as 'not configured' the way an unset OAuth provider is."""
-    for svc in ("apollo", "pdl", "akta", "hunter", "sumble", "harvestapi", "dropleads", "quickenrich", "contactout", "millionverifier", "trykitt", "crunchbase", "tikhub", "brightdata", "semrush",
+    for svc in ("apollo", "pdl", "akta", "hunter", "sumble", "harvestapi", "dropleads", "quickenrich", "prospeo", "contactout", "millionverifier", "trykitt", "crunchbase", "tikhub", "brightdata", "semrush",
                 "justoneapi", "dataforseo", "seranking", "moz", "majestic", "serpstat", "exa",
                 "cloro",
                 "lusha", "coresignal", "diffbot", "thecompaniesapi", "leadmagic", "fiber-ai",
@@ -101,6 +101,53 @@ async def test_dropleads_connect_provisions_both_approved_hosts(clients, monkeyp
     assert tools["dropleads"]["base_url"] == "https://prime.dropleads.io"
     assert tools["dropleads-contact"]["base_url"] == "https://api.dropleads.io"
     assert tools["dropleads"]["bindings"] == tools["dropleads-contact"]["bindings"]
+
+
+def test_prospeo_registry_uses_account_information_without_exposing_it(monkeypatch):
+    monkeypatch.setenv("TREG_PLATFORM_KEY_PROSPEO", "PLATFORM-PROSPEO")
+    monkeypatch.setenv("TREG_PLATFORM_PROVIDERS", "prospeo")
+    settings = Settings(_env_file=None)
+    provider = P.get("prospeo")
+    assert provider.base_url == "https://api.prospeo.io"
+    assert provider.probe_path == "/account-information"
+    assert provider.probe_method == "GET"
+    assert provider.token_header == "X-KEY"
+    assert settings.platform_key_for("prospeo") == "PLATFORM-PROSPEO"
+    assert P.platform_bindings(provider) == [{
+        "platform_setting": "platform_key_prospeo",
+        "injector": "env",
+        "location": "header",
+        "name": "X-KEY",
+        "format": "{secret}",
+    }]
+
+
+async def test_prospeo_connect_provisions_a_single_catalog_host(clients, monkeypatch):
+    def probe(request):
+        assert request.url.host == "api.prospeo.io"
+        assert request.url.path == "/account-information"
+        key = request.headers["x-key"]
+        if key == "bad":
+            return httpx.Response(400, json={"error": True, "error_code": "INVALID_API_KEY"})
+        return httpx.Response(200, json={
+            "error": False,
+            "response": {"current_plan": "STARTER", "remaining_credits": 10},
+        })
+
+    async with AsyncClient(transport=httpx.MockTransport(probe)) as upstream:
+        monkeypatch.setattr(app.state, "http", upstream)
+        bad = await clients.post(
+            "/connections/token", json={"provider": "prospeo", "token": "bad"}
+        )
+        assert bad.status_code == 422
+        good = await clients.post(
+            "/connections/token", json={"provider": "prospeo", "token": "own-key"}
+        )
+        assert good.status_code == 200, good.text
+
+    tools = {tool["name"]: tool for tool in (await clients.get("/tools")).json()}
+    assert set(tools) == {"prospeo"}
+    assert tools["prospeo"]["base_url"] == "https://api.prospeo.io"
 
 
 def test_aigc_token_providers_are_offerable_without_deployment_credentials():

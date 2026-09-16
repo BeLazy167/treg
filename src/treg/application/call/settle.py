@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import math
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from collections.abc import Callable
 
@@ -148,6 +149,56 @@ def _quickenrich_cost_micro(mk: MarketplaceCall, doc: dict) -> int | None:
     return None
 
 
+def _prospeo_cost_micro(mk: MarketplaceCall, doc: dict) -> int | None:
+    """Settle from Prospeo's dedupe flags, endpoint success field, and exact bulk charge."""
+    if doc.get("error") is True:
+        return 0
+    if doc.get("error") is not False:
+        return None
+    if mk.endpoint_id in (
+        "prospeo.people.enrich.bulk",
+        "prospeo.companies.enrich.bulk",
+    ):
+        credits = doc.get("total_cost")
+        if (isinstance(credits, (int, float)) and not isinstance(credits, bool)
+                and math.isfinite(credits) and credits >= 0):
+            return int(credits * mk.unit_micro + 0.5)
+        return None
+    if mk.endpoint_id in ("prospeo.people.search", "prospeo.companies.search"):
+        if doc.get("free") is True:
+            return 0
+        results = doc.get("results")
+        if isinstance(results, list):
+            return int(bool(results)) * mk.unit_micro
+        return None
+    if mk.endpoint_id == "prospeo.search.suggestions":
+        return 0
+    if doc.get("free_enrichment") is True:
+        return 0
+    if doc.get("free_enrichment") is not False:
+        return None
+    if mk.endpoint_id == "prospeo.companies.enrich":
+        return mk.unit_micro if isinstance(doc.get("company"), dict) else 0
+    person = doc.get("person")
+    if not isinstance(person, dict):
+        return 0 if person is None else None
+    if mk.endpoint_id == "prospeo.people.enrich":
+        return mk.unit_micro if person else 0
+    if mk.endpoint_id == "prospeo.people.phone.find":
+        mobile = person.get("mobile")
+        if not isinstance(mobile, dict):
+            return 0 if mobile is None else None
+        value = mobile.get("mobile_international")
+        return mk.unit_micro if isinstance(value, str) and value.strip() else 0
+    if mk.endpoint_id == "prospeo.people.email.find":
+        email = person.get("email")
+        if not isinstance(email, dict):
+            return 0 if email is None else None
+        value = email.get("email")
+        return mk.unit_micro if isinstance(value, str) and value.strip() else 0
+    return None
+
+
 # Providers whose exact charge rides a response header, in provider credits (fx.yaml rate).
 _CREDIT_HEADERS = {"crustdata": "x-credits-used", "cloro": "x-credits-charged"}
 
@@ -264,6 +315,8 @@ def _observed_cost_micro(mk: MarketplaceCall, body: bytes, headers=None) -> int 
         return None
     if provider == "quickenrich":
         return _quickenrich_cost_micro(mk, doc)
+    if provider == "prospeo":
+        return _prospeo_cost_micro(mk, doc)
     if provider == "dropleads":
         if mk.endpoint_id.startswith("dropleads.companies."):
             info = doc.get("credits")

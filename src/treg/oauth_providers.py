@@ -1379,6 +1379,25 @@ QUICKENRICH = OAuthProvider(
     # Live 2026-09-08: bad key 401; valid free key 200, credits_used=0.
 )
 
+PROSPEO = OAuthProvider(
+    service="prospeo", display_name="Prospeo", auth_kind="key",
+    token_label="API key", token_placeholder="your Prospeo API key",
+    token_header="X-KEY", token_format="{secret}",
+    setup_url="https://app.prospeo.io/",
+    setup_action_label="Get your Prospeo API key",
+    setup_steps=("Sign in to Prospeo and open the API key settings.",
+                 "Create or copy an API key and paste it here."),
+    setup_note=("People and company search and enrichment share the account's monthly credits. "
+                "Connection verification reads account information for free."),
+    auth_uri="", token_uri="", scopes={}, client_id_setting="", client_secret_setting="",
+    category="Enrichment",
+    summary="Search and enrich people and companies, including verified work emails and mobiles.",
+    base_url="https://api.prospeo.io", docs_url="https://prospeo.io/api-docs",
+    # Live 2026-09-16: GET returned 200 for the platform key and 400 INVALID_API_KEY for garbage.
+    # The same free route is the capacity collector; Prospeo's data routes are POST, this one is GET.
+    probe_path="/account-information", probe_method="GET",
+)
+
 TRYKITT = OAuthProvider(
     service="trykitt",
     display_name="Kitt AI",
@@ -2999,7 +3018,7 @@ REGISTRY: dict[str, OAuthProvider] = {
         GOOGLE_ADS, YOUTUBE,
         LINKEDIN, SLACK, X, TIKTOK, FACEBOOK, INSTAGRAM, META_ADS,
         # API-key providers
-        APOLLO, PDL, AKTA, HUNTER, SUMBLE, HARVESTAPI, DROPLEADS, QUICKENRICH, TRYKITT, CONTACTOUT, MILLIONVERIFIER, CRUNCHBASE, MINIMAX, OPENROUTER, REPLICATE,
+        APOLLO, PDL, AKTA, HUNTER, SUMBLE, HARVESTAPI, DROPLEADS, QUICKENRICH, PROSPEO, TRYKITT, CONTACTOUT, MILLIONVERIFIER, CRUNCHBASE, MINIMAX, OPENROUTER, REPLICATE,
         REAPI, PIAPI,
         TIKHUB, BRIGHTDATA, SEMRUSH, JUSTONEAPI,
         SCRAPECREATORS,
