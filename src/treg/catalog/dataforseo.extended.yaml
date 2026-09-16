@@ -80,14 +80,14 @@ endpoints:
   method: POST
   path: /ai_optimization/llm_mentions/historical/live
   name: "Monthly LLM mention history for a keyword or domain"
-  summary: Live LLM Mentions Historical endpoint provides month-by-month historical metrics for mentions of the keywords or domains specified in the target array of the request.
+  summary: Live LLM Mentions Historical endpoint provides month-by-month historical metrics for mentions matching the AND-combined target filter (one series, not one per brand).
   input:
     bodyType: json
     body:
       target:
         type: array
         required: false
-        note: 'array of objects containing target entities required field you can specify up to 10 entities (objects) in the target field one target entity can contain either one domain or one keyword and related parameters examples: target array with a domain entity'
+        note: 'array of objects containing target entities. Required field. You can specify up to 10 entities (objects) in the target field. One target entity can contain either one domain or one keyword and related parameters. All target entities are AND-combined into one filter / one metrics series (not one series per brand). To compare brands: use dataforseo.x.ai-optimization-llm-mentions-multi-target-metrics-live, or one call per brand.'
         example:
         - domain: en.wikipedia.org
           search_filter: exclude
@@ -278,7 +278,7 @@ endpoints:
       target:
         type: array
         required: false
-        note: 'array of objects containing target entities required field you can specify up to 10 entities (objects) in the target field one target entity can contain either one domain or one keyword and related parameters examples: target array with a domain entity'
+        note: 'array of objects containing target entities. Required field. You can specify up to 10 entities (objects) in the target field. One target entity can contain either one domain or one keyword and related parameters. All target entities are AND-combined into one filter / one metrics series (not one series per brand). To compare brands: use dataforseo.x.ai-optimization-llm-mentions-multi-target-metrics-live, or one call per brand.'
         example:
         - domain: dataforseo.com
           search_filter: exclude
@@ -381,7 +381,7 @@ endpoints:
       target:
         type: array
         required: false
-        note: 'array of objects containing target entities required field you can specify up to 10 entities (objects) in the target field one target entity can contain either one domain or one keyword and related parameters examples: target array with a domain entity'
+        note: 'array of objects containing target entities. Required field. You can specify up to 10 entities (objects) in the target field. One target entity can contain either one domain or one keyword and related parameters. All target entities are AND-combined into one filter / one metrics series (not one series per brand). To compare brands: use dataforseo.x.ai-optimization-llm-mentions-multi-target-metrics-live, or one call per brand.'
         example:
         - domain: en.wikipedia.org
           search_filter: exclude
@@ -466,7 +466,7 @@ endpoints:
       target:
         type: array
         required: false
-        note: 'array of objects containing target entities required field you can specify up to 10 entities (objects) in the target field one target entity can contain either one domain or one keyword and related parameters examples: target array with a domain entity'
+        note: 'array of objects containing target entities. Required field. You can specify up to 10 entities (objects) in the target field. One target entity can contain either one domain or one keyword and related parameters. All target entities are AND-combined into one filter / one metrics series (not one series per brand). To compare brands: use dataforseo.x.ai-optimization-llm-mentions-multi-target-metrics-live, or one call per brand.'
         example:
         - domain: en.wikipedia.org
           search_filter: exclude
@@ -559,7 +559,7 @@ endpoints:
       target:
         type: array
         required: false
-        note: 'array of objects containing target entities required field you can specify up to 10 entities (objects) in the target field one target entity can contain either one domain or one keyword and related parameters examples: target array with a domain entity'
+        note: 'array of objects containing target entities. Required field. You can specify up to 10 entities (objects) in the target field. One target entity can contain either one domain or one keyword and related parameters. All target entities are AND-combined into one filter / one metrics series (not one series per brand). To compare brands: use dataforseo.x.ai-optimization-llm-mentions-multi-target-metrics-live, or one call per brand.'
         example:
         - domain: dataforseo.com
           search_filter: exclude
@@ -644,7 +644,7 @@ endpoints:
       target:
         type: array
         required: false
-        note: 'array of objects containing target entities required field you can specify up to 10 entities (objects) in the target field one target entity can contain either one domain or one keyword and related parameters examples: target array with a domain entity'
+        note: 'array of objects containing target entities. Required field. You can specify up to 10 entities (objects) in the target field. One target entity can contain either one domain or one keyword and related parameters. All target entities are AND-combined into one filter / one metrics series (not one series per brand). To compare brands: use dataforseo.x.ai-optimization-llm-mentions-multi-target-metrics-live, or one call per brand.'
         example:
         - domain: dataforseo.com
           search_filter: exclude
@@ -729,7 +729,7 @@ endpoints:
       target:
         type: array
         required: false
-        note: 'array of objects containing target entities required field you can specify up to 10 entities (objects) in the target field one target entity can contain either one domain or one keyword and related parameters examples: target array with a domain entity'
+        note: 'array of objects containing target entities. Required field. You can specify up to 10 entities (objects) in the target field. One target entity can contain either one domain or one keyword and related parameters. All target entities are AND-combined into one filter / one metrics series (not one series per brand). To compare brands: use dataforseo.x.ai-optimization-llm-mentions-multi-target-metrics-live, or one call per brand.'
         example:
         - keyword: bmw
           search_scope:
@@ -844,7 +844,7 @@ endpoints:
       target:
         type: array
         required: false
-        note: 'array of objects containing target entities required field you can specify up to 10 entities (objects) in the target field one target entity can contain either one domain or one keyword and related parameters examples: target array with a domain entity'
+        note: 'array of objects containing target entities. Required field. You can specify up to 10 entities (objects) in the target field. One target entity can contain either one domain or one keyword and related parameters. All target entities are AND-combined into one filter / one metrics series (not one series per brand). To compare brands: use dataforseo.x.ai-optimization-llm-mentions-multi-target-metrics-live, or one call per brand.'
         example:
         - keyword: bmw
           search_scope:
@@ -959,7 +959,7 @@ endpoints:
       target:
         type: array
         required: false
-        note: 'array of objects containing target entities required field you can specify up to 10 entities (objects) in the target field one target entity can contain either one domain or one keyword and related parameters examples: target array with a domain entity'
+        note: 'array of objects containing target entities. Required field. You can specify up to 10 entities (objects) in the target field. One target entity can contain either one domain or one keyword and related parameters. All target entities are AND-combined into one filter / one metrics series (not one series per brand). To compare brands: use dataforseo.x.ai-optimization-llm-mentions-multi-target-metrics-live, or one call per brand.'
         example:
         - keyword: bmw
           search_scope:
@@ -1074,7 +1074,7 @@ endpoints:
       target:
         type: array
         required: false
-        note: 'array of objects containing target entities required field you can specify up to 10 entities (objects) in the target field one target entity can contain either one domain or one keyword and related parameters examples: target array with a domain entity'
+        note: 'array of objects containing target entities. Required field. You can specify up to 10 entities (objects) in the target field. One target entity can contain either one domain or one keyword and related parameters. All target entities are AND-combined into one filter / one metrics series (not one series per brand). To compare brands: use dataforseo.x.ai-optimization-llm-mentions-multi-target-metrics-live, or one call per brand.'
         example:
         - keyword: bmw
           search_scope:
@@ -1189,7 +1189,7 @@ endpoints:
       target:
         type: array
         required: false
-        note: 'array of objects containing target entities required field you can specify up to 10 entities (objects) in the target field one target entity can contain either one domain or one keyword and related parameters examples: target array with a domain entity'
+        note: 'array of objects containing target entities. Required field. You can specify up to 10 entities (objects) in the target field. One target entity can contain either one domain or one keyword and related parameters. All target entities are AND-combined into one filter / one metrics series (not one series per brand). To compare brands: use dataforseo.x.ai-optimization-llm-mentions-multi-target-metrics-live, or one call per brand.'
         example:
         - keyword: bmw
           search_scope:
@@ -1310,7 +1310,7 @@ endpoints:
       target:
         type: array
         required: false
-        note: 'array of objects containing target entities required field you can specify up to 10 entities (objects) in the target field one target entity can contain either one domain or one keyword and related parameters examples: target array with a domain entity'
+        note: 'array of objects containing target entities. Required field. You can specify up to 10 entities (objects) in the target field. One target entity can contain either one domain or one keyword and related parameters. All target entities are AND-combined into one filter / one metrics series (not one series per brand). To compare brands: use dataforseo.x.ai-optimization-llm-mentions-multi-target-metrics-live, or one call per brand.'
         example:
         - keyword: bmw
           search_scope:
@@ -1431,7 +1431,7 @@ endpoints:
       target:
         type: array
         required: false
-        note: 'array of objects containing target entities required field you can specify up to 10 entities (objects) in the target field one target entity can contain either one domain or one keyword and related parameters examples: target array with a domain entity'
+        note: 'array of objects containing target entities. Required field. You can specify up to 10 entities (objects) in the target field. One target entity can contain either one domain or one keyword and related parameters. All target entities are AND-combined into one filter / one metrics series (not one series per brand). To compare brands: use dataforseo.x.ai-optimization-llm-mentions-multi-target-metrics-live, or one call per brand.'
         example:
         - keyword: bmw
           search_scope:
@@ -1552,7 +1552,7 @@ endpoints:
       target:
         type: array
         required: false
-        note: 'array of objects containing target entities required field you can specify up to 10 entities (objects) in the target field one target entity can contain either one domain or one keyword and related parameters examples: target array with a domain entity'
+        note: 'array of objects containing target entities. Required field. You can specify up to 10 entities (objects) in the target field. One target entity can contain either one domain or one keyword and related parameters. All target entities are AND-combined into one filter / one metrics series (not one series per brand). To compare brands: use dataforseo.x.ai-optimization-llm-mentions-multi-target-metrics-live, or one call per brand.'
         example:
         - keyword: bmw
           search_scope:
