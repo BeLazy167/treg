@@ -13,6 +13,10 @@ DataForSEO has provider-specific rules that generic catalog validation can't cat
    enable_browser_rendering is true. Vendor docs still say enable_javascript *or*
    enable_browser_rendering; live returns 40501 requiring the latter.
 
+4. LLM Mentions single-target `target` is an AND-combined filter that yields one
+   metrics series, not one series per brand. Brand comparison is
+   multi-target-metrics-live (`targets` with keys) or one call per brand.
+
 These tests ensure catalog test_requests and documentation stay aligned with live behavior.
 """
 
@@ -271,3 +275,102 @@ def test_instant_pages_browser_preset_requires_browser_rendering():
                 f"{PAGE_AUDIT_ID}: test_request.body[{i}] must not send browser_preset "
                 "(cheap probe; the field is paid browser-rendering only)"
             )
+
+
+LLM_MENTIONS_MULTI_TARGET_ID = (
+    "dataforseo.x.ai-optimization-llm-mentions-multi-target-metrics-live"
+)
+LLM_MENTIONS_HISTORICAL_ID = (
+    "dataforseo.x.ai-optimization-llm-mentions-historical-live"
+)
+STALE_LLM_MENTIONS_TARGET_NOTE = (
+    "array of objects containing target entities required field you can specify up to 10 entities"
+)
+
+
+def test_llm_mentions_target_is_and_combined_filter():
+    """Feedback #218: single-target llm-mentions `target` is AND-combined, not multi-series.
+
+    Agents read "up to 10 entities" as one series per brand and sent many brands
+    in one call. Upstream AND-combines include/exclude entities into one filter /
+    one metrics series. Official docs:
+    https://docs.dataforseo.com/v3/ai_optimization/llm_mentions/historical/live/
+    (exclude wikipedia + keyword bmw as a filter combo). Brand comparison is
+    multi-target-metrics-live (`targets` with keys) or one call per brand.
+    Settlement is unchanged.
+
+    Ref: https://docs.dataforseo.com/v3/ai_optimization/llm_mentions/historical/live/
+    """
+    endpoints = load_dataforseo_endpoints()
+    mentions = [ep for ep in endpoints if "llm-mentions" in (ep.get("id") or "")]
+    assert mentions, "expected llm-mentions endpoints in the DataForSEO catalog"
+
+    multi = next((ep for ep in mentions if ep.get("id") == LLM_MENTIONS_MULTI_TARGET_ID), None)
+    assert multi is not None, f"{LLM_MENTIONS_MULTI_TARGET_ID} not found"
+    multi_body = (multi.get("input") or {}).get("body") or {}
+    assert "targets" in multi_body, (
+        f"{LLM_MENTIONS_MULTI_TARGET_ID}: brand comparison uses `targets`, not `target`"
+    )
+    assert "target" not in multi_body, (
+        f"{LLM_MENTIONS_MULTI_TARGET_ID}: must keep the `targets` field; do not rewrite as `target`"
+    )
+
+    single_series = []
+    for ep in mentions:
+        if ep.get("id") == LLM_MENTIONS_MULTI_TARGET_ID:
+            continue
+        body = (ep.get("input") or {}).get("body") or {}
+        if "target" in body:
+            single_series.append(ep)
+
+    assert len(single_series) >= 14, (
+        f"expected ~14 single-target llm-mentions routes with `target`, got "
+        f"{len(single_series)}: {[ep['id'] for ep in single_series]}"
+    )
+
+    for ep in single_series:
+        field = ((ep.get("input") or {}).get("body") or {}).get("target") or {}
+        note = field.get("note") or ""
+        assert STALE_LLM_MENTIONS_TARGET_NOTE not in note, (
+            f"{ep['id']}: stale target.note still reads as multi-series"
+        )
+        lower = note.lower()
+        assert "up to 10" in lower, f"{ep['id']}: target.note should keep the 10-entity cap"
+        assert "domain" in lower and "keyword" in lower, (
+            f"{ep['id']}: target.note should keep domain-OR-keyword entity shape"
+        )
+        assert "and-combined" in lower, (
+            f"{ep['id']}: target.note must say target entities are AND-combined"
+        )
+        assert "one series" in lower or "one metrics series" in lower, (
+            f"{ep['id']}: target.note must say one filter / one metrics series"
+        )
+        assert LLM_MENTIONS_MULTI_TARGET_ID in note, (
+            f"{ep['id']}: target.note should point brand comparison at "
+            f"{LLM_MENTIONS_MULTI_TARGET_ID}"
+        )
+
+        example = field.get("example") or []
+        if example:
+            # keep the documented exclude-wikipedia + bmw filter combo where present
+            domains = [item.get("domain") for item in example if isinstance(item, dict)]
+            keywords = [item.get("keyword") for item in example if isinstance(item, dict)]
+            if "en.wikipedia.org" in domains:
+                assert "bmw" in keywords, (
+                    f"{ep['id']}: wikipedia example must stay paired with keyword bmw "
+                    "(filter combination, not multi-brand series)"
+                )
+
+
+def test_llm_mentions_historical_summary_names_and_semantics():
+    """Feedback #218: historical-live summary must not imply multi-entity measurement."""
+    endpoints = load_dataforseo_endpoints()
+    endpoint = next((ep for ep in endpoints if ep.get("id") == LLM_MENTIONS_HISTORICAL_ID), None)
+    assert endpoint is not None, f"{LLM_MENTIONS_HISTORICAL_ID} not found"
+    summary = (endpoint.get("summary") or "").lower()
+    assert "and-combined" in summary, (
+        f"{LLM_MENTIONS_HISTORICAL_ID}: summary should name AND-combined target filter"
+    )
+    assert "one series" in summary, (
+        f"{LLM_MENTIONS_HISTORICAL_ID}: summary should say one series, not one per brand"
+    )

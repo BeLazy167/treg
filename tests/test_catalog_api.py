@@ -1486,3 +1486,54 @@ async def test_catalog_get_scrapecreators_instagram_reels_search_date_posted(
     note = field["note"].lower()
     assert "hour" in note and "day" in note
     assert "not supported" in note or "unsupported" in note
+
+
+LLM_MENTIONS_HISTORICAL_ID = "dataforseo.x.ai-optimization-llm-mentions-historical-live"
+LLM_MENTIONS_MULTI_TARGET_ID = (
+    "dataforseo.x.ai-optimization-llm-mentions-multi-target-metrics-live"
+)
+
+
+def test_dataforseo_llm_mentions_historical_target_is_and_combined():
+    """Feedback #218: historical-live `target` is one AND-combined filter.
+
+    catalog_get used to advertise "up to 10 entities" without AND semantics, so
+    agents sent many brands in one call expecting multiple series. Upstream
+    AND-combines include/exclude entities into one metrics series. Brand
+    comparison is multi-target-metrics-live (`targets` with keys) or one call
+    per brand. The wikipedia+bmw example stays a filter combo.
+    """
+    cat = cs.load()
+    ep = cat.by_id[LLM_MENTIONS_HISTORICAL_ID]
+    assert ep["path"] == "/ai_optimization/llm_mentions/historical/live"
+    note = ep["input"]["body"]["target"]["note"]
+    assert "AND-combined" in note
+    assert "one metrics series" in note or "one series" in note
+    assert LLM_MENTIONS_MULTI_TARGET_ID in note
+    example = ep["input"]["body"]["target"]["example"]
+    assert example[0]["domain"] == "en.wikipedia.org"
+    assert example[0]["search_filter"] == "exclude"
+    assert example[1]["keyword"] == "bmw"
+    tasks = ep["test_request"]["body"]
+    assert isinstance(tasks, list) and len(tasks) == 1
+    assert tasks[0]["target"][0]["domain"] == "en.wikipedia.org"
+    assert tasks[0]["target"][1]["keyword"] == "bmw"
+    multi = cat.by_id[LLM_MENTIONS_MULTI_TARGET_ID]
+    assert "targets" in multi["input"]["body"]
+    assert "target" not in multi["input"]["body"]
+
+
+async def test_catalog_get_dataforseo_llm_mentions_historical_names_and_semantics(
+        clients: AsyncClient):
+    """Feedback #218: catalog_get must not advertise multi-series `target`."""
+    body = (await clients.get(f"/catalog/endpoints/{LLM_MENTIONS_HISTORICAL_ID}")).json()
+    note = body["endpoint"]["input"]["body"]["target"]["note"]
+    assert "AND-combined" in note
+    assert "one metrics series" in note or "one series" in note
+    assert LLM_MENTIONS_MULTI_TARGET_ID in note
+    tmpl = body["call_template"]
+    assert tmpl.startswith(
+        f"treg call {LLM_MENTIONS_HISTORICAL_ID} --method POST")
+    assert "en.wikipedia.org" in tmpl
+    assert "exclude" in tmpl
+    assert "bmw" in tmpl

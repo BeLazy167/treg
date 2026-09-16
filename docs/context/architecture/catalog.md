@@ -1546,6 +1546,23 @@ JS-only audits omit `browser_preset`. Settlement is unchanged. Enforced by
 `test_instant_pages_browser_preset_requires_browser_rendering` and
 `test_catalog_get_dataforseo_page_audit_names_browser_preset_dependency`.
 
+### DataForSEO LLM Mentions `target` is one AND-combined filter
+
+DataForSEO's LLM Mentions live routes take a `target` array of up to 10 domain/keyword
+entities. Upstream AND-combines them into one filter / one metrics series; it does not
+return one series per brand. Official docs
+(https://docs.dataforseo.com/v3/ai_optimization/llm_mentions/historical/live/) show
+exclude-wikipedia + keyword bmw as a filter combo. Feedback #218:
+`dataforseo.x.ai-optimization-llm-mentions-historical-live` (and 13 sibling
+single-target llm-mentions routes) advertised "up to 10 entities" without AND
+semantics, so agents sent many brands and got one series of zeros. Catalog-only:
+each `target.note` now names AND-combined / one series, and points brand comparison
+at `dataforseo.x.ai-optimization-llm-mentions-multi-target-metrics-live` (`targets`
+with keys) or one call per brand. The wikipedia+bmw `call_template` example is
+unchanged. Settlement is unchanged. Enforced by
+`test_llm_mentions_target_is_and_combined_filter` and
+`test_catalog_get_dataforseo_llm_mentions_historical_names_and_semantics`.
+
 ### ScrapeCreators Instagram reels search `date_posted`
 
 ScrapeCreators' OpenAPI for `GET /v2/instagram/reels/search` restricts `date_posted` to
