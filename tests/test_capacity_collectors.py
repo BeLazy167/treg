@@ -238,7 +238,7 @@ async def test_akta_collector_marks_enterprise_accounts():
 
 def test_no_balance_api_includes_expected_providers():
     """Verify the vendors that have no free balance API are documented."""
-    expected = {"aviato", "coresignal", "exa", "financialdatasets", "finnhub", "justoneapi", "marketstack", "tiingo"}
+    expected = {"aviato", "coresignal", "exa", "financialdatasets", "finnhub", "justoneapi", "marketstack", "scrubby", "tiingo"}
     assert expected == set(collectors.NO_BALANCE_API.keys())
 
 

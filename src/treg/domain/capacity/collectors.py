@@ -598,9 +598,10 @@ BALANCE_ROUTES = {
     "thecompaniesapi": _thecompaniesapi,
 }
 
-# Verified to publish NO balance/credits API (re-checked 2026-08-31) — the dashboard is the only meter. Kept
-# explicit so the report names them instead of silently skipping, and so a future probe has a list
-# of what to re-check.
+# Verified to publish NO free standalone balance/credits API. Some are dashboard-only; Scrubby
+# exposes remaining credits only on verification responses, which the collector must not spend to
+# obtain. Kept explicit so the report names them instead of silently skipping, and so a future probe
+# has a list of what to re-check.
 NO_BALANCE_API = {
     "aviato": "no public balance endpoint documented (checked docs.data.aviato.co 2026-08-31) — "
               "internal playbooks reference aviato_get_balance but it is not in the public API; "
@@ -619,6 +620,9 @@ NO_BALANCE_API = {
                   "endpoint documented (checked docs.justoneapi.com 2026-08-31) — dashboard only",
     "marketstack": "no usage endpoint (checked 2026-08-31) — monthly quota in the dashboard, "
                    "email alerts at 75/90/100%",
+    "scrubby": "no free standalone balance or usage endpoint in the official API "
+               "(checked docs.scrubby.io 2026-09-16) — remaining_credits appears only on "
+               "verification responses; do not spend a verification merely to collect capacity",
     "tiingo": "no usage API (api/account/usage 404s, checked 2026-08-31) — tiingo.com/account/usage is "
               "a logged-in HTML page only",
 }

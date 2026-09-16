@@ -39,6 +39,7 @@ _KNOWN: dict[str, tuple[str, str, str]] = {
     "getleadsio": ("credits", "manual", "api"),
     "sumble": ("monthly_quota", "quota_reset", "api"),
     "moltsets": ("rolling_quota", "subscription", "api"),
+    "scrubby": ("credits", "manual", "manual"),
     "predictleads": ("monthly_quota", "quota_reset", "api"),
     "companyenrich": ("credits", "manual", "api"),
     "apollo": ("credits", "manual", "api"),
@@ -87,6 +88,7 @@ _RATE_LIMITS: dict[str, dict] = {
     # burst rate; encoding it here would make the spacer add 3.6s before every routed attempt.
     "moltsets": {"limit": 10, "window_s": 1, "source": "policy"},
     "sumble": {"limit": 10, "window_s": 1, "source": "docs"},
+    "scrubby": {"limit": 25, "window_s": 1, "source": "docs"},
     "leadsforge": {"limit": 120, "window_s": 60, "source": "headers"},
     "leadmagic": {"limit": 300, "window_s": 60, "source": "docs"},
     "crustdata": {"limit": 30, "window_s": 60, "source": "headers"},

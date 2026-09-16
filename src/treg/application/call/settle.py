@@ -314,6 +314,13 @@ def _observed_cost_micro(mk: MarketplaceCall, body: bytes, headers=None) -> int 
         if type(credits) is int and credits >= 0:
             return credits * mk.unit_micro
         return None
+    if provider == "scrubby":
+        credits = doc.get("credits_used")
+        # Scrubby reports the exact per-call charge, including zero for a cached retry.
+        # The request-time unit freezes the supplied $/credit acquisition rate.
+        if type(credits) is int and credits >= 0:
+            return credits * mk.unit_micro
+        return None
     if provider == "quickenrich":
         return _quickenrich_cost_micro(mk, doc)
     if provider == "prospeo":

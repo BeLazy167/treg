@@ -39,6 +39,7 @@ covers (frontmatter `sources:`). Regenerate this index with
 | [Multi-tenancy — orgs, memberships, invites, per-org scoping](architecture/multi-tenancy.md) | shipped | models.py, api.py, caller_metadata.py, auth.py, … |
 | [Prospeo — people and company enrichment](architecture/prospeo.md) | shipped | prospeo.yaml, prospeo.people.email.find.json, prospeo.people.phone.find.json, prospeo.people.enrich.json, … |
 | [The proxy — faithful credential-injecting relay + tool resolution](architecture/proxy-model.md) | shipped | relay.py, ssrf.py, api.py, authorize.py, … |
+| [Scrubby — quick and deep email verification](architecture/scrubby.md) | implemented; live authentication, billing and asynchronous behavior verified | scrubby.yaml, scrubby.people.email.verify.json, scrubby.people.email.verify.bulk.json, scrubby.people.email.verify.bulk.results.json, … |
 | [Sumble — account intelligence, subscription credits and BYOK](architecture/sumble.md) | shipped | sumble.yaml, sumble.extended.yaml, sumble.organizations.json, sumble.py, … |
 | [Super-admin — cross-tenant read + control](architecture/super-admin.md) | shipped | api.py, admin.py, access.py, config.py |
 | [Wiza — synchronous search and company enrichment, BYOK async jobs](architecture/wiza.md) | shipped | wiza.yaml, wiza.people.search.json, wiza.companies.search.json, wiza.companies.enrich.json, … |

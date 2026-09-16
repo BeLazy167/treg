@@ -1453,6 +1453,31 @@ GETLEADSIO = OAuthProvider(
     probe_path="/api/v1/usage/fair-use", probe_method="GET",
 )
 
+SCRUBBY = OAuthProvider(
+    service="scrubby", display_name="Scrubby", auth_kind="key",
+    token_label="API key", token_placeholder="your Scrubby API key",
+    token_header="x-api-key", token_format="{secret}",
+    # Live: Scrubby's edge rejected Python's default urllib User-Agent before the request reached
+    # the API. Pin a descriptive value for probes and all BYOK/platform calls; required_headers
+    # intentionally overwrites any caller-supplied User-Agent.
+    required_headers=(("User-Agent", "treg/1.0 (+https://treg.to)"),),
+    setup_url="https://app.scrubby.io/",
+    setup_action_label="Get your Scrubby API key",
+    setup_steps=("Sign in to Scrubby and open the API settings.",
+                 "Copy your API key and paste it here."),
+    setup_note=("Quick verification costs one credit per fresh address; deep verification costs "
+                "three. Connection verification uses a free nonexistent-result lookup."),
+    auth_uri="", token_uri="", scopes={}, client_id_setting="", client_secret_setting="",
+    category="Enrichment",
+    summary="Verify email deliverability with quick or 72-hour deep verification.",
+    base_url="https://api.scrubby.io", docs_url="https://docs.scrubby.io/",
+    probe_path="/fetch_bulk_results", probe_method="POST",
+    probe_json={"identifier": "treg-probe-not-found"},
+    token_ok_field="detail",
+    token_ok_value="No results found for this identifier.",
+    probe_reject_statuses=(401, 403),
+)
+
 TRYKITT = OAuthProvider(
     service="trykitt",
     display_name="Kitt AI",
@@ -3107,7 +3132,7 @@ REGISTRY: dict[str, OAuthProvider] = {
         GOOGLE_ADS, YOUTUBE,
         LINKEDIN, SLACK, X, TIKTOK, FACEBOOK, INSTAGRAM, META_ADS,
         # API-key providers
-        APOLLO, PDL, AKTA, HUNTER, SUMBLE, MOLTSETS, HARVESTAPI, DROPLEADS, QUICKENRICH, PROSPEO, WIZA, GETLEADSIO, TRYKITT, CONTACTOUT, MILLIONVERIFIER, BOUNCEBAN, CRUNCHBASE, MINIMAX, OPENROUTER, REPLICATE,
+        APOLLO, PDL, AKTA, HUNTER, SUMBLE, MOLTSETS, HARVESTAPI, DROPLEADS, QUICKENRICH, PROSPEO, WIZA, GETLEADSIO, SCRUBBY, TRYKITT, CONTACTOUT, MILLIONVERIFIER, BOUNCEBAN, CRUNCHBASE, MINIMAX, OPENROUTER, REPLICATE,
         REAPI, PIAPI,
         TIKHUB, BRIGHTDATA, SEMRUSH, JUSTONEAPI,
         SCRAPECREATORS,
