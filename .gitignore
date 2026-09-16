@@ -90,3 +90,6 @@ tests/screenshots/
 .arcterm/
 # Arena production statistics belong in the database, never a bundled snapshot.
 /src/treg/web/enrich-arena/insights.json
+
+# ArcTerm writes this local backup beside CLAUDE.md; it is not project content.
+CLAUDE.md.arcterm-bak
