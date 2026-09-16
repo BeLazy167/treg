@@ -20,7 +20,7 @@ sources:
   - src/treg/alembic/versions/0011_callrecord_archive_link.py
   - src/treg/application/call/service.py
   - src/treg/application/call/settle.py
-  - src/treg/alembic/versions/0038_archive_own_key_and_repeat_pricing.py
+  - src/treg/alembic/versions/0039_archive_own_key_and_repeat_pricing.py
   - scripts/backfill_call_archive_links.py
   - src/treg/api.py
   - src/treg/bootstrap.py
@@ -55,16 +55,16 @@ time-series — backlink profiles over time, price history), not waste.
 
 **Build state: COMPLETE (PR 6 of 6 — the panel shipped after the original five).** All five slices exist behind `TREG_ARCHIVE_MODE`:
 skeleton, recorder, catalog `cache` field + report, serve path, and the learner + refresh worker.
-Since 2026-09-14 every credential tier takes part (own-key answers are recorded and served, see
-"Own-key answers") and a metered hit has ONE pricing difference (see "Pricing a hit"). What does
+Every credential tier takes part (own-key answers are recorded and served, see "Own-key
+answers") and a metered hit has ONE pricing difference (see "Pricing a hit"). What does
 NOT exist: the phase-3 aggregator surfaces (history endpoints) — do not document them as existing.
 What DOES exist since 2026-09-03 is the per-call read below: a team can see the answer ITS OWN
 call got.
 
-## Own-key answers (2026-09-14)
+## Own-key answers
 
-An own-key catalog call (tier `tool`/`credential`, never metered) is a cache participant too:
-the founder's serve-everything decision. `_execute_call` looks a storable question up before
+An own-key catalog call (tier `tool`/`credential`, never metered) is a cache participant too.
+`_execute_call` looks a storable question up before
 the relay exactly as for a metered call, and after the relay reads the 2xx answer whole when it
 fits `archive_max_body_bytes` (`settle._read_whole_if_small`: bounded, before headers go out —
 the same bounded buffering a metered call already pays); an answer that does not fit, or whose
@@ -83,7 +83,7 @@ carries the same `X-Treg-Cache: hit` headers and the audit row `cached: true`, a
 reports `free`. Own-key observations train the timer and the result state of THEIR key like any
 other.
 
-### Sharing: whose question is it (2026-09-15)
+### Sharing: whose question is it
 
 Storage and sharing are two dimensions, judged separately. The licence (`cache.mode`) says
 whether bytes may be KEPT; `archive.sharing(entry, own_credential=…)` says whose question the
@@ -113,7 +113,7 @@ this endpoint's answer is identical whoever asks — treg's own service OAuth re
 is the intended case — and it is judged per endpoint, never inherited from a provider's licence.
 Nothing in the shipped catalog declares it yet.
 
-## Pricing a hit (2026-09-14)
+## Pricing a hit
 
 A metered hit goes through the same reserve → settle as a live call (the hold is reserved
 before the lookup and settled once, whatever answered). The one difference is the amount, and
@@ -390,7 +390,7 @@ caps even an already-learned positive TTL by that declaration, then by caller `X
 Without a declared ceiling, learned TTLs can exceed capability defaults; lookup never uses the
 static default to cap a positive learned TTL.
 
-The one exception is a **volatile capability** (`volatile_max_age_s`, since 2026-09-14): a
+The one exception is a **volatile capability** (`volatile_max_age_s`): a
 capability SEGMENT naming moving data — `live`, `realtime`, `quote` (60 s), `price` and any
 `hot*`/`trend*` segment (300 s) — is a HARD ceiling on the default, on serving
 and on refresh, even over a learned timer. The learner cannot tell "flat over the weekend" from
@@ -471,14 +471,14 @@ fresh hits — phase 1+). Any unrecognized value degrades to `off`: a typo must 
 enable. Rollback is an environment-setting change through the deployment's normal configuration
 process.
 
-In serve mode the two rollout gates default open since 2026-09-14: `TREG_ARCHIVE_SERVE_ENDPOINTS`
-is `*` (every endpoint the policy allows) and `TREG_ARCHIVE_SERVE_PERCENT` is `100` (the
-sha256 team/endpoint cohort still applies below 100). The allowlist is comma-separated and mixes
-three entry forms: an exact endpoint id, `capability:<prefix>` (a whole family —
-`capability:people.` matches every endpoint whose capability starts with it; `endpoint_served`
-checks the entry's capability), and `*`. Empty serves nothing — the rollback lever. Production
-rolls families in through treg-internal rather than flipping `*`; the refresh worker applies a
-family or `*` allowlist in Python after its query (`serve_ids_only` decides). `TREG_ARCHIVE_SERVE_MAX_AGE_S` remains the
+In serve mode the two rollout gates default open: `TREG_ARCHIVE_SERVE_ENDPOINTS` is `*` (every
+endpoint the policy allows) and `TREG_ARCHIVE_SERVE_PERCENT` is `100` (the sha256 team/endpoint
+cohort still applies below 100). The allowlist is comma-separated and mixes three entry forms: an
+exact endpoint id, `capability:<prefix>` (a whole family — `capability:people.` matches every
+endpoint whose capability starts with it; `endpoint_served` checks the entry's capability), and
+`*`. Empty serves nothing — the rollback lever. An operator stages a rollout by narrowing the list
+to ids or families; the hosted service's staging plan lives in its private runbook. The refresh
+worker applies a family or `*` allowlist in Python after its query (`serve_ids_only` decides). `TREG_ARCHIVE_SERVE_MAX_AGE_S` remains the
 per-endpoint operator ceiling and `TREG_ARCHIVE_HIT_REPEAT_PRICE_PERCENT` (10) the repeat price.
 
 ## Conservative comparison and controlled serving (2026-09-08)
@@ -540,8 +540,8 @@ produce hypothetical hit counts or fresh-answer comparisons.
 1. **Kind.** Only a `data` read (the catalog's default kind) is ever stored. `action` changes
    the world; `utility` is a task-status poll or a model list, where a stored "running" would
    break every poller; `account` answers about the caller's own account (balance, quota, own
-   profile), stale the moment it is spent. `archive.cacheable_kind` (since 2026-09-14; before
-   it only actions were excluded).
+   profile), stale the moment it is spent. `archive.cacheable_kind` (earlier only actions were
+   excluded).
 2. **License.** Per catalog entry: `cache: forbidden | transient | archive` — either a bare
    string or a provenance dict `{mode, license_quote, source_url, checked}`, exactly like `cost`
    provenance. **Absent ⇒ `archive_default_policy`**, which is `transient` since the founder's
@@ -577,7 +577,7 @@ and credentials could not anyway: injection happens after the key is taken.
 change — the learner lands in PR 5), change statistics (`change_seen`/`stable_seen`/
 `last_changed_at`), legacy `volatile_paths` (retained for schema compatibility, no longer read or updated), and demand (`heat`, `last_requested_at`). Platform-scoped, no `org_id`:
 one team's fetch may warm another team's hit; an own-credential answer's reach is its KEY's
-scope (`ArchiveKey.scope`, migration 0038, and the scope folded into the hash — see "Sharing"),
+scope (`ArchiveKey.scope`, migration 0039, and the scope folded into the hash — see "Sharing"),
 the snapshot's `origin_org_id` (same migration) is provenance, and `ArchiveKeyOrg` (same
 migration) is the per-(org, key) "has paid for this question" mark that prices a repeat hit —
 see "Pricing a hit".

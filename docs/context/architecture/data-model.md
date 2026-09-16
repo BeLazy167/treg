@@ -30,12 +30,13 @@ sources:
   - src/treg/alembic/versions/0034_managed_api_keys.py
   - src/treg/alembic/versions/0035_default_key_generation.py
   - src/treg/alembic/versions/0036_activity_key_indexes.py
+  - src/treg/alembic/versions/0038_endpoint_day_stats.py
   - src/treg/maintenance.py
   - src/treg/web/sitetrack.js
   - src/treg/models.py
   - src/treg/alembic/versions/0031_archive_result_admission.py
   - src/treg/alembic/versions/0032_archive_body_storage.py
-  - src/treg/alembic/versions/0038_archive_own_key_and_repeat_pricing.py
+  - src/treg/alembic/versions/0039_archive_own_key_and_repeat_pricing.py
   - src/treg/alembic/versions/0033_signup_promo_eligibility.py
   - src/treg/timeutil.py
   - src/treg/infra/db.py
@@ -86,15 +87,15 @@ legacy DB path). Archive remains the only writer. An R2 location is published on
 verified upload finishes outside any DB session; `content_hash` is the object name. No new index,
 backfill, body-column removal or destructive migration occurs. Double-write rows retain their DB
 body/carrier; R2-only rows require no carrier pointer. See [archive](archive.md#body-storage-and-r2-double-writing).
-Migration `0038` adds nullable `ArchiveSnapshot.origin_org_id` (the team whose own credential
+Migration `0039` adds nullable `ArchiveSnapshot.origin_org_id` (the team whose own credential
 fetched the answer; NULL = treg's platform key, every row before it - provenance), nullable
 `ArchiveKey.scope` (`org` | `conn` for a key private to an org or a connection; NULL = public,
 every key before it - the sharing scope is also folded into the key hash) and the
 `ArchiveKeyOrg` table, unique on `(org_id, key_hash)`: which teams have paid for which archived
 question, written by archive inside the metered settle transaction and read by lookup to price
-a repeat hit. See [archive](archive.md#own-key-answers-2026-09-14),
-[sharing](archive.md#sharing-whose-question-is-it-2026-09-15) and
-[pricing a hit](archive.md#pricing-a-hit-2026-09-14).
+a repeat hit. See [archive](archive.md#own-key-answers),
+[sharing](archive.md#sharing-whose-question-is-it) and
+[pricing a hit](archive.md#pricing-a-hit).
 
 Revision `0033` adds nullable `User.email_verified_at` and non-null `signup_promo_available`,
 with a retained database default of false for existing rows and old writers. New application users
@@ -227,6 +228,16 @@ uses this metadata, never the encrypted token's shape.
   getting this wrong is not a slow page: all three connection pools share one Postgres, so a scan
   here queues every other query and the API pool empties into `503 treg_saturated` - see
   [deploy](../ops/deploy.md) § Database pools. The table has no retention sweep yet, so it only grows.
+
+  **Nothing on the request path aggregates it any more.** The two readers that did, the catalog's
+  observed reliability and the Arena's rolling insights, are scheduled `treg-worker` commands
+  that walk it incrementally by primary key. Revision 0038 adds their catalog half:
+  `EndpointDayStat` (one row per endpoint per UTC day: counts, newest success, hit tallies and a
+  bounded latency sample; primary key `(endpoint_id, day)`, indexed by `day` for the window prune)
+  and the single-row `EndpointStatCursor` (`cursor_id`, the `created_at` watermark and
+  `caught_up_at`, which is what lets the reader fall back to the live aggregate until the worker
+  has caught up). `application/catalog_stats.py` is the only writer of both; see
+  [catalog](catalog.md) § Choosing between providers.
 
   **`LedgerEntry` is the other one, and it was the larger.** It is append-only and never pruned
   (4.38M rows / 2.3 GB on prod 2026-09-06, ~400k rows a day), and `ledger.spent_today` - the

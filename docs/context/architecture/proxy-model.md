@@ -61,11 +61,11 @@ Cache experiment metadata is attached to the existing `tool_called` event by the
 capture funnel: outcome/reason, comparison and TTL policy, rollout percentage, lookup duration,
 and candidate age/window, plus `cache_price` (`full` | `repeat` | `free`) on a hit. It contains
 no response/request content or cache key. The stable team/endpoint rollout runs before archive
-DB lookup (open to every endpoint and team by default since 2026-09-14); unselected calls retain
+DB lookup (open to every endpoint and team by default); unselected calls retain
 the normal relay and money path. Own-key catalog calls take part too: a storable own-key 2xx is
 read whole when it fits the archive's cap and is asked for identity encoding, otherwise it
 streams untouched; own-tool calls never touch the archive. See
-[archive](archive.md#own-key-answers-2026-09-14) and its pricing section for controls and metric
+[archive](archive.md#own-key-answers) and its pricing section for controls and metric
 denominators. This does not remove authorization/reserve/settle DB work.
 
 ## The faithful-relay contract

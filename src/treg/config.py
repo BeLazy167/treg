@@ -181,7 +181,9 @@ class Settings(BaseSettings):
     platform_key_hunter: str = ""
     platform_key_sumble: str = ""  # Bearer; Pro monthly credits, optional vendor auto-top-up
     platform_key_harvestapi: str = ""  # X-API-Key; prepaid USD wallet
+    platform_key_dropleads: str = ""  # X-API-Key; PAYG credits priced in fx.yaml
     platform_key_quickenrich: str = ""  # Bearer; monthly subscription credits, not auto-top-up
+    platform_key_prospeo: str = ""  # X-KEY; Starter monthly subscription credits
     platform_key_leadmagic: str = ""
     platform_key_lusha: str = ""
     platform_key_pdl: str = ""
@@ -330,9 +332,9 @@ class Settings(BaseSettings):
     archive_r2_terminal_attempts: int = Field(default=3, ge=1, le=5)
 
     # Comma-separated: exact endpoint IDs, "capability:<prefix>" families (capability:people.),
-    # or "*" for every endpoint the policy allows (the default since the founder's 2026-09-14
-    # serve-everything decision; production rolls families in through treg-internal). Empty
-    # means no serving, even in serve mode - the rollback lever.
+    # or "*" for every endpoint the policy allows (the default; an operator narrows it to ids or
+    # families to stage a rollout). Empty means no serving, even in serve mode - the rollback
+    # lever.
     archive_serve_endpoints: str = "*"
     # Stable team/endpoint cohorts; 0 disables serving, 100 includes every team.
     archive_serve_percent: int = 100
