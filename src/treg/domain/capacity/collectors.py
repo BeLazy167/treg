@@ -91,6 +91,46 @@ async def _sumble(c, key):
             "note": "Monthly allowance plus purchased credits; renewal date and auto-top-up state not reported."}
 
 
+async def _moltsets(c, key):
+    r = await c.post("https://api.moltsets.com/api/v1/tools/get_account",
+                     headers={"Authorization": f"Bearer {key}"}, json={})
+    r.raise_for_status()
+    doc = r.json()
+    account = doc.get("results") if isinstance(doc, dict) else None
+    if not isinstance(account, dict) or doc.get("status") != "ok":
+        raise ValueError("MoltSets account probe returned an invalid response")
+    fair_use = account.get("fair_use")
+    enrich = fair_use.get("enrich") if isinstance(fair_use, dict) else None
+    records = enrich.get("records") if isinstance(enrich, dict) else None
+    remaining = []
+    if isinstance(records, dict):
+        for window in ("5h", "1w"):
+            row = records.get(window)
+            value = row.get("remaining") if isinstance(row, dict) else None
+            if type(value) is int and value >= 0:
+                remaining.append(value)
+    value = min(remaining) if remaining else account.get("token_balance")
+    if type(value) is not int or value < 0:
+        value = None
+
+    def left(kind, meter, window):
+        section = fair_use.get(kind) if isinstance(fair_use, dict) else None
+        pool = section.get(meter) if isinstance(section, dict) else None
+        row = pool.get(window) if isinstance(pool, dict) else None
+        return row.get("remaining") if isinstance(row, dict) else None
+
+    return {
+        "value": value,
+        "unit": "enrichment records",
+        "note": f"plan {account.get('plan', '?')}; enrichment records "
+                f"{left('enrich', 'records', '5h')}/5h, {left('enrich', 'records', '1w')}/week; "
+                f"search records {left('search', 'records', '5h')}/5h, "
+                f"{left('search', 'records', '1w')}/week; requests "
+                f"{left('enrich', 'requests', '5h')}/5h enrichment, "
+                f"{left('search', 'requests', '5h')}/5h search. Phone tokens are a separate pool.",
+    }
+
+
 async def _harvestapi(c, key):
     d = await _get(c, "https://api.harvestapi.io/users/my-api-user",
                    headers={"X-API-Key": key})
@@ -546,6 +586,7 @@ BALANCE_ROUTES = {
     "wiza": _wiza,
     "getleadsio": _getleadsio,
     "sumble": _sumble,
+    "moltsets": _moltsets,
     "trykitt": _trykitt,
     "contactout": _contactout,
     "millionverifier": _millionverifier,

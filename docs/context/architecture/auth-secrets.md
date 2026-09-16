@@ -43,6 +43,10 @@ binding; a team's key still wins and remains unmetered. Provisioning includes th
 and its explicit waterfall-host companion without exposing the credential. See
 [BounceBan](bounceban.md).
 
+`MOLTSETS` is a pasted Bearer-key provider whose free `POST /get_account` probe validates both team
+and optional platform credentials. The existing own-key-first ladder and deployment allow-list apply;
+see [MoltSets](moltsets.md).
+
 `SUMBLE` uses the standard pasted Bearer-key path and a free technology-search miss probe; garbage-key rejection was verified through the local connection API. See [Sumble](sumble.md).
 
 `GETLEADSIO` uses the standard pasted Bearer-key path at `app.getleads.io`. Its free fair-use probe

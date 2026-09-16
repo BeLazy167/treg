@@ -50,6 +50,10 @@ string, negative, and non-finite values are unknown. Its policy is `credits / ma
 conservative shared-key rate of 25 requests per second. No reset, renewal, or auto-top-up behavior is
 inferred, and no overflow route is claimed. See [BounceBan](../architecture/bounceban.md).
 
+`collectors._moltsets` reads the free account envelope and reports the tighter rolling enrichment
+record remainder, with both enrichment/search request and record pools in its note. Phone tokens
+remain separate. See [MoltSets](../architecture/moltsets.md).
+
 `collectors._sumble` reads `credits_remaining` from a free technology-search miss. Its monthly allowance and optional vendor top-ups remain separate from per-call pricing; no renewal date or auto-funding status is assumed. See [Sumble](../architecture/sumble.md).
 
 `collectors._getleadsio` reads numeric nonnegative `credits_remaining` from the free fair-use route.

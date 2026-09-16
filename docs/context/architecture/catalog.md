@@ -196,6 +196,9 @@ Arena discover it from that adapter. Multipart upload, destructive bulk deletion
 funded Check API are not catalog tools. See [BounceBan](bounceban.md) for the endpoint evidence,
 credential shape, capacity policy, and exclusions.
 
+MoltSets adds 17 verified data tools: nine single-result shared-plan offers and eight BYOK-only
+variable, batch, or dual-meter tools. See [MoltSets](moltsets.md) for the boundary and evidence.
+
 Sumble adds the full v9 surface with verified platform operations and explicit BYOK restrictions. See [Sumble](sumble.md) for schemas, pricing rules, routing and live evidence.
 
 GetLeads.io adds 12 direct contact-data tools. Every tool accepts BYOK or a $0 platform trial with
