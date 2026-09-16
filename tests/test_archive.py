@@ -1907,7 +1907,7 @@ def test_catalog_preserves_ignore_paths_and_defaults(tmp_path):
         'hunter.people.email.find': ['data.verification.date'],
         'icypeas.people.search': ['pagination.token'],
         'leadmagic.people.email.find': ['processed_at'],
-        'leadmagic.people.email.verify': ['validated_at'],
+        'leadmagic.people.email.verify': ['validated_at', 'credits_consumed', 'pipeline_version', 'message', 'validation_path_code'],
         'leadsforge.people.search': ['cursor'],
         'millionverifier.people.email.verify': ['executiontime', 'credits'],
         'quickenrich.people.email.find': ['meta'],

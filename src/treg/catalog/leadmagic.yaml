@@ -71,7 +71,7 @@ endpoints:
 
   - id: leadmagic.people.email.verify
     cache:
-      ignore_paths: ["validated_at"]
+      ignore_paths: ["validated_at", "credits_consumed", "pipeline_version", "message", "validation_path_code"]
     domain: contacts
     capability: people.email.verify
     platform: people
