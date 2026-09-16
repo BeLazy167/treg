@@ -37,7 +37,6 @@ endpoints:
       note: One credit for each result where success is true. A 100-item batch can consume 100 credits.
     test_request:
       body: {items: [{email: nobody-treg-20260916@example.invalid}]}
-    platform_blocked: Batch size can consume up to 100 promotional credits in one call; the treg trial allowance limits calls, not items.
     cost: &one_credit_success
       type: per_success
       value: 1
@@ -75,7 +74,6 @@ endpoints:
       note: One credit for each result where success is true.
     test_request:
       body: {items: [{linkedin_url: https://www.linkedin.com/in/treg-nonexistent-20260916}], limit_per_item: 1}
-    platform_blocked: Batch size and limit_per_item can consume many promotional credits in one call.
     cost:
       <<: *one_credit_success
       source_url: https://www.getleads.io/docs/#json-batch--post-apiv1enrichfrom-linkedin
@@ -104,7 +102,6 @@ endpoints:
       note: One credit for each result where success is true.
     test_request:
       body: {items: [{first_name: Treg, last_name: Nonexistent, email_domain: treg-nonexistent-20260916.invalid}]}
-    platform_blocked: Batch size can consume up to 100 promotional credits in one call.
     cost:
       <<: *one_credit_success
       source_url: https://www.getleads.io/docs/#json-batch--post-apiv1enrichfrom-person
@@ -164,7 +161,6 @@ endpoints:
         limit_per_item: {type: integer, required: false, default: 1, min: 1, max: 10}
     test_request:
       body: {items: [{phone: '+1 202-555-0100'}], limit_per_item: 1}
-    platform_blocked: Batch size and limit_per_item can consume many promotional credits in one call.
     cost:
       <<: *one_credit_success
       source_url: https://www.getleads.io/docs/#post-apiv1contactsfrom-phone
@@ -181,7 +177,7 @@ endpoints:
     path: /api/v1/contacts/lookup/colleagues
     name: List colleagues at an organization
     summary: Find verified-email contacts by domain or LinkedIn organization URL.
-    input: &colleagues_input
+    input:
       body:
         email_domain: {type: string, required: false, example: stripe.com}
         linkedin_company_url: {type: string, required: false, example: https://www.linkedin.com/company/stripe/}
@@ -191,7 +187,6 @@ endpoints:
       note: Provide email_domain or linkedin_company_url, not both. Continue with next_offset while has_more is true. One credit per returned record.
     test_request:
       body: {email_domain: treg-nonexistent-20260916.invalid, limit_per_item: 1, offset: 0}
-    platform_blocked: The full route can return and spend up to 5,000 records in one call. Use getleadsio.people.colleagues.trial for bounded platform access.
     cost: &one_credit_record
       type: per_result
       value: 1
@@ -207,31 +202,6 @@ endpoints:
     verified: '2026-09-16'
     example_response: examples/getleadsio.people.colleagues.json
 
-  - id: getleadsio.people.colleagues.trial
-    capability: people.organization_contacts
-    platform: people
-    domain: contacts
-    scope: any_account
-    method: POST
-    path: /api/v1/contacts/lookup/colleagues
-    name: List one colleague on the treg trial
-    summary: Return at most one verified-email contact at an organization on the limited platform trial.
-    input:
-      body:
-        email_domain: {type: string, required: false, example: stripe.com}
-        linkedin_company_url: {type: string, required: false, example: https://www.linkedin.com/company/stripe/}
-        job_titles: {type: 'array[string]', required: false, example: [Engineer]}
-        limit_per_item: {type: integer, required: true, enum: [1]}
-        offset: {type: integer, required: false, default: 0, min: 0}
-      note: Platform calls must send limit_per_item=1. Use offset and next_offset for another one-row page. BYOK callers can use getleadsio.people.colleagues for larger pages.
-    platform_request: {body.limit_per_item: 1}
-    test_request:
-      body: {email_domain: treg-nonexistent-20260916.invalid, limit_per_item: 1, offset: 0}
-    cost: *one_credit_record
-    docs_url: https://www.getleads.io/docs/#post-apiv1contactslookupcolleagues
-    verified: '2026-09-16'
-    example_response: examples/getleadsio.people.colleagues.json
-
   - id: getleadsio.people.decision_makers
     capability: people.organization_contacts
     platform: people
@@ -241,7 +211,7 @@ endpoints:
     path: /api/v1/contacts/lookup/decision-makers
     name: List decision makers at an organization
     summary: Find directors, VPs, executives, and heads at one organization.
-    input: &decision_input
+    input:
       body:
         domain: {type: string, required: false, example: stripe.com}
         company_name: {type: string, required: false, example: Stripe}
@@ -249,34 +219,6 @@ endpoints:
         limit: {type: integer, required: false, default: 5000, min: 1, max: 5000}
         offset: {type: integer, required: false, default: 0, min: 0}
       note: Provide exactly one company identifier. Continue with next_offset while has_more is true. Results have VALID email status. One credit per returned record.
-    test_request:
-      body: {domain: treg-nonexistent-20260916.invalid, limit: 1, offset: 0}
-    platform_blocked: The full route can return and spend up to 5,000 records in one call. Use getleadsio.people.decision_makers.trial for bounded platform access.
-    cost:
-      <<: *one_credit_record
-      source_url: https://www.getleads.io/docs/#post-apiv1contactslookupdecision-makers
-    docs_url: https://www.getleads.io/docs/#post-apiv1contactslookupdecision-makers
-    verified: '2026-09-16'
-    example_response: examples/getleadsio.people.decision_makers.json
-
-  - id: getleadsio.people.decision_makers.trial
-    capability: people.organization_contacts
-    platform: people
-    domain: contacts
-    scope: any_account
-    method: POST
-    path: /api/v1/contacts/lookup/decision-makers
-    name: List one decision maker on the treg trial
-    summary: Return at most one decision maker at an organization on the limited platform trial.
-    input:
-      body:
-        domain: {type: string, required: false, example: stripe.com}
-        company_name: {type: string, required: false, example: Stripe}
-        linkedin_company_url: {type: string, required: false, example: https://www.linkedin.com/company/stripe/}
-        limit: {type: integer, required: true, enum: [1]}
-        offset: {type: integer, required: false, default: 0, min: 0}
-      note: Platform calls must send limit=1. Use offset and next_offset for another one-row page. BYOK callers can use getleadsio.people.decision_makers for larger pages.
-    platform_request: {body.limit: 1}
     test_request:
       body: {domain: treg-nonexistent-20260916.invalid, limit: 1, offset: 0}
     cost:
@@ -295,7 +237,7 @@ endpoints:
     path: /api/v1/contacts/search
     name: Search the contact database
     summary: Search business contacts with person, role, company, location, email, hiring, and funding filters.
-    input: &search_input
+    input:
       body:
         filters:
           type: object
@@ -310,44 +252,10 @@ endpoints:
       note: Paginate with next_offset while has_more is true. Offset walks are reliable only below 50,000 matches. Run getleadsio.people.search.count first. One credit per returned record.
     test_request:
       body: {filters: {domains: [treg-nonexistent-20260916.invalid], email_status: [VALID]}, limit: 1, offset: 0}
-    platform_blocked: The full route can return and spend up to 5,000 records in one call. Use getleadsio.people.search.trial for bounded platform access.
     cost:
       <<: *one_credit_record
       source_url: https://www.getleads.io/docs/#post-apiv1contactssearch
       note: One credit per returned record. Live one-row pages each reported and consumed one credit; a zero-row page reported and consumed zero.
-    docs_url: https://www.getleads.io/docs/#post-apiv1contactssearch
-    verified: '2026-09-16'
-    example_response: examples/getleadsio.people.search.json
-
-  - id: getleadsio.people.search.trial
-    capability: people.search
-    platform: people
-    domain: contacts
-    scope: any_account
-    method: POST
-    path: /api/v1/contacts/search
-    name: Search one contact on the treg trial
-    summary: Return at most one matching business contact on the limited platform trial.
-    input:
-      body:
-        filters:
-          type: object
-          required: true
-          example: {domains: [stripe.com], email_status: [VALID]}
-          note: Uses the full documented GetLeads.io filter object.
-        limit: {type: integer, required: true, enum: [1]}
-        offset: {type: integer, required: false, default: 0, min: 0}
-        max_per_company: {type: integer, required: false, min: 1, max: 50}
-        columns: {type: 'array[string]', required: false}
-        where_sql: {type: string, required: false, max: 4000}
-      note: Platform calls must send limit=1. Continue with offset=next_offset. BYOK callers can use getleadsio.people.search for larger pages.
-    platform_request: {body.limit: 1}
-    test_request:
-      body: {filters: {domains: [treg-nonexistent-20260916.invalid], email_status: [VALID]}, limit: 1, offset: 0}
-    cost:
-      <<: *one_credit_record
-      source_url: https://www.getleads.io/docs/#post-apiv1contactssearch
-      note: One credit per returned record. Platform access is a $0 limited treg trial on promotional credits, capped at one row per call and five successful calls per team per day.
     docs_url: https://www.getleads.io/docs/#post-apiv1contactssearch
     verified: '2026-09-16'
     example_response: examples/getleadsio.people.search.json
@@ -423,7 +331,6 @@ endpoints:
       note: Each request fetches feeds live and can take 15-45 seconds. One credit per returned record.
     test_request:
       queryParams: {limit: 1, min_confidence: 0.5}
-    platform_blocked: The route can return and spend up to 200 promotional credits in one call.
     cost:
       <<: *one_credit_record
       source_url: https://www.getleads.io/docs/#get-apiv1fundingsignals
@@ -453,7 +360,6 @@ endpoints:
       note: Each request fetches feeds live. One credit per returned record.
     test_request:
       queryParams: {limit: 1, min_confidence: 0.5}
-    platform_blocked: The route can return and spend up to 200 promotional credits in one call.
     cost:
       <<: *one_credit_record
       source_url: https://www.getleads.io/docs/#get-apiv1acquisitionssignals

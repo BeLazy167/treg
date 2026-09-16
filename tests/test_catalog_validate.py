@@ -723,41 +723,13 @@ def test_bounceban_catalog_has_one_platform_tool_and_complete_safe_byok_lifecycl
     assert waterfall["platform_blocked"]
 
 
-def test_getleadsio_catalog_separates_bounded_trial_routes_from_byok_only_routes():
+def test_getleadsio_original_routes_are_available_to_byok_and_platform_callers():
     catalog = catalog_store.load()
     rows = [ep for ep in catalog.endpoints if ep["provider"] == "getleadsio"]
-    assert len(rows) == 15
+    assert len(rows) == 12
     assert not any(ep["path"] in {
         "/api/v1/usage/fair-use", "/api/v1/contacts/health"
     } for ep in rows)
-
-    eligible = {ep["id"] for ep in rows if catalog.platform_eligible(ep)}
-    assert eligible == {
-        "getleadsio.people.phone.lookup",
-        "getleadsio.people.colleagues.trial",
-        "getleadsio.people.decision_makers.trial",
-        "getleadsio.people.search.trial",
-        "getleadsio.people.search.count",
-        "getleadsio.people.search.filters",
-    }
-    assert catalog.by_id["getleadsio.people.colleagues.trial"]["platform_request"] == {
-        "body.limit_per_item": 1
-    }
-    assert catalog.by_id["getleadsio.people.decision_makers.trial"]["platform_request"] == {
-        "body.limit": 1
-    }
-    assert catalog.by_id["getleadsio.people.search.trial"]["platform_request"] == {
-        "body.limit": 1
-    }
-    for endpoint_id in {
-        "getleadsio.people.enrich.from_email",
-        "getleadsio.people.enrich.from_linkedin",
-        "getleadsio.people.enrich.from_person",
-        "getleadsio.people.phone.lookup_batch",
-        "getleadsio.people.colleagues",
-        "getleadsio.people.decision_makers",
-        "getleadsio.people.search",
-        "getleadsio.companies.funding.feed",
-        "getleadsio.companies.acquisitions.feed",
-    }:
-        assert catalog.by_id[endpoint_id]["platform_blocked"]
+    assert all(catalog.platform_eligible(ep) for ep in rows)
+    assert not any(ep["id"].endswith(".trial") for ep in rows)
+    assert not any(ep.get("platform_request") or ep.get("platform_blocked") for ep in rows)

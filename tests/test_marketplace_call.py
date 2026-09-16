@@ -1845,29 +1845,16 @@ async def test_another_orgs_usage_never_burns_MY_trial(clients: AsyncClient, tri
     assert (await clients.get("/call/finnhub.quote?symbol=AAPL")).status_code == 200
 
 
-async def test_getleadsio_bounded_trial_is_free_and_uses_the_platform_bearer(
+async def test_getleadsio_platform_call_is_free_and_preserves_the_requested_limit(
         clients: AsyncClient, getleadsio_trial_on):
     before = await _balance(clients)
-    result = await clients.post("/call/getleadsio.people.search.trial", json={
-        "filters": {"domains": ["example.com"]}, "limit": 1, "offset": 0,
+    result = await clients.post("/call/getleadsio.people.search", json={
+        "filters": {"domains": ["example.com"]}, "limit": 5000, "offset": 0,
     })
     assert result.status_code == 200, result.text
     assert result.json()["auth"] == "Bearer PLATFORM-GETLEADSIO"
+    assert json.loads(result.json()["body"])["limit"] == 5000
     assert await _balance(clients) == before
-
-
-async def test_getleadsio_full_search_is_byok_only_and_trial_limit_is_fixed(
-        clients: AsyncClient, getleadsio_trial_on):
-    full = await clients.post("/call/getleadsio.people.search", json={
-        "filters": {"domains": ["example.com"]}, "limit": 1,
-    })
-    assert full.status_code == 404
-    assert "connect" in str(full.json()["detail"]).lower()
-
-    unbounded = await clients.post("/call/getleadsio.people.search.trial", json={
-        "filters": {"domains": ["example.com"]}, "limit": 2,
-    })
-    assert unbounded.status_code in {400, 422}
 
 
 async def test_getleadsio_own_key_wins_and_is_unmetered(
@@ -1891,13 +1878,13 @@ async def test_getleadsio_trial_allowance_is_five_successful_calls_per_team_day(
         for _ in range(5):
             db.add(CallRecord(
                 org_id=1, user_email="u@example.com",
-                tool_name="getleadsio.people.search.trial", method="POST",
+                tool_name="getleadsio.people.search", method="POST",
                 path="/api/v1/contacts/search", status_code=200,
             ))
         await db.commit()
     monkeypatch.setattr(call_service, "relay", _fake_relay(200, b'{"ok":true}'))
     before = await _balance(clients)
-    result = await clients.post("/call/getleadsio.people.search.trial", json={
+    result = await clients.post("/call/getleadsio.people.search", json={
         "filters": {"domains": ["example.com"]}, "limit": 1,
     })
     assert result.status_code == 429, result.text
@@ -1912,7 +1899,7 @@ async def test_getleadsio_failed_platform_calls_never_move_money(
         clients: AsyncClient, getleadsio_trial_on, monkeypatch, status):
     monkeypatch.setattr(call_service, "relay", _fake_relay(status, b'{"ok":false}'))
     before = await _balance(clients)
-    result = await clients.post("/call/getleadsio.people.search.trial", json={
+    result = await clients.post("/call/getleadsio.people.search", json={
         "filters": {"domains": ["example.com"]}, "limit": 1,
     })
     assert result.status_code == status

@@ -1,5 +1,5 @@
 ---
-title: GetLeads.io — contact data with a bounded treg trial
+title: GetLeads.io — contact data with a shared treg trial
 status: shipped
 sources:
   - src/treg/catalog/getleadsio.yaml
@@ -44,17 +44,16 @@ a positive credit balance. A team's own key wins over treg's key and is never me
 
 ## Public surface
 
-The catalog publishes 15 direct tools: email, LinkedIn, and person enrichment; single and batch
+The catalog publishes 12 direct tools: email, LinkedIn, and person enrichment; single and batch
 phone lookup; colleague and decision-maker lookup; contact search and count; filter discovery; and
 funding and acquisition feeds. The fair-use and contacts-health routes remain internal. CSV upload,
 asynchronous search export, and profile-monitoring state are excluded because they introduce files,
 jobs, or account-owned resources that this integration does not yet model.
 
-Six tools can use treg's key: single-phone lookup, free search count, free filter discovery, and
-one-row `.trial` variants of contact search, colleagues, and decision makers. `platform_request`
-requires the relevant limit to equal one before relay. The full search and company-contact tools,
-all batch enrichment and phone routes, and both signal feeds are BYOK-only because one call can
-consume more than one promotional database credit. No provider-specific relay branch is added.
+All 12 tools can use either a team's own key or treg's key. The catalog exposes only the original
+provider operations and does not add restricted `.trial` copies. Callers choose any value that the
+provider accepts for page limits, batch sizes, and other request fields. treg does not insert,
+reduce, or otherwise rewrite those values. No provider-specific relay branch is added.
 
 No GetLeads.io tool joins routed capabilities or Enrich Arena. Live synthetic misses were not a
 reliable success signal: reserved invalid inputs on email, LinkedIn, and person enrichment returned
@@ -67,7 +66,9 @@ GetLeads.io publishes a one-time 1,000 database-credit promotion but no ordinary
 price for those credits. The separate Live Leads wallet prices other products and is not evidence
 for database-credit value. The `fx.yaml` entry therefore uses the existing `treg_trial` contract:
 exactly $0, at most five successful calls per team per UTC day, and no claim that $0 is the vendor's
-database-credit price. Failed calls do not consume the daily allowance.
+database-credit price. Failed calls do not consume the daily allowance. This allowance counts
+calls, not returned records or upstream credits: one successful platform call can consume from zero
+to thousands of promotional credits according to the caller's request and the provider's result.
 
 `collectors._getleadsio` reads numeric nonnegative `credits_remaining` from the same free fair-use
 route and labels it as the promotional database-credit allocation. Policy records credits with

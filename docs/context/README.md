@@ -26,7 +26,7 @@ covers (frontmatter `sources:`). Regenerate this index with
 | [Data model — the registry tables, async DB, audit writer](architecture/data-model.md) | shipped | alembic.ini, env.py, 0001_baseline_current_schema.py, 0002_archive_tables.py, … |
 | [Dropleads — synchronous people and company enrichment](architecture/dropleads.md) | implemented; live upstream behavior verified | dropleads.yaml, dropleads.people.email.find.json, dropleads.people.phone.find.json, dropleads.people.email.verify.json, … |
 | [Feedback - private intake for problems and suggestions](architecture/feedback.md) | shipped | feedback_contract.py, __init__.py, reports.py, reviews.py, … |
-| [GetLeads.io — contact data with a bounded treg trial](architecture/getleadsio.md) | shipped | getleadsio.yaml, getleadsio.people.enrich.from_email.json, getleadsio.people.enrich.from_linkedin.json, getleadsio.people.enrich.from_person.json, … |
+| [GetLeads.io — contact data with a shared treg trial](architecture/getleadsio.md) | shipped | getleadsio.yaml, getleadsio.people.enrich.from_email.json, getleadsio.people.enrich.from_linkedin.json, getleadsio.people.enrich.from_person.json, … |
 | [HarvestAPI — API-key-only LinkedIn reads and reported USD charges](architecture/harvestapi.md) | implemented; upstream and local platform/BYOK integration verified | contracts.py, harvestapi.yaml, harvestapi.svg, oauth_providers.py, … |
 | [Enforced import boundaries](architecture/import-boundaries.md) | shipped | pyproject.toml, ci.yml, __init__.py, __init__.py, … |
 | [Instagram OAuth — direct Login and optional Facebook Page tools](architecture/instagram-oauth.md) | built; Meta configuration and live verification pending | catalog_ingest.py, access.py, resolve.py, service.py, … |

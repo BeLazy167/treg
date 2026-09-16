@@ -196,9 +196,11 @@ credential shape, capacity policy, and exclusions.
 
 Sumble adds the full v9 surface with verified platform operations and explicit BYOK restrictions. See [Sumble](sumble.md) for schemas, pricing rules, routing and live evidence.
 
-GetLeads.io adds 15 direct contact-data tools. Six have bounded access to a $0, five-successful-call
-daily treg trial; the full and batch routes remain BYOK-only. Internal account routes, stateful
-exports and monitoring are excluded. See [GetLeads.io](getleadsio.md) for the boundary and evidence.
+GetLeads.io adds 12 direct contact-data tools. Every tool accepts BYOK or a $0 platform trial with
+five successful calls per team per day. The caller controls provider-valid page limits and batch
+sizes; the allowance counts calls rather than returned records or upstream credits. Internal
+account routes, stateful exports and monitoring are excluded. See [GetLeads.io](getleadsio.md) for
+the boundary and evidence.
 
 ## Financial Datasets v1 and v2 (2026-09-15)
 
