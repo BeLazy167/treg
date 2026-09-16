@@ -237,6 +237,74 @@ it. Works for GET/POST/PUT/PATCH/DELETE.
 
 Only tools this org has registered resolve. Discover them with `treg tool ls` · `treg skill ls`.
 
+## Task — publish a tool made of tools (the hub)
+
+**A hub tool is a tool your team publishes, made of other tools:** a JSON steps recipe, or a script
+that runs in a sandbox. Every step runs through the team's own tools and keys; a caller pays the
+metered steps plus the price you set, and the price lands on your balance as credit. The tool is
+callable at once by id, `<team-slug>.<name>`, from any agent with a treg token. A new tool is NOT in
+search: you share the id or the page `https://treg.to/hub/<id>`. List it with `treg hub list <id>` and it
+appears in `catalog_search` too, marked `kind: "hub"`, ranked by relevance like any endpoint.
+
+**First, check this registry HAS the hub.** It is a per-deployment switch, and it is off by default.
+When it is off every `/hub/...` route answers `404` and every `treg hub` command refuses. That is
+not a fault you can fix and not a reason to retry: tell the person this registry does not have the
+hub turned on yet, and use the rest of the catalog. `treg hub ls` is the cheapest way to find out.
+
+**One folder, four files** — `treg hub init <name> --script` writes a neutral skeleton:
+
+```
+recipe.json   the manifest: name, summary, inputs, uses, output, pricing; steps OR "script": "run.js"
+run.js        export default async function run(ctx) { ... }   (script recipes only)
+check.json    sample inputs + the output fields the check must find; run once for real at publish
+README.md     what it does, for a human
+```
+
+**The rule before you write a line of script: never paste a credential into it.** A key the team
+does not hold yet is registered FIRST, then named. The script only ever sees a tool's NAME:
+
+```
+treg secret add SUPABASE_SERVICE_KEY --value <the key>
+treg tool add supabase --base-url https://<ref>.supabase.co \
+  --bind "secret=<ID>,name=Authorization,format=Bearer {secret}"     # then list "supabase" in `uses`
+```
+
+**What a script gets — the whole surface:** `ctx.inputs` (checked against the manifest),
+`ctx.call(target, {method, query, body, headers})` → `{status, headers, json, text}`,
+`ctx.csv(text)` → rows keyed by the header, `ctx.data` → the rows of the `data.csv` uploaded with
+the tool (a fifth file, ≤ 50 MB, read-only; replace it and publish again), and `ctx.log(text)`.
+No network, no files, no `require`; `ctx.call` is the only road out, and `target` must be in the
+manifest's `uses`: a catalog id, one of the team's own tools as `<tool>/<path>`, or a full URL
+under such a tool's base URL. **Your own server is a tool:** `treg tool add my-api --base-url
+https://api.mine.com` (a secret is optional; a public Google Sheet needs none), list `my-api` in
+`uses`, then `ctx.call("my-api/v1/things")`. treg makes the request; the sandbox never opens a socket.
+Caps: 120 s, 20 calls, 64 MB, four runs at a time per team. A steps recipe instead names its calls in
+`steps` and reads earlier answers with references (`$input.x`, `$step.path`, `$step[]`,
+`$step.length`); steps that do not depend on each other run four at a time.
+
+**Pricing — one mode per tool.** In `recipe.json`, either a flat `price_usd`, or a `pricing` block:
+- `{"mode": "flat", "price_usd": 0.02}` — a fixed price per successful run.
+- `{"mode": "per_unit", "per_unit_usd": 0.002, "max_price_usd": 0.5}` — `per_unit_usd` times an
+  integer `units` your code returns (declare `units` as an output field), capped at `max_price_usd`.
+- `{"mode": "cost_plus", "markup_percent": 30, "max_price_usd": 0.5}` — that percent of the run's
+  catalog step cost (the tool must call at least one catalog tool), capped at `max_price_usd`.
+The caller pays your price plus the metered steps; the caller's `X-Treg-Run-Max-Cost` caps the whole run.
+
+**The road:**
+
+```
+treg hub run . --input domain=figma.com   # a real run on your own token; nothing stored; read the trace
+treg hub publish .                        # validate, run check.json once on your balance, live on pass
+treg hub ls · treg hub earnings <id>      # your tools; what one earned, per day
+treg hub list <id> · treg hub unlist <id>  # show it in catalog search, or take it out (no version bump)
+treg hub log <id> --public off             # hide the run log on your share page (default: shown)
+```
+
+A refusal names the exact field and rule to fix (`uses[0]: 'supabase' is not one of your team's
+tools`). Over MCP the same three moves are `hub_create`, `hub_update`, `hub_mine`; calling stays
+`call`. A caller runs it with `treg call <team>.<name> --data '{...}'` or `POST https://treg.to/call/<id>`;
+the reply carries `output`, `usage` (steps cost + your price), and the `trace`. Read a tool's
+contract, yours or anyone's, with `treg catalog get <id>` / `catalog_get`.
 ## Task — share your keys & skills so teammates' agents can use them
 **Bulk (the fast path):** run it in the directory the human names. It lists the provider keys it
 recognises in that `.env` and the skills in its subdirs, and registers only the ones they tick:

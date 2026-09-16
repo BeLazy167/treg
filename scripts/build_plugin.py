@@ -312,14 +312,15 @@ def render(variant: str) -> str:
     #    setting, so it keeps the content — but the markers themselves must never ship, or the
     #    product's most-read page starts with visible HTML comments.
     out = out.replace("<!--routed-->\n", "").replace("\n<!--/routed-->", "")
-    # 5. `<!--hub-->` / `<!--/hub-->` delimit the tool-hub section, which the SERVER strips while
-    #    `hub_enabled` is off. A plugin is a static file: it ships the hub text only once production
-    #    has switched the hub on — `--with-hub` at that merge; until then the block is dropped, so
-    #    the plugin never teaches what a reader cannot use (AGENTS.md: do not document what is not built).
-    if WITH_HUB:
-        out = out.replace("<!--hub-->\n", "").replace("\n<!--/hub-->", "")
-    else:
-        out = re.sub(r"<!--hub-->.*?<!--/hub-->\n?", "", out, flags=re.S)
+    # 5. `<!--hub-->` / `<!--/hub-->` delimit the tool-hub section. The SERVER strips it while that
+    #    deployment's `hub_enabled` is off, because the server knows its own state. A plugin is a
+    #    static file installed against ANY registry — treg.to, or someone's self-hosted one that may
+    #    well have the hub ON — so it always ships the hub text and lets the agent find out at run
+    #    time. The section itself carries the instruction for the off case: every `/hub/...` route
+    #    answers 404, which the agent reports as "this registry does not offer the hub" instead of
+    #    retrying. A plugin that omitted the section would instead hide a feature that works.
+    #    (Owner's decision, 2026-09-16. `--with-hub` is still accepted and now redundant.)
+    out = out.replace("<!--hub-->\n", "").replace("\n<!--/hub-->", "")
     # `{ENDPOINTS}` / `{PROVIDERS}`: the server fills these per request from the loaded catalog; a
     # static plugin copy gets the numbers as of generation, refreshed with every release.
     endpoints, providers = catalog_store.headline_counts(catalog_store.load())
@@ -327,6 +328,7 @@ def render(variant: str) -> str:
     return out.replace("{BASE}", PUBLIC_BASE)
 
 
+# Accepted and ignored: the hub section always ships now (see the comment in the renderer).
 WITH_HUB = "--with-hub" in sys.argv
 
 

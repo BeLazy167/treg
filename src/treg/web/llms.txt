@@ -381,6 +381,12 @@ credit, spendable at once. Callable the moment it is published, by id `<team-slu
 tool is not in search; the maker shares the id or the page `{BASE}/hub/<id>` (`.md` for agents), and
 may LIST it (`treg hub list <id>`) so it appears in `catalog_search` as a `kind: "hub"` row.
 
+**The hub is a per-deployment switch, off by default.** When a registry has it off, every
+`/hub/...` route answers `404` and every `treg hub` command refuses. Read that as "this registry
+does not offer the hub", say so to the person, and use the rest of the catalog; it is not a fault to
+retry or work around. `GET {BASE}/hub/tools/mine` with a valid token answers `404` when it is off
+and `200` when it is on.
+
 - Make one: `treg hub init <name> [--script]` writes four files (recipe.json, run.js, check.json,
   README.md); `treg hub run . --input k=v` runs the folder for real, nothing stored; `treg hub
   publish .` validates, runs check.json once on your balance, and the tool is live on pass. Over

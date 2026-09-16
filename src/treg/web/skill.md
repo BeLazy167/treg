@@ -228,6 +228,11 @@ callable at once by id, `<team-slug>.<name>`, from any agent with a treg token. 
 search: you share the id or the page `{BASE}/hub/<id>`. List it with `treg hub list <id>` and it
 appears in `catalog_search` too, marked `kind: "hub"`, ranked by relevance like any endpoint.
 
+**First, check this registry HAS the hub.** It is a per-deployment switch, and it is off by default.
+When it is off every `/hub/...` route answers `404` and every `treg hub` command refuses. That is
+not a fault you can fix and not a reason to retry: tell the person this registry does not have the
+hub turned on yet, and use the rest of the catalog. `treg hub ls` is the cheapest way to find out.
+
 **One folder, four files** — `treg hub init <name> --script` writes a neutral skeleton:
 
 ```
