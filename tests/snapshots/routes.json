@@ -769,6 +769,15 @@
       "GET",
       "HEAD"
     ],
+    "name": "ugc_page",
+    "path": "/ugc"
+  },
+  {
+    "kind": "APIRoute",
+    "methods": [
+      "GET",
+      "HEAD"
+    ],
     "name": "people_search_page",
     "path": "/people-search"
   },
