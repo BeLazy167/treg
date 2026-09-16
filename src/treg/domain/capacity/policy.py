@@ -83,8 +83,9 @@ _RATE_LIMITS: dict[str, dict] = {
     # sequential platform calls by about 2s; the limiter's bounded wait is not a strict quota gate.
     # Relax this after real 429 evidence, or when smoothing can vary by endpoint. BYOK bypasses it.
     "wiza": {"limit": 30, "window_s": 60, "source": "docs"},
-    # $27 plan: enrichment has 5,000 requests/5h; search is stricter but is BYOK-only.
-    "moltsets": {"limit": 5000, "window_s": 18000, "source": "api"},
+    # Routing-friendly shared-key pace. The 5,000-request/5h rolling allowance is capacity, not a
+    # burst rate; encoding it here would make the spacer add 3.6s before every routed attempt.
+    "moltsets": {"limit": 10, "window_s": 1, "source": "policy"},
     "sumble": {"limit": 10, "window_s": 1, "source": "docs"},
     "leadsforge": {"limit": 120, "window_s": 60, "source": "headers"},
     "leadmagic": {"limit": 300, "window_s": 60, "source": "docs"},

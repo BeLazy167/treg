@@ -109,9 +109,7 @@ async def _moltsets(c, key):
             value = row.get("remaining") if isinstance(row, dict) else None
             if type(value) is int and value >= 0:
                 remaining.append(value)
-    value = min(remaining) if remaining else account.get("token_balance")
-    if type(value) is not int or value < 0:
-        value = None
+    value = min(remaining) if remaining else None
 
     def left(kind, meter, window):
         section = fair_use.get(kind) if isinstance(fair_use, dict) else None
@@ -127,7 +125,8 @@ async def _moltsets(c, key):
                 f"search records {left('search', 'records', '5h')}/5h, "
                 f"{left('search', 'records', '1w')}/week; requests "
                 f"{left('enrich', 'requests', '5h')}/5h enrichment, "
-                f"{left('search', 'requests', '5h')}/5h search. Phone tokens are a separate pool.",
+                f"{left('search', 'requests', '5h')}/5h search. Phone/token balances are separate "
+                "meters and are never substituted for enrichment capacity.",
     }
 
 

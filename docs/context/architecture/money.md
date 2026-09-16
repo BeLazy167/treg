@@ -45,7 +45,8 @@ related:
 # Money
 
 MoltSets is the first real `treg_shared_plan` catalog rate: $0.01 per ordinary successful record on
-the flat $27 subscription, with the required 2,700-call monthly break-even disclosure. Generic
+the flat $27 subscription. Its verified 5,000-record weekly allowance is conservatively 20,000 per
+four-week month, so the disclosed 2,700-call monthly break-even is 13.5% utilization. Generic
 success-only settlement handles its eligible tools; variable, batch, and dual-meter phone operations
 stay BYOK-only. See [MoltSets](moltsets.md).
 

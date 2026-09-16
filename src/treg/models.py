@@ -1358,7 +1358,7 @@ class CapacityPolicy(SQLModel, table=True):
     """
 
     provider: str = Field(primary_key=True)
-    capacity_type: str = Field(default="unknown")  # cash | credits | requests | monthly_quota | subscription | unknown
+    capacity_type: str = Field(default="unknown")  # cash | credits | requests | monthly_quota | rolling_quota | subscription | unknown
     source: str = Field(default="none")             # api | headers | calculated | manual | none
     funding_mode: str = Field(default="unknown")    # auto_recharge | auto_upgrade | manual | quota_reset | unknown
     auto_funding_enabled: bool = Field(default=False)

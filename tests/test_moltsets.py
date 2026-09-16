@@ -147,7 +147,7 @@ def test_phone_price_keeps_both_upstream_meters_visible():
 @pytest.mark.parametrize("five_hour,weekly,token_balance,expected", [
     (997, 4997, -1, 997),
     (0, 4997, -1, 0),
-    (None, None, 42, 42),
+    (None, None, 42, None),
     (None, None, -1, None),
 ])
 async def test_capacity_probe_and_policy(five_hour, weekly, token_balance, expected):
@@ -167,11 +167,12 @@ async def test_capacity_probe_and_policy(five_hour, weekly, token_balance, expec
     async with httpx.AsyncClient(transport=httpx.MockTransport(probe)) as client:
         row = await collectors._moltsets(client, "test")
     assert row["value"] == expected and row["unit"] == "enrichment records"
-    assert "search records 499/5h" in row["note"] and "Phone tokens are a separate pool" in row["note"]
+    assert "search records 499/5h" in row["note"]
+    assert "never substituted for enrichment capacity" in row["note"]
     policy = default_policy("moltsets", has_key=True)
     assert policy.capacity_type == "rolling_quota"
     assert policy.funding_mode == "subscription"
-    assert policy.rate_limit == {"limit": 5000, "window_s": 18000, "source": "api"}
+    assert policy.rate_limit == {"limit": 10, "window_s": 1, "source": "policy"}
 
 
 def test_routing_adapters_are_verified_and_moltsets_joins_arena_contracts():

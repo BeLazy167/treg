@@ -61,11 +61,12 @@ outcomes without a provider branch.
 
 ## Shared-plan boundary
 
-The $27 monthly subscription has no vendor per-call price. `fx.yaml` therefore declares a
-`treg_shared_plan` rate of $0.01 per ordinary successful record, with break-even at 2,700 calls per
-month. This is treg's rate, not a claim that MoltSets sells individual $0.01 calls. The generic
-credit conversion, margin, reserve, settle, release, recovery report, and BYOK precedence remain
-unchanged.
+The $27 monthly subscription has no vendor per-call price. The verified paid plan includes 5,000
+enrichment records per week, conservatively 20,000 per four-week month. `fx.yaml` therefore declares
+a `treg_shared_plan` rate of $0.01 per ordinary successful record: it breaks even at 2,700 calls per
+month, or 13.5% utilization of that conservative capacity. This is treg's rate, not a claim that
+MoltSets sells individual $0.01 calls. The generic credit conversion, margin, reserve, settle,
+release, recovery report, and BYOK precedence remain unchanged.
 
 Nine single-result tools are safe shared-key offers: business email and profile by name, reverse
 email and profile lookup, three audience/hash conversions, email-to-profile, and IP-to-company.
@@ -99,14 +100,17 @@ stay direct tools because no compatible shared contract exists.
 
 `collectors._moltsets` calls free `POST /get_account`, validates the standard envelope, and reports
 the tighter of the rolling five-hour and weekly enrichment-record remainders. Its note includes
-enrichment/search record and request headroom. A finite token balance is the fallback for token-bound
-plans; `-1` means unlimited and is not misreported as a negative balance. Phone tokens are a separate
-pool and are named but not combined with ordinary capacity.
+enrichment/search record and request headroom. If those enrichment meters are absent or invalid,
+capacity is unknown; a token or phone balance is a different meter and is never relabelled as
+enrichment capacity.
 
-The default policy is `rolling_quota / subscription / api`. The shared-key limiter uses the paid
-plan's enrichment request allowance of 5,000 per five hours. Search has a lower allowance but all
-search tools are BYOK-only, so it cannot consume this shared limiter. No auto-top-up, overflow route,
-or exhaustion signature is claimed.
+The default policy is `rolling_quota / subscription / api`; `rolling_quota` names a quota whose
+remaining amount is reported across rolling windows rather than resetting on a calendar boundary.
+The paid plan's 5,000 enrichment requests per five hours is capacity, not a burst-rate instruction:
+encoding it in the spacer would add 3.6 seconds before every routed attempt. `_RATE_LIMITS` instead
+sets an explicit routing-friendly shared-key pace of 10 requests/second. Search has a lower allowance
+but all search tools are BYOK-only. No auto-top-up, overflow route, or exhaustion signature is
+claimed.
 
 Live checks covered invalid auth, free account probes, validation errors, hits, misses, pagination,
 batch mixtures, both plan states, all data paths, and the phone dual meter. They used 49 API requests
