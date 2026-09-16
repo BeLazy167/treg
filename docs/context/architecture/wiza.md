@@ -98,11 +98,19 @@ Malformed, Boolean, negative or non-finite values fail the observation instead o
 allowance. The default policy is `credits / manual / api`; vendor auto-top-up is not enabled. The
 funded grant was not exhausted, so no exhaustion response or overflow route is claimed.
 
-Wiza does not publish search or autocomplete rate limits. The shared-key limiter therefore applies
-the documented company-enrichment ceiling of 30 calls per minute to every Wiza platform call. This
-is conservative for enrichment and places free helper traffic under the same bounded smoothing. It
-is not a claim that Wiza gives search the same limit. Removing `wiza` from
-`TREG_PLATFORM_PROVIDERS` remains the immediate serving kill switch; BYOK continues to win.
+Wiza does not publish search or autocomplete rate limits. As a provisional policy, `_RATE_LIMITS`
+reuses the documented company-enrichment ceiling of 30 calls per minute for every Wiza platform
+call because the shared-key limiter is not endpoint-aware. This is not a claim that search or
+autocomplete has the same upstream limit. It spaces sequential platform calls by about two seconds:
+the first call can proceed immediately, while fetching 20 one-row search pages adds about 38 seconds
+of waiting. BYOK bypasses the shared-key limiter.
+
+This smoothing reduces ordinary shared-key bursts but is not a strict quota gate. `Limiter.acquire`
+waits at most `DEFAULT_MAX_WAIT_MS` (two seconds), lets calls that would wait longer proceed, and is
+process-local, so concurrent load or multiple replicas can exceed 30 calls per minute. Relax this
+provisional ceiling after real 429 evidence, or replace it when smoothing becomes endpoint-aware.
+Removing `wiza` from `TREG_PLATFORM_PROVIDERS` remains the immediate serving kill switch; a team's
+own key continues to win.
 
 The live discovery pass used public or synthetic targets and consumed 18.5 API credits. The later
 local dataplane check consumed four more credits: two through the platform key and two after BYOK

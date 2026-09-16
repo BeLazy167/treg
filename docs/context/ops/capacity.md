@@ -142,10 +142,14 @@ policy is `credits / manual / api`; Wiza vendor auto-top-up is not enabled.
 
 The same route verifies pasted keys. The funded grant was not exhausted to manufacture an error,
 so Wiza remains in the acknowledged-unrecorded exhaustion set and has no overflow route. Search and
-autocomplete limits are not published. `_RATE_LIMITS` applies the documented company-enrichment
-ceiling of 30 calls per minute to all Wiza platform calls as a conservative shared-key spacer. The
-public replacement rate and platform/BYOK boundary are documented in
-[Wiza](../architecture/wiza.md).
+autocomplete limits are not published. As a provisional policy, `_RATE_LIMITS` reuses the
+documented company-enrichment ceiling of 30 calls per minute for all Wiza platform calls because
+smoothing is not endpoint-aware. This spaces sequential platform calls by about two seconds, adding
+about 38 seconds of waiting across 20 one-row search pages; BYOK is unaffected. The bounded,
+process-local limiter reduces ordinary bursts but is not a strict quota gate: calls whose computed
+wait exceeds `DEFAULT_MAX_WAIT_MS` proceed. Relax the ceiling after real 429 evidence, or when
+smoothing becomes endpoint-aware. The public replacement rate and platform/BYOK boundary are
+documented in [Wiza](../architecture/wiza.md).
 
 ## Pieces (`src/treg/domain/capacity/`)
 

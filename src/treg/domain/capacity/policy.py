@@ -72,8 +72,10 @@ _RATE_LIMITS: dict[str, dict] = {
     # One shared key serves both 5/s enrichment and 1/s search routes. Until smoothing becomes
     # endpoint-aware, protect the stricter search allowance and accept conservative enrichment.
     "prospeo": {"limit": 1, "window_s": 1, "source": "docs"},
-    # Search and autocomplete limits are unpublished. Apply the documented company-enrichment
-    # ceiling provider-wide so free helper traffic cannot bypass shared-key smoothing.
+    # Provisional: Wiza publishes 30/min for company enrichment, but not for search or autocomplete.
+    # Reuse that ceiling provider-wide because smoothing is not endpoint-aware yet. This spaces
+    # sequential platform calls by about 2s; the limiter's bounded wait is not a strict quota gate.
+    # Relax this after real 429 evidence, or when smoothing can vary by endpoint. BYOK bypasses it.
     "wiza": {"limit": 30, "window_s": 60, "source": "docs"},
     "sumble": {"limit": 10, "window_s": 1, "source": "docs"},
     "leadsforge": {"limit": 120, "window_s": 60, "source": "headers"},
