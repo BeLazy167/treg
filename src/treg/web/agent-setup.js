@@ -51,7 +51,7 @@
   const examples=[
       {k:'trend',cat:'Trending videos pattern', logo:'tiktok',  prompt:'Use treg to pull today\'s trending TikTok videos (video links included)'},
       {k:'enr',  cat:'Get contact emails',      logo:'people', avatar:'https://pbs.twimg.com/profile_images/1131851609774985216/OcsssQ9J_400x400.png', prompt:'Use treg to find the work email of Peter Steinberger'},
-      {k:'ugc',  cat:'Make UGC videos',         logo:'tiktok',  show:'Use treg to make AI UGC videos for my product, from trending hooks to finished clips',
+      {k:'ugc',  cat:'Make UGC videos',         logo:'seedance',  show:'Use treg to make AI UGC videos for my product, from trending hooks to finished clips',
         prompt:'Read '+location.origin+'/skills/ugc/SKILL.md and follow it with treg to make UGC videos for my product: pull the trending TikTok and Instagram videos in my vertical, extract the hook patterns, create a character with the same vibe as a presenter I pick, generate 3-5 talking-head hook clips on Seedance 2.5, and add captions. Ask me for the product and vertical first.'},
       {k:'soc',  cat:'Scrape linkedin',         logo:'linkedin',prompt:'Use treg to look up linkedin.com/in/jasonzhoudesign'},
       {k:'posts',cat:'LinkedIn posts',          logo:'linkedin',prompt:'Use treg to pull the latest LinkedIn posts from linkedin.com/in/jasonzhoudesign and summarise what they talk about'},
