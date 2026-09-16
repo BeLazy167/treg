@@ -10563,7 +10563,7 @@
         "summary": "Get Org Settings"
       },
       "patch": {
-        "description": "Set the team's own spend ceiling and which tag keys carry budgets. Admin+.\n\nA team may LOWER its ceiling freely; raising it past the platform ceiling is refused rather than\nsilently clamped, because a builder who thinks they set $500/day and actually got $5 discovers it\nas an outage in the middle of their launch.",
+        "description": "Set the team's own daily spend limit and which tag keys carry budgets. Admin+.\n\nThe limit is the team's own rail, so it moves in either direction: any positive figure, or 0 to\nfollow the deployment default (no limit, by default). Nothing is clamped silently — the value\nstored is the value sent.",
         "operationId": "set_org_settings_orgs__org_id__settings_patch",
         "parameters": [
           {
