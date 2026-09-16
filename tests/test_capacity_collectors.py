@@ -53,7 +53,7 @@ async def test_bounceban_balance_uses_raw_authorization_header(monkeypatch, bala
         collectors.get_settings.cache_clear()
 
 
-@pytest.mark.parametrize("balance", [None, -1, True, "9997", float("inf")])
+@pytest.mark.parametrize("balance", [None, -1, True, "9997"])
 async def test_bounceban_balance_rejects_uncertain_values_without_exposing_key(monkeypatch, balance):
     monkeypatch.setenv("TREG_PLATFORM_KEY_BOUNCEBAN", "private-test-key")
     collectors.get_settings.cache_clear()
@@ -62,7 +62,30 @@ async def test_bounceban_balance_rejects_uncertain_values_without_exposing_key(m
                 lambda request: httpx.Response(200, json={"available_credits": balance}))) as client:
             row = await collectors.provider_balance("bounceban", client)
         assert row["value"] is None
-        assert row["note"]
+        assert "valid verification-credit balance" in row["note"]
+        assert "private-test-key" not in str(row)
+    finally:
+        collectors.get_settings.cache_clear()
+
+
+async def test_bounceban_balance_rejects_non_finite_value(monkeypatch):
+    class Response:
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return {"available_credits": float("inf")}
+
+    class Client:
+        async def get(self, *args, **kwargs):
+            return Response()
+
+    monkeypatch.setenv("TREG_PLATFORM_KEY_BOUNCEBAN", "private-test-key")
+    collectors.get_settings.cache_clear()
+    try:
+        row = await collectors.provider_balance("bounceban", Client())
+        assert row["value"] is None
+        assert "valid verification-credit balance" in row["note"]
         assert "private-test-key" not in str(row)
     finally:
         collectors.get_settings.cache_clear()

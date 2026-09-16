@@ -70,7 +70,7 @@ endpoints:
         url: {type: string, required: false, note: "BYOK webhook URL for the final result"}
       note: "BYOK only. Repeating the same email within 30 minutes is free, but the response repeats the original credits_consumed value, so treg cannot settle a shared-key retry exactly."
     test_request: {queryParams: {email: "dev@bounceban.com", timeout: 80}}
-    cost: &one_credit_documented
+    cost:
       type: per_success
       value: 1
       currency: credit

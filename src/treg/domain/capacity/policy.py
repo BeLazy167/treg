@@ -70,6 +70,8 @@ _QUOTAS: dict[str, dict] = {
     "prospeo": {"limit": None, "period": "billing", "resets_at_rule": "account.next_quota_renewal_date"},
 }
 _RATE_LIMITS: dict[str, dict] = {
+    # The only platform-served tool is standard single verification, documented at 100/s. Keep
+    # the shared key at one quarter of that allowance; BYOK calls bypass this limiter.
     "bounceban": {"limit": 25, "window_s": 1, "source": "docs"},
     # One shared key serves both 5/s enrichment and 1/s search routes. Until smoothing becomes
     # endpoint-aware, protect the stricter search allowance and accept conservative enrichment.

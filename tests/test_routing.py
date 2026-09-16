@@ -1470,6 +1470,48 @@ async def test_bounceban_serves_existing_email_verification_route(clients, monke
     get_settings.cache_clear()
 
 
+async def test_bounceban_routed_pending_result_is_a_paid_miss_then_falls_through(
+    clients, monkeypatch,
+):
+    monkeypatch.setenv("TREG_PLATFORM_KEY_BOUNCEBAN", "PLATFORM-BOUNCEBAN")
+    monkeypatch.setenv("TREG_PLATFORM_KEY_TOMBA", "PLATFORM-TOMBA-KEY")
+    monkeypatch.setenv("TREG_PLATFORM_KEY_TOMBA_SECRET", "PLATFORM-TOMBA-SECRET")
+    monkeypatch.setenv("TREG_PLATFORM_PROVIDERS", "bounceban,tomba")
+    get_settings.cache_clear()
+    seen = []
+    monkeypatch.setattr(call_service, "relay", _relay_by_provider({
+        "bounceban": [(200, {
+            "id": "task", "status": "verifying", "try_again_at": 1789516800,
+        })],
+        "tomba": [(200, {
+            "data": {"email": {"status": "valid", "score": 99}},
+        })],
+    }, seen))
+
+    before = await _balance(clients)
+    response = await clients.post(
+        "/call/treg.people.email.verify",
+        json={"email": "dev@bounceban.com"},
+        headers={"X-Treg-Route-Prefer": "bounceban,tomba"},
+    )
+    assert response.status_code == 200, response.text
+    data = response.json()
+    assert data["_treg"]["served_by"] == "tomba.people.email.verify"
+    assert [attempt["outcome"] for attempt in data["_treg"]["tried"]] == ["miss", "hit"]
+    assert [attempt["charged_micro"] for attempt in data["_treg"]["tried"]] == [4_000, 8_900]
+    assert data["_treg"]["charged_micro"] == 12_900
+    assert before - await _balance(clients) == 12_900
+    assert [row[0] for row in seen] == ["bounceban", "tomba"]
+    await audit.drain()
+    async with session_maker() as db:
+        rows = (await db.execute(select(CallRecord).where(
+            CallRecord.provider == "bounceban"))).scalars().all()
+        assert len(rows) == 1
+        assert rows[0].hit is False
+        assert rows[0].cost_charged_micro == 4_000
+    get_settings.cache_clear()
+
+
 async def test_millionverifier_error_falls_through_unbilled(clients, enrichment_on, monkeypatch):
     monkeypatch.setenv("TREG_PLATFORM_KEY_MILLIONVERIFIER", "PLATFORM-MV-KEY")
     monkeypatch.setenv("TREG_PLATFORM_PROVIDERS", "millionverifier,leadmagic")

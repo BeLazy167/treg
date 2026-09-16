@@ -89,9 +89,9 @@ into catalog data, logs, or examples.
 The capacity collector also uses the free account route and reads `available_credits`. Zero and
 finite nonnegative integer or floating-point values are valid. Missing, Boolean, string, negative,
 or non-finite values are unknown. The policy is `credits / manual / api`; no renewal or auto-top-up
-behavior is inferred. The conservative shared-key rate is 25 requests per second even though the
-tested single endpoint allowed 100 per second, because bulk reads publish the lower useful limit.
-BYOK calls do not use the shared-key limiter.
+behavior is inferred. The only platform-served tool is standard single verification, documented at
+100 requests per second; the conservative shared-key rate is one quarter of that allowance at 25
+requests per second. BYOK calls do not use the shared-key limiter.
 
 The account endpoint reported the expected deductions during bounded discovery. Standard accepted
 requests used one credit, a repeated waterfall request did not deduct again, a skipped catch-all
