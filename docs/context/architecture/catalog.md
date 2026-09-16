@@ -1482,7 +1482,14 @@ back as per-task status `40000` ("You can set only one task at a time") and `$0`
 the provider `limits` line "up to 100 tasks per POST array", so agents batched domains. The
 fix is documentation only — `input.note` and `limits` name the single-task cap; multi-target
 work is a `bulk_*` live route (many targets *inside* one task), e.g. `dataforseo.web.url.metrics`
-(`/backlinks/bulk_ranks/live`). Do not auto-split a multi-task array into billed calls.
+(`/backlinks/bulk_ranks/live`). Feedback #94: `dataforseo.x.serp-google-ai-mode-live-advanced`
+(`/serp/google/ai_mode/live/advanced`) kept the generic extended-catalog note "ARRAY of task
+objects — one object per task", so agents batched keywords and got HTTP 200 with the first
+task OK and per-task 40000 on the rest. That endpoint's `input.note` now names the single-task
+cap and the 40000; settlement is unchanged. Do not auto-split a multi-task array into billed
+calls. Enforced by `test_dataforseo_backlinks_summary_is_single_task`,
+`test_google_ai_mode_live_documents_single_task_constraint` and
+`test_catalog_get_dataforseo_ai_mode_live_names_the_single_task_limit`.
 
 ### DataForSEO Google Trends explore/live rejects `item_types`
 

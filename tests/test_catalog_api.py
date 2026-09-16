@@ -1405,6 +1405,20 @@ async def test_catalog_get_dataforseo_backlinks_summary_names_the_single_task_li
     assert "--data '[{\"target\":\"moz.com\"" in tmpl
 
 
+async def test_catalog_get_dataforseo_ai_mode_live_names_the_single_task_limit(
+        clients: AsyncClient):
+    """Feedback #94: catalog_get must not advertise multi-task batching on this Live route."""
+    body = (await clients.get(
+        "/catalog/endpoints/dataforseo.x.serp-google-ai-mode-live-advanced")).json()
+    note = body["endpoint"]["input"]["note"]
+    assert "exactly one task" in note.lower() or "exactly 1 task" in note.lower()
+    assert "40000" in note
+    assert "one object per task" not in note.lower()
+    tmpl = body["call_template"]
+    assert tmpl.startswith(
+        "treg call dataforseo.x.serp-google-ai-mode-live-advanced --method POST")
+
+
 async def test_catalog_get_dataforseo_page_audit_names_browser_preset_dependency(
         clients: AsyncClient):
     """Feedback #234 / #235: catalog_get must not advertise browser_preset alone."""

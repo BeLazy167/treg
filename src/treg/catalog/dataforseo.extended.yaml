@@ -7815,7 +7815,7 @@ endpoints:
         type: string
         required: false
         note: <p><em>GPS coordinates of a location</em><p><strong>required field if you don't specify</strong> <code>location_name</code>&nbsp;or <code>location_code</code><p><strong>if you use this field, you don't need to specify <code>location_name</code> or <code>location_code</code></strong><p><code>location
-    note: the POST body is an ARRAY of task objects with these fields — one object per task
+    note: POST body is a JSON array that must contain exactly one task object (Live endpoints do not support multi-task arrays). Extra elements return per-task status 40000 "You can set only one task at a time" ($0 on the rejected tasks) while HTTP stays 200 — one keyword per call.
   test_request:
     body:
     - language_code: en
