@@ -2004,6 +2004,12 @@ _HUB_PAGE_CSS = """
 .hubpage .readme h2,.hubpage .readme h3,.hubpage .readme h4{font-size:15px;margin:16px 0 6px}
 .hubpage .readme ul{padding-left:20px}
 .hubpage ul.facts{padding-left:18px;line-height:1.7}
+.hubpage .bars{display:flex;align-items:flex-end;gap:3px;height:52px;padding-top:6px;border-bottom:1px solid var(--line)}
+.hubpage .bars i{flex:1;display:block;min-width:3px;background:var(--accent, #b9552c);opacity:.55;border-radius:2px 2px 0 0}
+.hubpage .bars i:last-child{opacity:1}
+.hubpage .axis{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin:4px 0 10px;font-variant-numeric:tabular-nums}
+.hubpage td.num,.hubpage th.num{text-align:right}
+.hubpage .ok{color:var(--ok, #3f7a4a);font-weight:500}.hubpage .bad{color:var(--bad, #b8322a);font-weight:500}
 .hubpage .hidden{border:1px dashed var(--line2);padding:10px 14px;border-radius:var(--rb);max-width:62ch;font-size:12.5px;color:var(--muted);margin-top:22px}
 """
 
@@ -2056,6 +2062,40 @@ def _md_lite(text: str) -> str:
     if in_list:
         out.append("</ul>")
     return "\n".join(out)
+
+
+async def _hub_recent_runs(db: AsyncSession, tool_id: str, maker_org_id: int, *, last: int = 20) -> dict:
+    """The public run log (docs/hub-listing-decisions.md, decision 3): the last `last` runs by
+    OTHERS and runs per day for 30 days. Per run: when, outcome, duration, steps, units (a
+    per_unit tool's count), the price paid. Never who called, never the inputs, never the output;
+    `units` is the one integer read out of the stored output, nothing else leaves it."""
+    from datetime import timedelta
+    from sqlalchemy import func, select as _select
+    from ..models import HubRun
+    now = _utcnow_naive()
+    since = now - timedelta(days=30)
+    where = (HubRun.tool_id == tool_id, HubRun.caller_org_id != maker_org_id,
+             HubRun.version > 0, HubRun.started_at >= since)
+    rows = (await db.execute(
+        _select(HubRun.started_at, HubRun.status, HubRun.duration_ms, HubRun.steps, HubRun.price_micro, HubRun.output)
+        .where(*where).order_by(HubRun.started_at.desc()).limit(last))).all()
+    day = func.date(HubRun.started_at)
+    per_day = {str(d): int(n) for d, n in (await db.execute(
+        _select(day, func.count(HubRun.id)).where(*where).group_by(day))).all()}
+    totals = {str(s): int(n) for s, n in (await db.execute(
+        _select(HubRun.status, func.count(HubRun.id)).where(*where).group_by(HubRun.status))).all()}
+    days = [(since + timedelta(days=i + 1)).date().isoformat() for i in range(30)]
+    counts = [per_day.get(d, 0) for d in days]
+    runs = []
+    for started, status, ms, steps, price, output in rows:
+        units = output.get("units") if isinstance(output, dict) else None
+        runs.append({"when": started.strftime("%Y-%m-%d %H:%M"), "ok": status == "ok",
+                     "ms": int(ms or 0), "steps": int(steps or 0),
+                     "units": units if isinstance(units, int) and not isinstance(units, bool) else None,
+                     "price_micro": int(price or 0)})
+    n = sum(counts)
+    return {"runs": runs, "per_day": counts, "days": days, "total": n,
+            "ok": totals.get("ok", 0), "failed": n - totals.get("ok", 0)}
 
 
 async def _hub_reliability(db: AsyncSession, tool_id: str, maker_org_id: int) -> dict:
@@ -2120,6 +2160,7 @@ async def hub_page(request: Request, tool_id: str, db: AsyncSession = Depends(ge
     chk = row.check_result or {}
     checked_at = str(chk.get("checked_at") or "")[:16].replace("T", " ")
     rel = await _hub_reliability(db, row.tool_id, row.org_id)
+    runlog = await _hub_recent_runs(db, row.tool_id, row.org_id) if getattr(row, "public_log", True) else None
     caps = m.get("limits", {})
     kind = "script, sandboxed" if row.kind == "script" else f"{len(m.get('steps', []))} steps"
     older = await _hub_older_versions(db, row)
@@ -2146,6 +2187,12 @@ async def hub_page(request: Request, tool_id: str, db: AsyncSession = Depends(ge
                f"{rel['runs']} runs by others in 30 days" + (f", {rel['ok_pct']}% ok, {rel['median_ms']} ms median" if rel["runs"] else ""), "",
                "## Made of", "", f"made of {len(m.get('uses', []))} tool(s) (catalog tools and the maker's own; names and keys hidden) · {kind} · "
                f"{caps.get('wall_s', 120)} s · {caps.get('steps', 20)} calls max", ""]
+        if runlog is not None:
+            md += [f"## Recent runs (30 days: {runlog['total']} runs, {runlog['ok']} ok, {runlog['failed']} failed)", "",
+                   "| when | outcome | ms | steps | units | price_usd |", "|---|---|---|---|---|---|"]
+            md += [f"| {r['when']} | {'ok' if r['ok'] else 'failed'} | {r['ms']} | {r['steps']} | "
+                   f"{r['units'] if r['units'] is not None else '-'} | {r['price_micro'] / 1e6:.6g} |" for r in runlog["runs"]]
+            md += ["", "Never shown: who called, the inputs, the output.", ""]
         if older:
             md += ["## Versions", ""] + [f"- v{v['version']} callable as `{row.tool_id}@{v['version']}` until {v['until']}" for v in older] + [""]
         md += ["This page never shows the script, the maker's tools, or any key. A caller sees the trace of their own run only.", ""]
@@ -2199,6 +2246,7 @@ curl -X POST {e(base)}/call/{e(row.tool_id)} \\
   {('<div class="scroll"><table><tr><th>Wave</th><th>Step</th><th>Called</th><th>Result</th><th>Cost</th><th>ms</th></tr>' + trace_html + '</table></div>') if trace_html else '<p class="muted">no trace recorded</p>'}
   <p class="muted" style="font-size:12px">{e(chk.get('status') or '-')}{(' at ' + e(checked_at)) if checked_at else ''}</p>
 
+  {_hub_runlog_html(runlog)}
   <h2>Made of</h2>
   <ul class="facts">
     <li>made of {len(m.get('uses', []))} tool(s) <span class="muted">(catalog tools and the maker's own; names and keys hidden)</span></li>
@@ -2214,6 +2262,28 @@ curl -X POST {e(base)}/call/{e(row.tool_id)} \\
            "offers": {"@type": "Offer", "price": f"{price_usd:.6g}", "priceCurrency": "USD"}}]
     return _page(title, desc, f"/hub/{row.tool_id}", body, ld, nav_current="",
                  head_extra='<meta name="robots" content="noindex"/>\n<style>' + _HUB_PAGE_CSS + '</style>')
+
+
+def _hub_runlog_html(runlog: dict | None) -> str:
+    """The recent-runs section of the public page; empty when the maker switched the log off."""
+    if runlog is None:
+        return ""
+    e = _esc_html
+    peak = max(runlog["per_day"] or [0]) or 1
+    bars = "".join(f'<i style="height:{max(4, round(100 * c / peak)) if c else 0}%"></i>' for c in runlog["per_day"])
+    rows = "".join(
+        f"<tr><td>{e(r['when'])}</td><td>{'<span class=\"ok\">ok</span>' if r['ok'] else '<span class=\"bad\">failed</span>'}</td>"
+        f"<td class=\"num\">{r['ms']:,}</td><td class=\"num\">{r['steps']}</td>"
+        f"<td class=\"num\">{r['units'] if r['units'] is not None else '—'}</td>"
+        f"<td class=\"num\">${r['price_micro'] / 1e6:.6g}</td></tr>" for r in runlog["runs"])
+    table = (f'<div class="scroll"><table><tr><th>When (UTC)</th><th>Outcome</th><th class="num">ms</th>'
+             f'<th class="num">Steps</th><th class="num">Units</th><th class="num">Price paid</th></tr>{rows}</table></div>'
+             if rows else '<p class="muted">no runs by others in the last 30 days</p>')
+    return (f'<h2>Recent runs <span class="muted" style="font-size:12px">(30 days: {runlog["total"]} runs, '
+            f'{runlog["ok"]} ok, {runlog["failed"]} failed)</span></h2>'
+            f'<div class="bars">{bars}</div><div class="axis"><span>{e(runlog["days"][0])}</span><span>runs per day</span><span>today</span></div>'
+            f'{table}'
+            f'<p class="muted" style="font-size:12.5px">Never shown: who called, the inputs, the output. A failed run pays the seller nothing.</p>')
 
 
 async def _hub_older_versions(db: AsyncSession, row) -> list[dict]:
