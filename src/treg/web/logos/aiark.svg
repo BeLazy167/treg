@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title">
+  <title id="title">AI Ark</title>
+  <!-- Neutral lettermark placeholder; replace with an approved official asset when available. -->
+  <rect width="64" height="64" rx="14" fill="#111827"/>
+  <path d="M15 46 27 18h8l12 28h-8l-2.2-5.8H25.1L23 46Zm12.6-12.5h6.7L31 24.8Z" fill="#fff"/>
+  <path d="M48 18h5v28h-5z" fill="#5eead4"/>
+</svg>

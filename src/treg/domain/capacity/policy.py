@@ -35,6 +35,7 @@ _KNOWN: dict[str, tuple[str, str, str]] = {
     "hunter": ("monthly_quota", "quota_reset", "api"),
     "quickenrich": ("monthly_quota", "quota_reset", "api"),
     "prospeo": ("monthly_quota", "quota_reset", "api"),
+    "aiark": ("monthly_quota", "quota_reset", "api"),
     "wiza": ("credits", "manual", "api"),
     "getleadsio": ("credits", "manual", "api"),
     "sumble": ("monthly_quota", "quota_reset", "api"),
@@ -71,6 +72,7 @@ _QUOTAS: dict[str, dict] = {
     "hunter": {"limit": None, "period": "billing", "resets_at_rule": "account.reset_date"},
     "quickenrich": {"limit": None, "period": "billing", "resets_at_rule": "subscription renewal; no reset timestamp in API"},
     "prospeo": {"limit": None, "period": "billing", "resets_at_rule": "account.next_quota_renewal_date"},
+    "aiark": {"limit": 15000, "period": "billing", "resets_at_rule": "monthly subscription; date not reported by API"},
 }
 _RATE_LIMITS: dict[str, dict] = {
     # The only platform-served tool is standard single verification, documented at 100/s. Keep
@@ -79,6 +81,7 @@ _RATE_LIMITS: dict[str, dict] = {
     # One shared key serves both 5/s enrichment and 1/s search routes. Until smoothing becomes
     # endpoint-aware, protect the stricter search allowance and accept conservative enrichment.
     "prospeo": {"limit": 1, "window_s": 1, "source": "docs"},
+    "aiark": {"limit": 5, "window_s": 1, "source": "docs"},
     # Provisional: Wiza publishes 30/min for company enrichment, but not for search or autocomplete.
     # Reuse that ceiling provider-wide because smoothing is not endpoint-aware yet. This spaces
     # sequential platform calls by about 2s; the limiter's bounded wait is not a strict quota gate.

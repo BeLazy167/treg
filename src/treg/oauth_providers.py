@@ -1416,6 +1416,25 @@ PROSPEO = OAuthProvider(
     probe_path="/account-information", probe_method="GET",
 )
 
+AIARK = OAuthProvider(
+    service="aiark", display_name="AI Ark", auth_kind="key",
+    token_label="API key", token_placeholder="your AI Ark API key",
+    token_header="X-TOKEN", token_format="{secret}",
+    setup_url="https://app.ai-ark.com/settings/api-management/dashboard",
+    setup_action_label="Get your AI Ark API key",
+    setup_steps=("Sign in to AI Ark and open the API Management dashboard.",
+                 "Create or copy an API key and paste it here."),
+    setup_note=("Search and synchronous enrichment use monthly credits. Connection verification "
+                "reads the remaining balance for free."),
+    auth_uri="", token_uri="", scopes={}, client_id_setting="", client_secret_setting="",
+    category="Enrichment",
+    summary="Search people and companies, find verified emails and mobiles, and enrich profiles.",
+    base_url="https://api.ai-ark.com/api/developer-portal",
+    docs_url="https://docs.ai-ark.com/",
+    # Live 2026-09-17: missing and bogus keys returned 401; the assigned key returned 200.
+    probe_path="/v1/payments/credits", probe_method="GET",
+)
+
 WIZA = OAuthProvider(
     service="wiza", display_name="Wiza", auth_kind="key",
     token_label="API key", token_placeholder="your Wiza API key",
@@ -3132,7 +3151,7 @@ REGISTRY: dict[str, OAuthProvider] = {
         GOOGLE_ADS, YOUTUBE,
         LINKEDIN, SLACK, X, TIKTOK, FACEBOOK, INSTAGRAM, META_ADS,
         # API-key providers
-        APOLLO, PDL, AKTA, HUNTER, SUMBLE, MOLTSETS, HARVESTAPI, DROPLEADS, QUICKENRICH, PROSPEO, WIZA, GETLEADSIO, SCRUBBY, TRYKITT, CONTACTOUT, MILLIONVERIFIER, BOUNCEBAN, CRUNCHBASE, MINIMAX, OPENROUTER, REPLICATE,
+        APOLLO, PDL, AKTA, HUNTER, SUMBLE, MOLTSETS, HARVESTAPI, DROPLEADS, QUICKENRICH, PROSPEO, AIARK, WIZA, GETLEADSIO, SCRUBBY, TRYKITT, CONTACTOUT, MILLIONVERIFIER, BOUNCEBAN, CRUNCHBASE, MINIMAX, OPENROUTER, REPLICATE,
         REAPI, PIAPI,
         TIKHUB, BRIGHTDATA, SEMRUSH, JUSTONEAPI,
         SCRAPECREATORS,

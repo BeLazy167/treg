@@ -1222,14 +1222,14 @@ def test_every_declared_miss_status_names_its_meaning():
 async def test_lusha_is_the_last_rung_of_the_phone_waterfall_and_settles_on_its_own_bill(clients: AsyncClient, enrichment_on, monkeypatch):
     """Guatemala, 2026-09-03: 7 phones in 44 across tomba/aviato/leadmagic/findymail/leadsforge.
     Lusha's native direct-dial data remains the last rung — dearest per hit (6 credits), so it ranks
-    after Dropleads, Prospeo, and the cheaper providers; a miss is free and a matched profile
+    after AI Ark, Dropleads, Prospeo, and the cheaper providers; a miss is free and a matched profile
     with no number costs the 1-credit search, both read off `billing.creditsCharged`."""
     monkeypatch.setenv("TREG_PLATFORM_KEY_LUSHA", "PLATFORM-LUSHA-KEY")
     monkeypatch.setenv("TREG_PLATFORM_PROVIDERS", "hunter,tomba,leadmagic,leadsforge,findymail,aviato,fiber-ai,lusha")
     get_settings.cache_clear()
     routed = "treg.people.phone.find"
     plan = (await clients.get(f"/catalog/endpoints/{routed}")).json()["routing"]["plan"]
-    assert plan[-1]["endpoint_id"] == "lusha.people.phone.find" and len(plan) == 9, [c["endpoint_id"] for c in plan]
+    assert plan[-1]["endpoint_id"] == "lusha.people.phone.find" and len(plan) == 10, [c["endpoint_id"] for c in plan]
     def misses():
         return {"aviato": [(404, {"message": "Not Found"})], "tomba": [(200, {"data": {"e164_format": None}})],
                 "leadmagic": [(200, {"mobile_number": None, "credits_consumed": 0})],

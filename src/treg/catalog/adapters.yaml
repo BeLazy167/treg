@@ -29,6 +29,12 @@ adapters:
     out: {email: person.email.email, first_name: person.first_name, last_name: person.last_name,
           verified: "person.email.status == 'VERIFIED'"}
     miss: "person.email.email == null"
+  aiark.people.email.find:
+    accepts: [[linkedin_url]]
+    in: {linkedin_url: body.url}
+    out: {email: "data.email.output[0].address", first_name: data.profile.first_name,
+          last_name: data.profile.last_name, verified: "data.email.output[0].status == 'VALID'"}
+    miss: "data == null"
   trykitt.people.email.find:
     accepts: [[full_name, domain], [first_name, last_name, domain]]
     in: {full_name: body.fullName, domain: body.domain, linkedin_url: body.linkedinStandardProfileURL}
@@ -256,6 +262,11 @@ adapters:
     out: {phone: person.mobile.mobile_international, line_type: "'mobile'",
           country_code: person.mobile.mobile_country_code}
     miss: "person.mobile.mobile_international == null"
+  aiark.people.phone.find:
+    accepts: [[linkedin_url], [full_name, domain], [first_name, last_name, domain]]
+    in: {linkedin_url: body.linkedin, full_name: body.name, domain: body.domain}
+    out: {phone: "get(data.data[0], '[0]')", line_type: "'mobile'"}
+    miss: "data == null"
   tomba.people.phone.find:
     accepts: [[email], [linkedin_url]]
     in:  {email: queryParams.email, linkedin_url: queryParams.linkedin}
@@ -378,6 +389,13 @@ adapters:
           linkedin_url: person.linkedin_url,
           location: "join(person.location.city, person.location.state, person.location.country)"}
     miss: "person == null"
+  aiark.people.enrich:
+    accepts: [[email]]
+    in: {email: body.search}
+    out: {full_name: profile.full_name, first_name: profile.first_name, last_name: profile.last_name,
+          title: profile.title, company: company.summary.name, company_domain: company.link.domain,
+          linkedin_url: link.linkedin, location: location.default}
+    miss: "profile.full_name == null"
   tomba.people.enrich:
     accepts: [[email]]
     in:  {email: queryParams.email}
@@ -623,6 +641,14 @@ adapters:
     test_identity: {title: Founder}
     out: {people: data.profiles, count: data.total, next_cursor: data.next_page_token}
     miss: "data.profiles == []"
+  aiark.people.search:
+    accepts: [[company_domain]]
+    in: {company_domain: body.account.domain.any.include}
+    in_expr: {body.account.domain.any.include: "list(company_domain)"}
+    const: {body.page: 0, body.size: 1}
+    test_identity: {company_domain: example.com}
+    out: {people: content, count: totalElements}
+    miss: "content == []"
   exa.people.search:
     accepts: [[q]]
     in:  {q: body.query}
@@ -927,6 +953,14 @@ adapters:
     test_identity: {industry: Computer Software}
     out: {companies: data.companies, count: data.total, next_cursor: data.next_page_token}
     miss: "data.companies == []"
+  aiark.companies.search:
+    accepts: [[domain]]
+    in: {domain: body.account.domain.any.include}
+    in_expr: {body.account.domain.any.include: "list(domain)"}
+    const: {body.page: 0, body.size: 1}
+    test_identity: {domain: example.com}
+    out: {companies: content, count: totalElements}
+    miss: "content == []"
   exa.companies.search:
     accepts: [[q]]
     in:  {q: body.query}
