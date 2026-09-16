@@ -1897,8 +1897,26 @@ def test_catalog_preserves_ignore_paths_and_defaults(tmp_path):
     declared = {ep['id']: ep['cache']['ignore_paths'] for ep in catalog_store.load().endpoints
                 if isinstance(ep.get('cache'), dict) and ep['cache'].get('ignore_paths')}
     assert declared == {
-        'hunter.people.email.find': ['data.verification.date'],
+        'apollo.people.enrich': ['request_id'],
+        'companyenrich.companies.enrich.by_properties': ['updated_at'],
+        'companyenrich.companies.search': ['items[*].updated_at'],
+        'crustdata.people.search': ['next_cursor', 'profiles[*].metadata.updated_at'],
+        'exa.companies.search': ['requestId'],
         'hunter.companies.emails': ['data.emails[*].verification.date'],
+        'hunter.companies.enrich': ['data.indexedAt'],
+        'hunter.people.email.find': ['data.verification.date'],
+        'icypeas.people.search': ['pagination.token'],
+        'leadmagic.people.email.find': ['processed_at'],
+        'leadmagic.people.email.verify': ['validated_at'],
+        'leadsforge.people.search': ['cursor'],
+        'millionverifier.people.email.verify': ['executiontime', 'credits'],
+        'quickenrich.people.email.find': ['meta'],
+        'quickenrich.people.phone.find': ['meta'],
+        'thecompaniesapi.companies.enrich': ['meta.credits'],
+        'tomba.people.email.find': ['data.verification.date'],
+        'tomba.people.email.find.linkedin': ['data.verification.date'],
+        'trykitt.people.email.find': ['jobId'],
+        'trykitt.people.email.verify': ['jobId'],
     }
 
 

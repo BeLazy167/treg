@@ -881,9 +881,13 @@ unavailable bodies fall back to raw byte hashes. The original bytes, content has
 history and served response never change.
 
 `cache.ignore_paths` is optional and empty by default; only explicit declarations exclude fields.
-Hunter declares `data.verification.date` for `hunter.people.email.find` and
-`data.emails[*].verification.date` for `hunter.companies.emails`. Date-only changes no longer shrink
-TTL, but mailbox values, scores, verification statuses and found/empty transitions remain significant.
+The people and company enrichment endpoints declare the fields their providers change on every
+request without changing the answer: job and request ids, credit counters, verification and
+processing timestamps, pagination cursors (Hunter's `data.verification.date` is the original
+example). Without a declaration such a field makes every re-fetch count as a change and shrinks
+the timer of an answer that did not move. Mailbox values, scores, verification statuses and
+found/empty transitions remain significant. `test_catalog_preserves_ignore_paths_and_defaults`
+pins the shipped declarations, so adding one means extending that list.
 Other pilot endpoints declare no ignored fields, including Findymail's `contact.id`.
 A comparison-only mapping does not override retention policy or assert vendor licensing permission.
 There is no automatic field selection; `ArchiveKey.volatile_paths` remains unused.
