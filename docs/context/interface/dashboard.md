@@ -63,6 +63,10 @@ the key creator metadata; the internal `agent-{team}-{name}@agents.treg.local` i
 The Key chip shows its safe prefix visibly, so Activity from pre- and post-rotation keys with the same
 name remains distinguishable.
 Human Activity rows keep their existing short email identity.
+The loaded Activity window counts calls served from the archive and shows that summary only when it
+contains a cache hit. Each cached call also carries a quiet `Cached` pill beside its actual charge;
+the displayed amount remains the settled charge from `/calls`, including free own-key hits and
+reduced metered repeat hits. The key selector and success filter continue to operate independently.
 
 Catalog provider choices show each endpoint's optional `name` below the provider name.
 Names wrap and are included in the platform filter. This distinguishes tools that use the
