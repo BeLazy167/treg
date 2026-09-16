@@ -2517,20 +2517,20 @@ a:hover{text-decoration-color:var(--muted)}
             <div v-if="capCfg" style="margin-top:18px;border-top:1px solid var(--line);padding-top:14px">
                   <span class="lbl" style="margin:0">Daily spend limit</span>
                   <p class="sub" style="margin:4px 0 8px;font-size:12px">
-                    The most this team can spend per day on treg's keys. Resets at 00:00 UTC. It's the
-                    blast radius of a runaway agent — worth keeping even with auto top-up on, since a
-                    balance that refills itself can't stop one.
+                    The most this team can spend per day on treg's keys. Resets at 00:00 UTC. None by
+                    default. Worth setting if agents run unattended with auto top-up on, since a
+                    balance that refills itself can't stop a runaway one.
                   </p>
                   <div class="field" style="max-width:560px">
-                    <input v-model="capUsd" type="number" min="0" step="0.5" style="max-width:140px"/>
+                    <input v-model="capUsd" type="number" min="0" step="0.5" placeholder="no limit" style="max-width:140px"/>
                     <button class="btn primary" :disabled="capBusy" @click="saveCap">{{capBusy?'…':'Save'}}</button>
                     <span class="sub" style="margin:0">
-                      USD/day · now {{money(capCfg.daily_cap_micro)}}<template v-if="!capCfg.daily_cap_set_by_team"> (our default)</template>
+                      USD/day · now {{capCfg.daily_cap_micro ? money(capCfg.daily_cap_micro) : 'no limit'}}<template v-if="!capCfg.daily_cap_set_by_team"> (our default)</template>
                     </span>
                   </div>
                   <p v-if="capErr" class="banner" style="margin:10px 0 0">{{capErr}}</p>
                   <p class="muted" style="font-size:12px;margin-top:8px">
-                    You can lower this freely. Raising it past {{money(capCfg.platform_ceiling_micro)}}/day needs a word with us — that's the ceiling we allow a team.
+                    Any amount, up or down. Leave it empty (or 0) for no daily limit — your balance is then the only bound.
                   </p>
                 </div>
 
@@ -4790,7 +4790,7 @@ createApp({
         this.loadBillingHistory(); }
       // The daily cap lives beside the balance for the user even though it is an org setting.
       this.capCfg=await this.api(`/orgs/${this.activeOrgId}/settings`).catch(()=>null);
-      if(this.capCfg){ this.capUsd=(this.capCfg.daily_cap_micro/1e6).toFixed(2);
+      if(this.capCfg){ this.capUsd=this.capCfg.daily_cap_micro ? (this.capCfg.daily_cap_micro/1e6).toFixed(2) : '';
         const k=await this.api(`/orgs/${this.activeOrgId}/tag-keys`).catch(()=>null);
         this.budDims=[...new Set([...((k&&k.seen)||[]), ...(this.capCfg.budget_dims||[])])];
         if(!this.budDims.length) this.budDims=['customer'];
@@ -4836,10 +4836,8 @@ createApp({
         this.capCfg=await this.api(`/orgs/${this.activeOrgId}/settings`,
           {method:'PATCH', headers:{'content-type':'application/json'},
            body:JSON.stringify({daily_cap_micro:micro})});
-        this.capUsd=(this.capCfg.daily_cap_micro/1e6).toFixed(2);
+        this.capUsd=this.capCfg.daily_cap_micro ? (this.capCfg.daily_cap_micro/1e6).toFixed(2) : '';
       }catch(e){
-        // The server REFUSES a raise past the ceiling rather than clamping it, so say which it was —
-        // a silently clamped limit is discovered as an outage mid-launch.
         this.capErr=this._errMsg(e, 'could not save that limit');
       }finally{ this.capBusy=false; } },
     // Amounts come from our own credit blocks, so this list can never disagree with the balance above

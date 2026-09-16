@@ -82,6 +82,8 @@ async def _enforce_platform_daily_cap(caller: Caller, add_micro: int, db: AsyncS
     cannot answer refuses the call. The cap is the blast radius of a runaway agent (and of a pricing
     mistake in the catalog) — the balance alone is not enough, because auto-top-up can refill it."""
     cap = budget_policy._effective_daily_cap(caller.org)
+    if cap <= 0:  # no limit applies: the balance (and the auto-top-up monthly cap) is the bound
+        return
     try:
         spent = await ledger.spent_today(db, caller.org_id)
     except Exception as exc:  # noqa: BLE001 — cannot verify the ceiling ⇒ do not spend
