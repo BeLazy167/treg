@@ -54,17 +54,25 @@ def _provider_bindings(provider, secret: Secret) -> list[dict]:
     secret_field="access_token" would try to read a JSON field that isn't there. A key may ride in
     a header (default) or a query param (Semrush's ?key=…). A provider needing a second credential
     that TREG holds (Google Ads' developer token) gets it as a platform binding — read from settings
-    at call time, never copied into the org's secrets."""
+    at call time, never copied into the org's secrets.
+
+    When a provider uses `token_encode="base64"` (HTTP Basic: DataForSEO, Moz, PredictLeads), the
+    marketplace connect flow Base64-encodes at paste time (connect.test_api_credential). But a secret
+    added via `treg secret add <provider>` bypasses that and stores raw `login:password`. The binding
+    carries `token_encode` so the injector can detect and encode a raw value at call time, making both
+    add paths produce the same Authorization header."""
     if provider.uses_pasted_secret:
         if provider.token_location == "query":
             bindings = [{
                 "secret_id": secret.id, "injector": "env", "location": "query",
                 "name": provider.token_param, "format": provider.token_format,
+                **({"token_encode": provider.token_encode} if provider.token_encode else {}),
             }]
         else:
             bindings = [{
                 "secret_id": secret.id, "injector": "env", "location": "header",
                 "name": provider.token_header, "format": provider.token_format,
+                **({"token_encode": provider.token_encode} if provider.token_encode else {}),
             }]
     else:
         bindings = [{

@@ -510,6 +510,42 @@ async def test_basic_provider_accepts_a_ready_made_base64_blob(clients: AsyncCli
     assert echoed == "Basic " + blob, "a pasted Base64 blob must not be double-encoded"
 
 
+async def test_secret_add_raw_basic_credential_encodes_at_injection(clients: AsyncClient, monkeypatch):
+    """Secrets added via `treg secret add dataforseo` bypass the connect flow and store the raw value.
+    The injector must detect and Base64-encode a raw `login:password` to produce a valid Basic header.
+
+    Regression test for feedback #294 / #276 / #280-282: DataForSEO Lighthouse returned 40100
+    (401 Unauthorized) through treg while the same credential worked via direct curl. The cause
+    was that `treg secret add dataforseo --env-var` stored raw `login:password`, but the injector
+    used it verbatim as `Basic login:password` instead of `Basic <base64(login:password)>`.
+    """
+    import base64
+    monkeypatch.setitem(P.REGISTRY, "dataforseo", dataclasses.replace(
+        P.REGISTRY["dataforseo"], base_url="http://upstream", probe_path="/whoami"))
+    # Add a raw secret directly, bypassing the /connections/token flow that would Base64-encode it
+    r = await clients.post("/secrets", json={"name": "dataforseo", "value": "login:pw"})
+    assert r.status_code == 200, r.text
+    # Call a DataForSEO catalog endpoint to trigger marketplace resolution with the named secret
+    # (the named-tool path won't find a tool; this exercises _marketplace_secret -> _provider_bindings)
+    echoed = (await clients.get("/call/dataforseo.account.usage")).json()["auth"]
+    expected = "Basic " + base64.b64encode(b"login:pw").decode()
+    assert echoed == expected, f"raw secret must be Base64-encoded at injection time, got {echoed!r}"
+
+
+async def test_secret_add_already_encoded_basic_credential_not_double_encoded(clients: AsyncClient, monkeypatch):
+    """Secrets added with an already-encoded Base64 blob must not be double-encoded by the injector."""
+    import base64
+    blob = base64.b64encode(b"login:pw").decode()
+    monkeypatch.setitem(P.REGISTRY, "dataforseo", dataclasses.replace(
+        P.REGISTRY["dataforseo"], base_url="http://upstream", probe_path="/whoami"))
+    # Add an already-encoded secret directly
+    r = await clients.post("/secrets", json={"name": "dataforseo", "value": blob})
+    assert r.status_code == 200, r.text
+    # Call a DataForSEO catalog endpoint to trigger marketplace resolution with the named secret
+    echoed = (await clients.get("/call/dataforseo.account.usage")).json()["auth"]
+    assert echoed == "Basic " + blob, f"already-encoded secret must not be double-encoded, got {echoed!r}"
+
+
 # ---- corrected probe shapes (regression guards for the 2026-08-13 connect-flow fixes) --------
 def test_brightdata_probe_is_a_real_route():
     """The old /datasets/v3/datasets 404'd even for a valid token, refusing every real key. /status is
