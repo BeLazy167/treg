@@ -1497,6 +1497,27 @@ SCRUBBY = OAuthProvider(
     probe_reject_statuses=(401, 403),
 )
 
+ZEROBOUNCE = OAuthProvider(
+    service="zerobounce", display_name="ZeroBounce", auth_kind="key",
+    token_label="API key", token_placeholder="your ZeroBounce API key",
+    token_location="query", token_param="api_key", token_format="{secret}",
+    setup_url="https://www.zerobounce.net/members/api",
+    setup_action_label="Get your ZeroBounce API key",
+    setup_steps=("Sign in to ZeroBounce and open the API section.",
+                 "Create or copy an API key and paste it here."),
+    setup_note=("Single email validation uses one credit for a non-unknown result. Unknown results "
+                "are not charged. Connection verification reads API usage for free."),
+    auth_uri="", token_uri="", scopes={}, client_id_setting="", client_secret_setting="",
+    category="Enrichment",
+    summary="Verify email deliverability and inspect validation usage and credit balance.",
+    base_url="https://api.zerobounce.net",
+    docs_url="https://www.zerobounce.net/docs/email-validation-api-quickstart",
+    # Live 2026-09-17: no/bogus key returned 403; the assigned key returned 200. Use usage rather
+    # than getcredits for connection verification because getcredits reports a bad key as the
+    # HTTP-200 sentinel {"Credits": -1}. Dates are a valid closed historical range.
+    probe_path="/v2/getapiusage?start_date=2026-01-01&end_date=2026-12-31",
+)
+
 TRYKITT = OAuthProvider(
     service="trykitt",
     display_name="Kitt AI",
@@ -3151,7 +3172,7 @@ REGISTRY: dict[str, OAuthProvider] = {
         GOOGLE_ADS, YOUTUBE,
         LINKEDIN, SLACK, X, TIKTOK, FACEBOOK, INSTAGRAM, META_ADS,
         # API-key providers
-        APOLLO, PDL, AKTA, HUNTER, SUMBLE, MOLTSETS, HARVESTAPI, DROPLEADS, QUICKENRICH, PROSPEO, AIARK, WIZA, GETLEADSIO, SCRUBBY, TRYKITT, CONTACTOUT, MILLIONVERIFIER, BOUNCEBAN, CRUNCHBASE, MINIMAX, OPENROUTER, REPLICATE,
+        APOLLO, PDL, AKTA, HUNTER, SUMBLE, MOLTSETS, HARVESTAPI, DROPLEADS, QUICKENRICH, PROSPEO, AIARK, WIZA, GETLEADSIO, SCRUBBY, ZEROBOUNCE, TRYKITT, CONTACTOUT, MILLIONVERIFIER, BOUNCEBAN, CRUNCHBASE, MINIMAX, OPENROUTER, REPLICATE,
         REAPI, PIAPI,
         TIKHUB, BRIGHTDATA, SEMRUSH, JUSTONEAPI,
         SCRAPECREATORS,

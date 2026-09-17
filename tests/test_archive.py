@@ -1917,6 +1917,7 @@ def test_catalog_preserves_ignore_paths_and_defaults(tmp_path):
         'tomba.people.email.find.linkedin': ['data.verification.date', 'data.sources[*].extracted_on', 'data.sources[*].last_seen_on'],
         'trykitt.people.email.find': ['jobId', 'credits'],
         'trykitt.people.email.verify': ['jobId', 'credits'],
+        'zerobounce.people.email.verify': ['processed_at'],
     }
 
 

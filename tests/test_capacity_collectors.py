@@ -14,6 +14,58 @@ import httpx
 import pytest
 
 
+@pytest.mark.parametrize("value,expected", [(0, 0), (71, 71), ("5000", 5000)])
+async def test_zerobounce_balance_accepts_nonnegative_integer_values(monkeypatch, value, expected):
+    monkeypatch.setenv("TREG_PLATFORM_KEY_ZEROBOUNCE", "private-test-key")
+    collectors.get_settings.cache_clear()
+
+    def reply(request):
+        assert request.url.path == "/v2/getcredits"
+        assert request.url.params["api_key"] == "private-test-key"
+        return httpx.Response(200, json={"Credits": value})
+
+    try:
+        async with httpx.AsyncClient(transport=httpx.MockTransport(reply)) as client:
+            row = await collectors.provider_balance("zerobounce", client)
+        assert row["value"] == expected
+        assert row["unit"] == "credits"
+        assert "manual" in row["note"]
+    finally:
+        collectors.get_settings.cache_clear()
+
+
+@pytest.mark.parametrize("status,value", [
+    (200, -1), (200, "-1"), (200, True), (200, 12.5), (200, "12.5"), (200, "bad"),
+    (403, None),
+])
+async def test_zerobounce_balance_rejects_uncertain_values_without_exposing_key(
+    monkeypatch, status, value,
+):
+    monkeypatch.setenv("TREG_PLATFORM_KEY_ZEROBOUNCE", "private-test-key")
+    collectors.get_settings.cache_clear()
+
+    def reply(request):
+        return httpx.Response(status, json={"Credits": value}, request=request)
+
+    try:
+        async with httpx.AsyncClient(transport=httpx.MockTransport(reply)) as client:
+            row = await collectors.provider_balance("zerobounce", client)
+        assert row["value"] is None
+        assert row["note"]
+        assert "private-test-key" not in str(row)
+    finally:
+        collectors.get_settings.cache_clear()
+
+
+def test_zerobounce_capacity_policy_stays_manual_until_vendor_auto_pay_is_verified():
+    row = policy.default_policy("zerobounce", has_key=True)
+    assert row.capacity_type == "credits"
+    assert row.funding_mode == "manual"
+    assert row.source == "api"
+    assert row.auto_funding_enabled is False
+    assert row.rate_limit == {"limit": 25, "window_s": 1, "source": "policy"}
+
+
 @pytest.mark.parametrize("balance", [0, 465])
 async def test_millionverifier_balance_uses_query_key_without_double_counting(monkeypatch, balance):
     monkeypatch.setenv("TREG_PLATFORM_KEY_MILLIONVERIFIER", "private-test-key")

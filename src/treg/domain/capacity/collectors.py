@@ -311,6 +311,28 @@ async def _bounceban(c, key):
     return {"value": credits, "unit": "verification credits", "note": ""}
 
 
+async def _zerobounce(c, key):
+    # Free balance route. ZeroBounce returns the balance as either a JSON number or a decimal
+    # string. A bad key can still answer HTTP 200 with the documented -1 sentinel.
+    try:
+        d = await _get(c, "https://api.zerobounce.net/v2/getcredits",
+                       params={"api_key": key})
+    except httpx.HTTPError as exc:
+        # HTTP errors may include the request URL and its private query key.
+        raise ValueError(f"ZeroBounce balance request failed ({type(exc).__name__})") from None
+    raw = d.get("Credits") if isinstance(d, dict) else None
+    if type(raw) is int:
+        credits = raw
+    elif isinstance(raw, str) and raw.strip().isdigit():
+        credits = int(raw.strip())
+    else:
+        raise ValueError("ZeroBounce returned no valid credit balance") from None
+    if credits < 0:
+        raise ValueError("ZeroBounce rejected the balance request")
+    return {"value": credits, "unit": "credits",
+            "note": "PAYG balance; treg treats replenishment as manual"}
+
+
 async def _leadmagic(c, key):
     r = await c.post("https://api.leadmagic.io/v1/credits", headers={"X-API-Key": key})
     r.raise_for_status()
@@ -605,6 +627,7 @@ BALANCE_ROUTES = {
     "contactout": _contactout,
     "millionverifier": _millionverifier,
     "bounceban": _bounceban,
+    "zerobounce": _zerobounce,
     "leadmagic": _leadmagic,
     "lusha": _lusha,
     "diffbot": _diffbot,

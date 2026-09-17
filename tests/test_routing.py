@@ -1470,6 +1470,49 @@ def test_bounceban_verdicts_join_existing_email_verification_route(result, valid
     assert adapter.is_miss({"id": "task", "status": "verifying"})
 
 
+def test_zerobounce_verdicts_join_existing_email_verification_route():
+    cat = catalog_store.load()
+    eid = "zerobounce.people.email.verify"
+    assert eid in cat.by_id["treg.people.email.verify"]["routed_children"]
+    assert cat.platform_eligible(cat.by_id[eid])
+    adapter = cat.adapters[eid]
+    assert adapter.verified
+    assert adapter.is_miss({"status": "unknown"})
+    assert adapter.is_miss({})
+    for status, valid in (("valid", True), ("invalid", False), ("catch-all", False),
+                          ("spamtrap", False), ("abuse", False), ("do_not_mail", False)):
+        doc = {"status": status}
+        assert not adapter.is_miss(doc)
+        assert adapter.from_upstream(doc) == {"valid": valid, "status": status}
+
+
+def test_zerobounce_expensive_discovery_tools_stay_out_of_automatic_routing():
+    cat = catalog_store.load()
+    assert "zerobounce.people.email.find" not in cat.by_id["treg.people.email.find"]["routed_children"]
+    assert "zerobounce.people.email.find" not in cat.adapters
+    assert "zerobounce.companies.email_pattern" not in cat.adapters
+
+
+async def test_zerobounce_serves_existing_email_verification_route(clients, monkeypatch):
+    monkeypatch.setenv("TREG_PLATFORM_KEY_ZEROBOUNCE", "PLATFORM-ZEROBOUNCE")
+    monkeypatch.setenv("TREG_PLATFORM_PROVIDERS", "zerobounce")
+    get_settings.cache_clear()
+    seen = []
+    monkeypatch.setattr(call_service, "relay", _relay_by_provider({
+        "zerobounce": [(200, {"status": "valid"})],
+    }, seen))
+    try:
+        response = await clients.post(
+            "/call/treg.people.email.verify", json={"email": "valid@example.com"})
+        assert response.status_code == 200, response.text
+        body = response.json()
+        assert body["output"] == {"valid": True, "status": "valid"}
+        assert body["_treg"]["served_by"] == "zerobounce.people.email.verify"
+        assert [row[0] for row in seen] == ["zerobounce"]
+    finally:
+        get_settings.cache_clear()
+
+
 async def test_bounceban_serves_existing_email_verification_route(clients, monkeypatch):
     monkeypatch.setenv("TREG_PLATFORM_KEY_BOUNCEBAN", "PLATFORM-BOUNCEBAN")
     monkeypatch.setenv("TREG_PLATFORM_PROVIDERS", "bounceban")
