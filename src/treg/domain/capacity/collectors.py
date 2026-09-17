@@ -196,6 +196,20 @@ async def _prospeo(c, key):
     }
 
 
+async def _aiark(c, key):
+    d = await _get(c, "https://api.ai-ark.com/api/developer-portal/v1/payments/credits",
+                   headers={"X-TOKEN": key, "Content-Type": "application/json"})
+    remaining = d.get("total") if isinstance(d, dict) else None
+    if (isinstance(remaining, bool) or not isinstance(remaining, (int, float))
+            or not math.isfinite(remaining) or remaining < 0):
+        raise ValueError("AI Ark returned no valid remaining-credit balance")
+    return {
+        "value": remaining,
+        "unit": "credits",
+        "note": "Monthly subscription credits; unused credits can roll over to twice the allowance",
+    }
+
+
 async def _wiza(c, key):
     d = await _get(c, "https://wiza.co/api/meta/credits",
                    headers={"Authorization": f"Bearer {key}"})
@@ -604,6 +618,7 @@ BALANCE_ROUTES = {
     "harvestapi": _harvestapi,
     "quickenrich": _quickenrich,
     "prospeo": _prospeo,
+    "aiark": _aiark,
     "wiza": _wiza,
     "getleadsio": _getleadsio,
     "sumble": _sumble,

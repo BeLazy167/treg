@@ -58,6 +58,26 @@ async def test_bounceban_enters_email_verification_arena_via_verified_adapter(
     get_settings.cache_clear()
 
 
+async def test_aiark_email_finder_enters_the_enrichment_arena(clients, monkeypatch):
+    from treg.config import get_settings
+
+    monkeypatch.setenv("TREG_PLATFORM_KEY_AIARK", "PLATFORM-AIARK")
+    monkeypatch.setenv("TREG_PLATFORM_PROVIDERS", "aiark")
+    get_settings.cache_clear()
+    response = await clients.post("/arena/plans", json={
+        "capability": "people.email.find",
+        "identity": {"linkedin_url": "https://www.linkedin.com/in/example"},
+        "mode": "compare",
+        "providers": ["aiark"],
+        "max_cost_micro": 100_000,
+    })
+    assert response.status_code == 200, response.text
+    quote = response.json()
+    assert quote["providers"][0]["endpoint_id"] == "aiark.people.email.find"
+    assert quote["estimate_micro"] == 5267
+    get_settings.cache_clear()
+
+
 async def test_zerobounce_verifier_enters_arena_but_expensive_finder_does_not(
     clients, monkeypatch,
 ):

@@ -836,6 +836,37 @@ def test_crustdata_settles_from_the_response_credit_header():
         mk, b'{"rows": []}', httpx.Headers({"X-Credits-Used": "not-a-number"})) is None
 
 
+def test_aiark_settles_from_the_negative_response_credit_header():
+    """AI Ark reports a debit as a negative X-Credit value; the sign rule is provider-specific."""
+    mk = _mk("aiark", endpoint_id="aiark.people.phone.find",
+             cost_type="per_success", unit_micro=26_335)
+    body = b'{"data": {"data": [["+15550101000"]]}}'
+    assert call_settle._observed_cost_micro(
+        mk, body, httpx.Headers({"X-Credit": "-5"})) == 26_335
+    assert call_settle._observed_cost_micro(
+        mk, body, httpx.Headers({"X-Credit": "-0.5"})) == 2_634
+    assert call_settle._observed_cost_micro(
+        mk, body, httpx.Headers({"X-Credit": "0"})) == 0
+    assert call_settle._observed_cost_micro(
+        mk, body, httpx.Headers({"X-Credit": "5"})) is None
+    assert call_settle._observed_cost_micro(
+        mk, body, httpx.Headers({"X-Credit": "not-a-number"})) is None
+    assert call_settle._observed_cost_micro(
+        mk, body, httpx.Headers({"X-Credit": "NaN"})) is None
+    assert call_settle._observed_cost_micro(
+        mk, body, httpx.Headers({"X-Credit": "-Infinity"})) is None
+    assert call_settle._observed_cost_micro(mk, body, httpx.Headers()) is None
+
+
+@pytest.mark.parametrize(("endpoint", "doc"), [
+    ("aiark.people.email.find", {"data": {"email": {"output": []}}}),
+    ("aiark.people.phone.find", {"data": {"data": [[]]}}),
+])
+def test_aiark_present_but_empty_outputs_settle_as_free_misses(endpoint, doc):
+    mk = _mk("aiark", endpoint_id=endpoint, cost_type="per_success")
+    assert call_settle._observed_cost_micro(mk, json.dumps(doc).encode()) == 0
+
+
 def test_aviato_conditional_prices_follow_live_balance_deltas():
     cat = A.catalog_store.load()
 
@@ -3158,6 +3189,81 @@ async def test_prospeo_platform_email_settles_one_credit(
     assert result.status_code == 200, result.text
     assert result.headers["x-treg-cost-micro"] == "24500"
     assert before - await _balance(clients) == 24_500
+
+
+async def test_aiark_platform_settles_hit_releases_miss_and_byok_wins(
+    clients, monkeypatch,
+):
+    monkeypatch.setenv("TREG_PLATFORM_KEY_AIARK", "PLATFORM-AIARK")
+    monkeypatch.setenv("TREG_PLATFORM_PROVIDERS", "aiark")
+    get_settings.cache_clear()
+    hit = {
+        "status": 200,
+        "error": None,
+        "data": {
+            "profile": {"first_name": "Jane", "last_name": "Example"},
+            "email": {"output": [{"address": "jane@example.com", "status": "VALID"}]},
+            "link": {"linkedin": "https://www.linkedin.com/in/example"},
+        },
+    }
+    monkeypatch.setattr(
+        call_service, "relay", _fake_relay(200, json.dumps(hit).encode())
+    )
+    before = await _balance(clients)
+    response = await clients.post("/call/aiark.people.email.find", json={
+        "url": "https://www.linkedin.com/in/example",
+    })
+    assert response.status_code == 200, response.text
+    assert response.headers["x-treg-cost-micro"] == "5267"
+    assert await _balance(clients) == before - 5267
+
+    miss = {"status": 200, "error": None, "data": None}
+    monkeypatch.setattr(
+        call_service, "relay", _fake_relay(200, json.dumps(miss).encode())
+    )
+    before_miss = await _balance(clients)
+    response = await clients.post("/call/aiark.people.email.find", json={
+        "url": "https://www.linkedin.com/in/missing",
+    })
+    assert response.status_code == 200
+    assert response.headers["x-treg-cost-micro"] == "0"
+    assert await _balance(clients) == before_miss
+
+    await clients.post("/secrets", json={"name": "aiark", "value": "OWN-AIARK"})
+    before_byok = await _balance(clients)
+    response = await clients.post("/call/aiark.people.email.find", json={
+        "url": "https://www.linkedin.com/in/example",
+    })
+    assert response.status_code == 200
+    assert "x-treg-cost-micro" not in response.headers
+    assert await _balance(clients) == before_byok
+    get_settings.cache_clear()
+
+
+async def test_aiark_platform_releases_rejected_request_and_enforces_search_bound(
+    clients, monkeypatch,
+):
+    monkeypatch.setenv("TREG_PLATFORM_KEY_AIARK", "PLATFORM-AIARK")
+    monkeypatch.setenv("TREG_PLATFORM_PROVIDERS", "aiark")
+    get_settings.cache_clear()
+    rejected = {"status": 400, "error": "invalid input"}
+    monkeypatch.setattr(
+        call_service, "relay", _fake_relay(400, json.dumps(rejected).encode())
+    )
+    before = await _balance(clients)
+    response = await clients.post("/call/aiark.people.email.find", json={})
+    assert response.status_code == 400
+    assert await _balance(clients) == before
+
+    response = await clients.post("/call/aiark.people.search", json={
+        "account": {"domain": {"any": {"include": ["example.com"]}}},
+        "page": 0,
+        "size": 2,
+    })
+    assert response.status_code == 400
+    assert response.json()["detail"]["error"] == "catalog_parameter_invalid"
+    assert await _balance(clients) == before
+    get_settings.cache_clear()
 
 
 @pytest.mark.parametrize("doc", [
