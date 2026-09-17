@@ -243,7 +243,7 @@ async def _maybe_overflow_attempt(
     why = force_trigger or _trigger(mk, status, headers, body)
     if why is None:
         return None
-    routes = routes_view.for_endpoint(mk.endpoint_id, estimate_micro=mk.estimate_micro)
+    routes = routes_view.for_endpoint(mk.endpoint_id)
     routes = [r for r in routes if settings.overflow_key_for(r.aggregator)
               and not capacity_view.is_exhausted(f"overflow:{r.aggregator}")
               and not capacity_view.is_exhausted(f"overflow:{r.aggregator}:{mk.provider}")]
@@ -287,10 +287,14 @@ async def _maybe_overflow_attempt(
     # --- decide ---
     if res.failure in AGGREGATOR_SIDE or res.failure == VENDOR_DRY:
         why_agg = res.failure
-        # The aggregator itself (key, account, host, envelope) is out for everyone; its account
-        # for THIS vendor being dry (a relayed 402 / Apollo 422 / period 429) is out for this
-        # provider only - one vendor's daily cap must not take hunter and lusha offline too.
-        mark_key = f"overflow:{aggregator}" if res.failure in AGGREGATOR_SIDE else f"overflow:{aggregator}:{mk.provider}"
+        # The aggregator's key or account being out is out for everyone. Everything else is scoped
+        # to THIS vendor: its account for the vendor being dry (a relayed 402 / Apollo 422 / period
+        # 429), and a `malformed` answer too - a 5xx or transport timeout on one vendor's relay
+        # ("timeout of 30000ms exceeded" on apollo, 2026-09-17) took influencers.club and every
+        # other provider's fallback offline for 15 minutes. A dead aggregator host still ends up
+        # marked, one provider at a time.
+        mark_key = (f"overflow:{aggregator}" if res.failure in ("aggregator_auth", "aggregator_balance")
+                    else f"overflow:{aggregator}:{mk.provider}")
         await capacity_marks.strike(
             mark_key, endpoint_id=None, kind="balance", immediate=True,
             resets_at=utcnow_naive().replace(microsecond=0) + timedelta(seconds=AGGREGATOR_UNHEALTHY_S),

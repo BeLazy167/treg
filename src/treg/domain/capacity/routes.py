@@ -21,7 +21,8 @@ from ...models import CapacityPolicy, OverflowRoute
 from ...timeutil import utcnow_naive
 
 MAX_RATIO = 4
-"""Maximum aggregator/direct price ratio, checked per event or per request for fixed discovery."""
+"""Maximum aggregator/direct price ratio per event. Fixed-fee discovery routes use the absolute
+`_FIXED_DISCOVERY_MAX_MICRO` ceiling instead (see `eligible` and `route_for`)."""
 VERIFY_MAX_AGE = timedelta(days=7)
 FREE_ROUTE_MAX_USD = 0.01
 """A FREE endpoint of ours has no ratio (÷0). Its account still runs dry — tomba's free
@@ -31,8 +32,8 @@ AGGREGATOR_ORDER = ("orthogonal", "monid")
 SEED_PATH = Path(__file__).with_name("overflow_seed.json")
 
 # Orthogonal /details reports a fixed $0.03 per request for these two discovery routes
-# (2026-09-08), while our direct account pays per creator. Compare against the REQUEST's
-# direct estimate at admission, not a single creator. Keep this exception confined to the
+# (2026-09-08), while our direct account pays per creator. Admission is the absolute ceiling
+# below, never a ratio against the request's estimate. Keep this exception confined to the
 # verified contracts; other per-result/per-call mismatches still require their own evidence.
 _FIXED_DISCOVERY_PATHS = {
     "influencersclub.creators.search": "/public/v1/discovery/",
@@ -250,13 +251,12 @@ async def apply_sync(db: AsyncSession, candidates: list[dict], *, catalog, now: 
     return SyncResult(len(seen), enabled, disabled)
 
 
-def route_for(routes: list[OverflowRoute], endpoint_id: str, *,
-              estimate_micro: int | None = None) -> list[OverflowRoute]:
-    """Enabled routes for an endpoint in aggregator order — Orthogonal first (plan decision)."""
+def route_for(routes: list[OverflowRoute], endpoint_id: str) -> list[OverflowRoute]:
+    """Enabled routes for an endpoint in aggregator order — Orthogonal first (plan decision).
+
+    No per-request price check here. A fixed-fee discovery route already passed its absolute
+    ceiling in `eligible`; comparing the flat $0.03 against a one-creator estimate ($0.006) used
+    to refuse the smallest requests with a typed 503 telling the caller to bring their own key
+    (2026-09-17). Three cents, disclosed, beats a refusal."""
     mine = [r for r in routes if r.endpoint_id == endpoint_id and r.enabled]
-    if estimate_micro is not None:
-        mine = [r for r in mine if not request_priced(r)
-                or (r.agg_price_micro is not None
-                    and 0 <= r.agg_price_micro <= min(_FIXED_DISCOVERY_MAX_MICRO,
-                                                    MAX_RATIO * max(0, estimate_micro)))]
     return sorted(mine, key=lambda r: AGGREGATOR_ORDER.index(r.aggregator) if r.aggregator in AGGREGATOR_ORDER else 99)

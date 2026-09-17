@@ -265,14 +265,16 @@ pays the aggregator's real price, 0% markup, disclosed in-band when it ships (st
   by exact `(host, method, path)` (Orthogonal) / `(provider, path)` (Monid); `apply_sync` upserts
   and re-derives `enabled`, and disables any row missing from the current sync.
 - **Influencers Club discovery**: `request_priced` permits the two exact Orthogonal contracts
-  `influencersclub.creators.search` and `.similar` to compare the flat aggregator price against
-  the direct **request estimate**. `/v1/details` and live runs with 2 and 10 creators confirmed
-  $0.03 per request on 2026-09-08. The worker requires a fresh verification and a price at or below
-  the verified $0.03 ceiling; `route_for(estimate_micro=...)` enforces the existing 4× guard before
-  reserve on both the resolver's skip-direct path and the post-failure child cycle. At our current
-  $0.00598 per creator, a request for one creator is ineligible and two or more qualify. The
-  request is never enlarged to qualify. Other unit mismatches remain disabled. A fallback charges
-  the aggregator's actual flat fee, including an empty page, rather than multiplying by results.
+  `influencersclub.creators.search` and `.similar` to be admitted by an **absolute ceiling**
+  instead of the ratio. `/v1/details` and live runs with 2 and 10 creators confirmed $0.03 per
+  request on 2026-09-08. The worker requires a fresh verification and a price at or below the
+  verified $0.03 ceiling; `route_for` applies no per-request check. Until 2026-09-17 it also
+  compared the flat fee against the request's direct estimate ($0.00598 per creator), so a
+  one-creator request was refused with the typed 503 telling the caller to bring their own key
+  while a two-creator request was served: a customer's agent read that as "your plan no longer
+  allows discovery". Three cents, disclosed through `X-Treg-Cost-Micro` and `X-Treg-Served-Via`,
+  beats a refusal. Other unit mismatches remain disabled. A fallback charges the aggregator's
+  actual flat fee, including an empty page, rather than multiplying by results.
 - **The seed** - `overflow_seed.json` contains candidate mappings and recorded verification evidence.
   Tests pin its historical baseline and expiry behavior. Enabled routes decay after seven days
   without `treg-worker overflow verify`. The Influencers Club verification record is
@@ -280,6 +282,13 @@ pays the aggregator's real price, 0% markup, disclosed in-band when it ships (st
   `tests/fixtures/aggregators/orthogonal_influencersclub_search.json`. Email enrichment remains
   unverified because its catalog entry has no test request; profile/analytics enrichment and
   parameterized locations have no mapped fallback.
+- **Mark scope on a failed child** (`overflow.py`): only `aggregator_auth` and `aggregator_balance`
+  mark `overflow:<aggregator>` for every provider. Everything else - the aggregator's account for
+  the vendor being dry, and a `malformed` answer (a 5xx, a transport timeout, a non-envelope) - marks
+  `overflow:<aggregator>:<provider>`. On 2026-09-17 one Orthogonal Apollo relay answering
+  "timeout of 30000ms exceeded" marked the whole aggregator and refused every other provider's
+  fallback for 15 minutes, including 62 Influencers Club `similar` calls from one team. A dead
+  aggregator host still ends up marked, one provider at a time.
 - **`signatures.py`** - the signature table: what a provider's error body means for the registry
   account (`balance` / `quota` means exhausted, `burst` is smoothed but never exhausted, and an
   `unknown` 429 is logged).
