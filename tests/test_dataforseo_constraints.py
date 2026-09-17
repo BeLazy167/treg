@@ -692,6 +692,10 @@ def test_llm_mentions_platform_omitted_is_google_only():
         )
         example = field.get("example")
         if example is not None:
+            assert example in ("google", "chat_gpt"), (
+                f"{ep['id']}: platform example must stay a documented value, got {example!r}"
+            )
+        if ep.get("id") in (LLM_MENTIONS_HISTORICAL_ID, LLM_MENTIONS_MULTI_TARGET_ID):
             assert example == "google", (
                 f"{ep['id']}: keep platform example google, got {example!r}"
             )
