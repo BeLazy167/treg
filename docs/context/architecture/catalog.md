@@ -1646,6 +1646,26 @@ example is unchanged. Settlement is unchanged. Enforced by
 `test_llm_mentions_multi_target_targets_bound` and
 `test_catalog_get_dataforseo_llm_mentions_multi_target_names_targets_bound`.
 
+### DataForSEO LLM Mentions Live `platform` omit is google only
+
+DataForSEO's LLM Mentions live routes take an optional `platform` of
+`chat_gpt` or `google`. Official docs
+(https://docs.dataforseo.com/v3/ai_optimization/llm_mentions/historical/live/
+and
+https://docs.dataforseo.com/v3/ai_optimization/llm_mentions/multi_target_metrics/live/)
+still say omitting it returns both platforms; multi-target also lists
+default `google`. Paired live calls with the same other params showed omit
+equals `platform=google` (same mention counts month-by-month); `chat_gpt`
+is a different near-zero series. Feedback #489:
+`dataforseo.x.ai-optimization-llm-mentions-historical-live` and
+`dataforseo.x.ai-optimization-llm-mentions-multi-target-metrics-live`
+advertised both claims, so agents treated omit as both platforms.
+Catalog-only: each llm-mentions Live `platform.note` now says omit defaults
+to google only, keeps the `chat_gpt` United States / English caveat, and
+keeps example `google`. Settlement is unchanged. Enforced by
+`test_llm_mentions_platform_omitted_is_google_only` and
+`test_catalog_get_dataforseo_llm_mentions_platform_omitted_is_google_only`.
+
 ### ScrapeCreators Instagram reels search `date_posted`
 
 ScrapeCreators' OpenAPI for `GET /v2/instagram/reels/search` restricts `date_posted` to

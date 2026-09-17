@@ -26,6 +26,10 @@ DataForSEO has provider-specific rules that generic catalog validation can't cat
    live POST with that field returns task status 40501 Invalid Field:
    'location_name' and $0.
 
+7. LLM Mentions Live `platform` is optional (`chat_gpt` or `google`). Vendor
+   docs still say omitting it returns both platforms, and some routes also
+   list default `google`. Live paired calls show omit equals google only.
+
 These tests ensure catalog test_requests and documentation stay aligned with live behavior.
 """
 
@@ -634,3 +638,60 @@ def test_llm_mentions_multi_target_targets_bound():
         f"{LLM_MENTIONS_MULTI_TARGET_ID}: input.note should point monthly charts at "
         f"{LLM_MENTIONS_HISTORICAL_ID}"
     )
+
+
+def test_llm_mentions_platform_omitted_is_google_only():
+    """Feedback #489: llm-mentions Live `platform` omit means google, not both.
+
+    Vendor docs still say omitting platform returns both platforms, and
+    multi-target (plus several siblings) also list default google. Paired
+    live calls with the same other params showed omit == platform=google
+    month-by-month, while platform=chat_gpt is a different near-zero
+    series. Catalog-only: one note, google-only default, keep the chat_gpt
+    US/English caveat. Settlement is unchanged.
+
+    Ref: https://docs.dataforseo.com/v3/ai_optimization/llm_mentions/historical/live/
+    """
+    endpoints = load_dataforseo_endpoints()
+    mentions = [ep for ep in endpoints if "llm-mentions" in (ep.get("id") or "")]
+    assert mentions, "expected llm-mentions endpoints in the DataForSEO catalog"
+
+    with_platform = []
+    for ep in mentions:
+        body = (ep.get("input") or {}).get("body") or {}
+        if "platform" in body:
+            with_platform.append(ep)
+
+    assert len(with_platform) >= 15, (
+        f"expected ~15 llm-mentions Live routes with `platform`, got "
+        f"{len(with_platform)}: {[ep['id'] for ep in with_platform]}"
+    )
+
+    for ep in with_platform:
+        field = ((ep.get("input") or {}).get("body") or {}).get("platform") or {}
+        assert field.get("required") is False, (
+            f"{ep['id']}: platform stays optional (DataForSEO body-field convention)"
+        )
+        note = field.get("note") or ""
+        lower = note.lower()
+        assert "optional" in lower, f"{ep['id']}: platform.note must say the field is optional"
+        assert "chat_gpt" in lower and "google" in lower, (
+            f"{ep['id']}: platform.note must name possible values chat_gpt and google"
+        )
+        assert "defaults to google" in lower, (
+            f"{ep['id']}: platform.note must say omit defaults to google"
+        )
+        assert "not both platforms" in lower, (
+            f"{ep['id']}: platform.note must reject the stale both-platforms claim"
+        )
+        assert "returned for both" not in lower, (
+            f"{ep['id']}: platform.note still claims omit returns both platforms"
+        )
+        assert "united states" in lower and "english" in lower, (
+            f"{ep['id']}: platform.note should keep the chat_gpt US/English caveat"
+        )
+        example = field.get("example")
+        if example is not None:
+            assert example == "google", (
+                f"{ep['id']}: keep platform example google, got {example!r}"
+            )
