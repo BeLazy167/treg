@@ -1316,6 +1316,9 @@ MOLTSETS = OAuthProvider(
     service="moltsets", display_name="MoltSets", auth_kind="key",
     token_label="API key", token_placeholder="ms_…",
     token_header="Authorization", token_format="Bearer {secret}",
+    # Required on every API call as of 2026-09-16. Pin a descriptive value for connection
+    # probes and all BYOK/platform calls instead of relying on httpx's incidental default.
+    required_headers=(("User-Agent", "treg/1.0 (+https://treg.to)"),),
     setup_url="https://app.moltsets.com/dashboard/api_keys",
     setup_action_label="Get your MoltSets API key",
     setup_steps=("Sign in to MoltSets and open the API Keys dashboard.",

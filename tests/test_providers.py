@@ -54,7 +54,10 @@ def test_moltsets_env_key_is_detected_as_bearer(tmp_path):
     assert detected.provider == "MoltSets"
     assert detected.auth == {"shape": "bearer"}
     assert detected.base_url == "https://api.moltsets.com/api/v1/tools"
-    assert prov.CATALOG_VERSION == 15
+    assert detected.required_headers == {"User-Agent": "treg/1.0 (+https://treg.to)"}
+    [action] = prov.plan_actions([detected])
+    assert action.required_headers == {"User-Agent": "treg/1.0 (+https://treg.to)"}
+    assert prov.CATALOG_VERSION == 16
 
 
 def test_limadata_env_key_is_detected_as_x_api_key(tmp_path):

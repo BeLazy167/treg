@@ -28,7 +28,7 @@ from dataclasses import dataclass, field
 # `auth` is the provider's DEFAULT shape; a per-variable form (CLIENT_ID/SECRET → oauth2) can override
 # it. Served at GET /providers.json so the CLI can refresh centrally (bundled copy = offline fallback);
 # bump CATALOG_VERSION whenever entries change so a cache can tell it's stale.
-CATALOG_VERSION = 15  # v15 2026-09-17: LimaData (x-api-key)
+CATALOG_VERSION = 16  # v16 2026-09-18: MoltSets required User-Agent
 # `skills` (optional) matches a SKILL FOLDER name for file-credential skills that have no env var to
 # key on (OAuth token files etc.) — see `match_skill`. Such providers carry `tokens: []` so the env
 # scanner never mis-detects them as a simple bearer key (their real auth is OAuth + extra headers).
@@ -137,7 +137,8 @@ CATALOG: list[dict] = [
     {"provider": "Sumble", "tokens": ["SUMBLE"], "base_url": "https://api.sumble.com/v9",
      "auth": {"shape": "bearer"}},
     {"provider": "MoltSets", "tokens": ["MOLTSETS"],
-     "base_url": "https://api.moltsets.com/api/v1/tools", "auth": {"shape": "bearer"}},
+     "base_url": "https://api.moltsets.com/api/v1/tools", "auth": {"shape": "bearer"},
+     "required_headers": {"User-Agent": "treg/1.0 (+https://treg.to)"}},
     {"provider": "Openmart", "tokens": ["OPENMART"],
      "base_url": "https://api.openmart.ai", "auth": {"shape": "bearer"},
      "probe": "api/v2/credit-balance"},
