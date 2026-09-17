@@ -190,6 +190,10 @@ def test_the_category_list_comes_from_the_data_not_the_order_list():
         assert gone not in body, f"{gone} is no longer a catalog category — remove the reference"
 
 
+def test_ai_generation_shelf_names_all_three_media_modalities():
+    assert "'AI generation':'video, image and voice models" in INDEX
+
+
 def test_tiles_are_grouped_by_category_on_every_capability_tab():
     """"All" is not a flat wall of tiles: it keeps the category headings, and a category tab is the
     same grouping filtered to one — so the page never loses its place."""
@@ -309,7 +313,8 @@ def test_the_card_price_is_the_servers_computed_usd():
     would drift from the CLI the moment the rate table changed."""
     fn = INDEX[INDEX.index("platPrice(pl){") :][:1400]
     assert "typeof pf.usd==='number'" in fn
-    assert "'$'+this.usdNum(pf.usd)+' / '+this.priceUnit(pf.type)" in fn
+    assert "typeof pf.display_usd==='number' ? pf.display_usd : pf.usd" in fn
+    assert "pf.display_unit || this.priceUnit(pf.type)" in fn
     assert "return null; }" in fn  # priced but unpublished → say nothing, not "from —"
     # "from" is a floor: an OAuth provider among the platform's providers makes the floor $0, even
     # when metered providers publish a rate — that rate demotes to the tooltip.

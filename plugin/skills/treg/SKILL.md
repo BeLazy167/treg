@@ -191,11 +191,11 @@ Notes:
     verify call each would have caught.
 - An endpoint with no published price is refused rather than served free; connect your own key.
 
-## Task - generate a video or an image
+## Task - generate video, images, or voice
 
-Generation models live in the catalog under the `video-gen` and `image-gen` platforms, one row per
-model per route (MiniMax direct, Replicate, OpenRouter), so the same model on two routes sits next
-to itself with both prices. Models are not interchangeable - you pick one; treg does not choose.
+Generation models live in the catalog under the `video-gen`, `image-gen`, and `voice-gen` platforms,
+one row per model per route, so the same model on two routes sits next to itself with both prices.
+Models are not interchangeable - you pick one; treg does not choose.
 
 ```bash
 treg catalog search "text to video"                  # every model, with prices
@@ -203,9 +203,17 @@ treg catalog get minimax.video-gen.h3.generate       # native params, model enum
 treg call minimax.video-gen.h3.generate --await --timeout 900 --data '{"model":"MiniMax-H3-Max",
   "content":[{"type":"text","text":"A paper boat drifts across a quiet pond at sunrise."}],
   "resolution":"480P","duration":5,"ratio":"16:9"}'
+treg call minimax.voice-gen.voices.list --data '{"voice_type":"system"}'
+treg catalog get minimax.voice-gen.speech-2-8-turbo
+treg call minimax.voice-gen.speech-2-8-turbo --data '{"model":"speech-2.8-turbo",
+  "text":"A calm voice can make a complex idea feel simple.","stream":false,"output_format":"url",
+  "voice_setting":{"voice_id":"English_expressive_narrator","speed":1,"vol":1,"pitch":0}}'
 ```
 How it works:
-- **A generation call is an async task.** The submission returns a task id at once; `--await` polls
+- **Voice generation is synchronous.** MiniMax returns JSON containing a 24-hour audio URL. The
+  catalog route fixes `stream:false` and `output_format:"url"`; use the voice-list action to discover
+  valid system voice IDs, then choose HD or Turbo by endpoint id.
+- **A video or image generation call is an async task.** The submission returns a task id at once; `--await` polls
   the provider until it finishes and prints the **final response only** on stdout. stderr carries the
   task id, a resumable `treg call …` command (Ctrl-C loses the wait, never the task or the money),
   progress, and the result URL. Exit 0 = done, 2 = the provider failed the task, 3 = timed out

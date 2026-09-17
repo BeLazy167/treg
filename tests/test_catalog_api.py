@@ -891,8 +891,13 @@ def test_ai_generation_taxonomy_and_chinese_alias_tokens_are_loaded():
     cat = cs.load()
     assert cat.platforms["video-gen"]["category"] == "AI generation"
     assert cat.platforms["image-gen"]["category"] == "AI generation"
+    assert cat.platforms["voice-gen"] == {
+        "label": "Voice generation",
+        "category": "AI generation",
+        "summary": "Text-to-speech across voice models, with prices side by side.",
+    }
     assert {"video-gen.from_text", "video-gen.from_image", "video-gen.task.status",
-            "image-gen.from_text", "image-gen.edit"} <= set(cat.capabilities)
+            "image-gen.from_text", "image-gen.edit", "voice-gen.from_text"} <= set(cat.capabilities)
     text_to_video_zh = "\u6587\u751f\u89c6\u9891"
     assert cat.aliases[text_to_video_zh] == ["text-to-video"]
     assert cs._tokens(f"{text_to_video_zh} text-to-video") == [
@@ -939,6 +944,38 @@ async def test_ai_generation_pages_keep_comparisons_curated_and_coverage_in_mode
     image_ids = {endpoint["id"] for row in image_rows for endpoint in row["endpoints"]}
     assert {"minimax.image-gen.from_text", "replicate.image-gen.flux-schnell",
             "reapi.image-gen.gemini-3-pro-image", "piapi.image-gen.gpt-image-2-5"} <= image_ids
+
+    voice = (await clients.get("/catalog/platforms/voice-gen")).json()
+    assert {section["domain"] for section in voice["domains"]} == {"models"}
+    voice_rows = [row for section in voice["domains"] for row in section["rows"]]
+    assert {row["capability"] for row in voice_rows} == {
+        "voice-gen.speech-2-8-hd.generate",
+        "voice-gen.speech-2-8-turbo.generate",
+    }
+    voice_endpoints = [endpoint for row in voice_rows for endpoint in row["endpoints"]]
+    assert {endpoint["id"] for endpoint in voice_endpoints} == {
+        "minimax.voice-gen.speech-2-8-hd",
+        "minimax.voice-gen.speech-2-8-turbo",
+    }
+    assert all(endpoint["provider"] == "minimax" for endpoint in voice_endpoints)
+    catalog = cs.load()
+    assert all(catalog.by_id[endpoint["id"]]["cache"] == "forbidden"
+               for endpoint in voice_endpoints)
+
+    voice_full = (await clients.get(
+        "/catalog/platforms/voice-gen?include_hidden=1")).json()
+    assert voice_full["hidden_count"] == 1
+    action_endpoints = {
+        endpoint["id"]: endpoint
+        for section in voice_full["domains"]
+        for row in section["rows"]
+        for endpoint in row["endpoints"]
+        if endpoint["kind"] == "utility"
+    }
+    assert set(action_endpoints) == {"minimax.voice-gen.voices.list"}
+    assert catalog.by_id["minimax.voice-gen.voices.list"]["platform_request"] == {
+        "body.voice_type": "system"
+    }
 
 
 def test_a_missing_catalog_directory_is_an_empty_catalog_not_a_crash(tmp_path):
