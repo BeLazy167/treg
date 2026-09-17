@@ -373,7 +373,7 @@ See [feedback](feedback.md) for attribution, submission, sampling and collection
 
 ## Bindings (the multi-credential shape)
 `Tool.bindings` is a JSON list; each entry is
-`{secret_id, injector, location, name, format, secret_field}` - one credential injection. A request
+`{secret_id, injector, location, name, format, secret_field, token_encode}` - one credential injection. A request
 applies **all** of a tool's bindings (e.g. google-ads = an oauth bearer + a `developer-token` header).
 The API builds a single-binding tool from flat fields via `_flat_binding()`; injection is in
 [auth-secrets](auth-secrets.md).

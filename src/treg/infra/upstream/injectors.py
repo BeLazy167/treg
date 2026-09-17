@@ -28,7 +28,7 @@ def register(name: str) -> Callable[[Injector], Injector]:
     return deco
 
 
-def _ensure_base64(value: str) -> str:
+def ensure_base64(value: str) -> str:
     """Ensure a value is Base64-encoded for HTTP Basic auth.
 
     HTTP Basic providers (DataForSEO, Moz, PredictLeads) expect `login:password` Base64-encoded.
@@ -61,7 +61,7 @@ def _place(headers, params: list, binding: dict, value: str) -> None:
     # connect flow are already encoded; secrets added via `treg secret add` are raw. Encode now
     # if needed, so both paths produce the same Authorization header.
     if binding.get("token_encode") == "base64":
-        cleaned = _ensure_base64(cleaned)
+        cleaned = ensure_base64(cleaned)
     rendered = binding.get("format", "{secret}").format(secret=cleaned)
     name = binding.get("name", "Authorization")
     if binding.get("location", "header") == "query":
