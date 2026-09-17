@@ -1117,6 +1117,7 @@ def test_org_rename_follows_slug_change_locally(monkeypatch, tmp_path):
     """`treg org rename --slug` rewrites active_org; the pinned token is untouched because the server
     keeps the old slug as an alias."""
     monkeypatch.setattr(cli, "CONFIG_PATH", tmp_path / "config.json")
+    monkeypatch.setattr(cli, "_JSON_OVERRIDE", False)  # another test may have left --json on
     saved = {}
     monkeypatch.setattr(cli, "_save_config", lambda cfg: saved.update(cfg))
     monkeypatch.setattr(cli, "_active_org_id", lambda cfg, c: 7)

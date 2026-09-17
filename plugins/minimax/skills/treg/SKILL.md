@@ -317,6 +317,7 @@ treg health --run      # re-check now: refresh oauth tokens, probe each tool, al
 **Teams / orgs** (owner > admin > member > viewer; a member manages only what they created):
 ```bash
 treg org create "Team A"                       # you become owner (auto-active)
+treg org rename --name "Team B" --slug team-b   # admin+; existing keys keep working
 treg org invite bob@company.com --role member  # admin+; emails the invite (a one-time code is the fallback)
 treg org members                               # admin+; who's in the active org
 treg org ls / treg org switch <slug>           # your orgs / switch active
