@@ -123,7 +123,7 @@ endpoints:
       platform:
         type: string
         required: false
-        note: '<em>target platform</em><br>optional field<br>possible values:<br><code>chat_gpt</code>, <code>google</code><br><strong>Note:</strong> if the <code>platform</code> is not specified, the data is returned for both platforms<br><strong>Note #2:</strong><code>chat_gpt</code> data is available for the <c'
+        note: 'target platform. Optional field. Possible values: chat_gpt, google. When omitted, DataForSEO defaults to google only (not both platforms). chat_gpt data is available for the United States and English only.'
         example: google
       tag:
         type: string
@@ -198,7 +198,7 @@ endpoints:
       platform:
         type: string
         required: false
-        note: '<em>target platform</em><br>optional field<br>possible values:<br><code>chat_gpt</code>, <code>google</code><br>default value: <code class="long-string">google</code><br><strong>Note:</strong> if the <code>platform</code> is not specified, the data is returned for both platforms<br><strong>Note #2:<'
+        note: 'target platform. Optional field. Possible values: chat_gpt, google. When omitted, DataForSEO defaults to google only (not both platforms). chat_gpt data is available for the United States and English only.'
         example: google
       filters:
         type: array
@@ -307,7 +307,7 @@ endpoints:
       platform:
         type: string
         required: false
-        note: '<em>target platform</em><br>optional field<br>possible values:<br><code>chat_gpt</code>, <code>google</code><br><strong>Note:</strong> if the <code>platform</code> is not specified, the data is returned for both platforms<br><strong>Note #2:</strong><code>chat_gpt</code> data is available for the <c'
+        note: 'target platform. Optional field. Possible values: chat_gpt, google. When omitted, DataForSEO defaults to google only (not both platforms). chat_gpt data is available for the United States and English only.'
         example: google
       filters:
         type: array
@@ -410,7 +410,7 @@ endpoints:
       platform:
         type: string
         required: false
-        note: '<em>target platform</em><br>optional field<br>possible values:<br><code>chat_gpt</code>, <code>google</code><br><strong>Note:</strong> if the <code>platform</code> is not specified, the data is returned for both platforms<br><strong>Note #2:</strong><code>chat_gpt</code> data is available for the <c'
+        note: 'target platform. Optional field. Possible values: chat_gpt, google. When omitted, DataForSEO defaults to google only (not both platforms). chat_gpt data is available for the United States and English only.'
         example: chat_gpt
       initial_dataset_filters:
         type: array
@@ -495,7 +495,7 @@ endpoints:
       platform:
         type: string
         required: false
-        note: '<em>target platform</em><br>optional field<br>possible values:<br><code>chat_gpt</code>, <code>google</code><br><strong>Note:</strong> if the <code>platform</code> is not specified, the data is returned for both platforms<br><strong>Note #2:</strong><code>chat_gpt</code> data is available for the <c'
+        note: 'target platform. Optional field. Possible values: chat_gpt, google. When omitted, DataForSEO defaults to google only (not both platforms). chat_gpt data is available for the United States and English only.'
         example: google
       initial_dataset_filters:
         type: array
@@ -603,7 +603,7 @@ endpoints:
       platform:
         type: string
         required: false
-        note: '<em>target platform</em><br>optional field<br>possible values:<br><code>chat_gpt</code>, <code>google</code><br>default value: <code class="long-string">google</code><br><strong>Note:</strong> if the <code>platform</code> is not specified, the data is returned for both platforms<br><strong>Note #2:<'
+        note: 'target platform. Optional field. Possible values: chat_gpt, google. When omitted, DataForSEO defaults to google only (not both platforms). chat_gpt data is available for the United States and English only.'
         example: google
       tag:
         type: string
@@ -688,7 +688,7 @@ endpoints:
       platform:
         type: string
         required: false
-        note: '<em>target platform</em><br>optional field<br>possible values:<br><code>chat_gpt</code>, <code>google</code><br>default value: <code class="long-string">google</code><br><strong>Note:</strong> if the <code>platform</code> is not specified, the data is returned for both platforms<br><strong>Note #2:<'
+        note: 'target platform. Optional field. Possible values: chat_gpt, google. When omitted, DataForSEO defaults to google only (not both platforms). chat_gpt data is available for the United States and English only.'
         example: google
       tag:
         type: string
@@ -760,7 +760,7 @@ endpoints:
       platform:
         type: string
         required: false
-        note: '<em>target platform</em><br>optional field<br>possible values:<br><code>chat_gpt</code>, <code>google</code><br><strong>Note:</strong> if the <code>platform</code> is not specified, the data is returned for both platforms<br><strong>Note #2:</strong><code>chat_gpt</code> data is available for the <c'
+        note: 'target platform. Optional field. Possible values: chat_gpt, google. When omitted, DataForSEO defaults to google only (not both platforms). chat_gpt data is available for the United States and English only.'
         example: chat_gpt
       filters:
         type: array
@@ -875,7 +875,7 @@ endpoints:
       platform:
         type: string
         required: false
-        note: '<em>target platform</em><br>optional field<br>possible values:<br><code>chat_gpt</code>, <code>google</code><br>default value: <code class="long-string">google</code><br><strong>Note:</strong> if the <code>platform</code> is not specified, the data is returned for both platforms<br><strong>Note #2:<'
+        note: 'target platform. Optional field. Possible values: chat_gpt, google. When omitted, DataForSEO defaults to google only (not both platforms). chat_gpt data is available for the United States and English only.'
         example: chat_gpt
       filters:
         type: array
@@ -990,7 +990,7 @@ endpoints:
       platform:
         type: string
         required: false
-        note: '<em>target platform</em><br>optional field<br>possible values:<br><code>chat_gpt</code>, <code>google</code><br><strong>Note:</strong> if the <code>platform</code> is not specified, the data is returned for both platforms<br><strong>Note #2:</strong><code>chat_gpt</code> data is available for the <c'
+        note: 'target platform. Optional field. Possible values: chat_gpt, google. When omitted, DataForSEO defaults to google only (not both platforms). chat_gpt data is available for the United States and English only.'
         example: chat_gpt
       filters:
         type: array
@@ -1105,7 +1105,7 @@ endpoints:
       platform:
         type: string
         required: false
-        note: '<em>target platform</em><br>optional field<br>possible values:<br><code>chat_gpt</code>, <code>google</code><br>default value: <code class="long-string">google</code><br><strong>Note:</strong> if the <code>platform</code> is not specified, the data is returned for both platforms<br><strong>Note #2:<'
+        note: 'target platform. Optional field. Possible values: chat_gpt, google. When omitted, DataForSEO defaults to google only (not both platforms). chat_gpt data is available for the United States and English only.'
         example: chat_gpt
       filters:
         type: array
@@ -1220,7 +1220,7 @@ endpoints:
       platform:
         type: string
         required: false
-        note: '<em>target platform</em><br>optional field<br>possible values:<br><code>chat_gpt</code>, <code>google</code><br><strong>Note:</strong> if the <code>platform</code> is not specified, the data is returned for both platforms<br><strong>Note #2:</strong><code>chat_gpt</code> data is available for the <c'
+        note: 'target platform. Optional field. Possible values: chat_gpt, google. When omitted, DataForSEO defaults to google only (not both platforms). chat_gpt data is available for the United States and English only.'
         example: chat_gpt
       links_scope:
         type: string
@@ -1341,7 +1341,7 @@ endpoints:
       platform:
         type: string
         required: false
-        note: '<em>target platform</em><br>optional field<br>possible values:<br><code>chat_gpt</code>, <code>google</code><br>default value: <code class="long-string">google</code><br><strong>Note:</strong> if the <code>platform</code> is not specified, the data is returned for both platforms<br><strong>Note #2:<'
+        note: 'target platform. Optional field. Possible values: chat_gpt, google. When omitted, DataForSEO defaults to google only (not both platforms). chat_gpt data is available for the United States and English only.'
         example: chat_gpt
       links_scope:
         type: string
@@ -1462,7 +1462,7 @@ endpoints:
       platform:
         type: string
         required: false
-        note: '<em>target platform</em><br>optional field<br>possible values:<br><code>chat_gpt</code>, <code>google</code><br><strong>Note:</strong> if the <code>platform</code> is not specified, the data is returned for both platforms<br><strong>Note #2:</strong><code>chat_gpt</code> data is available for the <c'
+        note: 'target platform. Optional field. Possible values: chat_gpt, google. When omitted, DataForSEO defaults to google only (not both platforms). chat_gpt data is available for the United States and English only.'
         example: chat_gpt
       links_scope:
         type: string
@@ -1583,7 +1583,7 @@ endpoints:
       platform:
         type: string
         required: false
-        note: '<em>target platform</em><br>optional field<br>possible values:<br><code>chat_gpt</code>, <code>google</code><br>default value: <code class="long-string">google</code><br><strong>Note:</strong> if the <code>platform</code> is not specified, the data is returned for both platforms<br><strong>Note #2:<'
+        note: 'target platform. Optional field. Possible values: chat_gpt, google. When omitted, DataForSEO defaults to google only (not both platforms). chat_gpt data is available for the United States and English only.'
         example: chat_gpt
       links_scope:
         type: string

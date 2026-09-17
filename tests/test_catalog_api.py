@@ -1640,6 +1640,41 @@ async def test_catalog_get_dataforseo_llm_mentions_multi_target_names_targets_bo
     assert "perplexity" in tmpl
 
 
+def test_dataforseo_llm_mentions_platform_omitted_is_google_only():
+    """Feedback #489: historical + multi-target `platform` omit is google only.
+
+    catalog_get used to advertise both default google and "returned for both
+    platforms". Live omit matches platform=google; chat_gpt is a different
+    series. Settlement is unchanged.
+    """
+    cat = cs.load()
+    for endpoint_id in (LLM_MENTIONS_HISTORICAL_ID, LLM_MENTIONS_MULTI_TARGET_ID):
+        ep = cat.by_id[endpoint_id]
+        field = ep["input"]["body"]["platform"]
+        assert field.get("required") is False
+        note = field["note"].lower()
+        assert "optional" in note
+        assert "chat_gpt" in note and "google" in note
+        assert "defaults to google" in note
+        assert "not both platforms" in note
+        assert "returned for both" not in note
+        assert "united states" in note and "english" in note
+        assert field["example"] == "google"
+
+
+async def test_catalog_get_dataforseo_llm_mentions_platform_omitted_is_google_only(
+        clients: AsyncClient):
+    """Feedback #489: catalog_get must not say omit returns both platforms."""
+    for endpoint_id in (LLM_MENTIONS_HISTORICAL_ID, LLM_MENTIONS_MULTI_TARGET_ID):
+        body = (await clients.get(f"/catalog/endpoints/{endpoint_id}")).json()
+        field = body["endpoint"]["input"]["body"]["platform"]
+        note = field["note"].lower()
+        assert "defaults to google" in note
+        assert "not both platforms" in note
+        assert "returned for both" not in note
+        assert field["example"] == "google"
+
+
 GOOGLE_TRENDS_ID = "serpapi.x.google-trends"
 
 
