@@ -1412,6 +1412,19 @@ async def test_catalog_get_dataforseo_related_keywords_omits_order_by(clients: A
     assert "filters" in note
 
 
+async def test_catalog_get_dataforseo_maps_live_omits_location_name(clients: AsyncClient):
+    body = (await clients.get(
+        "/catalog/endpoints/dataforseo.x.serp-google-maps-live-advanced"
+    )).json()
+    fields = body["endpoint"]["input"]["body"]
+    assert "location_name" not in fields
+    assert "location_code" in fields
+    assert "location_coordinate" in fields
+    note = body["endpoint"]["input"]["note"]
+    assert "location_name" in note
+    assert "40501" in note
+
+
 def test_dataforseo_backlinks_summary_is_single_task():
     """Feedback #102 / #103: backlinks/summary/live accepts exactly one task.
 
