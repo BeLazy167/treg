@@ -1580,3 +1580,45 @@ async def test_catalog_get_dataforseo_llm_mentions_historical_names_and_semantic
     assert "en.wikipedia.org" in tmpl
     assert "exclude" in tmpl
     assert "bmw" in tmpl
+
+
+GOOGLE_TRENDS_ID = "serpapi.x.google-trends"
+
+
+def test_serpapi_google_trends_data_type_names_geo_map_cardinality():
+    """Feedback #440: GEO_MAP is compared regional breakdown (multiple queries);
+    GEO_MAP_0 is interest by region (single query).
+
+    catalog_get used to list TIMESERIES | GEO_MAP | GEO_MAP_0 | RELATED_TOPICS |
+    RELATED_QUERIES with no cardinality, so agents sent GEO_MAP with one keyword
+    and got HTTP 400. Settlement is unchanged.
+
+    Ref: https://serpapi.com/google-trends-api
+    """
+    cat = cs.load()
+    ep = cat.by_id[GOOGLE_TRENDS_ID]
+    assert ep["path"] == "/search"
+    note = ep["input"]["queryParams"]["data_type"]["note"].lower()
+    assert "geo_map" in note
+    assert "multiple" in note
+    assert "compar" in note
+    assert "geo_map_0" in note
+    assert "single" in note
+    assert "timeseries" in note
+    assert "related_topics" in note
+    assert "related_queries" in note
+
+
+async def test_catalog_get_serpapi_google_trends_data_type_cardinality(
+        clients: AsyncClient):
+    """Feedback #440: catalog_get must warn GEO_MAP needs multiple queries."""
+    body = (await clients.get(f"/catalog/endpoints/{GOOGLE_TRENDS_ID}")).json()
+    note = body["endpoint"]["input"]["queryParams"]["data_type"]["note"].lower()
+    assert "geo_map" in note
+    assert "multiple" in note
+    assert "compar" in note
+    assert "geo_map_0" in note
+    assert "single" in note
+    assert "timeseries" in note
+    assert "related_topics" in note
+    assert "related_queries" in note

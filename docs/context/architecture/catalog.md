@@ -129,6 +129,8 @@ sources:
   - tests/test_dataforseo_constraints.py
   - src/treg/catalog/scrapecreators.yaml
   - src/treg/catalog/scrapecreators.extended.yaml
+  - src/treg/catalog/serpapi.yaml
+  - src/treg/catalog/serpapi.extended.yaml
   - src/treg/catalog/diffbot.yaml
   - src/treg/catalog/diffbot.extended.yaml
   - src/treg/catalog/tikhub.extended.yaml
@@ -1597,6 +1599,20 @@ so agents sent an invalid filter. Catalog-only: the field now names that three-v
 and example `last-week`. Sibling `date_posted` fields (Google search, LinkedIn posts) keep
 their own windows. Enforced by `test_scrapecreators_instagram_reels_search_date_posted_enum`
 and `test_catalog_get_scrapecreators_instagram_reels_search_date_posted`.
+
+### SerpApi Google Trends `data_type` query cardinality
+
+SerpApi's Google Trends engine (`GET /search?engine=google_trends`) accepts five `data_type`
+values, but not with the same `q` cardinality. `TIMESERIES` (default) accepts single or
+multiple queries; `GEO_MAP` is compared breakdown by region and **multiple queries only**
+(comma-separated `q`); `GEO_MAP_0` is interest by region for a **single** query;
+`RELATED_TOPICS` and `RELATED_QUERIES` are single-query only. A single keyword with
+`GEO_MAP` returns HTTP 400 ("change data_type to one that supports a single query").
+Feedback #440: `serpapi.x.google-trends` listed the five values without those constraints,
+so agents sent `GEO_MAP` with one term. Catalog-only: `data_type.note` now names the
+single vs multiple-query rule; all five values remain valid. Settlement is unchanged.
+Enforced by `test_serpapi_google_trends_data_type_names_geo_map_cardinality` and
+`test_catalog_get_serpapi_google_trends_data_type_cardinality`.
 
 ## Choosing between providers (`domain/catalog/stats.py`)
 
