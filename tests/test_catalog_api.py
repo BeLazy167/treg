@@ -1603,6 +1603,30 @@ async def test_catalog_get_dataforseo_llm_mentions_historical_names_and_semantic
     assert "bmw" in tmpl
 
 
+async def test_catalog_get_dataforseo_llm_mentions_multi_target_names_targets_bound(
+        clients: AsyncClient):
+    """Feedback #490: catalog_get must name the 2-10 / 40501 targets bound."""
+    body = (await clients.get(f"/catalog/endpoints/{LLM_MENTIONS_MULTI_TARGET_ID}")).json()
+    field = body["endpoint"]["input"]["body"]["targets"]
+    assert field.get("required") is False
+    note = field["note"]
+    lower = note.lower()
+    assert "required" in lower
+    assert "2" in note and "10" in note
+    assert "40501" in note
+    assert LLM_MENTIONS_HISTORICAL_ID in note
+    example = field["example"]
+    assert len(example) == 4
+    assert [item["key"] for item in example] == [
+        "chat_gpt", "claude", "gemini", "perplexity"
+    ]
+    tmpl = body["call_template"]
+    assert tmpl.startswith(
+        f"treg call {LLM_MENTIONS_MULTI_TARGET_ID} --method POST")
+    assert "chat_gpt" in tmpl
+    assert "perplexity" in tmpl
+
+
 GOOGLE_TRENDS_ID = "serpapi.x.google-trends"
 
 

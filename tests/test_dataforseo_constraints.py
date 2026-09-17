@@ -17,6 +17,10 @@ DataForSEO has provider-specific rules that generic catalog validation can't cat
    metrics series, not one series per brand. Brand comparison is
    multi-target-metrics-live (`targets` with keys) or one call per brand.
 
+5. LLM Mentions multi-target-metrics-live `targets` must contain between 2 and 10
+   keyed sets. Extra items return task status 40501. The live route is a rolling
+   window, not monthly history.
+
 These tests ensure catalog test_requests and documentation stay aligned with live behavior.
 """
 
@@ -474,4 +478,74 @@ def test_llm_mentions_historical_summary_names_and_semantics():
     )
     assert "one series" in summary, (
         f"{LLM_MENTIONS_HISTORICAL_ID}: summary should say one series, not one per brand"
+    )
+
+
+def test_llm_mentions_multi_target_targets_bound():
+    """Feedback #490: multi-target-metrics-live `targets` is 2-10 keyed sets.
+
+    catalog_get documented the array shape/example but omitted the length
+    constraint, so agents sent 14 targets and got upstream 40501. Official
+    docs require at least 2 and at most 10 keyed target sets; each nested
+    target can hold up to 10 entities; at least one include filter is
+    required. The live route is a rolling window, not monthly buckets.
+    Settlement is unchanged.
+
+    Ref: https://docs.dataforseo.com/v3/ai_optimization/llm_mentions/multi_target_metrics/live/
+    """
+    endpoints = load_dataforseo_endpoints()
+    endpoint = next((ep for ep in endpoints if ep.get("id") == LLM_MENTIONS_MULTI_TARGET_ID), None)
+    assert endpoint is not None, f"{LLM_MENTIONS_MULTI_TARGET_ID} not found"
+
+    body = (endpoint.get("input") or {}).get("body") or {}
+    field = body.get("targets") or {}
+    assert field.get("required") is False, (
+        f"{LLM_MENTIONS_MULTI_TARGET_ID}: keep required: false (DataForSEO body-field convention)"
+    )
+    note = field.get("note") or ""
+    lower = note.lower()
+    assert "required" in lower, (
+        f"{LLM_MENTIONS_MULTI_TARGET_ID}: targets.note must say the field is required"
+    )
+    assert "2" in note and "10" in note, (
+        f"{LLM_MENTIONS_MULTI_TARGET_ID}: targets.note must name the 2-10 keyed-set bound"
+    )
+    assert "40501" in note, (
+        f"{LLM_MENTIONS_MULTI_TARGET_ID}: targets.note must name upstream 40501"
+    )
+    assert "include" in lower, (
+        f"{LLM_MENTIONS_MULTI_TARGET_ID}: targets.note must require at least one include filter"
+    )
+    assert LLM_MENTIONS_HISTORICAL_ID in note, (
+        f"{LLM_MENTIONS_MULTI_TARGET_ID}: targets.note should point monthly series at "
+        f"{LLM_MENTIONS_HISTORICAL_ID}"
+    )
+    assert "rolling" in lower or "trailing" in lower, (
+        f"{LLM_MENTIONS_MULTI_TARGET_ID}: targets.note should say this is a rolling window"
+    )
+
+    example = field.get("example") or []
+    assert len(example) == 4, (
+        f"{LLM_MENTIONS_MULTI_TARGET_ID}: keep the documented 4-key example, got {len(example)}"
+    )
+    keys = [item.get("key") for item in example if isinstance(item, dict)]
+    assert keys == ["chat_gpt", "claude", "gemini", "perplexity"], (
+        f"{LLM_MENTIONS_MULTI_TARGET_ID}: 4-key example keys must stay chat_gpt/claude/gemini/perplexity"
+    )
+
+    summary = (endpoint.get("summary") or "").lower()
+    assert "2" in summary and "10" in summary, (
+        f"{LLM_MENTIONS_MULTI_TARGET_ID}: summary should name 2-10 comparison keys"
+    )
+    assert "rolling" in summary or "not monthly" in summary, (
+        f"{LLM_MENTIONS_MULTI_TARGET_ID}: summary should say this is a live rolling window"
+    )
+
+    input_note = ((endpoint.get("input") or {}).get("note") or "").lower()
+    assert "40501" in input_note or ("2" in input_note and "10" in input_note), (
+        f"{LLM_MENTIONS_MULTI_TARGET_ID}: input.note should surface the 2-10 / 40501 bound"
+    )
+    assert LLM_MENTIONS_HISTORICAL_ID in ((endpoint.get("input") or {}).get("note") or ""), (
+        f"{LLM_MENTIONS_MULTI_TARGET_ID}: input.note should point monthly charts at "
+        f"{LLM_MENTIONS_HISTORICAL_ID}"
     )
