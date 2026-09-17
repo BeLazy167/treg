@@ -1317,6 +1317,24 @@ async def test_access_probe_reports_the_platform_tier(clients: AsyncClient, plat
     assert "no key needed" in d["detail"] and "0.001" in d["detail"]
 
 
+@pytest.mark.parametrize(("endpoint", "expected"), [
+    ("openmart.businesses.search", 29_800),
+    ("openmart.businesses.lookup.openmart", 29_800),
+    ("openmart.businesses.lookup.google-place", 29_800),
+    ("openmart.companies.enrich", 29_800),
+    ("openmart.companies.search", 89_400),
+])
+async def test_openmart_access_estimate_prices_the_runnable_example(
+    clients: AsyncClient, openmart_platform_on, endpoint, expected,
+):
+    response = await clients.get(f"/catalog/endpoints/{endpoint}/access")
+    assert response.status_code == 200, response.text
+    detail = response.json()
+    assert detail["tier"] == "platform"
+    assert detail["estimated_cost_micro"] == expected
+    assert f"${expected / 1_000_000:g}/call" in detail["detail"]
+
+
 async def test_a_user_may_not_forge_a_platform_binding(clients: AsyncClient, platform_on):
     """The other door onto treg's keys: a tool the caller registers themselves. `relay` resolves
     `platform_setting` from settings without looking at ownership, so the validator has to refuse it."""
@@ -3480,12 +3498,19 @@ async def test_limadata_platform_releases_error_and_byok_wins(
     assert await _balance(clients) == before
 
 
+@pytest.mark.parametrize(("endpoint", "body"), [
+    ("limadata.people.identity.resolve", {
+        "full_name": "Example Person", "company_domain": "example.com",
+    }),
+    ("limadata.people.count", {
+        "filter_expression": "full_name=treg-nonexistent-person",
+    }),
+])
 async def test_limadata_byok_only_operation_cannot_fall_through_to_platform_key(
-    clients, limadata_platform_on,
+    clients, limadata_platform_on, endpoint, body,
 ):
     result = await clients.post(
-        "/call/limadata.people.identity.resolve",
-        json={"full_name": "Example Person", "company_domain": "example.com"},
+        f"/call/{endpoint}", json=body,
     )
     assert result.status_code == 404
 

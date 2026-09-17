@@ -1028,6 +1028,15 @@ def test_discovery_public_cohorts_keep_all_requested_constraints():
     assert next(p for p in similar if p['provider']=='companyenrich')['estimate_micro'] > next(p for p in similar if p['provider']=='tomba')['estimate_micro']
 
 
+def test_openmart_is_not_offered_in_enrich_arena():
+    assert all(
+        preview["provider"] != "openmart"
+        for task in arena.public_tasks()
+        for cohort in task["provider_previews"]
+        for preview in cohort
+    )
+
+
 def test_search_outputs_are_bounded_sanitized_and_survive_presentation():
     output = rules.safe_output({'people':[{'name':'Example Person','linkedin_url':'javascript:bad','email':True,'title':False}]*30,'count':99999}, capability='people.search')
     assert output['count']==10 and len(output['people'])==10

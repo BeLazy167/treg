@@ -159,6 +159,7 @@ endpoints:
     input: *count_input
     test_request: {body: {filter_expression: full_name=treg-nonexistent-person}}
     cost: *tenth_credit_success
+    platform_blocked: LimaData's shared account does not have People Database API access; connect your own LimaData key on a plan that includes People Database access.
     docs_url: https://api.limadata.com/docs/basic_v2
     verified: '2026-09-17'
     example_response: examples/limadata.people.count.json

@@ -36,6 +36,7 @@ endpoints:
   summary: Search local businesses with text, location, category, and attribute filters
   input: &search_input
     bodyType: json
+    note: Treat a returned row with match_score 0 as no meaningful match; a live nonsense query returned an unrelated fallback row at that score.
     body:
       query: {type: string}
       limit: {type: integer, min: 1, max: 1000}
@@ -51,7 +52,7 @@ endpoints:
     source_url: https://www.openmart.com/pricing
     checked: '2026-09-17'
     confidence: verified
-    note: Openmart support confirmed 3 credits per 10 returned records, rounded up per operation; the effective charge is ceil(0.3 × returned records), and zero records cost zero. Ten live one-result calls each deducted one whole credit. Shared-key calls require an explicit limit from 1 to 25; own-key calls keep the upstream limit.
+    note: Openmart support confirmed 3 credits per 10 returned records, rounded up per operation; the effective charge is ceil(0.3 × returned records), and zero records cost zero. Ten live one-result calls each deducted one whole credit. Shared-key calls require an explicit limit from 1 to 25; own-key calls keep the upstream limit. Direct callers should treat match_score 0 as a miss.
   verified: '2026-09-17'
   example_response: examples/openmart.businesses.search.json
   docs_url: https://app.openmart.com/api-docs

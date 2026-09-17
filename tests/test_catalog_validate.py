@@ -759,9 +759,10 @@ def test_limadata_catalog_covers_basic_v2_and_keeps_unsafe_calls_byok_only():
         ("GET", "/api/v2/batch/results"),
     }
     platform = {ep["id"] for ep in rows if catalog.platform_eligible(ep)}
-    assert len(rows) == 24 and len(platform) == 15
+    assert len(rows) == 24 and len(platform) == 14
     assert {
         "limadata.people.enrich",
+        "limadata.people.count",
         "limadata.companies.search",
         "limadata.people.search",
         "limadata.people.employees.search",

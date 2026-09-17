@@ -65,14 +65,16 @@ allows `limadata`. A team's own key remains first and treg never meters it.
 ## Surface and shared-key boundary
 
 `limadata.yaml` catalogs all 24 operations in the official Basic v2 OpenAPI document. Connected
-teams can call every operation. Fifteen synchronous operations can use the shared key because their
-successful charge is fixed and bounded: company enrichment, database autocomplete, both count
-operations, five contact and identity lookups, email verification, company LinkedIn lookup, phone
-lookup, AI research, and web search.
+teams can call every operation. Fourteen synchronous operations can use the shared key because their
+successful charge is fixed and bounded: company enrichment, database autocomplete, company count,
+five contact and identity lookups, email verification, company LinkedIn lookup, phone lookup, AI
+research, and web search.
 
-Nine operations stay BYOK-only:
+Ten operations stay BYOK-only:
 
 - Person enrichment varies from one to 15 credits based on the identifier and optional results.
+- People count requires People Database API access, which is not enabled on treg's shared account.
+  Teams whose own LimaData plan includes that access can still call the endpoint directly.
 - Three database searches charge by returned rows, in whole-credit blocks with a one-credit
   minimum.
 - Identity resolution costs two credits even on HTTP 404. Generic settlement releases a hold on an
@@ -135,6 +137,7 @@ charges shown by response evidence and the account activity page.
 | Work-email synthetic misses | HTTP 404 | 0 |
 | Identity-resolution synthetic miss | HTTP 404 | 2 |
 | Company count | HTTP 200 | 0.1 |
+| People count on the shared account | HTTP 403; People Database API access is not enabled | 0 |
 | Two one-row company-search pages | HTTP 200 | 1 each |
 | Email verification | HTTP 200 | 0.3 |
 | Extract without and with JavaScript | HTTP 200 | 0.1 and 0.2 |
