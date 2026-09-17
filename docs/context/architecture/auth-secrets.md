@@ -349,7 +349,9 @@ module symbols:
   `token_ok_field`==`token_ok_value` match (Majestic's `Code`=="OK"), a `token_reject_field` present
   (Serpstat's `error`), or an `ERROR`-prefixed text body (Semrush). The connect probe may be a POST with a
   `probe_json` body (Serpstat's JSON-RPC), and `token_encode="base64"` turns a pasted `login:password` into
-  the Basic blob for `Basic {secret}` (DataForSEO, Moz). `can_autoprovision` (has a `base_url` and either needs no
+  the Basic blob for `Basic {secret}` (DataForSEO, Moz). The binding carries `token_encode` too, and the
+  injector's `ensure_base64` re-applies the same already-encoded check at call time, so a raw pair stored by
+  `treg secret add <provider>` (which never runs the connect probe) renders the same header. `can_autoprovision` (has a `base_url` and either needs no
   second credential or treg holds it) drives auto-building a callable tool on a successful connect;
   `needs_extra_credential` covers a second header the primary slot can't carry: Google Ads'
   `developer-token` (treg-held, via `extra_credential_setting`) and Tomba's per-user `X-Tomba-Secret`

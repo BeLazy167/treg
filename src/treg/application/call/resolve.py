@@ -880,14 +880,19 @@ def _platform_bindings(provider) -> list[dict]:
     (`_provider_bindings`), except the value is named rather than carried — `relay` reads
     `platform_setting` from settings at call time. That is the whole security model: treg's key is
     never written to a Secret row (unreadable by the tenant, unexportable by a local run, and
-    `api.py`'s cross-org secret check would reject it anyway)."""
+    `api.py`'s cross-org secret check would reject it anyway).
+
+    `token_encode` is carried for HTTP Basic providers so the injector can ensure Base64 encoding,
+    matching `_provider_bindings` for tiers 1/2. Platform settings should already be encoded, but
+    carrying the attribute costs nothing and keeps the contract explicit."""
     setting = platform_setting_name(provider.service)
+    encode_attr = {"token_encode": provider.token_encode} if provider.token_encode else {}
     if provider.token_location == "query":
         bindings = [{"platform_setting": setting, "injector": "env", "location": "query",
-                     "name": provider.token_param, "format": provider.token_format}]
+                     "name": provider.token_param, "format": provider.token_format, **encode_attr}]
     else:
         bindings = [{"platform_setting": setting, "injector": "env", "location": "header",
-                     "name": provider.token_header, "format": provider.token_format}]
+                     "name": provider.token_header, "format": provider.token_format, **encode_attr}]
     # Keep tier 4 protocol-identical to BYOK. Required provider headers are constants, but they
     # still use the same platform setting reference so the normal binding validator and injector
     # own the whole shape. Crustdata's x-api-version pin is the first provider that needs this.
