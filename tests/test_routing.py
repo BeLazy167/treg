@@ -206,6 +206,34 @@ def test_aiark_finders_treat_present_but_empty_outputs_as_misses():
     assert not phone.is_miss({"data": {"data": [["+15550101000"]]}})
 
 
+def test_limadata_routing_surface_contains_only_its_verified_adapters():
+    catalog = catalog_store.load()
+    expected = {
+        "limadata.people.email.find.name",
+        "limadata.people.email.find.linkedin",
+        "limadata.people.email.verify",
+        "limadata.people.phone.find",
+        "limadata.companies.enrich",
+    }
+    assert {
+        eid for eid, adapter in catalog.adapters.items()
+        if eid.startswith("limadata.") and adapter.verified
+    } == expected
+    assert "limadata.people.email.find.name" in catalog.by_id[
+        "treg.people.email.find"
+    ]["routed_children"]
+    assert "limadata.people.email.verify" in catalog.by_id[
+        "treg.people.email.verify"
+    ]["routed_children"]
+    assert "limadata.people.phone.find" in catalog.by_id[
+        "treg.people.phone.find"
+    ]["routed_children"]
+    assert "limadata.people.enrich" not in catalog.adapters
+    assert "limadata.people.enrich" not in catalog.by_id[
+        "treg.people.enrich"
+    ]["routed_children"]
+
+
 def test_wiza_routing_surface_uses_bounded_single_record_searches():
     catalog = catalog_store.load()
     expected = {
@@ -1277,7 +1305,7 @@ async def test_lusha_is_the_last_rung_of_the_phone_waterfall_and_settles_on_its_
     get_settings.cache_clear()
     routed = "treg.people.phone.find"
     plan = (await clients.get(f"/catalog/endpoints/{routed}")).json()["routing"]["plan"]
-    assert plan[-1]["endpoint_id"] == "lusha.people.phone.find" and len(plan) == 10, [c["endpoint_id"] for c in plan]
+    assert plan[-1]["endpoint_id"] == "lusha.people.phone.find" and len(plan) == 11, [c["endpoint_id"] for c in plan]
     def misses():
         return {"aviato": [(404, {"message": "Not Found"})], "tomba": [(200, {"data": {"e164_format": None}})],
                 "leadmagic": [(200, {"mobile_number": None, "credits_consumed": 0})],

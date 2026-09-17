@@ -78,6 +78,28 @@ async def test_aiark_email_finder_enters_the_enrichment_arena(clients, monkeypat
     get_settings.cache_clear()
 
 
+def test_limadata_verified_adapters_enter_the_enrichment_arena():
+    seen = {}
+    for task in arena.public_tasks():
+        endpoints = {
+            preview["endpoint_id"]
+            for previews in task["provider_previews"]
+            for preview in previews
+            if preview["provider"] == "limadata"
+        }
+        if endpoints:
+            seen[task["id"]] = endpoints
+    assert seen == {
+        "people.email.find": {
+            "limadata.people.email.find.name",
+            "limadata.people.email.find.linkedin",
+        },
+        "people.email.verify": {"limadata.people.email.verify"},
+        "people.phone.find": {"limadata.people.phone.find"},
+        "companies.enrich": {"limadata.companies.enrich"},
+    }
+
+
 async def test_zerobounce_verifier_enters_arena_but_expensive_finder_does_not(
     clients, monkeypatch,
 ):

@@ -125,7 +125,7 @@ Regenerate via `scripts/build-map.py`.
 | `src/treg/bootstrap_http.py` | architecture/composition.md, interface/api.md |
 | `src/treg/call_surface.py` | architecture/composition.md, architecture/proxy-model.md, interface/api.md |
 | `src/treg/caller_metadata.py` | architecture/multi-tenancy.md, interface/api.md |
-| `src/treg/catalog/adapters.yaml` | architecture/aiark.md, architecture/bounceban.md, architecture/catalog.md, architecture/contactout.md, architecture/dropleads.md, architecture/harvestapi.md, architecture/moltsets.md, architecture/openmart.md, architecture/prospeo.md, architecture/scrubby.md, architecture/wiza.md, architecture/zerobounce.md |
+| `src/treg/catalog/adapters.yaml` | architecture/aiark.md, architecture/bounceban.md, architecture/catalog.md, architecture/contactout.md, architecture/dropleads.md, architecture/harvestapi.md, architecture/limadata.md, architecture/moltsets.md, architecture/openmart.md, architecture/prospeo.md, architecture/scrubby.md, architecture/wiza.md, architecture/zerobounce.md |
 | `src/treg/catalog/aiark.yaml` | architecture/aiark.md |
 | `src/treg/catalog/akta.extended.yaml` | architecture/catalog.md |
 | `src/treg/catalog/aliases.yaml` | architecture/catalog.md |
@@ -281,6 +281,30 @@ Regenerate via `scripts/build-map.py`.
 | `src/treg/catalog/examples/harvestapi.linkedin.user.profile.json` | architecture/harvestapi.md |
 | `src/treg/catalog/examples/harvestapi.linkedin.user.profile.main.json` | architecture/harvestapi.md |
 | `src/treg/catalog/examples/harvestapi.linkedin.user.reactions.json` | architecture/harvestapi.md |
+| `src/treg/catalog/examples/limadata.companies.count.json` | architecture/limadata.md |
+| `src/treg/catalog/examples/limadata.companies.enrich.json` | architecture/limadata.md |
+| `src/treg/catalog/examples/limadata.companies.linkedin.find.json` | architecture/limadata.md |
+| `src/treg/catalog/examples/limadata.companies.search.json` | architecture/limadata.md |
+| `src/treg/catalog/examples/limadata.database.autocomplete.json` | architecture/limadata.md |
+| `src/treg/catalog/examples/limadata.google.serp.organic.json` | architecture/limadata.md |
+| `src/treg/catalog/examples/limadata.people.audience.batch.start.json` | architecture/limadata.md |
+| `src/treg/catalog/examples/limadata.people.audience.email-hash.json` | architecture/limadata.md |
+| `src/treg/catalog/examples/limadata.people.audience.resolve.json` | architecture/limadata.md |
+| `src/treg/catalog/examples/limadata.people.batch.results.json` | architecture/limadata.md |
+| `src/treg/catalog/examples/limadata.people.count.json` | architecture/limadata.md |
+| `src/treg/catalog/examples/limadata.people.email.find.linkedin.json` | architecture/limadata.md |
+| `src/treg/catalog/examples/limadata.people.email.find.name.json` | architecture/limadata.md |
+| `src/treg/catalog/examples/limadata.people.email.find.personal.json` | architecture/limadata.md |
+| `src/treg/catalog/examples/limadata.people.email.verify.batch.start.json` | architecture/limadata.md |
+| `src/treg/catalog/examples/limadata.people.email.verify.json` | architecture/limadata.md |
+| `src/treg/catalog/examples/limadata.people.employees.search.json` | architecture/limadata.md |
+| `src/treg/catalog/examples/limadata.people.enrich.json` | architecture/limadata.md |
+| `src/treg/catalog/examples/limadata.people.identity.from-email.json` | architecture/limadata.md |
+| `src/treg/catalog/examples/limadata.people.identity.resolve.json` | architecture/limadata.md |
+| `src/treg/catalog/examples/limadata.people.phone.find.json` | architecture/limadata.md |
+| `src/treg/catalog/examples/limadata.people.search.json` | architecture/limadata.md |
+| `src/treg/catalog/examples/limadata.web.extract.json` | architecture/limadata.md |
+| `src/treg/catalog/examples/limadata.web.research.json` | architecture/limadata.md |
 | `src/treg/catalog/examples/millionverifier.account.usage.json` | architecture/catalog.md |
 | `src/treg/catalog/examples/millionverifier.people.email.verify.json` | architecture/catalog.md |
 | `src/treg/catalog/examples/minimax.video-gen.from_image.json` | architecture/catalog.md |
@@ -376,7 +400,7 @@ Regenerate via `scripts/build-map.py`.
 | `src/treg/catalog/examples/zerobounce.people.email.find.json` | architecture/zerobounce.md |
 | `src/treg/catalog/examples/zerobounce.people.email.verify.json` | architecture/zerobounce.md |
 | `src/treg/catalog/financialdatasets.yaml` | architecture/catalog.md |
-| `src/treg/catalog/fx.yaml` | architecture/aiark.md, architecture/bounceban.md, architecture/catalog.md, architecture/dropleads.md, architecture/getleadsio.md, architecture/moltsets.md, architecture/openmart.md, architecture/prospeo.md, architecture/scrubby.md, architecture/wiza.md, architecture/zerobounce.md |
+| `src/treg/catalog/fx.yaml` | architecture/aiark.md, architecture/bounceban.md, architecture/catalog.md, architecture/dropleads.md, architecture/getleadsio.md, architecture/limadata.md, architecture/moltsets.md, architecture/openmart.md, architecture/prospeo.md, architecture/scrubby.md, architecture/wiza.md, architecture/zerobounce.md |
 | `src/treg/catalog/getleadsio.yaml` | architecture/getleadsio.md |
 | `src/treg/catalog/google-search-console.extended.yaml` | architecture/catalog.md |
 | `src/treg/catalog/google-search-console.yaml` | architecture/catalog.md |
@@ -387,6 +411,7 @@ Regenerate via `scripts/build-map.py`.
 | `src/treg/catalog/instagram.extended.yaml` | architecture/catalog.md, architecture/instagram-oauth.md |
 | `src/treg/catalog/instagram.yaml` | architecture/catalog.md, architecture/instagram-oauth.md |
 | `src/treg/catalog/justoneapi.extended.yaml` | architecture/catalog.md |
+| `src/treg/catalog/limadata.yaml` | architecture/limadata.md |
 | `src/treg/catalog/millionverifier.yaml` | architecture/catalog.md |
 | `src/treg/catalog/minimax.yaml` | architecture/catalog.md |
 | `src/treg/catalog/moltsets.yaml` | architecture/moltsets.md |
@@ -416,7 +441,7 @@ Regenerate via `scripts/build-map.py`.
 | `src/treg/cli.py` | architecture/instagram-oauth.md, interface/cli.md, interface/onboarding.md, interface/shell.md |
 | `src/treg/cli_analytics.py` | interface/cli.md |
 | `src/treg/client_identity.py` | architecture/import-boundaries.md, architecture/proxy-model.md, interface/api.md |
-| `src/treg/config.py` | architecture/aiark.md, architecture/archive.md, architecture/auth-secrets.md, architecture/bounceban.md, architecture/dropleads.md, architecture/feedback.md, architecture/getleadsio.md, architecture/harvestapi.md, architecture/moltsets.md, architecture/openmart.md, architecture/prospeo.md, architecture/scrubby.md, architecture/super-admin.md, architecture/wiza.md, architecture/zerobounce.md, guides/expanding-a-category.md, ops/deploy.md |
+| `src/treg/config.py` | architecture/aiark.md, architecture/archive.md, architecture/auth-secrets.md, architecture/bounceban.md, architecture/dropleads.md, architecture/feedback.md, architecture/getleadsio.md, architecture/harvestapi.md, architecture/limadata.md, architecture/moltsets.md, architecture/openmart.md, architecture/prospeo.md, architecture/scrubby.md, architecture/super-admin.md, architecture/wiza.md, architecture/zerobounce.md, guides/expanding-a-category.md, ops/deploy.md |
 | `src/treg/convert.py` | interface/cli.md |
 | `src/treg/crypto.py` | architecture/auth-secrets.md |
 | `src/treg/domain/__init__.py` | architecture/import-boundaries.md |
@@ -424,11 +449,11 @@ Regenerate via `scripts/build-map.py`.
 | `src/treg/domain/arena_insights.py` | interface/enrich-arena.md |
 | `src/treg/domain/asynctasks/__init__.py` | architecture/import-boundaries.md, architecture/money.md |
 | `src/treg/domain/capacity/__init__.py` | architecture/import-boundaries.md, ops/capacity.md |
-| `src/treg/domain/capacity/collectors.py` | architecture/aiark.md, architecture/bounceban.md, architecture/dropleads.md, architecture/getleadsio.md, architecture/harvestapi.md, architecture/moltsets.md, architecture/openmart.md, architecture/prospeo.md, architecture/scrubby.md, architecture/wiza.md, architecture/zerobounce.md, ops/capacity.md |
+| `src/treg/domain/capacity/collectors.py` | architecture/aiark.md, architecture/bounceban.md, architecture/dropleads.md, architecture/getleadsio.md, architecture/harvestapi.md, architecture/limadata.md, architecture/moltsets.md, architecture/openmart.md, architecture/prospeo.md, architecture/scrubby.md, architecture/wiza.md, architecture/zerobounce.md, ops/capacity.md |
 | `src/treg/domain/capacity/marks.py` | ops/capacity.md |
 | `src/treg/domain/capacity/overflow_seed.json` | ops/capacity.md |
 | `src/treg/domain/capacity/overflow_spend.py` | ops/capacity.md |
-| `src/treg/domain/capacity/policy.py` | architecture/aiark.md, architecture/bounceban.md, architecture/dropleads.md, architecture/getleadsio.md, architecture/harvestapi.md, architecture/moltsets.md, architecture/openmart.md, architecture/prospeo.md, architecture/scrubby.md, architecture/wiza.md, architecture/zerobounce.md, ops/capacity.md |
+| `src/treg/domain/capacity/policy.py` | architecture/aiark.md, architecture/bounceban.md, architecture/dropleads.md, architecture/getleadsio.md, architecture/harvestapi.md, architecture/limadata.md, architecture/moltsets.md, architecture/openmart.md, architecture/prospeo.md, architecture/scrubby.md, architecture/wiza.md, architecture/zerobounce.md, ops/capacity.md |
 | `src/treg/domain/capacity/routes.py` | ops/capacity.md |
 | `src/treg/domain/capacity/routes_view.py` | ops/capacity.md |
 | `src/treg/domain/capacity/signatures.py` | ops/capacity.md |
@@ -501,8 +526,8 @@ Regenerate via `scripts/build-map.py`.
 | `src/treg/mcp_install.py` | interface/skill.md |
 | `src/treg/models.py` | architecture/data-model.md, architecture/media.md, architecture/money.md, architecture/multi-tenancy.md, interface/enrich-arena.md |
 | `src/treg/oauth.py` | architecture/auth-secrets.md |
-| `src/treg/oauth_providers.py` | architecture/aiark.md, architecture/auth-secrets.md, architecture/bounceban.md, architecture/dropleads.md, architecture/getleadsio.md, architecture/harvestapi.md, architecture/moltsets.md, architecture/openmart.md, architecture/prospeo.md, architecture/scrubby.md, architecture/wiza.md, architecture/zerobounce.md, guides/expanding-a-category.md |
-| `src/treg/providers.py` | architecture/moltsets.md, architecture/openmart.md, interface/env-import.md |
+| `src/treg/oauth_providers.py` | architecture/aiark.md, architecture/auth-secrets.md, architecture/bounceban.md, architecture/dropleads.md, architecture/getleadsio.md, architecture/harvestapi.md, architecture/limadata.md, architecture/moltsets.md, architecture/openmart.md, architecture/prospeo.md, architecture/scrubby.md, architecture/wiza.md, architecture/zerobounce.md, guides/expanding-a-category.md |
+| `src/treg/providers.py` | architecture/limadata.md, architecture/moltsets.md, architecture/openmart.md, interface/env-import.md |
 | `src/treg/ratestore.py` | architecture/data-model.md, interface/api.md |
 | `src/treg/reconcile.py` | architecture/money.md |
 | `src/treg/routers/__init__.py` | interface/api.md |
@@ -561,6 +586,7 @@ Regenerate via `scripts/build-map.py`.
 | `src/treg/web/logos/icypeas.svg` | interface/enrich-arena.md |
 | `src/treg/web/logos/leadmagic.svg` | interface/enrich-arena.md |
 | `src/treg/web/logos/leadsforge.svg` | interface/enrich-arena.md |
+| `src/treg/web/logos/limadata.svg` | architecture/limadata.md |
 | `src/treg/web/logos/lusha.svg` | interface/enrich-arena.md |
 | `src/treg/web/logos/moltsets.svg` | architecture/moltsets.md |
 | `src/treg/web/logos/openmart.svg` | architecture/openmart.md |
@@ -597,7 +623,7 @@ Regenerate via `scripts/build-map.py`.
 | `src/treg/web/vendor/README.md` | interface/dashboard.md |
 | `src/treg/web/vendor/vue-3.5.41.global.prod.js` | interface/dashboard.md |
 | `src/treg/worker.py` | ops/capacity.md, ops/deploy.md |
-| `tests/conftest.py` | architecture/aiark.md, architecture/moltsets.md, architecture/openmart.md, architecture/scrubby.md, architecture/wiza.md, architecture/zerobounce.md |
+| `tests/conftest.py` | architecture/aiark.md, architecture/limadata.md, architecture/moltsets.md, architecture/openmart.md, architecture/scrubby.md, architecture/wiza.md, architecture/zerobounce.md |
 | `tests/fake_object_store.py` | architecture/archive.md |
 | `tests/fixtures/aggregators/verification/contactout.json` | architecture/contactout.md |
 | `tests/js/arena-bench.test.cjs` | interface/enrich-arena.md |
@@ -618,18 +644,18 @@ Regenerate via `scripts/build-map.py`.
 | `tests/test_call_architecture.py` | architecture/import-boundaries.md, architecture/money.md, architecture/proxy-model.md |
 | `tests/test_call_cancellation.py` | architecture/proxy-model.md |
 | `tests/test_call_response_limits.py` | architecture/proxy-model.md |
-| `tests/test_capacity_collectors.py` | architecture/aiark.md, architecture/bounceban.md, architecture/contactout.md, architecture/dropleads.md, architecture/getleadsio.md, architecture/openmart.md, architecture/prospeo.md, architecture/scrubby.md, architecture/wiza.md, architecture/zerobounce.md, ops/capacity.md |
+| `tests/test_capacity_collectors.py` | architecture/aiark.md, architecture/bounceban.md, architecture/contactout.md, architecture/dropleads.md, architecture/getleadsio.md, architecture/limadata.md, architecture/openmart.md, architecture/prospeo.md, architecture/scrubby.md, architecture/wiza.md, architecture/zerobounce.md, ops/capacity.md |
 | `tests/test_capacity_know.py` | ops/capacity.md |
 | `tests/test_capacity_overflow.py` | architecture/contactout.md, ops/capacity.md |
-| `tests/test_capacity_overflow_routes.py` | architecture/aiark.md, architecture/bounceban.md, architecture/getleadsio.md, architecture/moltsets.md, architecture/openmart.md, architecture/scrubby.md, architecture/wiza.md, architecture/zerobounce.md, ops/capacity.md |
+| `tests/test_capacity_overflow_routes.py` | architecture/aiark.md, architecture/bounceban.md, architecture/getleadsio.md, architecture/limadata.md, architecture/moltsets.md, architecture/openmart.md, architecture/scrubby.md, architecture/wiza.md, architecture/zerobounce.md, ops/capacity.md |
 | `tests/test_capacity_overflow_spend.py` | ops/capacity.md |
 | `tests/test_capacity_protect.py` | ops/capacity.md |
 | `tests/test_capacity_smoothing.py` | ops/capacity.md |
 | `tests/test_catalog_api.py` | architecture/catalog.md, architecture/getleadsio.md, architecture/openmart.md |
-| `tests/test_catalog_validate.py` | architecture/aiark.md, architecture/bounceban.md, architecture/catalog.md, architecture/contactout.md, architecture/dropleads.md, architecture/getleadsio.md, architecture/prospeo.md, architecture/zerobounce.md |
+| `tests/test_catalog_validate.py` | architecture/aiark.md, architecture/bounceban.md, architecture/catalog.md, architecture/contactout.md, architecture/dropleads.md, architecture/getleadsio.md, architecture/limadata.md, architecture/prospeo.md, architecture/zerobounce.md |
 | `tests/test_cli_key_compatibility.py` | interface/cli.md |
 | `tests/test_dataforseo_constraints.py` | architecture/catalog.md |
-| `tests/test_enrich_arena.py` | architecture/aiark.md, architecture/bounceban.md, architecture/zerobounce.md, interface/enrich-arena.md |
+| `tests/test_enrich_arena.py` | architecture/aiark.md, architecture/bounceban.md, architecture/limadata.md, architecture/zerobounce.md, interface/enrich-arena.md |
 | `tests/test_error_capture.py` | architecture/proxy-model.md |
 | `tests/test_feedback.py` | architecture/feedback.md |
 | `tests/test_feedback_handling_schema.py` | architecture/feedback.md |
@@ -639,25 +665,25 @@ Regenerate via `scripts/build-map.py`.
 | `tests/test_import_lightness.py` | architecture/import-boundaries.md |
 | `tests/test_influencersclub_overflow.py` | ops/capacity.md |
 | `tests/test_instagram_oauth_architecture.py` | architecture/instagram-oauth.md |
-| `tests/test_key_providers.py` | architecture/aiark.md, architecture/auth-secrets.md, architecture/bounceban.md, architecture/contactout.md, architecture/dropleads.md, architecture/getleadsio.md, architecture/moltsets.md, architecture/openmart.md, architecture/prospeo.md, architecture/scrubby.md, architecture/wiza.md, architecture/zerobounce.md |
+| `tests/test_key_providers.py` | architecture/aiark.md, architecture/auth-secrets.md, architecture/bounceban.md, architecture/contactout.md, architecture/dropleads.md, architecture/getleadsio.md, architecture/limadata.md, architecture/moltsets.md, architecture/openmart.md, architecture/prospeo.md, architecture/scrubby.md, architecture/wiza.md, architecture/zerobounce.md |
 | `tests/test_kv.py` | architecture/feedback.md |
-| `tests/test_marketplace_call.py` | architecture/aiark.md, architecture/bounceban.md, architecture/contactout.md, architecture/dropleads.md, architecture/getleadsio.md, architecture/mcp-oauth.md, architecture/openmart.md, architecture/prospeo.md, architecture/proxy-model.md, architecture/zerobounce.md |
+| `tests/test_marketplace_call.py` | architecture/aiark.md, architecture/bounceban.md, architecture/contactout.md, architecture/dropleads.md, architecture/getleadsio.md, architecture/limadata.md, architecture/mcp-oauth.md, architecture/openmart.md, architecture/prospeo.md, architecture/proxy-model.md, architecture/zerobounce.md |
 | `tests/test_mcp.py` | architecture/mcp-oauth.md, architecture/openmart.md |
 | `tests/test_mcp_directory.py` | architecture/mcp-oauth.md |
 | `tests/test_mcp_oauth.py` | architecture/mcp-oauth.md |
 | `tests/test_media.py` | architecture/media.md |
 | `tests/test_moltsets.py` | architecture/moltsets.md |
 | `tests/test_oauth_billed.py` | architecture/proxy-model.md |
-| `tests/test_oauth_providers_m3.py` | architecture/aiark.md, architecture/bounceban.md, architecture/getleadsio.md, architecture/moltsets.md, architecture/openmart.md, architecture/scrubby.md, architecture/wiza.md, architecture/zerobounce.md |
+| `tests/test_oauth_providers_m3.py` | architecture/aiark.md, architecture/bounceban.md, architecture/getleadsio.md, architecture/limadata.md, architecture/moltsets.md, architecture/openmart.md, architecture/scrubby.md, architecture/wiza.md, architecture/zerobounce.md |
 | `tests/test_oauth_refresh.py` | architecture/auth-secrets.md |
 | `tests/test_passthrough.py` | architecture/proxy-model.md |
 | `tests/test_postgres_reset.py` | architecture/data-model.md |
-| `tests/test_providers.py` | architecture/moltsets.md |
+| `tests/test_providers.py` | architecture/limadata.md, architecture/moltsets.md |
 | `tests/test_released_cli_compat.py` | interface/cli.md |
 | `tests/test_reviews.py` | architecture/feedback.md |
 | `tests/test_route_cost_ceiling.py` | architecture/catalog.md |
 | `tests/test_router_dependencies.py` | architecture/multi-tenancy.md |
-| `tests/test_routing.py` | architecture/aiark.md, architecture/bounceban.md, architecture/catalog.md, architecture/contactout.md, architecture/dropleads.md, architecture/openmart.md, architecture/prospeo.md, architecture/wiza.md, architecture/zerobounce.md |
+| `tests/test_routing.py` | architecture/aiark.md, architecture/bounceban.md, architecture/catalog.md, architecture/contactout.md, architecture/dropleads.md, architecture/limadata.md, architecture/openmart.md, architecture/prospeo.md, architecture/wiza.md, architecture/zerobounce.md |
 | `tests/test_scrubby.py` | architecture/scrubby.md |
 | `tests/test_ssrf_public_addresses.py` | architecture/proxy-model.md |
 | `tests/test_sumble.py` | architecture/sumble.md |
@@ -686,6 +712,7 @@ Regenerate via `scripts/build-map.py`.
 | `architecture/harvestapi.md` | `contracts.py`, `harvestapi.yaml`, `harvestapi.svg`, `oauth_providers.py`, `config.py`, `store.py`, `resolve.py`, `collectors.py`, `policy.py`, `adapters.yaml`, `catalog_validate.py`, `test_harvestapi.py`, `harvestapi.linkedin.ads.get.json`, `harvestapi.linkedin.ads.search.json`, `harvestapi.linkedin.comment.reactions.json`, `harvestapi.linkedin.company.posts.json`, `harvestapi.linkedin.company.profile.json`, `harvestapi.linkedin.company.search.json`, `harvestapi.linkedin.geo.search.json`, `harvestapi.linkedin.group.get.json`, `harvestapi.linkedin.group.search.json`, `harvestapi.linkedin.job.get.json`, `harvestapi.linkedin.leads.search.json`, `harvestapi.linkedin.post.comment_replies.json`, `harvestapi.linkedin.post.comments.json`, `harvestapi.linkedin.post.get.json`, `harvestapi.linkedin.post.reactions.json`, `harvestapi.linkedin.post.search.json`, `harvestapi.linkedin.profile.search.json`, `harvestapi.linkedin.search.jobs.json`, `harvestapi.linkedin.service.search.json`, `harvestapi.linkedin.user.comments.json`, `harvestapi.linkedin.user.posts.json`, `harvestapi.linkedin.user.profile.email.json`, `harvestapi.linkedin.user.profile.json`, `harvestapi.linkedin.user.profile.main.json`, `harvestapi.linkedin.user.reactions.json` |
 | `architecture/import-boundaries.md` | `pyproject.toml`, `ci.yml`, `__init__.py`, `__init__.py`, `access.py`, `authorize.py`, `idempotency.py`, `overflow.py`, `route.py`, `__init__.py`, `intake.py`, `resolve.py`, `reserve.py`, `settle.py`, `evidence.py`, `service.py`, `types.py`, `client_identity.py`, `__init__.py`, `__init__.py`, `access.py`, `budgets.py`, `publicdemo.py`, `teams.py`, `usage.py`, `__init__.py`, `__init__.py`, `authorization.py`, `oauth_flow.py`, `refresh.py`, `__init__.py`, `__init__.py`, `__init__.py`, `__init__.py`, `__init__.py`, `injectors.py`, `relay.py`, `__init__.py`, `limiter.py`, `test_call_architecture.py`, `test_import_lightness.py` |
 | `architecture/instagram-oauth.md` | `catalog_ingest.py`, `access.py`, `resolve.py`, `service.py`, `instagram.yaml`, `instagram.extended.yaml`, `cli.py`, `store.py`, `authorization.py`, `oauth_flow.py`, `oauth_exchange.py`, `mcp.py`, `call.py`, `index.html`, `0010_oauth_authorization_method.py`, `test_instagram_oauth_architecture.py` |
+| `architecture/limadata.md` | `limadata.yaml`, `limadata.people.enrich.json`, `limadata.companies.enrich.json`, `limadata.database.autocomplete.json`, `limadata.companies.count.json`, `limadata.people.count.json`, `limadata.companies.search.json`, `limadata.people.search.json`, `limadata.people.employees.search.json`, `limadata.people.audience.resolve.json`, `limadata.people.audience.email-hash.json`, `limadata.people.email.find.personal.json`, `limadata.people.email.verify.json`, `limadata.people.email.find.name.json`, `limadata.people.email.find.linkedin.json`, `limadata.companies.linkedin.find.json`, `limadata.people.phone.find.json`, `limadata.people.identity.resolve.json`, `limadata.people.identity.from-email.json`, `limadata.web.extract.json`, `limadata.web.research.json`, `limadata.google.serp.organic.json`, `limadata.people.audience.batch.start.json`, `limadata.people.email.verify.batch.start.json`, `limadata.people.batch.results.json`, `adapters.yaml`, `fx.yaml`, `config.py`, `oauth_providers.py`, `providers.py`, `collectors.py`, `policy.py`, `limadata.svg`, `test_catalog_validate.py`, `test_enrich_arena.py`, `test_key_providers.py`, `test_marketplace_call.py`, `test_oauth_providers_m3.py`, `test_providers.py`, `test_routing.py`, `test_capacity_collectors.py`, `test_capacity_overflow_routes.py`, `conftest.py` |
 | `architecture/local-proxy.md` | `localproxy.py`, `server.js` |
 | `architecture/local-run.md` | `localrun.py`, `egress.py`, `fsjail.py` |
 | `architecture/mcp-oauth.md` | `auth.py`, `mcp.py`, `health.py`, `mcp_oauth.py`, `session.py`, `access.py`, `api_keys.py`, `api_keys.py`, `auth.py`, `claude-connector.html`, `connect-demo.html`, `CLAUDE-CONNECTOR-SUBMISSION.md`, `test_mcp.py`, `test_mcp_oauth.py`, `test_mcp_directory.py`, `test_marketplace_call.py` |

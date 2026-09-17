@@ -31,6 +31,7 @@ covers (frontmatter `sources:`). Regenerate this index with
 | [HarvestAPI — API-key-only LinkedIn reads and reported USD charges](architecture/harvestapi.md) | implemented; upstream and local platform/BYOK integration verified | contracts.py, harvestapi.yaml, harvestapi.svg, oauth_providers.py, … |
 | [Enforced import boundaries](architecture/import-boundaries.md) | shipped | pyproject.toml, ci.yml, __init__.py, __init__.py, … |
 | [Instagram OAuth — direct Login and optional Facebook Page tools](architecture/instagram-oauth.md) | built; Meta configuration and live verification pending | catalog_ingest.py, access.py, resolve.py, service.py, … |
+| [LimaData — Basic v2 enrichment, research, and bounded shared-key calls](architecture/limadata.md) | shipped | limadata.yaml, limadata.people.enrich.json, limadata.companies.enrich.json, limadata.database.autocomplete.json, … |
 | [Local proxy — catch a program's own outgoing calls (`treg <command>`)](architecture/local-proxy.md) | shipped | localproxy.py, server.js |
 | [Local CLI runs — run a vendor CLI as a dedicated user with a server-held credential (`treg run`)](architecture/local-run.md) | shipped | localrun.py, egress.py, fsjail.py |
 | [MCP — the front door for assistants, and treg as an OAuth authorization server](architecture/mcp-oauth.md) | shipped | auth.py, mcp.py, health.py, mcp_oauth.py, … |

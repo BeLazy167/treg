@@ -1471,6 +1471,25 @@ WIZA = OAuthProvider(
     probe_path="/api/meta/credits", probe_method="GET",
 )
 
+LIMADATA = OAuthProvider(
+    service="limadata", display_name="LimaData", auth_kind="key",
+    token_label="API key", token_placeholder="your LimaData API key",
+    token_header="x-api-key", token_format="{secret}",
+    setup_url="https://app.limadata.com/",
+    setup_action_label="Get your LimaData API key",
+    setup_steps=("Sign in to LimaData and open the API key settings.",
+                 "Create or copy an API key and paste it here."),
+    setup_note=("Search, enrichment, contact lookup and research use one credit balance. "
+                "Connection verification sends an invalid empty search request, which costs no credits."),
+    auth_uri="", token_uri="", scopes={}, client_id_setting="", client_secret_setting="",
+    category="Enrichment",
+    summary="Enrich people and companies, find contact details, search a B2B database, and research the web.",
+    base_url="https://api.limadata.com", docs_url="https://api.limadata.com/docs/basic_v2",
+    # Live 2026-09-17: POST with {} is a free 400 for the assigned key and 401 for a bogus key.
+    probe_path="/api/v1/search/web", probe_method="POST", probe_json={},
+    probe_reject_statuses=(401, 403),
+)
+
 GETLEADSIO = OAuthProvider(
     service="getleadsio", display_name="GetLeads.io", auth_kind="key",
     token_label="API key", token_placeholder="your GetLeads.io API key",
@@ -3190,8 +3209,9 @@ REGISTRY: dict[str, OAuthProvider] = {
         LINKEDIN, SLACK, X, TIKTOK, FACEBOOK, INSTAGRAM, META_ADS,
         # API-key providers
         APOLLO, PDL, AKTA, HUNTER, SUMBLE, MOLTSETS, OPENMART, HARVESTAPI, DROPLEADS,
-        QUICKENRICH, PROSPEO, AIARK, WIZA, GETLEADSIO, SCRUBBY, ZEROBOUNCE, TRYKITT,
-        CONTACTOUT, MILLIONVERIFIER, BOUNCEBAN, CRUNCHBASE, MINIMAX, OPENROUTER, REPLICATE,
+        QUICKENRICH, PROSPEO, AIARK, WIZA, LIMADATA, GETLEADSIO, SCRUBBY, ZEROBOUNCE,
+        TRYKITT, CONTACTOUT, MILLIONVERIFIER, BOUNCEBAN, CRUNCHBASE, MINIMAX, OPENROUTER,
+        REPLICATE,
         REAPI, PIAPI,
         TIKHUB, BRIGHTDATA, SEMRUSH, JUSTONEAPI,
         SCRAPECREATORS,

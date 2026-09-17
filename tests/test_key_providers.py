@@ -23,7 +23,7 @@ from treg import oauth_providers as P
 def test_key_providers_are_offerable_without_deployment_credentials():
     """The user brings the key, so treg holds no app of its own — a key provider must be offerable,
     not shown as 'not configured' the way an unset OAuth provider is."""
-    for svc in ("apollo", "pdl", "akta", "hunter", "sumble", "moltsets", "openmart", "harvestapi", "dropleads", "quickenrich", "prospeo", "aiark", "wiza", "getleadsio", "scrubby", "zerobounce", "contactout", "millionverifier", "bounceban", "trykitt", "crunchbase", "tikhub", "brightdata", "semrush",
+    for svc in ("apollo", "pdl", "akta", "hunter", "sumble", "moltsets", "openmart", "harvestapi", "dropleads", "quickenrich", "prospeo", "aiark", "wiza", "limadata", "getleadsio", "scrubby", "zerobounce", "contactout", "millionverifier", "bounceban", "trykitt", "crunchbase", "tikhub", "brightdata", "semrush",
                 "justoneapi", "dataforseo", "seranking", "moz", "majestic", "serpstat", "exa",
                 "cloro",
                 "lusha", "coresignal", "diffbot", "thecompaniesapi", "leadmagic", "fiber-ai",
@@ -268,6 +268,51 @@ async def test_aiark_connect_rejects_a_bad_key_and_provisions_the_catalog_host(
     tools = {tool["name"]: tool for tool in (await clients.get("/tools")).json()}
     assert set(tools) == {"aiark"}
     assert tools["aiark"]["base_url"] == "https://api.ai-ark.com/api/developer-portal"
+
+
+def test_limadata_registry_uses_the_free_validation_probe_and_x_api_key(monkeypatch):
+    monkeypatch.setenv("TREG_PLATFORM_KEY_LIMADATA", "PLATFORM-LIMADATA")
+    monkeypatch.setenv("TREG_PLATFORM_PROVIDERS", "limadata")
+    settings = Settings(_env_file=None)
+    provider = P.get("limadata")
+    assert provider.base_url == "https://api.limadata.com"
+    assert provider.probe_path == "/api/v1/search/web"
+    assert provider.probe_method == "POST"
+    assert provider.probe_json == {}
+    assert provider.probe_reject_statuses == (401, 403)
+    assert settings.platform_key_for("limadata") == "PLATFORM-LIMADATA"
+    assert P.platform_bindings(provider) == [{
+        "platform_setting": "platform_key_limadata",
+        "injector": "env",
+        "location": "header",
+        "name": "x-api-key",
+        "format": "{secret}",
+    }]
+
+
+async def test_limadata_connect_rejects_bad_key_and_accepts_validation_error(
+        clients, monkeypatch):
+    def probe(request):
+        assert request.url == "https://api.limadata.com/api/v1/search/web"
+        assert request.content == b"{}"
+        if request.headers["x-api-key"] == "bad":
+            return httpx.Response(401, json={"message": "Unauthorized"})
+        return httpx.Response(400, json={"message": "query is required"})
+
+    async with AsyncClient(transport=httpx.MockTransport(probe)) as upstream:
+        monkeypatch.setattr(app.state, "http", upstream)
+        bad = await clients.post(
+            "/connections/token", json={"provider": "limadata", "token": "bad"}
+        )
+        assert bad.status_code == 422
+        good = await clients.post(
+            "/connections/token", json={"provider": "limadata", "token": "own-key"}
+        )
+        assert good.status_code == 200, good.text
+
+    tools = {tool["name"]: tool for tool in (await clients.get("/tools")).json()}
+    assert set(tools) == {"limadata"}
+    assert tools["limadata"]["base_url"] == "https://api.limadata.com"
 
 
 def test_getleadsio_registry_uses_bearer_and_the_free_usage_probe(monkeypatch):

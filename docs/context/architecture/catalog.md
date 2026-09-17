@@ -183,6 +183,11 @@ related:
 
 # Endpoint catalog — platform-grouped operations per provider
 
+LimaData adds all 24 Basic v2 operations. Fifteen fixed, synchronous operations can use the shared
+key; variable, 404-billed, and account-scoped batch operations require a team's own key. Six
+fixture-verified adapters join existing routing and Enrich Arena contracts. See
+[LimaData](limadata.md) for the full boundary and live evidence.
+
 ## BounceBan email verification (2026-09-16)
 
 BounceBan adds nine tools across standard single verification, BYOK waterfall verification, BYOK
