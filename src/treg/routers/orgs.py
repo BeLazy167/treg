@@ -12,7 +12,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 
-from .. import crypto, email as email_sender, health, localrun
+from .. import analytics, crypto, email as email_sender, health, localrun
 from .. import providers as _providers
 from ..application.onboard import demo as demo_seed
 from ..application import signup as signup_use_cases
@@ -274,6 +274,11 @@ async def _usage_rollup(db: AsyncSession, org_id: int, since: datetime) -> dict:
     # rather than from the audit rows, which are fire-and-forget and may be incomplete. One aggregate.
     spend = await ledger.spend_since(db, org_id, since)
     return {"totals": totals, "by_user": by_user, "by_tool": by_tool, "by_day": by_day, "spend": spend}
+
+
+class OrgPatchIn(BaseModel):
+    name: str | None = None
+    slug: str | None = None
 
 
 class OrgSettingsIn(BaseModel):
@@ -913,8 +918,11 @@ def _agent_email(org: Org, name: str) -> str:
 def _agent_name(org: Org, email: str) -> str:
     """The friendly name back out of the address (the name isn't stored — the address IS the id)."""
     local = email.split("@", 1)[0]
-    prefix = f"agent-{org.slug}-"
-    return local[len(prefix):] if local.startswith(prefix) else local
+    for slug in (org.slug, org.previous_slug):  # agents minted before a rename carry the old slug
+        prefix = f"agent-{slug}-"
+        if slug and local.startswith(prefix):
+            return local[len(prefix):]
+    return local
 
 
 app = APIRouter()
@@ -1296,6 +1304,34 @@ async def usage_by_tag(
         "unattributed_micro": org_total - attributed,
         "total_micro": org_total, "total_usd": ledger.usd(org_total),
     }
+
+
+@app.patch("/orgs/{org_id}")
+async def rename_org(
+    org_id: int, body: OrgPatchIn,
+    caller: Caller = Depends(require_member), db: AsyncSession = Depends(get_session),
+) -> dict:
+    """Change the team's display name and/or slug. Admin+.
+
+    The old slug is kept as an alias (`Org.previous_slug`): copied keys, `~/.treg` and MCP pins
+    that name it keep working. Stripe metadata and the analytics group key are not rewritten.
+    """
+    _require_admin_of(org_id, caller)
+    if body.name is None and body.slug is None:
+        raise HTTPException(status_code=422, detail="send name and/or slug")
+    org = caller.org
+    old_slug = org.slug
+    try:
+        await teams.rename_org(db, org, name=body.name, slug=body.slug)
+        await db.commit()
+    except ValueError as e:
+        raise HTTPException(status_code=409 if "taken" in str(e) else 400, detail=str(e))
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(status_code=409, detail="slug is taken")
+    analytics.capture(caller.email, "org_renamed", {
+        "org_id": org.id, "slug_changed": org.slug != old_slug})
+    return {"org_id": org.id, "org": org.slug, "previous_slug": org.previous_slug, "name": org.name}
 
 
 @app.get("/orgs/{org_id}/settings")

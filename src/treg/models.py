@@ -34,6 +34,10 @@ class Org(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     name: str
     slug: str = Field(index=True, unique=True)
+    # The slug before the last rename. Signed team keys, `~/.treg` and MCP pins carry the slug, so
+    # the old one keeps resolving (see access._resolve_org) instead of revoking every copied key.
+    # ponytail: one alias only; a second rename overwrites it. An alias table if that ever bites.
+    previous_slug: str | None = Field(default=None, index=True)
     suspended: bool = Field(default=False)  # a suspended org's members are locked out (403)
     demo: bool = Field(default=False)  # a sandbox team seeded by onboarding — labeled + one-click removable
     # A team whose token is published (e.g. on the landing page): non-admin members are locked to

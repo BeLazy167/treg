@@ -1463,6 +1463,27 @@ async def test_catalog_get_dataforseo_ai_mode_live_names_the_single_task_limit(
         "treg call dataforseo.x.serp-google-ai-mode-live-advanced --method POST")
 
 
+async def test_catalog_get_dataforseo_claude_llm_responses_live_names_working_model(
+        clients: AsyncClient):
+    """Feedback #358: catalog_get must not advertise claude-opus-4-0 or multi-task batching."""
+    body = (await clients.get(
+        "/catalog/endpoints/dataforseo.x.ai-optimization-claude-llm-responses-live")).json()
+    fields = body["endpoint"]["input"]["body"]
+    assert fields["model_name"]["example"] == "claude-sonnet-4-5"
+    model_note = fields["model_name"]["note"]
+    assert "40501" in model_note or "llm_responses/models" in model_note
+    note = body["endpoint"]["input"]["note"]
+    assert "exactly one task" in note.lower() or "exactly 1 task" in note.lower()
+    assert "40000" in note
+    assert "one object per task" not in note.lower()
+    example = body.get("example_response")
+    if isinstance(example, dict):
+        tasks = example.get("tasks") or []
+        assert not tasks or tasks[0].get("status_code") != 40501, (
+            "catalog_get must not advertise the 40501 Invalid Field failure as the example"
+        )
+
+
 async def test_catalog_get_dataforseo_page_audit_names_browser_preset_dependency(
         clients: AsyncClient):
     """Feedback #234 / #235: catalog_get must not advertise browser_preset alone."""

@@ -125,7 +125,8 @@ Revision `0010` adds `authorization_method` to `PendingOAuth` and `Secret`, back
 Instagram grants as `facebook-page`, and distinguishes new `instagram-login` grants. Selection
 uses this metadata, never the encrypted token's shape.
 
-- **`Org`** - the tenant that owns resources: `id, name, slug` (unique), `suspended` (admin lock),
+- **`Org`** - the tenant that owns resources: `id, name, slug` (unique), `previous_slug` (the slug
+  before the last rename, still resolved as an alias), `suspended` (admin lock),
   `demo` (a sandbox team seeded by [onboarding](../interface/onboarding.md) - labeled + removable),
   `public_demo` (a team whose member token is PUBLISHED, e.g. on the landing page - non-admin members
   are locked to `/call` + reads and may never act as a user; gated in

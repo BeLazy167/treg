@@ -3836,7 +3836,7 @@ endpoints:
         type: string
         required: false
         note: <em>user-defined task identifier</em><br>optional field<br><em>the character limit is 255</em><br>you can use this parameter to identify the task and match it with the result<br>you will find the specified <code>tag</code> value in the <code>data</code> object of the response
-    note: the POST body is an ARRAY of task objects with these fields — one object per task
+    note: POST body is a JSON array that must contain exactly one task object (Live endpoints do not support multi-task arrays). Extra elements return per-task status 40000 "You can set only one task at a time" ($0 on the rejected tasks) while HTTP stays 200 — one prompt per call.
   test_request:
     body:
     - system_message: communicate as if we are in a business meeting
@@ -3944,8 +3944,8 @@ endpoints:
       model_name:
         type: string
         required: false
-        note: <em>name of the AI model</em><br><strong>required field</strong><br><code>model_name</code >consists of the actual model name and version name;<br>if the basic model name is specified, its latest version will be set by default;<br>for example, if <code>claude-opus-4-0</code> is specified, the <code>
-        example: claude-opus-4-0
+        note: <em>name of the AI model</em><br><strong>required field</strong><br>allowed names change over time — prefer a currently accepted name such as <code>claude-sonnet-4-5</code>; bare aliases (<code>claude</code>, <code>claude-sonnet</code>, <code>claude-opus</code>) and some older aliases (including <code>claude-opus-4-0</code> as of reports) return 40501 Invalid Field; list via DataForSEO Models GET <a href="https://docs.dataforseo.com/v3/ai_optimization/claude/llm_responses/models/">https://docs.dataforseo.com/v3/ai_optimization/claude/llm_responses/models/</a>
+        example: claude-sonnet-4-5
       max_output_tokens:
         type: integer
         required: false
@@ -4000,7 +4000,7 @@ endpoints:
         type: string
         required: false
         note: <em>user-defined task identifier</em><br>optional field<br><em>the character limit is 255</em><br>you can use this parameter to identify the task and match it with the result<br>you will find the specified <code>tag</code> value in the <code>data</code> object of the response
-    note: the POST body is an ARRAY of task objects with these fields — one object per task
+    note: POST body is a JSON array that must contain exactly one task object (Live endpoints do not support multi-task arrays). Extra elements return per-task status 40000 "You can set only one task at a time" ($0 on the rejected tasks) while HTTP stays 200 — one prompt per call.
   test_request:
     body:
     - system_message: communicate as if we are in a business meeting
@@ -4010,7 +4010,7 @@ endpoints:
       - role: ai
         message: Hello! I’m doing well, thank you. How can I assist you today? Are there any specific topics or projects you’d like to discuss in our meeting?
       max_output_tokens: 200
-      model_name: claude-opus-4-0
+      model_name: claude-sonnet-4-5
       temperature: 0.3
       web_search: true
       web_search_country_iso_code: FR
@@ -4019,8 +4019,7 @@ endpoints:
   expect:
     json_path: tasks.0.status_code
     equals: 20000
-  verified: '2026-07-28'
-  example_response: examples/dataforseo.x.ai-optimization-claude-llm-responses-live.json
+  unverified: "captured example_response was HTTP 200 with task status 40501 Invalid Field: 'model_name' for claude-opus-4-0, not a successful call. Catalog example and test_request now use claude-sonnet-4-5; a success payload was not recaptured (no live spend)."
   observed_cost: 0
   capability: ai-search.claude.answer
 - id: dataforseo.x.ai-optimization-gemini-llm-responses-live
@@ -4085,7 +4084,7 @@ endpoints:
         type: string
         required: false
         note: <em>user-defined task identifier</em><br>optional field<br><em>the character limit is 255</em><br>you can use this parameter to identify the task and match it with the result<br>you will find the specified <code>tag</code> value in the <code>data</code> object of the response
-    note: the POST body is an ARRAY of task objects with these fields — one object per task
+    note: POST body is a JSON array that must contain exactly one task object (Live endpoints do not support multi-task arrays). Extra elements return per-task status 40000 "You can set only one task at a time" ($0 on the rejected tasks) while HTTP stays 200 — one prompt per call.
   test_request:
     body:
     - system_message: communicate as if we are in a business meeting
@@ -9593,7 +9592,7 @@ endpoints:
         type: string
         required: false
         note: <em>user-defined task identifier</em><br>optional field<br><em>the character limit is 255</em><br>you can use this parameter to identify the task and match it with the result<br>you will find the specified <code>tag</code> value in the <code>data</code> object of the response
-    note: the POST body is an ARRAY of task objects with these fields — one object per task
+    note: POST body is a JSON array that must contain exactly one task object (Live endpoints do not support multi-task arrays). Extra elements return per-task status 40000 "You can set only one task at a time" ($0 on the rejected tasks) while HTTP stays 200 — one prompt per call.
   test_request:
     body:
     - system_message: communicate as if we are in a business meeting
