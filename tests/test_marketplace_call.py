@@ -117,6 +117,15 @@ def bounceban_platform_on(monkeypatch):
 
 
 @pytest.fixture
+def zerobounce_platform_on(monkeypatch):
+    monkeypatch.setenv("TREG_PLATFORM_KEY_ZEROBOUNCE", "PLATFORM-ZEROBOUNCE")
+    monkeypatch.setenv("TREG_PLATFORM_PROVIDERS", "zerobounce")
+    get_settings.cache_clear()
+    yield
+    get_settings.cache_clear()
+
+
+@pytest.fixture
 def diffbot_platform_on(monkeypatch):
     """Enable Diffbot tier 4 without exposing or calling a real provider credential."""
     monkeypatch.setenv("TREG_PLATFORM_KEY_DIFFBOT", "PLATFORM-DIFFBOT-KEY")
@@ -3207,6 +3216,58 @@ async def test_bounceban_platform_releases_invalid_input_and_byok_wins_unmetered
     assert seen == ["OWN-BOUNCEBAN"]
     assert "x-treg-cost-micro" not in own.headers
     assert await _balance(clients) == before
+
+
+async def test_zerobounce_platform_settlement_release_and_byok_precedence(
+    clients, monkeypatch, zerobounce_platform_on,
+):
+    answers = {
+        "bad@example.com": (200, {"status": "invalid"}),
+        "wait@example.com": (200, {"status": "unknown"}),
+        "fail@example.com": (500, {"error": "temporary"}),
+        "good@example.com": (200, {"status": "valid"}),
+    }
+    seen_keys = []
+
+    def serve(request):
+        seen_keys.append(request.url.params["api_key"])
+        status, doc = answers[request.url.params["email"]]
+        return _dropleads_response(status, doc)
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(serve)) as upstream:
+        monkeypatch.setattr(A.app.state, "http", upstream)
+        before = await _balance(clients)
+        invalid = await clients.get(
+            "/call/zerobounce.people.email.verify", params={"email": "bad@example.com"})
+        assert invalid.status_code == 200
+        assert invalid.headers["x-treg-cost-micro"] == "13800"
+        assert await _balance(clients) == before - 13_800
+
+        before_unknown = await _balance(clients)
+        unknown = await clients.get(
+            "/call/zerobounce.people.email.verify", params={"email": "wait@example.com"})
+        assert unknown.status_code == 200
+        assert unknown.headers["x-treg-cost-micro"] == "0"
+        assert await _balance(clients) == before_unknown
+
+        before_failure = await _balance(clients)
+        failure = await clients.get(
+            "/call/zerobounce.people.email.verify", params={"email": "fail@example.com"})
+        assert failure.status_code == 500
+        assert await _balance(clients) == before_failure
+
+        await clients.post(
+            "/secrets", json={"name": "zerobounce", "value": "OWN-ZEROBOUNCE"})
+        before_byok = await _balance(clients)
+        own = await clients.get(
+            "/call/zerobounce.people.email.verify", params={"email": "good@example.com"})
+        assert own.status_code == 200
+        assert "x-treg-cost-micro" not in own.headers
+        assert await _balance(clients) == before_byok
+
+    assert seen_keys == [
+        "PLATFORM-ZEROBOUNCE", "PLATFORM-ZEROBOUNCE", "PLATFORM-ZEROBOUNCE", "OWN-ZEROBOUNCE",
+    ]
 
 
 async def test_prospeo_platform_person_enrich_uses_non_free_flag_when_email_is_null(

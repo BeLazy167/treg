@@ -696,6 +696,17 @@ def test_prospeo_catalog_surface_excludes_account_info_and_prices_mobile_at_the_
     assert all(catalog.platform_eligible(ep) for ep in rows)
 
 
+def test_zerobounce_catalog_exposes_only_single_email_validation():
+    catalog = catalog_store.load()
+    rows = [ep for ep in catalog.endpoints if ep["provider"] == "zerobounce"]
+    assert [ep["id"] for ep in rows] == ["zerobounce.people.email.verify"]
+    validation = rows[0]
+    assert validation["method"] == "GET"
+    assert validation["path"] == "/v2/validate"
+    assert catalog.cost_view(validation["cost"], "zerobounce")["usd"] == 0.0138
+    assert catalog.platform_eligible(validation)
+
+
 def test_bounceban_catalog_has_one_platform_tool_and_complete_safe_byok_lifecycle():
     catalog = catalog_store.load()
     rows = [ep for ep in catalog.endpoints if ep["provider"] == "bounceban"]

@@ -12,11 +12,15 @@ sources:
   - src/treg/domain/capacity/policy.py
   - src/treg/web/logos/zerobounce.svg
   - tests/conftest.py
-  - tests/test_zerobounce.py
   - tests/test_archive.py
+  - tests/test_capacity_collectors.py
+  - tests/test_catalog_validate.py
+  - tests/test_enrich_arena.py
   - tests/test_key_providers.py
+  - tests/test_marketplace_call.py
   - tests/test_oauth_providers_m3.py
   - tests/test_capacity_overflow_routes.py
+  - tests/test_routing.py
 related:
   - architecture/catalog.md
   - architecture/auth-secrets.md

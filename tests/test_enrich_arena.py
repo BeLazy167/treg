@@ -58,6 +58,29 @@ async def test_bounceban_enters_email_verification_arena_via_verified_adapter(
     get_settings.cache_clear()
 
 
+async def test_zerobounce_enters_email_verification_arena_via_verified_adapter(
+    clients, monkeypatch,
+):
+    from treg.config import get_settings
+    monkeypatch.setenv("TREG_PLATFORM_KEY_ZEROBOUNCE", "PLATFORM-ZEROBOUNCE")
+    monkeypatch.setenv("TREG_PLATFORM_PROVIDERS", "zerobounce")
+    get_settings.cache_clear()
+    response = await clients.post("/arena/plans", json={
+        "capability": "people.email.verify",
+        "identity": {"email": "valid@example.com"},
+        "mode": "compare",
+        "providers": ["zerobounce"],
+        "max_cost_micro": 20_000,
+    })
+    assert response.status_code == 200, response.text
+    quote = response.json()
+    assert len(quote["providers"]) == 1
+    assert quote["providers"][0]["provider"] == "zerobounce"
+    assert quote["providers"][0]["endpoint_id"] == "zerobounce.people.email.verify"
+    assert quote["estimate_micro"] == 13_800
+    get_settings.cache_clear()
+
+
 async def finish(c, quote):
     r = await c.post(f"/arena/runs/{quote['id']}/start")
     assert r.status_code == 200, r.text

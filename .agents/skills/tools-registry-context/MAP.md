@@ -584,7 +584,7 @@ Regenerate via `scripts/build-map.py`.
 | `tests/test_call_architecture.py` | architecture/import-boundaries.md, architecture/money.md, architecture/proxy-model.md |
 | `tests/test_call_cancellation.py` | architecture/proxy-model.md |
 | `tests/test_call_response_limits.py` | architecture/proxy-model.md |
-| `tests/test_capacity_collectors.py` | architecture/bounceban.md, architecture/contactout.md, architecture/dropleads.md, architecture/getleadsio.md, architecture/prospeo.md, architecture/scrubby.md, architecture/wiza.md, ops/capacity.md |
+| `tests/test_capacity_collectors.py` | architecture/bounceban.md, architecture/contactout.md, architecture/dropleads.md, architecture/getleadsio.md, architecture/prospeo.md, architecture/scrubby.md, architecture/wiza.md, architecture/zerobounce.md, ops/capacity.md |
 | `tests/test_capacity_know.py` | ops/capacity.md |
 | `tests/test_capacity_overflow.py` | architecture/contactout.md, ops/capacity.md |
 | `tests/test_capacity_overflow_routes.py` | architecture/bounceban.md, architecture/getleadsio.md, architecture/moltsets.md, architecture/scrubby.md, architecture/wiza.md, architecture/zerobounce.md, ops/capacity.md |
@@ -592,10 +592,10 @@ Regenerate via `scripts/build-map.py`.
 | `tests/test_capacity_protect.py` | ops/capacity.md |
 | `tests/test_capacity_smoothing.py` | ops/capacity.md |
 | `tests/test_catalog_api.py` | architecture/catalog.md, architecture/getleadsio.md |
-| `tests/test_catalog_validate.py` | architecture/bounceban.md, architecture/catalog.md, architecture/contactout.md, architecture/dropleads.md, architecture/getleadsio.md, architecture/prospeo.md |
+| `tests/test_catalog_validate.py` | architecture/bounceban.md, architecture/catalog.md, architecture/contactout.md, architecture/dropleads.md, architecture/getleadsio.md, architecture/prospeo.md, architecture/zerobounce.md |
 | `tests/test_cli_key_compatibility.py` | interface/cli.md |
 | `tests/test_dataforseo_constraints.py` | architecture/catalog.md |
-| `tests/test_enrich_arena.py` | architecture/bounceban.md, interface/enrich-arena.md |
+| `tests/test_enrich_arena.py` | architecture/bounceban.md, architecture/zerobounce.md, interface/enrich-arena.md |
 | `tests/test_error_capture.py` | architecture/proxy-model.md |
 | `tests/test_feedback.py` | architecture/feedback.md |
 | `tests/test_feedback_handling_schema.py` | architecture/feedback.md |
@@ -607,7 +607,7 @@ Regenerate via `scripts/build-map.py`.
 | `tests/test_instagram_oauth_architecture.py` | architecture/instagram-oauth.md |
 | `tests/test_key_providers.py` | architecture/auth-secrets.md, architecture/bounceban.md, architecture/contactout.md, architecture/dropleads.md, architecture/getleadsio.md, architecture/moltsets.md, architecture/prospeo.md, architecture/scrubby.md, architecture/wiza.md, architecture/zerobounce.md |
 | `tests/test_kv.py` | architecture/feedback.md |
-| `tests/test_marketplace_call.py` | architecture/bounceban.md, architecture/contactout.md, architecture/dropleads.md, architecture/getleadsio.md, architecture/mcp-oauth.md, architecture/prospeo.md, architecture/proxy-model.md |
+| `tests/test_marketplace_call.py` | architecture/bounceban.md, architecture/contactout.md, architecture/dropleads.md, architecture/getleadsio.md, architecture/mcp-oauth.md, architecture/prospeo.md, architecture/proxy-model.md, architecture/zerobounce.md |
 | `tests/test_mcp.py` | architecture/mcp-oauth.md |
 | `tests/test_mcp_directory.py` | architecture/mcp-oauth.md |
 | `tests/test_mcp_oauth.py` | architecture/mcp-oauth.md |
@@ -623,7 +623,7 @@ Regenerate via `scripts/build-map.py`.
 | `tests/test_reviews.py` | architecture/feedback.md |
 | `tests/test_route_cost_ceiling.py` | architecture/catalog.md |
 | `tests/test_router_dependencies.py` | architecture/multi-tenancy.md |
-| `tests/test_routing.py` | architecture/bounceban.md, architecture/catalog.md, architecture/contactout.md, architecture/dropleads.md, architecture/prospeo.md, architecture/wiza.md |
+| `tests/test_routing.py` | architecture/bounceban.md, architecture/catalog.md, architecture/contactout.md, architecture/dropleads.md, architecture/prospeo.md, architecture/wiza.md, architecture/zerobounce.md |
 | `tests/test_scrubby.py` | architecture/scrubby.md |
 | `tests/test_ssrf_public_addresses.py` | architecture/proxy-model.md |
 | `tests/test_sumble.py` | architecture/sumble.md |
@@ -632,7 +632,6 @@ Regenerate via `scripts/build-map.py`.
 | `tests/test_team_limit.py` | architecture/multi-tenancy.md |
 | `tests/test_token_revocation.py` | architecture/multi-tenancy.md |
 | `tests/test_wiza.py` | architecture/wiza.md |
-| `tests/test_zerobounce.py` | architecture/zerobounce.md |
 
 ## Fragment → sources
 
@@ -665,7 +664,7 @@ Regenerate via `scripts/build-map.py`.
 | `architecture/sumble.md` | `sumble.yaml`, `sumble.extended.yaml`, `sumble.organizations.json`, `sumble.py`, `test_sumble.py`, `sumble.svg` |
 | `architecture/super-admin.md` | `api.py`, `admin.py`, `access.py`, `config.py` |
 | `architecture/wiza.md` | `wiza.yaml`, `wiza.people.search.json`, `wiza.companies.search.json`, `wiza.companies.enrich.json`, `wiza.meta.locations.search.json`, `wiza.meta.technologies.search.json`, `adapters.yaml`, `fx.yaml`, `config.py`, `oauth_providers.py`, `collectors.py`, `policy.py`, `wiza.svg`, `test_wiza.py`, `test_key_providers.py`, `test_oauth_providers_m3.py`, `test_capacity_overflow_routes.py`, `test_capacity_collectors.py`, `test_routing.py`, `conftest.py` |
-| `architecture/zerobounce.md` | `zerobounce.yaml`, `zerobounce.people.email.verify.json`, `adapters.yaml`, `fx.yaml`, `config.py`, `oauth_providers.py`, `collectors.py`, `policy.py`, `zerobounce.svg`, `conftest.py`, `test_zerobounce.py`, `test_archive.py`, `test_key_providers.py`, `test_oauth_providers_m3.py`, `test_capacity_overflow_routes.py` |
+| `architecture/zerobounce.md` | `zerobounce.yaml`, `zerobounce.people.email.verify.json`, `adapters.yaml`, `fx.yaml`, `config.py`, `oauth_providers.py`, `collectors.py`, `policy.py`, `zerobounce.svg`, `conftest.py`, `test_archive.py`, `test_capacity_collectors.py`, `test_catalog_validate.py`, `test_enrich_arena.py`, `test_key_providers.py`, `test_marketplace_call.py`, `test_oauth_providers_m3.py`, `test_capacity_overflow_routes.py`, `test_routing.py` |
 | `foundation/charter.md` | `2026-06-30-jason-tools-registry.md`, `README.md` |
 | `guides/expanding-a-category.md` | `oauth_providers.py`, `authorization.py`, `oauth_flow.py`, `oauth_exchange.py`, `connect.py`, `connections.py`, `config.py` |
 | `interface/api.md` | `media.py`, `sitetrack.js`, `api.py`, `bootstrap_handlers.py`, `bootstrap_http.py`, `call_surface.py`, `caller_metadata.py`, `client_identity.py`, `auth.py`, `access.py`, `authorize.py`, `idempotency.py`, `intake.py`, `resolve.py`, `reserve.py`, `settle.py`, `evidence.py`, `service.py`, `types.py`, `relay.py`, `connect.py`, `onboard.py`, `referrals.py`, `signup.py`, `__init__.py`, `admin.py`, `auth.py`, `auth_helpers.py`, `billing.py`, `call.py`, `catalog.py`, `connections.py`, `onboard.py`, `orgs.py`, `api_keys.py`, `resources.py`, `referrals.py`, `signup_cookies.py`, `web.py`, `access.py`, `api_keys.py`, `teams.py`, `access.py`, `budgets.py`, `publicdemo.py`, `usage.py`, `mcp_oauth.py`, `session.py`, `timeutil.py`, `store.py`, `email.py`, `runner.py`, `ratestore.py` |
