@@ -1310,7 +1310,10 @@ def call_template(ep: dict) -> str:
     # arguments but still requires a JSON body — and dropping `--data '{}'` from the line hands the
     # reader a command that differs from the one that was tested, on handlers that reject an empty
     # body outright.
-    if body is not None and (body or ep["method"] != "GET"):
+    # treg can faithfully relay a caller-supplied GET body, but generated shell commands never add
+    # one: too many clients/proxies silently discard it. The stored test request can still preserve
+    # the provider's unusual verification contract without printing a misleading paste-ready line.
+    if body is not None and ep["method"] != "GET":
         parts += ["--data", shlex.quote(json.dumps(
             body, separators=(",", ":"), ensure_ascii=False))]
     return " ".join(parts)

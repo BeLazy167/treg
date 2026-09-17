@@ -506,7 +506,6 @@ settled 20 rows, moz's one `targets` entry settled 20 quota rows; 2026-09-02: lu
 catalogued FREE, answered 44 contacts for one domain and settled $5.49 from `billing.creditsCharged`
 with nothing reserved). Without any signal it is the
 20-row page, and a settle-at-estimate provider then charges that page.
-
 The page default has no meaning at all when the catalog prices per INPUT entity, and the estimator
 knows the difference since 2026-09-05: a `per_result`/`quota_rows` cost whose `unit` is `target`,
 `domain`, `keyword` or `call` (`resolve._ENTITY_UNITS`) is counted by `_entity_count` — repeated or

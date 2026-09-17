@@ -23,7 +23,7 @@ from treg import oauth_providers as P
 def test_key_providers_are_offerable_without_deployment_credentials():
     """The user brings the key, so treg holds no app of its own — a key provider must be offerable,
     not shown as 'not configured' the way an unset OAuth provider is."""
-    for svc in ("apollo", "pdl", "akta", "hunter", "sumble", "moltsets", "harvestapi", "dropleads", "quickenrich", "prospeo", "aiark", "wiza", "getleadsio", "scrubby", "zerobounce", "contactout", "millionverifier", "bounceban", "trykitt", "crunchbase", "tikhub", "brightdata", "semrush",
+    for svc in ("apollo", "pdl", "akta", "hunter", "sumble", "moltsets", "openmart", "harvestapi", "dropleads", "quickenrich", "prospeo", "aiark", "wiza", "getleadsio", "scrubby", "zerobounce", "contactout", "millionverifier", "bounceban", "trykitt", "crunchbase", "tikhub", "brightdata", "semrush",
                 "justoneapi", "dataforseo", "seranking", "moz", "majestic", "serpstat", "exa",
                 "cloro",
                 "lusha", "coresignal", "diffbot", "thecompaniesapi", "leadmagic", "fiber-ai",
@@ -57,6 +57,42 @@ def test_key_providers_appear_in_the_marketplace_listing():
     assert listing["replicate"]["base_url"] == "https://api.replicate.com/v1"
     assert "Enrichment" in P.CATEGORY_ORDER
     assert "Market data" in P.CATEGORY_ORDER
+
+
+def test_openmart_registry_uses_the_free_balance_probe_and_bearer_key(monkeypatch):
+    monkeypatch.setenv("TREG_PLATFORM_KEY_OPENMART", "PLATFORM-OPENMART")
+    monkeypatch.setenv("TREG_PLATFORM_PROVIDERS", "openmart")
+    provider = P.get("openmart")
+    settings = Settings(_env_file=None)
+    assert provider.base_url == "https://api.openmart.ai"
+    assert provider.probe_path == "/api/v2/credit-balance"
+    assert provider.probe_method == "GET"
+    assert settings.platform_key_for("openmart") == "PLATFORM-OPENMART"
+    assert P.platform_bindings(provider) == [{
+        "platform_setting": "platform_key_openmart",
+        "injector": "env",
+        "location": "header",
+        "name": "Authorization",
+        "format": "Bearer {secret}",
+    }]
+
+
+async def test_openmart_connect_rejects_bad_key_and_accepts_valid_key(clients, monkeypatch):
+    def probe(request):
+        assert request.method == "GET"
+        assert request.url.path == "/api/v2/credit-balance"
+        if request.headers["authorization"] == "Bearer bad":
+            return httpx.Response(401, json={"detail": "Invalid API Key"})
+        return httpx.Response(200, json={"balance": 4800})
+
+    async with AsyncClient(transport=httpx.MockTransport(probe)) as upstream:
+        monkeypatch.setattr(app.state, "http", upstream)
+        bad = await clients.post(
+            "/connections/token", json={"provider": "openmart", "token": "bad"})
+        assert bad.status_code == 422
+        good = await clients.post(
+            "/connections/token", json={"provider": "openmart", "token": "own-key"})
+        assert good.status_code == 200, good.text
 
 
 def test_zerobounce_registry_uses_internal_usage_probe_and_query_key(monkeypatch):

@@ -130,6 +130,17 @@ async def _moltsets(c, key):
     }
 
 
+async def _openmart(c, key):
+    d = await _get(c, "https://api.openmart.ai/api/v2/credit-balance",
+                   headers={"Authorization": f"Bearer {key}"})
+    balance = d.get("balance") if isinstance(d, dict) else None
+    if type(balance) is not int or balance < 0:
+        balance = None
+    period_end = d.get("period_end") if isinstance(d, dict) else None
+    return {"value": balance, "unit": "credits",
+            "note": f"Monthly subscription balance; current period ends {period_end or 'at the account renewal date'}."}
+
+
 async def _harvestapi(c, key):
     d = await _get(c, "https://api.harvestapi.io/users/my-api-user",
                    headers={"X-API-Key": key})
@@ -623,6 +634,7 @@ BALANCE_ROUTES = {
     "getleadsio": _getleadsio,
     "sumble": _sumble,
     "moltsets": _moltsets,
+    "openmart": _openmart,
     "trykitt": _trykitt,
     "contactout": _contactout,
     "millionverifier": _millionverifier,

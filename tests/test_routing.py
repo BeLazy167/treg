@@ -103,6 +103,15 @@ def test_every_shipped_adapter_round_trips_its_fixture():
     assert ad.is_miss({"email": None}) and not ad.is_miss({"email": "x"})
 
 
+def test_openmart_company_search_is_routed_but_company_enrich_is_not():
+    cat = catalog_store.load()
+    adapter = cat.adapters["openmart.companies.search"]
+    assert adapter.verified, adapter.verify_note
+    assert "openmart.companies.search" in cat.by_id["treg.companies.search"]["routed_children"]
+    assert cat.platform_eligible(cat.by_id["openmart.companies.search"])
+    assert "openmart.companies.enrich" not in cat.by_id["treg.companies.enrich"]["routed_children"]
+
+
 def test_dropleads_routing_surface_contains_only_verified_single_record_tools():
     catalog = catalog_store.load()
     expected = {
