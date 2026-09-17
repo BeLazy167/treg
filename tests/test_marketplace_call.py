@@ -1377,6 +1377,17 @@ def test_platform_estimate_normalizes_per_result_pricing():
     assert call_resolution._platform_estimate_micro({"type": "per_call", "usd": 0.0000005}, {}) == 1
 
 
+def test_platform_estimate_prices_text_to_speech_by_input_characters():
+    """MiniMax publishes TTS per character, so the request's text length—not a result-page
+    default or a flat call price—sets the reserve. Unicode code points count as characters."""
+    hd = {"type": "per_success", "unit": "character", "usd": 0.0001}
+    turbo = {"type": "per_success", "unit": "character", "usd": 0.00006}
+    assert call_resolution._platform_estimate_micro(hd, {}, b'{"text":"Hello."}') == 600
+    assert call_resolution._platform_estimate_micro(turbo, {}, ' {"text":"Hi 👋"}'.encode()) == 240
+    assert call_resolution._platform_estimate_micro(hd, {}, b'{"text":""}') == 100
+    assert call_resolution._platform_estimate_micro(hd, {}, b'not-json') == 100
+
+
 def test_platform_estimate_counts_input_entities_not_a_page():
     """A price per TARGET / DOMAIN / KEYWORD is per thing asked about, never per returned row: with
     no limit param the 20-row page default billed a one-target SE Ranking summary 20x ($0.358 for a

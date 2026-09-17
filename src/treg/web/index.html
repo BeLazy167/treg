@@ -4094,7 +4094,7 @@ createApp({
       // catalog invents tomorrow still gets a shelf, sorted to the end.
       const order=['Enrichment','SEO/AEO','Social','Advertising','E-commerce','Reviews & Apps','AI generation','Community'];
       const hints={
-        'AI generation':'video and image models, the same model over several routes priced side by side',
+        'AI generation':'video, image and voice models, the same model over several routes priced side by side',
         'SEO/AEO':'rankings, keywords and backlinks — what search engines know, and what the answer engines say',
         'Social':'posts, profiles and comments, straight from the feeds',
         'Enrichment':'people and company records, resolved from an email or a domain',
@@ -5772,7 +5772,10 @@ createApp({
     platPrice(pl){
       const raw=pl && pl.price_from;
       const pf=(raw && Object.keys(raw).length) ? raw : null;
-      const paid=(pf && typeof pf.usd==='number') ? '$'+this.usdNum(pf.usd)+' / '+this.priceUnit(pf.type) : null;
+      const paid=(pf && typeof pf.usd==='number')
+        ? '$'+this.usdNum(typeof pf.display_usd==='number' ? pf.display_usd : pf.usd)+' / '+
+          (pf.display_unit || this.priceUnit(pf.type))
+        : null;
       if(pf && pf.type==='free') return {free:true, text:'free with your account'};
       // An OAuth integration among the providers means the floor price is $0: the account you
       // connect IS the licence. Metered providers may serve the same platform (that rate moves to

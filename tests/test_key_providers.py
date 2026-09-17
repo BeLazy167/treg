@@ -53,6 +53,7 @@ def test_key_providers_appear_in_the_marketplace_listing():
     assert listing["zerobounce"]["category"] == "Enrichment"
     assert listing["zerobounce"]["auth_kind"] == "key"
     assert listing["minimax"]["category"] == "AI generation"
+    assert listing["minimax"]["summary"] == "Generate voice, images, and videos from text or source images."
     assert listing["openrouter"]["auth_kind"] == "token"
     assert listing["replicate"]["base_url"] == "https://api.replicate.com/v1"
     assert "Enrichment" in P.CATEGORY_ORDER

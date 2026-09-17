@@ -36,10 +36,12 @@ One skill, three personas:
 - **consumer** — discover + call tools with no credentials locally. Teaches the agent-native
   **URL-passthrough** first: take the real upstream URL and prefix it with `{BASE}/call/`
   + the `X-Treg-Token` header; `treg call <tool> <path>` is the CLI shorthand. Its
-  "generate a video or an image" task teaches the async shape: `--await` for the CLI, the
-  `X-Treg-Async` descriptor and lazy 30-60 s polling for MCP agents, the shell-timeout warning
-  (video takes 1-5 minutes), reserve-then-settle money with refunds on failure, and expiring
-  result URLs that treg never stores.
+  generation task distinguishes synchronous MiniMax voice generation from asynchronous video and
+  image generation. Voice callers discover current system voice IDs through
+  `minimax.voice-gen.voices.list`, then call the HD or Turbo endpoint for a temporary audio URL.
+  Video/image callers learn `--await`, the `X-Treg-Async` descriptor and lazy 30-60 s polling for
+  MCP agents, the shell-timeout warning (video takes 1-5 minutes), reserve-then-settle money with
+  releases on failure, and expiring result URLs that treg never stores.
 - **creator** — turn a local skill into a shared tool: `treg secret add`, `treg tool add` (single-key or
   `--bind` multi-credential), the `treg skill scaffold → push` bundle flow, and `treg oauth connect` for
   browser-consent tokens. Documents the two OAuth modes (auto-refresh vs manual) and the four auth shapes.

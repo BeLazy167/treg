@@ -3,7 +3,7 @@ source:
   docs: https://platform.minimax.io/docs/api-reference/api-overview
   curated: 2026-09-02
 pricing_url: https://platform.minimax.io/docs/guides/pricing-paygo
-limits: "Video generation is asynchronous; poll every 10 seconds. Generated download URLs expire after about 9 hours."
+limits: "Video generation is asynchronous; poll every 10 seconds. Video download URLs expire after about 9 hours. Synchronous TTS accepts up to 10,000 characters; generated audio URLs expire after 24 hours."
 proposed_capabilities:
   video-gen.result.retrieve: "Retrieve completed video generation content"
   # Per-model capabilities: each is the join key for one model, so the row stands alone in the
@@ -14,6 +14,9 @@ proposed_capabilities:
   video-gen.hailuo.from_image: "Animate an image into a Hailuo video"
   video-gen.h3.generate: "Generate an H3 (Hailuo 3) video from text, optionally with first/last frame images"
   image-gen.image-01.from_text: "Generate images with MiniMax image-01"
+  voice-gen.speech-2-8-hd.generate: "MiniMax Speech 2.8 HD"
+  voice-gen.speech-2-8-turbo.generate: "MiniMax Speech 2.8 Turbo"
+  voice-gen.voices.list: "List available MiniMax voices"
 async:
   id_from: task_id
   poll:
@@ -284,3 +287,130 @@ endpoints:
       confidence: documented
       note: "Price is per generated image."
     docs_url: https://platform.minimax.io/docs/api-reference/image-generation-t2i
+
+  - id: minimax.voice-gen.speech-2-8-hd
+    capability: voice-gen.speech-2-8-hd.generate
+    platform: voice-gen
+    domain: models
+    scope: any_account
+    method: POST
+    path: /v1/t2a_v2
+    name: "MiniMax: Speech 2.8 HD"
+    summary: "Generate high-definition speech from up to 10,000 characters of text."
+    async: false
+    platform_request:
+      body.model: speech-2.8-hd
+      body.stream: false
+      body.output_format: url
+    input:
+      body:
+        model: {type: string, required: true, enum: [speech-2.8-hd], example: speech-2.8-hd}
+        text: {type: string, required: true, max: 10000, example: "A calm voice can make a complex idea feel simple.", note: "Fewer than 10,000 characters. Use <#x#> between speakable segments for a pause of x seconds."}
+        stream: {type: boolean, required: true, enum: [false], example: false, note: "This catalog route is non-streaming so the relay returns one bounded JSON response."}
+        output_format: {type: string, required: true, enum: [url], example: url, note: "The returned audio URL is valid for 24 hours."}
+        voice_setting: {type: object, required: true, example: {voice_id: English_expressive_narrator, speed: 1, vol: 1, pitch: 0}, note: "voice_id is required. Optional controls include speed, vol, pitch, emotion, text_normalization and latex_read; see the API reference for ranges."}
+        audio_setting: {type: object, required: false, example: {sample_rate: 32000, bitrate: 128000, format: mp3, channel: 1}, note: "Non-streaming output supports mp3, wav and flac."}
+        language_boost: {type: string, required: false, example: auto, note: "Set auto for automatic language detection, or use one of MiniMax's documented language names."}
+        pronunciation_dict: {type: object, required: false, example: {tone: ["Treg/tree-g"]}, note: "Custom pronunciation pairs in source/target form."}
+        subtitle_enable: {type: boolean, required: false, default: false}
+        subtitle_type: {type: string, required: false, default: sentence, enum: [sentence, word], example: sentence}
+        voice_modify: {type: object, required: false, note: "Optional pitch, intensity, timbre and sound_effects controls."}
+      bodyType: json
+    test_request:
+      body:
+        model: speech-2.8-hd
+        text: "Hello."
+        stream: false
+        output_format: url
+        voice_setting: {voice_id: English_expressive_narrator, speed: 1, vol: 1, pitch: 0}
+        audio_setting: {sample_rate: 32000, bitrate: 128000, format: mp3, channel: 1}
+    expect: {json_path: base_resp.status_code, equals: 0}
+    cost:
+      type: per_success
+      value: 1.00
+      currency: USD
+      per: 10000
+      unit: character
+      display: {unit: characters, grouped: true}
+      source: docs
+      source_url: https://platform.minimax.io/docs/guides/pricing-paygo#audio
+      checked: 2026-09-18
+      confidence: documented
+      note: "MiniMax bills synchronous Speech 2.8 HD by input characters at $100 per million ($1 per 10,000). Failed requests are not charged."
+    skipped: "Not live-called: synthesis spends real MiniMax credits, and no explicit paid verification was authorized for this change."
+    docs_url: https://platform.minimax.io/docs/api-reference/speech-t2a-http
+
+  - id: minimax.voice-gen.speech-2-8-turbo
+    capability: voice-gen.speech-2-8-turbo.generate
+    platform: voice-gen
+    domain: models
+    scope: any_account
+    method: POST
+    path: /v1/t2a_v2
+    name: "MiniMax: Speech 2.8 Turbo"
+    summary: "Generate fast, cost-efficient speech from up to 10,000 characters of text."
+    async: false
+    platform_request:
+      body.model: speech-2.8-turbo
+      body.stream: false
+      body.output_format: url
+    input:
+      body:
+        model: {type: string, required: true, enum: [speech-2.8-turbo], example: speech-2.8-turbo}
+        text: {type: string, required: true, max: 10000, example: "A calm voice can make a complex idea feel simple.", note: "Fewer than 10,000 characters. Use <#x#> between speakable segments for a pause of x seconds."}
+        stream: {type: boolean, required: true, enum: [false], example: false, note: "This catalog route is non-streaming so the relay returns one bounded JSON response."}
+        output_format: {type: string, required: true, enum: [url], example: url, note: "The returned audio URL is valid for 24 hours."}
+        voice_setting: {type: object, required: true, example: {voice_id: English_expressive_narrator, speed: 1, vol: 1, pitch: 0}, note: "voice_id is required. Optional controls include speed, vol, pitch, emotion, text_normalization and latex_read; see the API reference for ranges."}
+        audio_setting: {type: object, required: false, example: {sample_rate: 32000, bitrate: 128000, format: mp3, channel: 1}, note: "Non-streaming output supports mp3, wav and flac."}
+        language_boost: {type: string, required: false, example: auto, note: "Set auto for automatic language detection, or use one of MiniMax's documented language names."}
+        pronunciation_dict: {type: object, required: false, example: {tone: ["Treg/tree-g"]}, note: "Custom pronunciation pairs in source/target form."}
+        subtitle_enable: {type: boolean, required: false, default: false}
+        subtitle_type: {type: string, required: false, default: sentence, enum: [sentence, word], example: sentence}
+        voice_modify: {type: object, required: false, note: "Optional pitch, intensity, timbre and sound_effects controls."}
+      bodyType: json
+    test_request:
+      body:
+        model: speech-2.8-turbo
+        text: "Hello."
+        stream: false
+        output_format: url
+        voice_setting: {voice_id: English_expressive_narrator, speed: 1, vol: 1, pitch: 0}
+        audio_setting: {sample_rate: 32000, bitrate: 128000, format: mp3, channel: 1}
+    expect: {json_path: base_resp.status_code, equals: 0}
+    cost:
+      type: per_success
+      value: 0.60
+      currency: USD
+      per: 10000
+      unit: character
+      display: {unit: characters, grouped: true}
+      source: docs
+      source_url: https://platform.minimax.io/docs/guides/pricing-paygo#audio
+      checked: 2026-09-18
+      confidence: documented
+      note: "MiniMax bills synchronous Speech 2.8 Turbo by input characters at $60 per million ($0.60 per 10,000). Failed requests are not charged."
+    skipped: "Not live-called: synthesis spends real MiniMax credits, and no explicit paid verification was authorized for this change."
+    docs_url: https://platform.minimax.io/docs/api-reference/speech-t2a-http
+
+  - id: minimax.voice-gen.voices.list
+    kind: utility
+    capability: voice-gen.voices.list
+    platform: voice-gen
+    scope: any_account
+    method: POST
+    path: /v1/get_voice
+    name: "List available voices"
+    summary: "List the current MiniMax system voices and their voice IDs."
+    async: false
+    platform_request:
+      body.voice_type: system
+    input:
+      body:
+        voice_type: {type: string, required: true, enum: [system], example: system, note: "This catalog action intentionally exposes system voices only, so account-specific cloned or generated voices never cross team boundaries on treg's shared MiniMax connection."}
+      bodyType: json
+    test_request: {body: {voice_type: system}}
+    expect: {json_path: base_resp.status_code, equals: 0}
+    cost: {type: free, value: 0, currency: USD, unit: call, note: "Voice discovery is a free account-management read."}
+    verified: 2026-09-18
+    example_response: examples/minimax.voice-gen.voices.list.json
+    docs_url: https://platform.minimax.io/docs/api-reference/voice-management-get

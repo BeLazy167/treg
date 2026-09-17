@@ -30,6 +30,8 @@ aliases:
   i2v: [image-to-video]
   texttovideo: [text-to-video]
   imagetovideo: [image-to-video]
+  tts: [text-to-speech]
+  texttospeech: [text-to-speech]
   # sales vocabulary — the catalog says "people" / "contact"; agents say "leads" / "prospects"
   # (logged miss 2026-08-28: `find leads` matched only the provider names leadsforge/predictleads)
   lead: [leads]
