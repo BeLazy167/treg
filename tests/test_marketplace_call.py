@@ -3498,12 +3498,19 @@ async def test_limadata_platform_releases_error_and_byok_wins(
     assert await _balance(clients) == before
 
 
+@pytest.mark.parametrize(("endpoint", "body"), [
+    ("limadata.people.identity.resolve", {
+        "full_name": "Example Person", "company_domain": "example.com",
+    }),
+    ("limadata.people.count", {
+        "filter_expression": "full_name=treg-nonexistent-person",
+    }),
+])
 async def test_limadata_byok_only_operation_cannot_fall_through_to_platform_key(
-    clients, limadata_platform_on,
+    clients, limadata_platform_on, endpoint, body,
 ):
     result = await clients.post(
-        "/call/limadata.people.identity.resolve",
-        json={"full_name": "Example Person", "company_domain": "example.com"},
+        f"/call/{endpoint}", json=body,
     )
     assert result.status_code == 404
 
