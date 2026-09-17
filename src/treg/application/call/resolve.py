@@ -1638,7 +1638,7 @@ async def _resolve_marketplace_call(
         if lock is not None and capacity_marks.probe_due(lock.key):
             probe_lock_id = lock.lock_id
         elif (get_settings().overflow_mode == "on" and not caller.org.platform_overflow_disabled
-                and overflow_routes_view.for_endpoint(ep["id"], estimate_micro=info_est)):
+                and overflow_routes_view.for_endpoint(ep["id"])):
             skip_direct = True
         else:
             raise _provider_capacity_unavailable(
@@ -1662,14 +1662,18 @@ def _provider_capacity_unavailable(ep: dict, service: str, resets, *,
                                    probing: bool = False) -> ResolutionFailed:
     """The typed floor (plan §4.5): no charge, `resets_at` when known, and the same-capability
     alternatives — treg names them and leaves the choice to the caller (charter: no failover)."""
+    # Say what treg is doing about it before what the caller could do: an agent quotes the first
+    # imperative line back to its user, and "use your own key" read as "your plan lost access"
+    # (2026-09-17). Nothing about the caller's plan or balance changed.
     lines = [f"treg's own {service} account is out of capacity right now — {ep['id']} can't be "
-             f"served on treg's key" + (f" until about {resets:%Y-%m-%d %H:%M} UTC" if resets else "")]
+             f"served on treg's key" + (f" until about {resets:%Y-%m-%d %H:%M} UTC" if resets else "")
+             + "; nothing about your plan or balance changed and nothing was charged"]
     if probing:
         lines.append("  treg retries the vendor about once a minute and lifts this as soon as it "
                      "answers, so a retry later may succeed")
-    lines.append(f"  use your own key: treg secret add {service} --env-var "
-                 f"{service.upper().replace('-', '_')}_API_KEY  (own keys are never affected)")
     lines.extend(_capability_alternatives(ep))
+    lines.append(f"  or use your own key: treg secret add {service} --env-var "
+                 f"{service.upper().replace('-', '_')}_API_KEY  (own keys are never affected)")
     return ResolutionFailed("provider_capacity", status_code=503, detail={
         "error": "provider_capacity_unavailable", "provider": service, "endpoint_id": ep["id"],
         "resets_at": resets.isoformat() + "Z" if resets else None,
