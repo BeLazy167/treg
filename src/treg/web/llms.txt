@@ -468,6 +468,7 @@ are both supported; you do not need to pre-arrange anything with us.
 
     treg org create "Name"                        make a team, become owner
     treg org ls | org use <slug>                  list / switch the active org
+    treg org rename --name "N" --slug <slug>      admin+; old slug stays an alias, keys keep working
     treg org invite <email> --role viewer|member|admin
     treg org join <code> --email you@company.com  accept an invite (creates you if new)
     treg org members | set-role <user_id> <role>  roster / change a role (owner)
