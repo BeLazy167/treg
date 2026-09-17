@@ -60,9 +60,9 @@ _KNOWN: dict[str, tuple[str, str, str]] = {
     "twelvedata": ("requests", "subscription", "api"),
     "financialdatasets": ("credits", "auto_recharge", "manual"),
     "bounceban": ("credits", "manual", "api"),
-    # Auto-Pay is vendor-managed; treg neither reads nor changes its settings. Capacity still
-    # comes from the exact balance API rather than guessing future automatic purchases.
-    "zerobounce": ("credits", "auto_recharge", "api"),
+    # The free API reports only the current balance, not whether vendor Auto-Pay is enabled.
+    # Treat replenishment as manual until that account setting is explicitly verified.
+    "zerobounce": ("credits", "manual", "api"),
     # Neither aggregator exposes a balance endpoint at its documented path (plan §7).
     "overflow:orthogonal": ("cash", "manual", "manual"),
     "overflow:monid": ("cash", "manual", "manual"),

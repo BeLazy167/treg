@@ -1,12 +1,11 @@
-# Safe first ZeroBounce surface. The documented API was inventoried across validation, batch/file,
-# scoring, finder, domain-search, activity, filters, usage and account operations. Only single
-# validation is a catalog tool. The credit-balance and API-usage reads stay internal: treg uses
-# them for capacity collection and connection validation, not as agent-facing tools. Batch
+# Safe ZeroBounce surface. The credit-balance and API-usage reads stay internal: treg uses them for
+# capacity collection and connection validation, not as agent-facing tools. Batch
 # requires api_key inside its JSON body: all three official hosts accepted that documented sandbox
 # shape, while the query-bound shape supported by treg was
 # rejected by API Shield with HTTP 403. File lifecycles need multipart/binary contracts and account
-# ownership; filter writes and file deletion mutate account state. Finder has 20/1/0-credit result
-# branches and Activity Data has no stable public per-call rate. They stay outside this first PR.
+# ownership; filter writes and file deletion mutate account state. Activity Data has no stable
+# public per-call rate. Single Email Finder and Domain Search are safe GET lookups; successful
+# results cost 20 credits and undetermined results cost nothing.
 provider: zerobounce
 source:
   docs: https://www.zerobounce.net/docs/email-validation-api-quickstart
@@ -39,11 +38,77 @@ endpoints:
       currency: credit
       per: 1
       unit: result
-      source: docs
+      source: observed
       source_url: https://www.zerobounce.net/pricing
       checked: '2026-09-17'
       confidence: verified
-      note: "One purchased validation credit per non-unknown result at the supplied $69 / 5,000-credit replacement rate. Official docs say unknown results consume no credit. Live sandbox valid/invalid/unknown and real invalid/catch-all-related responses showed zero balance delta; that can reflect sandbox, cached, free or refunded behavior and does not replace the documented retail rate."
+      note: "One purchased credit per non-unknown result at the supplied $69 / 5,000-credit replacement rate. Official docs say unknown results consume no credit. Two fresh live validations reduced the balance by exactly one credit each: an invalid mailbox from 5,098 to 5,097 and a valid mailbox from 5,097 to 5,096."
     verified: '2026-09-17'
     example_response: examples/zerobounce.people.email.verify.json
     docs_url: https://www.zerobounce.net/docs/email-validation-api-quickstart/v2-validate-emails
+
+  - id: zerobounce.people.email.find
+    domain: people
+    capability: people.email.find
+    platform: people
+    scope: any_account
+    method: GET
+    path: /v2/guessformat
+    name: Find a work email from a name and domain
+    summary: Search for a person's business email in real time from their name and company domain
+    input:
+      queryParams:
+        domain: {type: string, required: false, note: "company domain without protocol; provide this or company_name", example: "stripe.com"}
+        company_name: {type: string, required: false, note: "company name; use when its domain is unknown"}
+        first_name: {type: string, required: false, example: "Patrick"}
+        middle_name: {type: string, required: false}
+        last_name: {type: string, required: false, example: "Collison"}
+      note: "Provide domain or company_name, plus the person's available name fields. A successful result costs 20 credits; an undetermined result costs nothing. The returned confidence is ZeroBounce's estimate, not proof of deliverability; verify the address before outreach."
+    test_request:
+      queryParams: {domain: "stripe.com", first_name: "Patrick", last_name: "Collison"}
+    cost:
+      type: per_success
+      value: 20
+      currency: credit
+      per: 1
+      unit: result
+      source: observed
+      source_url: https://www.zerobounce.net/docs/email-finder-api
+      checked: '2026-09-17'
+      confidence: verified
+      note: "20 PAYG credits or one subscription query per successful email; undetermined results are free. The account's first 10 successful Finder/Domain Search calls used a promotional allocation and left the PAYG balance unchanged; the next successful Email Finder call reduced the balance by exactly 20 credits."
+    verified: '2026-09-17'
+    example_response: examples/zerobounce.people.email.find.json
+    docs_url: https://www.zerobounce.net/docs/email-finder-api
+
+  - id: zerobounce.companies.email_pattern
+    domain: companies
+    capability: companies.email_pattern
+    platform: companies
+    scope: any_account
+    method: GET
+    path: /v2/guessformat
+    name: Find a company's email address patterns
+    summary: Detect the likely business-email formats used by a company domain, with confidence levels
+    input:
+      queryParams:
+        domain: {type: string, required: false, note: "company domain without protocol; provide this or company_name", example: "openai.com"}
+        company_name: {type: string, required: false, note: "company name; use when its domain is unknown"}
+      note: "Provide domain or company_name. This returns address formats such as first or first.last, not a specific person's email. A successful format result costs 20 credits; an undetermined result costs nothing."
+    test_request:
+      queryParams: {domain: "openai.com"}
+    expect: {json_path: failure_reason, equals: ""}
+    cost:
+      type: per_success
+      value: 20
+      currency: credit
+      per: 1
+      unit: result
+      source: docs
+      source_url: https://www.zerobounce.net/docs/domain-search-api
+      checked: '2026-09-17'
+      confidence: documented
+      note: "20 PAYG credits or one subscription query per successful format; undetermined results are free. A live successful response used the shared 10-call promotional Finder/Domain Search allocation and left the PAYG balance unchanged. The 20-credit PAYG fallback was subsequently observed on Email Finder, which uses the same upstream route and shared allocation; this Domain Search price remains documented until its own paid result is observed."
+    verified: '2026-09-17'
+    example_response: examples/zerobounce.companies.email_pattern.json
+    docs_url: https://www.zerobounce.net/docs/domain-search-api

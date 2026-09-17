@@ -78,6 +78,18 @@ async def test_zerobounce_enters_email_verification_arena_via_verified_adapter(
     assert quote["providers"][0]["provider"] == "zerobounce"
     assert quote["providers"][0]["endpoint_id"] == "zerobounce.people.email.verify"
     assert quote["estimate_micro"] == 13_800
+
+    finder_response = await clients.post("/arena/plans", json={
+        "capability": "people.email.find",
+        "identity": {"full_name": "Ada Lovelace", "domain": "example.com"},
+        "mode": "compare",
+        "providers": ["zerobounce"],
+        "max_cost_micro": 300_000,
+    })
+    assert finder_response.status_code == 200, finder_response.text
+    finder_quote = finder_response.json()
+    assert finder_quote["providers"][0]["endpoint_id"] == "zerobounce.people.email.find"
+    assert finder_quote["estimate_micro"] == 276_000
     get_settings.cache_clear()
 
 

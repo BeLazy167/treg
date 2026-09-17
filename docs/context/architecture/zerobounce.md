@@ -1,9 +1,11 @@
 ---
-title: ZeroBounce — single email validation and account capacity
+title: ZeroBounce — email validation, finding, patterns, and account capacity
 status: implemented; live authentication and response shapes verified
 sources:
   - src/treg/catalog/zerobounce.yaml
   - src/treg/catalog/examples/zerobounce.people.email.verify.json
+  - src/treg/catalog/examples/zerobounce.people.email.find.json
+  - src/treg/catalog/examples/zerobounce.companies.email_pattern.json
   - src/treg/catalog/adapters.yaml
   - src/treg/catalog/fx.yaml
   - src/treg/config.py
@@ -31,24 +33,25 @@ related:
 
 # ZeroBounce
 
-ZeroBounce is a pasted-key email-validation provider at `https://api.zerobounce.net`. The selected
+ZeroBounce is a pasted-key email-data provider at `https://api.zerobounce.net`. The selected
 operations use an `api_key` query parameter. A team's connected key has priority and is unmetered.
 `TREG_PLATFORM_KEY_ZEROBOUNCE` enables shared-key calls only when `zerobounce` is also in
 `TREG_PLATFORM_PROVIDERS`.
 
-## Safe first surface
+## Safe catalog surface
 
-The catalog exposes only synchronous single validation. Credit balance and API usage are internal
-operations because they support registry health rather than an agent job. They do not appear in
-catalog search, provider pages, platform pages, or `/call/`.
+The catalog exposes synchronous single validation, person email finding, and company email-pattern
+search. All three are read-only GET operations and work with a team's key or the shared platform
+key. Credit balance and API usage remain internal because they support registry health rather than
+an agent job. They do not appear in catalog search, provider pages, platform pages, or `/call/`.
 
-The wider documented API includes batch and file validation, scoring, finder, domain search,
-Activity Data, filters, and list evaluation. Batch is excluded because the endpoint needs `api_key`
+The wider documented API includes batch and file validation, scoring, Activity Data, filters, and
+list evaluation. Batch is excluded because the endpoint needs `api_key`
 in its JSON body. Live tests on the three official hosts accepted the documented body shape and
 rejected the query-bound shape with HTTP 403. The shared relay does not add secrets to request
 bodies. File lifecycles need multipart and binary contracts. Mutating filters and deletion are not
-safe read operations. Finder has several result-dependent prices, and Activity Data has no stable
-public per-call rate. The first surface does not guess at these contracts.
+safe read operations. Activity Data has no stable public per-call rate. The catalog does not guess
+at these contracts.
 
 ## Routing, Arena, and settlement
 
@@ -58,11 +61,26 @@ provider status, and sets valid only for `status=valid`. Invalid, catch-all, spa
 do-not-mail are useful answers. Unknown or a missing status is a miss, so a waterfall can continue.
 Arena discovers the same adapter without provider-specific code.
 
+The verified finder adapter joins `zerobounce.people.email.find` to
+`treg.people.email.find`, so it participates in automatic routing and the Enrich Arena. It maps a
+canonical name and domain into `first_name`, `last_name`, and `domain`; an empty or absent email is
+a free miss. `zerobounce.companies.email_pattern` uses the same upstream `/v2/guessformat` path with
+domain-only input. It stays a direct catalog tool because `companies.email_pattern` has no routed
+contract or Arena task.
+
 The supplied acquisition rate is $69 / 5,000 credits, or $0.0138 per credit. Official material says
 a completed non-unknown single validation uses one credit and an unknown result uses none. The tool
 therefore uses `per_success`. The existing verified-adapter settlement rule releases an unknown
 hold and settles other HTTP-200 verdicts at 13,800 micro-USD. Common failure handling releases the
 hold on upstream errors. No ZeroBounce branch is added to money code.
+
+Email Finder and Domain Search each document 20 credits per successful result and zero for an
+undetermined result. At the same replacement rate, each successful result reserves and settles
+276,000 micro-USD. Finder uses its verified adapter to identify an empty email; Domain Search uses
+its provider success rule to identify a nonempty format response. The account's first 10 successful
+Finder/Domain Search calls used a promotional allocation. The next successful Email Finder call
+reduced the PAYG balance by exactly 20 credits, so Finder pricing is live-verified. Domain Search
+retains documented price confidence until its own paid result is observed.
 
 ## Connection and capacity
 
@@ -74,19 +92,20 @@ used for connection validation because a bad key can return HTTP 200 with `Credi
 The capacity collector reads `/v2/getcredits` directly. The operation is not a catalog tool. The
 collector accepts nonnegative integers and decimal strings. It rejects Boolean, missing, malformed,
 and negative values. It also removes the query key from error reporting by replacing upstream HTTP
-errors with a safe provider message. The policy is
-`credits / auto_recharge / api` for vendor-managed Auto-Pay. treg reads the balance but does not
-read or change the Auto-Pay setting. Shared-key calls start at the conservative policy rate of 25
-requests per second.
+errors with a safe provider message. The policy is `credits / manual / api`: the API does not
+expose the account's Auto-Pay setting, so treg does not claim automatic replenishment. Shared-key
+calls start at the conservative policy rate of 25 requests per second.
 
 ## Live evidence and operations
 
-Sandbox valid, invalid, and unknown requests returned the documented shapes. Real checks returned
-an invalid mailbox and a role-based catch-all-related verdict. All checks showed zero balance delta.
-That can reflect sandbox, cache, free, or refunded behavior, so pricing stays at the documented
-retail replacement rate. Discovery spent no credits and remained below the 25-credit limit.
+Sandbox valid, invalid, and unknown requests returned the documented shapes. Two fresh real
+validations then proved the retail rule: an invalid mailbox reduced the balance from 5,098 to 5,097,
+and a valid mailbox reduced it from 5,097 to 5,096. A live person finder returned an email and a live
+domain search returned a primary format plus alternatives; both initially used a shared 10-call
+promotional allocation. After that allocation was exhausted, the next successful person finder
+reduced the balance by exactly 20 credits.
 
 No empty-account response was forced and no overflow route is claimed. Production serving still
 needs the normal platform key and provider allow-list configuration. This change does not enable
-either. The committed examples contain no key, account balance, address from the account, or raw
-live response.
+either. The committed examples are sanitized and contain no key, account balance, address from the
+account, or raw live response.

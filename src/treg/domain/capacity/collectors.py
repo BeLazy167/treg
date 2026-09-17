@@ -315,8 +315,8 @@ async def _zerobounce(c, key):
         raise ValueError("ZeroBounce returned no valid credit balance") from None
     if credits < 0:
         raise ValueError("ZeroBounce rejected the balance request")
-    return {"value": credits, "unit": "validation credits",
-            "note": "PAYG balance; vendor Auto-Pay state is not read or changed"}
+    return {"value": credits, "unit": "credits",
+            "note": "PAYG balance; treg treats replenishment as manual"}
 
 
 async def _leadmagic(c, key):

@@ -1461,6 +1461,27 @@ def test_zerobounce_verdicts_join_existing_email_verification_route():
         assert adapter.from_upstream(doc) == {"valid": valid, "status": status}
 
 
+def test_zerobounce_finder_joins_email_finding_route_but_domain_pattern_stays_direct():
+    cat = catalog_store.load()
+    eid = "zerobounce.people.email.find"
+    assert eid in cat.by_id["treg.people.email.find"]["routed_children"]
+    assert "zerobounce.companies.email_pattern" not in cat.adapters
+    adapter = cat.adapters[eid]
+    assert adapter.verified
+    query, body = adapter.to_upstream({
+        "full_name": "Ada Lovelace", "first_name": "Ada", "last_name": "Lovelace",
+        "domain": "example.com",
+    })
+    assert query == {"first_name": "Ada", "last_name": "Lovelace", "domain": "example.com"}
+    assert body == {}
+    assert adapter.from_upstream({"email": "ada@example.com", "email_confidence": "high"}) == {
+        "email": "ada@example.com",
+    }
+    assert adapter.is_miss({"email": ""})
+    assert adapter.is_miss({})
+    assert not adapter.is_miss({"email": "ada@example.com"})
+
+
 async def test_zerobounce_serves_existing_email_verification_route(clients, monkeypatch):
     monkeypatch.setenv("TREG_PLATFORM_KEY_ZEROBOUNCE", "PLATFORM-ZEROBOUNCE")
     monkeypatch.setenv("TREG_PLATFORM_PROVIDERS", "zerobounce")

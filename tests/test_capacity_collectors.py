@@ -28,8 +28,8 @@ async def test_zerobounce_balance_accepts_nonnegative_integer_values(monkeypatch
         async with httpx.AsyncClient(transport=httpx.MockTransport(reply)) as client:
             row = await collectors.provider_balance("zerobounce", client)
         assert row["value"] == expected
-        assert row["unit"] == "validation credits"
-        assert "Auto-Pay" in row["note"]
+        assert row["unit"] == "credits"
+        assert "manual" in row["note"]
     finally:
         collectors.get_settings.cache_clear()
 
@@ -57,12 +57,12 @@ async def test_zerobounce_balance_rejects_uncertain_values_without_exposing_key(
         collectors.get_settings.cache_clear()
 
 
-def test_zerobounce_capacity_policy_preserves_vendor_auto_pay():
+def test_zerobounce_capacity_policy_stays_manual_until_vendor_auto_pay_is_verified():
     row = policy.default_policy("zerobounce", has_key=True)
     assert row.capacity_type == "credits"
-    assert row.funding_mode == "auto_recharge"
+    assert row.funding_mode == "manual"
     assert row.source == "api"
-    assert row.auto_funding_enabled is True
+    assert row.auto_funding_enabled is False
     assert row.rate_limit == {"limit": 25, "window_s": 1, "source": "policy"}
 
 
