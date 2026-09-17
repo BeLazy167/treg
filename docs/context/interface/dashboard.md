@@ -648,10 +648,13 @@ platform without opening it, and every field comes off the `/catalog/platforms` 
   provider with no published rate stays silent. Note that `price_from` arrives as `null` *or* as an
   empty `{}`, and the empty object has to be normalised to null first — being truthy, it otherwise
   short-circuits the auth-kind branch and silently costs an OAuth-only platform its "free with your
-  account".
+  account". A grouped scalar rate such as MiniMax TTS supplies `display_usd` plus `display_unit`, so
+  the card says `$0.60 / 10000 characters` instead of rounding the normalized per-character rate
+  down to an unreadable number.
 
 **Prices are unified USD.** Every price the marketplace displays — the card footer, the capability card's
-"from", and the per-endpoint cost chip — is the **server's computed `usd`** field on `cost` / `price_from`,
+"from", and the per-endpoint cost chip — comes from the server's price object on `cost` / `price_from`:
+normally its computed **`usd`**, or its equivalent grouped **`display_usd` / `display_unit`** pair,
 formatted by `usdNum`: two significant figures under a dollar (`$0.015`, `$0.00015`), cents at or above one.
 The FX table lives in the catalog (`fx.yaml`) so a rate refresh re-prices every surface at once, and the
 dashboard carries **no** conversion constant of its own — one here would drift from the CLI the moment the

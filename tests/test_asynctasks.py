@@ -37,7 +37,7 @@ EP = "replicate.image-gen.flux-schnell"
 
 def test_all_generation_catalog_entries_forbid_cache_including_extended():
     entries = [ep for ep in catalog_store.load().endpoints
-               if ep["platform"] in {"image-gen", "video-gen"}]
+               if ep["platform"] in {"image-gen", "video-gen", "voice-gen"}]
     assert any(".x." in ep["id"] for ep in entries)
     assert any(ep["id"] == "minimax.image-gen.from_text" for ep in entries)
     for ep in entries:

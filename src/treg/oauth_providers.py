@@ -1673,7 +1673,7 @@ MINIMAX = OAuthProvider(
     auth_uri="", token_uri="", scopes={},
     client_id_setting="", client_secret_setting="",
     category="AI generation",
-    summary="Generate images and create videos from text or source images.",
+    summary="Generate voice, images, and videos from text or source images.",
     base_url="https://api.minimax.io",
     docs_url="https://platform.minimax.io/docs/api-reference/api-overview",
     probe_path="/v2/video_generation",

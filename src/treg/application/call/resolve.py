@@ -465,6 +465,23 @@ def _body_limit(body: bytes) -> int | None:
     return items
 
 
+def _body_text_characters(body: bytes) -> int:
+    """Count the provider-facing ``text`` field for character-priced generation calls.
+
+    The catalog price is already normalized to USD per character. Invalid JSON or a missing text
+    field reserves one unit rather than zero; platform request validation/provider rejection still
+    decides whether the call is relayed or charged.
+    """
+    if body:
+        try:
+            document = json.loads(body)
+        except (ValueError, UnicodeDecodeError):
+            document = None
+        if isinstance(document, dict) and isinstance(document.get("text"), str):
+            return max(1, len(document["text"]))
+    return 1
+
+
 def _platform_estimate_micro(cost: dict, query, body: bytes = b"") -> int:
     """What one call is expected to cost the platform, in RAW micro-USD (no margin — ledger.reserve
     applies that). Rounds UP: a fraction of a micro-dollar is not representable and must not round to
@@ -473,7 +490,9 @@ def _platform_estimate_micro(cost: dict, query, body: bytes = b"") -> int:
     if usd is None:
         return 0
     n = 1
-    if cost.get("type") in ("per_result", "quota_rows") and cost.get("unit") in _ENTITY_UNITS:
+    if cost.get("unit") == "character":
+        n = _body_text_characters(body)
+    elif cost.get("type") in ("per_result", "quota_rows") and cost.get("unit") in _ENTITY_UNITS:
         # Priced per INPUT entity, not per returned row: the page-size default below has no
         # meaning here and billed one-target calls 20x (seranking summary, serpstat overview —
         # 2026-09-05). The request names how many entities it asks about.

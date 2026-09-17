@@ -137,6 +137,7 @@ sources:
   - src/treg/catalog/examples/minimax.video-gen.result.retrieve.json
   - src/treg/catalog/examples/minimax.video-gen.from_image.json
   - src/treg/catalog/examples/minimax.video-gen.task.status.json
+  - src/treg/catalog/examples/minimax.voice-gen.voices.list.json
   - src/treg/catalog/openrouter.yaml
   - src/treg/catalog/openrouter.extended.yaml
   - src/treg/catalog/examples/openrouter.x.alibaba-wan-3-0.json
@@ -575,8 +576,8 @@ The core AIGC generation rows pin `domain: models` too and carry PER-MODEL capab
 (`video-gen.hailuo.from_text`, proposed in their provider files) rather than the job-level
 `video-gen.from_text` family. Generation models are not interchangeable - a merged row comparing
 Hailuo with Wan or Seedance is a false comparison - so the job-level capabilities are deliberately
-memberless, reserved for hand-picked models (see capabilities.yaml). Both AI generation pages
-therefore render as ONE flat model wall; the same model reachable over several routes (MiniMax
+memberless, reserved for hand-picked models (see capabilities.yaml). The AI generation modality
+pages therefore render as flat model walls; the same model reachable over several routes (MiniMax
 direct, OpenRouter, Replicate all serve Hailuo) sits adjacent under model-led names, which is the
 comparison that actually means something. The per-model capability is the join key that lets those
 routes merge onto one row if that comparison is later curated. reAPI and PiAPI are the first pair
@@ -607,6 +608,7 @@ platforms:
   web: "The web at large (backlinks, authority, traffic)"
   video-gen: {label: "Video generation", category: "AI generation"}
   image-gen: {label: "Image generation", category: "AI generation"}
+  voice-gen: {label: "Voice generation", category: "AI generation"}
 ```
 
 Rules:
@@ -617,8 +619,8 @@ Rules:
   this file. The validator accepts a capability that is either global or proposed in the same file.
 - Under `AI generation`, platform means the generated-media modality rather than a system that owns
   the data. The frozen vocabulary is `video-gen.from_text`, `video-gen.from_image`,
-  `video-gen.task.status`, `image-gen.from_text`, and `image-gen.edit`; text-to-video and
-  image-to-video stay separate because their required inputs and prices differ.
+  `video-gen.task.status`, `image-gen.from_text`, `image-gen.edit`, and `voice-gen.from_text`;
+  text-to-video and image-to-video stay separate because their required inputs and prices differ.
 
 ### `<service>.yaml`
 
@@ -673,7 +675,7 @@ endpoints:
 
 ### Async descriptors
 
-`catalog_store._normalize` sets `cache: forbidden` for `image-gen` and `video-gen` endpoints,
+`catalog_store._normalize` sets `cache: forbidden` for `image-gen`, `video-gen`, and `voice-gen` endpoints,
 including synchronous generation, task/result utilities and generated extended rows. Their `kind`
 is unchanged. These requests must reach the provider, not replay shared-account task ids or media
 from an identical prompt. Other platforms retain their declared/default cache policy.
@@ -782,6 +784,17 @@ MiniMax's curated Hailuo routes intentionally use the v1 three-step protocol: su
 the terminal values `Success`/`Fail`, then pass the returned `file_id` to
 `GET /v1/files/retrieve`. The v2 generation path serves the H3 family and is not a protocol upgrade
 for the Hailuo models in this listing.
+
+MiniMax also supplies the first `voice-gen` rows through the same provider connection. Speech 2.8
+HD and Turbo are separate model rows over `POST /v1/t2a_v2`, each fixing its model plus
+`stream: false` and `output_format: url`; this keeps the response bounded and returns a 24-hour
+audio URL. The route is synchronous and billed per input character, so `_body_text_characters`
+scales the reserve from the provider-facing `text` value. The two rows remain marked `skipped`
+until a deliberate paid verification call is authorized; documentation provenance is enough for
+platform eligibility, but is not presented as live route evidence. The Voice generation Actions
+shelf exposes `minimax.voice-gen.voices.list` so callers can discover valid system voice IDs. Its
+request is fixed to `voice_type: system`: account-specific cloned and generated voices must not
+cross team boundaries when treg's shared MiniMax connection is used.
 
 reAPI answers every submission with a bare `{id, status}` and reports the charge on the poll body
 (`usage.credits`, 1 credit = $0.001); video rows keep the file-level descriptor (`output.video_urls`)
@@ -1046,7 +1059,11 @@ that slice: it bills one whole credit (~$0.0245) for one email or ten (observed 
 10 emails"); `Catalog.advertised_usd` is what `catalog_search` / `catalog_get` put on
 `usd_per_call`. Settlement still reads `usd` and the derived email-count rule — display only.
 Akta bills 1.5 credits per 50 reviews the same `per` way. Without `per`, every one of those had
-to be either wrong or rounded into prose.
+to be either wrong or rounded into prose. A scalar `unit: character` is request-priced rather than
+page-priced: `_body_text_characters` counts the top-level JSON `text` string and multiplies the
+normalized per-character USD rate. Invalid JSON or a missing/empty string reserves one character,
+never zero; the normal request/envelope checks decide whether the provider served anything and
+`per_success` releases a rejected call.
 
 **Three kinds of denomination convert, and they convert differently:**
 
