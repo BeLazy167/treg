@@ -12,7 +12,7 @@ endpoints:
   method: GET
   path: /search
   name: "Google Maps place results for a query — rating, address"
-  summary: Live Google Maps place results for a keyword and location — position, place_id, rating, address, phone, website
+  summary: Live Google Maps place results for a keyword and location, or a Google place_id lookup — position, place_id, rating, address, phone, website
   input:
     queryParams:
       engine:
@@ -22,12 +22,12 @@ endpoints:
       type:
         type: string
         required: true
-        note: search (keyword search) or place (single place lookup)
+        note: 'search (keyword list) or place (single-place lookup via place_id). Prefer type=place with place_id. Upstream does not require type when place_id is set (https://serpapi.com/google-maps-api); Treg still requires type — send type=place for a place_id lookup.'
         example: search
       q:
         type: string
         required: true
-        note: search keyword
+        note: 'required for type=search (keyword). For a place_id lookup, Treg still requires q — send the place name, or the same place_id as q, alongside place_id.'
         example: pizza
       ll:
         type: string
@@ -39,7 +39,12 @@ endpoints:
         required: false
         note: pagination offset, increments of 20
         example: 0
-    note: answers arrive in `local_results`.
+      place_id:
+        type: string
+        required: false
+        note: 'Google place_id for a single-place lookup / NAP (name, address, phone, website). Prefer with type=place. Upstream accepts place_id without other optional params (https://serpapi.com/google-maps-api); Treg still requires type and q, so send type=place and a q (place name, or place_id as q) alongside place_id.'
+        example: ChIJifIePKtZwokRVZ-UdRGkZzs
+    note: 'Keyword search answers arrive in `local_results`; a place_id lookup answers in `place_results`. Search: engine=google_maps type=search q=pizza ll=@…. Place lookup: engine=google_maps type=place q=<place name or place_id> place_id=ChIJifIePKtZwokRVZ-UdRGkZzs.'
   cost:
     type: per_success
     value: 0.015

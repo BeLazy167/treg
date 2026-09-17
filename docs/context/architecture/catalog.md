@@ -1671,6 +1671,22 @@ single vs multiple-query rule; all five values remain valid. Settlement is uncha
 Enforced by `test_serpapi_google_trends_data_type_names_geo_map_cardinality` and
 `test_catalog_get_serpapi_google_trends_data_type_cardinality`.
 
+### SerpApi Google Maps `place_id` single-place lookup
+
+SerpApi's Google Maps engine (`GET /search?engine=google_maps`) accepts a Google
+`place_id` for a single-place lookup / NAP (name, address, phone, website). Official
+docs (https://serpapi.com/google-maps-api) say `place_id` can be used without other
+optional params, and `type` is not required when `place_id` or `data_cid` is set.
+`type=search` is a keyword list (`local_results`); `type=place` is one place
+(`place_results`). Feedback #525: `serpapi.x.google-maps` listed only `engine`,
+`type`, `q`, `ll`, `start` — no `place_id` — and a place_id-only call returned Treg
+400 requiring `type` and `q`. Catalog-only: optional `place_id` is documented;
+`type` and `q` stay `required: true` to match Treg schema validation. Agents should
+send `type=place` and a `q` (place name, or `place_id` as `q`) alongside `place_id`.
+The verified search `test_request` / `call_template` is unchanged. Settlement is
+unchanged. Enforced by `test_serpapi_google_maps_documents_place_id` and
+`test_catalog_get_serpapi_google_maps_place_id`.
+
 ## Choosing between providers (`domain/catalog/stats.py`)
 
 307 capabilities are served by more than one provider, and prices inside one capability differ by up

@@ -1680,3 +1680,70 @@ async def test_catalog_get_serpapi_google_trends_data_type_cardinality(
     assert "timeseries" in note
     assert "related_topics" in note
     assert "related_queries" in note
+
+
+GOOGLE_MAPS_ID = "serpapi.x.google-maps"
+
+
+def test_serpapi_google_maps_documents_place_id():
+    """Feedback #525: Google place_id NAP lookup was undocumented.
+
+    catalog_get listed only engine/type/q/ll/start, so a place_id-only call
+    returned Treg 400 requiring type and q. Upstream accepts place_id without
+    other optional params (https://serpapi.com/google-maps-api); Treg schema
+    validation still requires type and q. Catalog-only: document optional
+    place_id and keep type/q required. Settlement is unchanged.
+    """
+    cat = cs.load()
+    ep = cat.by_id[GOOGLE_MAPS_ID]
+    assert ep["path"] == "/search"
+    params = ep["input"]["queryParams"]
+    assert params["engine"]["required"] is True
+    assert params["type"]["required"] is True
+    assert params["q"]["required"] is True
+    place = params["place_id"]
+    assert place["type"] == "string"
+    assert place.get("required") is False
+    note = place["note"].lower()
+    assert "place_id" in note
+    assert "nap" in note or ("name" in note and "address" in note and "phone" in note)
+    assert "type=place" in note
+    assert "https://serpapi.com/google-maps-api" in place["note"]
+    assert "type" in note and "q" in note
+    type_note = params["type"]["note"].lower()
+    assert "place_id" in type_note
+    assert "search" in type_note and "place" in type_note
+    q_note = params["q"]["note"].lower()
+    assert "place_id" in q_note
+    assert "search" in q_note
+    input_note = ep["input"]["note"].lower()
+    assert "place_results" in input_note
+    assert "local_results" in input_note
+    assert "place_id" in input_note
+    test = ep["test_request"]["queryParams"]
+    assert test == {
+        "engine": "google_maps",
+        "type": "search",
+        "q": "pizza",
+        "ll": "@40.7455096,-74.0083012,14z",
+    }
+
+
+async def test_catalog_get_serpapi_google_maps_place_id(clients: AsyncClient):
+    """Feedback #525: catalog_get must document place_id for NAP lookup."""
+    body = (await clients.get(f"/catalog/endpoints/{GOOGLE_MAPS_ID}")).json()
+    params = body["endpoint"]["input"]["queryParams"]
+    assert params["type"]["required"] is True
+    assert params["q"]["required"] is True
+    place = params["place_id"]
+    assert place["type"] == "string"
+    assert place.get("required") is False
+    note = place["note"].lower()
+    assert "place_id" in note
+    assert "type=place" in note
+    assert "https://serpapi.com/google-maps-api" in place["note"]
+    tmpl = body["call_template"]
+    assert tmpl.startswith(f"treg call {GOOGLE_MAPS_ID}")
+    assert "type=search" in tmpl
+    assert "q=pizza" in tmpl
+    assert "place_id=" not in tmpl
