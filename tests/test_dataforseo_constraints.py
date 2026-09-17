@@ -221,6 +221,107 @@ def test_google_ai_mode_live_documents_single_task_constraint():
     )
 
 
+CLAUDE_LLM_RESPONSES_LIVE_ID = (
+    "dataforseo.x.ai-optimization-claude-llm-responses-live"
+)
+LLM_RESPONSES_LIVE_IDS = (
+    "dataforseo.x.ai-optimization-chat-gpt-llm-responses-live",
+    CLAUDE_LLM_RESPONSES_LIVE_ID,
+    "dataforseo.x.ai-optimization-gemini-llm-responses-live",
+    "dataforseo.x.ai-optimization-perplexity-llm-responses-live",
+)
+
+
+def test_claude_llm_responses_live_documents_working_model():
+    """Feedback #358: Claude live model_name example must be a currently accepted name.
+
+    catalog_get advertised claude-opus-4-0 (and implied bare aliases resolve to
+    the latest version). Live POST with those values returns HTTP 200 + task
+    status 40501 Invalid Field: 'model_name'. Reporter verified claude-sonnet-4-5
+    works. The captured example_response was that 40501 body and must not ship
+    as a normal example.
+
+    Ref: https://docs.dataforseo.com/v3/ai_optimization/claude/llm_responses/models/
+    """
+    endpoints = load_dataforseo_endpoints()
+    endpoint = next(
+        (ep for ep in endpoints if ep.get("id") == CLAUDE_LLM_RESPONSES_LIVE_ID), None
+    )
+    assert endpoint is not None, f"{CLAUDE_LLM_RESPONSES_LIVE_ID} not found"
+    assert endpoint.get("path") == "/ai_optimization/claude/llm_responses/live"
+
+    body = (endpoint.get("input") or {}).get("body") or {}
+    model = body.get("model_name") or {}
+    assert model.get("example") == "claude-sonnet-4-5", (
+        f"{CLAUDE_LLM_RESPONSES_LIVE_ID}: model_name.example must be a currently "
+        "accepted name, not claude-opus-4-0"
+    )
+    note = model.get("note") or ""
+    assert "40501" in note or "llm_responses/models" in note, (
+        f"{CLAUDE_LLM_RESPONSES_LIVE_ID}: model_name.note must mention 40501 or "
+        "the Models endpoint"
+    )
+
+    test_req = endpoint.get("test_request") or {}
+    tasks = test_req.get("body")
+    assert isinstance(tasks, list) and len(tasks) == 1, (
+        f"{CLAUDE_LLM_RESPONSES_LIVE_ID}: test_request.body must be a one-element array"
+    )
+    assert tasks[0].get("model_name") == "claude-sonnet-4-5", (
+        f"{CLAUDE_LLM_RESPONSES_LIVE_ID}: test_request.body[0].model_name must be "
+        "claude-sonnet-4-5"
+    )
+
+    example_rel = endpoint.get("example_response")
+    if example_rel:
+        example_path = CATALOG / example_rel
+        assert example_path.is_file(), (
+            f"{CLAUDE_LLM_RESPONSES_LIVE_ID}: declared example_response is missing"
+        )
+        payload = example_path.read_text()
+        assert "40501" not in payload, (
+            f"{CLAUDE_LLM_RESPONSES_LIVE_ID}: example_response must not advertise "
+            "the 40501 Invalid Field failure"
+        )
+    else:
+        leftover = CATALOG / "examples" / f"{CLAUDE_LLM_RESPONSES_LIVE_ID}.json"
+        assert not leftover.is_file(), (
+            f"{CLAUDE_LLM_RESPONSES_LIVE_ID}: leftover 40501 example JSON still on disk"
+        )
+        assert not endpoint.get("verified"), (
+            f"{CLAUDE_LLM_RESPONSES_LIVE_ID}: verified requires a real success "
+            "example_response; do not keep the 40501 capture"
+        )
+
+
+def test_llm_responses_live_documents_single_task_constraint():
+    """Feedback #141 (catalog): LLM-responses Live routes accept exactly one task.
+
+    catalog_get reused the generic "ARRAY of task objects — one object per task"
+    note, so agents batched prompts and got HTTP 200 with the first task OK and
+    per-task 40000 "You can set only one task at a time" on the rest. Same class
+    as ai_mode/live/advanced (#94) and backlinks/summary/live (#102 / #487).
+    Settlement is unchanged; do not auto-split a multi-task array.
+
+    Ref: https://docs.dataforseo.com/v3/ai_optimization/claude/llm_responses/live/
+    """
+    endpoints = {ep.get("id"): ep for ep in load_dataforseo_endpoints()}
+    for endpoint_id in LLM_RESPONSES_LIVE_IDS:
+        endpoint = endpoints.get(endpoint_id)
+        assert endpoint is not None, f"{endpoint_id} not found"
+        note = (endpoint.get("input") or {}).get("note", "")
+        assert "exactly one task" in note.lower() or "exactly 1 task" in note.lower(), (
+            f"{endpoint_id}: input.note must name the single-task cap"
+        )
+        assert "40000" in note, (
+            f"{endpoint_id}: input.note should name the live 40000"
+        )
+        assert "one object per task" not in note.lower(), (
+            f"{endpoint_id}: generic 'one object per task' wording still "
+            "reads as multi-task batching"
+        )
+
+
 PAGE_AUDIT_ID = "dataforseo.web.page.audit"
 
 

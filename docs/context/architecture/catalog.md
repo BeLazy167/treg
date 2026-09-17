@@ -1534,9 +1534,29 @@ work is a `bulk_*` live route (many targets *inside* one task), e.g. `dataforseo
 objects — one object per task", so agents batched keywords and got HTTP 200 with the first
 task OK and per-task 40000 on the rest. That endpoint's `input.note` now names the single-task
 cap and the 40000; settlement is unchanged. Do not auto-split a multi-task array into billed
-calls. Enforced by `test_dataforseo_backlinks_summary_is_single_task`,
-`test_google_ai_mode_live_documents_single_task_constraint` and
-`test_catalog_get_dataforseo_ai_mode_live_names_the_single_task_limit`.
+calls. Feedback #141 (catalog): the four LLM-responses Live routes
+(`dataforseo.x.ai-optimization-{chat-gpt,claude,gemini,perplexity}-llm-responses-live`)
+reused the same generic extended note; extra tasks return the same 40000. Their `input.note`
+now names the single-task cap. Settlement and the free-vs-charge half of #141 are unchanged
+here. Enforced by `test_dataforseo_backlinks_summary_is_single_task`,
+`test_google_ai_mode_live_documents_single_task_constraint`,
+`test_llm_responses_live_documents_single_task_constraint`,
+`test_catalog_get_dataforseo_ai_mode_live_names_the_single_task_limit` and
+`test_catalog_get_dataforseo_claude_llm_responses_live_names_working_model`.
+
+### DataForSEO Claude LLM Responses `model_name` is not a stable alias
+
+Vendor docs and the ingested example advertised `claude-opus-4-0` and implied bare aliases
+(`claude`, `claude-sonnet`, `claude-opus`) resolve to the latest version. A live POST with
+those values returns HTTP 200 + task status `40501 Invalid Field: 'model_name'` and `$0`.
+Feedback #358: `dataforseo.x.ai-optimization-claude-llm-responses-live` shipped that
+example and stored the 40501 body as `example_response`. The catalog example and
+`test_request` now use a currently accepted name (`claude-sonnet-4-5`); `model_name.note`
+names 40501 and the Models GET. The failed example file is removed rather than advertised
+as a success — do not invent a success payload. Allowed names change over time; list them
+via `https://docs.dataforseo.com/v3/ai_optimization/claude/llm_responses/models/`. Cost
+fields are unchanged. Enforced by `test_claude_llm_responses_live_documents_working_model`
+and `test_catalog_get_dataforseo_claude_llm_responses_live_names_working_model`.
 
 ### DataForSEO Google Trends explore/live rejects `item_types`
 
