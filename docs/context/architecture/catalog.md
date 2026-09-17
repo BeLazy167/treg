@@ -1614,6 +1614,25 @@ unchanged. Settlement is unchanged. Enforced by
 `test_llm_mentions_target_is_and_combined_filter` and
 `test_catalog_get_dataforseo_llm_mentions_historical_names_and_semantics`.
 
+### DataForSEO LLM Mentions multi-target `targets` is 2–10 keyed sets
+
+DataForSEO's LLM Mentions multi-target live route takes a `targets` array of keyed
+comparison sets. Official docs
+(https://docs.dataforseo.com/v3/ai_optimization/llm_mentions/multi_target_metrics/live/)
+say between 2 and 10 target sets, each with its `key`; each nested `target` can
+contain up to 10 domain/keyword entities; requests need at least one include
+filter. A live POST with 14 keys returns HTTP 200 + task status `40501`
+("The number of 'targets' items must be between 2 and 10.") and `$0`.
+Feedback #490: `dataforseo.x.ai-optimization-llm-mentions-multi-target-metrics-live`
+advertised the 4-key example without the length bound, so agents sent 14
+targets. Catalog-only: `targets.note` now names the 2–10 bound and 40501.
+The live route returns a rolling trailing window, not calendar-month buckets,
+and identical calls can vary; monthly series belong on
+`dataforseo.x.ai-optimization-llm-mentions-historical-live`. The 4-key
+example is unchanged. Settlement is unchanged. Enforced by
+`test_llm_mentions_multi_target_targets_bound` and
+`test_catalog_get_dataforseo_llm_mentions_multi_target_names_targets_bound`.
+
 ### ScrapeCreators Instagram reels search `date_posted`
 
 ScrapeCreators' OpenAPI for `GET /v2/instagram/reels/search` restricts `date_posted` to

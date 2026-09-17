@@ -155,13 +155,14 @@ endpoints:
   method: POST
   path: /ai_optimization/llm_mentions/multi_target_metrics/live
   name: "LLM mention metrics for many keywords or domains, grouped"
-  summary: Live LLM Mentions Multi-Target Metrics endpoint provides aggregated metrics grouped by custom keys for mentions of the keywords or domains specified in the target array of the request.
+  summary: Live LLM Mentions Multi-Target Metrics endpoint provides aggregated metrics grouped by targets[].key for 2-10 comparison keys. This is a live rolling window (not monthly history); identical calls can vary.
   input:
     bodyType: json
     body:
       targets:
         type: array
         required: false
+        note: 'array of objects containing target entities with aggregation keys. Required field. Between 2 and 10 keyed target sets (else upstream 40501: "The number of ''targets'' items must be between 2 and 10."). Each nested target array can contain up to 10 domain/keyword entities. Requests must include at least one domain_entity or keyword_entity with search_filter: include. Metrics are grouped by targets[].key. This live endpoint returns a rolling trailing window (~4-5 months), not calendar-month buckets; identical back-to-back calls can return different aggregates. For reproducible monthly time series use dataforseo.x.ai-optimization-llm-mentions-historical-live.'
         example:
         - key: chat_gpt
           target:
@@ -232,7 +233,7 @@ endpoints:
         type: string
         required: false
         note: <em>user-defined task identifier</em><br>optional field<br><em>the character limit is 255</em><br>you can use this parameter to identify the task and match it with the result<br>you will find the specified <code>tag</code> value in the <code>data</code> object of the response
-    note: the POST body is an ARRAY of task objects with these fields — one object per task
+    note: 'the POST body is an ARRAY of task objects with these fields — one object per task. Required targets must contain 2-10 keyed sets (else upstream 40501). Live aggregates are a rolling window and can vary across identical calls; for reproducible monthly charts use dataforseo.x.ai-optimization-llm-mentions-historical-live.'
   test_request:
     body:
     - language_code: en
