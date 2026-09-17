@@ -696,6 +696,39 @@ def test_prospeo_catalog_surface_excludes_account_info_and_prices_mobile_at_the_
     assert all(catalog.platform_eligible(ep) for ep in rows)
 
 
+def test_aiark_catalog_covers_the_selected_documented_surface():
+    catalog = catalog_store.load()
+    endpoints = {eid: ep for eid, ep in catalog.by_id.items() if eid.startswith("aiark.")}
+    assert set(endpoints) == {
+        "aiark.people.search", "aiark.people.preview", "aiark.companies.search",
+        "aiark.people.email.find", "aiark.people.phone.find", "aiark.people.enrich",
+        "aiark.people.personality.analyze", "aiark.lists.upsert",
+        "aiark.people.export.start", "aiark.people.export.results",
+        "aiark.people.export.statistics", "aiark.people.export.submissions",
+        "aiark.people.export.webhook.resend", "aiark.people.email.find.bulk",
+        "aiark.people.email.find.bulk.results", "aiark.people.email.find.bulk.statistics",
+        "aiark.people.email.find.bulk.submissions",
+        "aiark.people.email.find.bulk.webhook.resend",
+    }
+    assert not any(ep["path"] in {
+        "/v1/payments/credits", "/v1/people/export/single",
+        "/v1/people/mobile-phone-finder",
+    } for ep in endpoints.values())
+    assert all(
+        ep.get("platform_blocked")
+        for eid, ep in endpoints.items()
+        if ".export." in eid or ".bulk" in eid or eid == "aiark.lists.upsert"
+    )
+    assert endpoints["aiark.people.search"]["input"]["body"]["size"]["enum"] == [1]
+    assert endpoints["aiark.people.search"]["platform_request"] == {"body.size": 1}
+    assert catalog.cost_view(
+        endpoints["aiark.people.email.find"]["cost"], "aiark"
+    )["usd"] == 0.005267
+    assert catalog.cost_view(
+        endpoints["aiark.people.phone.find"]["cost"], "aiark"
+    )["usd"] == 0.026335
+
+
 def test_zerobounce_catalog_exposes_verified_single_record_tools_only():
     catalog = catalog_store.load()
     rows = [ep for ep in catalog.endpoints if ep["provider"] == "zerobounce"]

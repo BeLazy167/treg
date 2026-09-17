@@ -158,6 +158,45 @@ def test_prospeo_routing_surface_uses_fixed_single_record_modes():
     assert phone_body["only_verified_mobile"] is True
 
 
+def test_aiark_routing_surface_uses_verified_bounded_adapters():
+    catalog = catalog_store.load()
+    expected = {
+        "aiark.people.search",
+        "aiark.companies.search",
+        "aiark.people.email.find",
+        "aiark.people.phone.find",
+        "aiark.people.enrich",
+    }
+    assert {eid for eid in expected if catalog.adapters[eid].verified} == expected
+    _, people = catalog.adapters["aiark.people.search"].to_upstream({
+        "company_domain": "example.com",
+    })
+    _, companies = catalog.adapters["aiark.companies.search"].to_upstream({
+        "domain": "example.com",
+    })
+    bounded = {
+        "account": {"domain": {"any": {"include": ["example.com"]}}},
+        "page": 0,
+        "size": 1,
+    }
+    assert people == bounded
+    assert companies == bounded
+
+
+def test_aiark_finders_treat_present_but_empty_outputs_as_misses():
+    catalog = catalog_store.load()
+    email = catalog.adapters["aiark.people.email.find"]
+    phone = catalog.adapters["aiark.people.phone.find"]
+    assert email.is_miss({"data": None})
+    assert email.is_miss({"data": {"email": {"output": []}}})
+    assert not email.is_miss({"data": {"email": {"output": [{
+        "address": "jane@example.com",
+    }]}}})
+    assert phone.is_miss({"data": None})
+    assert phone.is_miss({"data": {"data": [[]]}})
+    assert not phone.is_miss({"data": {"data": [["+15550101000"]]}})
+
+
 def test_wiza_routing_surface_uses_bounded_single_record_searches():
     catalog = catalog_store.load()
     expected = {
@@ -1222,14 +1261,14 @@ def test_every_declared_miss_status_names_its_meaning():
 async def test_lusha_is_the_last_rung_of_the_phone_waterfall_and_settles_on_its_own_bill(clients: AsyncClient, enrichment_on, monkeypatch):
     """Guatemala, 2026-09-03: 7 phones in 44 across tomba/aviato/leadmagic/findymail/leadsforge.
     Lusha's native direct-dial data remains the last rung — dearest per hit (6 credits), so it ranks
-    after Dropleads, Prospeo, and the cheaper providers; a miss is free and a matched profile
+    after AI Ark, Dropleads, Prospeo, and the cheaper providers; a miss is free and a matched profile
     with no number costs the 1-credit search, both read off `billing.creditsCharged`."""
     monkeypatch.setenv("TREG_PLATFORM_KEY_LUSHA", "PLATFORM-LUSHA-KEY")
     monkeypatch.setenv("TREG_PLATFORM_PROVIDERS", "hunter,tomba,leadmagic,leadsforge,findymail,aviato,fiber-ai,lusha")
     get_settings.cache_clear()
     routed = "treg.people.phone.find"
     plan = (await clients.get(f"/catalog/endpoints/{routed}")).json()["routing"]["plan"]
-    assert plan[-1]["endpoint_id"] == "lusha.people.phone.find" and len(plan) == 9, [c["endpoint_id"] for c in plan]
+    assert plan[-1]["endpoint_id"] == "lusha.people.phone.find" and len(plan) == 10, [c["endpoint_id"] for c in plan]
     def misses():
         return {"aviato": [(404, {"message": "Not Found"})], "tomba": [(200, {"data": {"e164_format": None}})],
                 "leadmagic": [(200, {"mobile_number": None, "credits_consumed": 0})],

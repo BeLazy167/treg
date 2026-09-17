@@ -452,7 +452,9 @@ bound — the ChatGPT ads/shopping include family and the Google AI Overview fla
 top-level `state` body field is a generic `cost.modifiers` rider, and the header settles the exact
 charge. The header is absent on cloro's free routes and on a failed extraction, which it does not
 bill, so an absent header settles as unreported rather than as zero. The `cost.modifiers` reserve
-path is open to any credit-priced provider with a fx.yaml rate, not only Aviato. Aviato's
+path is open to any credit-priced provider with a fx.yaml rate, not only Aviato. AI Ark is the
+third header-reporting provider: its exact `X-Credit` debit is negative, and `_CREDIT_HEADERS`
+declares an explicit -1 multiplier instead of treating every negative number as a charge. Aviato's
 preview calls reserve zero; observed email/rescrape add-ons are declared in each endpoint's generic
 `cost.modifiers` map and derived from request flags; synchronous bulk
 calls reserve per lookup and settle per returned successful record. Simple people search reserves

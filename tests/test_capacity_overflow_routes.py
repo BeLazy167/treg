@@ -256,6 +256,7 @@ _UNRECORDED_SIGNATURE = {
     "quickenrich",  # subscription exhaustion not observed; do not spend the trial to force it
     "dropleads",  # free trial was not exhausted; no provider-specific 402 body recorded
     "prospeo",  # Starter allowance was not exhausted; no provider-specific body was forced
+    "aiark",  # funded allowance was not exhausted; no provider-specific body was forced
     "wiza",  # The funded grant was not exhausted; no provider-specific body was forced
     "getleadsio",  # promotional allocation was not exhausted; bare 402 remains the generic signal
     "scrubby",  # funded account not exhausted; no provider-specific empty-balance body recorded
