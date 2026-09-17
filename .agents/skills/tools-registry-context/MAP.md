@@ -91,7 +91,7 @@ Regenerate via `scripts/build-map.py`.
 | `src/treg/application/auth.py` | architecture/data-model.md, architecture/mcp-oauth.md, architecture/multi-tenancy.md, interface/api.md, interface/onboarding.md |
 | `src/treg/application/billing.py` | architecture/money.md |
 | `src/treg/application/call/__init__.py` | architecture/import-boundaries.md |
-| `src/treg/application/call/access.py` | architecture/import-boundaries.md, architecture/instagram-oauth.md, interface/api.md |
+| `src/treg/application/call/access.py` | architecture/import-boundaries.md, architecture/instagram-oauth.md, architecture/openmart.md, interface/api.md |
 | `src/treg/application/call/authorize.py` | architecture/import-boundaries.md, architecture/proxy-model.md, interface/api.md |
 | `src/treg/application/call/contactout.py` | architecture/contactout.md |
 | `src/treg/application/call/evidence.py` | architecture/import-boundaries.md, architecture/proxy-model.md, interface/api.md |
@@ -100,10 +100,10 @@ Regenerate via `scripts/build-map.py`.
 | `src/treg/application/call/invite.py` | architecture/feedback.md |
 | `src/treg/application/call/overflow.py` | architecture/import-boundaries.md, ops/capacity.md |
 | `src/treg/application/call/reserve.py` | architecture/import-boundaries.md, architecture/money.md, architecture/proxy-model.md, interface/api.md |
-| `src/treg/application/call/resolve.py` | architecture/contactout.md, architecture/dropleads.md, architecture/harvestapi.md, architecture/import-boundaries.md, architecture/instagram-oauth.md, architecture/money.md, architecture/multi-tenancy.md, architecture/prospeo.md, architecture/proxy-model.md, interface/api.md |
+| `src/treg/application/call/resolve.py` | architecture/contactout.md, architecture/dropleads.md, architecture/harvestapi.md, architecture/import-boundaries.md, architecture/instagram-oauth.md, architecture/money.md, architecture/multi-tenancy.md, architecture/openmart.md, architecture/prospeo.md, architecture/proxy-model.md, interface/api.md |
 | `src/treg/application/call/route.py` | architecture/catalog.md, architecture/import-boundaries.md |
 | `src/treg/application/call/service.py` | architecture/archive.md, architecture/import-boundaries.md, architecture/instagram-oauth.md, architecture/money.md, architecture/proxy-model.md, interface/api.md |
-| `src/treg/application/call/settle.py` | architecture/archive.md, architecture/dropleads.md, architecture/import-boundaries.md, architecture/money.md, architecture/prospeo.md, architecture/proxy-model.md, architecture/scrubby.md, interface/api.md |
+| `src/treg/application/call/settle.py` | architecture/aiark.md, architecture/archive.md, architecture/dropleads.md, architecture/import-boundaries.md, architecture/money.md, architecture/openmart.md, architecture/prospeo.md, architecture/proxy-model.md, architecture/scrubby.md, interface/api.md |
 | `src/treg/application/call/sumble.py` | architecture/sumble.md |
 | `src/treg/application/call/types.py` | architecture/import-boundaries.md, architecture/proxy-model.md, interface/api.md |
 | `src/treg/application/catalog_stats.py` | architecture/catalog.md |
@@ -125,7 +125,8 @@ Regenerate via `scripts/build-map.py`.
 | `src/treg/bootstrap_http.py` | architecture/composition.md, interface/api.md |
 | `src/treg/call_surface.py` | architecture/composition.md, architecture/proxy-model.md, interface/api.md |
 | `src/treg/caller_metadata.py` | architecture/multi-tenancy.md, interface/api.md |
-| `src/treg/catalog/adapters.yaml` | architecture/bounceban.md, architecture/catalog.md, architecture/contactout.md, architecture/dropleads.md, architecture/harvestapi.md, architecture/moltsets.md, architecture/prospeo.md, architecture/scrubby.md, architecture/wiza.md |
+| `src/treg/catalog/adapters.yaml` | architecture/aiark.md, architecture/bounceban.md, architecture/catalog.md, architecture/contactout.md, architecture/dropleads.md, architecture/harvestapi.md, architecture/limadata.md, architecture/moltsets.md, architecture/openmart.md, architecture/prospeo.md, architecture/scrubby.md, architecture/wiza.md, architecture/zerobounce.md |
+| `src/treg/catalog/aiark.yaml` | architecture/aiark.md |
 | `src/treg/catalog/akta.extended.yaml` | architecture/catalog.md |
 | `src/treg/catalog/aliases.yaml` | architecture/catalog.md |
 | `src/treg/catalog/apify.yaml` | architecture/catalog.md |
@@ -143,6 +144,16 @@ Regenerate via `scripts/build-map.py`.
 | `src/treg/catalog/diffbot.extended.yaml` | architecture/catalog.md |
 | `src/treg/catalog/diffbot.yaml` | architecture/catalog.md |
 | `src/treg/catalog/dropleads.yaml` | architecture/dropleads.md |
+| `src/treg/catalog/examples/aiark.companies.search.json` | architecture/aiark.md |
+| `src/treg/catalog/examples/aiark.lists.upsert.json` | architecture/aiark.md |
+| `src/treg/catalog/examples/aiark.people.email.find.bulk.submissions.json` | architecture/aiark.md |
+| `src/treg/catalog/examples/aiark.people.email.find.json` | architecture/aiark.md |
+| `src/treg/catalog/examples/aiark.people.enrich.json` | architecture/aiark.md |
+| `src/treg/catalog/examples/aiark.people.export.submissions.json` | architecture/aiark.md |
+| `src/treg/catalog/examples/aiark.people.personality.analyze.json` | architecture/aiark.md |
+| `src/treg/catalog/examples/aiark.people.phone.find.json` | architecture/aiark.md |
+| `src/treg/catalog/examples/aiark.people.preview.json` | architecture/aiark.md |
+| `src/treg/catalog/examples/aiark.people.search.json` | architecture/aiark.md |
 | `src/treg/catalog/examples/aviato.companies.acquisitions.json` | architecture/catalog.md |
 | `src/treg/catalog/examples/aviato.companies.employees.json` | architecture/catalog.md |
 | `src/treg/catalog/examples/aviato.companies.enrich.bulk.json` | architecture/catalog.md |
@@ -270,6 +281,30 @@ Regenerate via `scripts/build-map.py`.
 | `src/treg/catalog/examples/harvestapi.linkedin.user.profile.json` | architecture/harvestapi.md |
 | `src/treg/catalog/examples/harvestapi.linkedin.user.profile.main.json` | architecture/harvestapi.md |
 | `src/treg/catalog/examples/harvestapi.linkedin.user.reactions.json` | architecture/harvestapi.md |
+| `src/treg/catalog/examples/limadata.companies.count.json` | architecture/limadata.md |
+| `src/treg/catalog/examples/limadata.companies.enrich.json` | architecture/limadata.md |
+| `src/treg/catalog/examples/limadata.companies.linkedin.find.json` | architecture/limadata.md |
+| `src/treg/catalog/examples/limadata.companies.search.json` | architecture/limadata.md |
+| `src/treg/catalog/examples/limadata.database.autocomplete.json` | architecture/limadata.md |
+| `src/treg/catalog/examples/limadata.google.serp.organic.json` | architecture/limadata.md |
+| `src/treg/catalog/examples/limadata.people.audience.batch.start.json` | architecture/limadata.md |
+| `src/treg/catalog/examples/limadata.people.audience.email-hash.json` | architecture/limadata.md |
+| `src/treg/catalog/examples/limadata.people.audience.resolve.json` | architecture/limadata.md |
+| `src/treg/catalog/examples/limadata.people.batch.results.json` | architecture/limadata.md |
+| `src/treg/catalog/examples/limadata.people.count.json` | architecture/limadata.md |
+| `src/treg/catalog/examples/limadata.people.email.find.linkedin.json` | architecture/limadata.md |
+| `src/treg/catalog/examples/limadata.people.email.find.name.json` | architecture/limadata.md |
+| `src/treg/catalog/examples/limadata.people.email.find.personal.json` | architecture/limadata.md |
+| `src/treg/catalog/examples/limadata.people.email.verify.batch.start.json` | architecture/limadata.md |
+| `src/treg/catalog/examples/limadata.people.email.verify.json` | architecture/limadata.md |
+| `src/treg/catalog/examples/limadata.people.employees.search.json` | architecture/limadata.md |
+| `src/treg/catalog/examples/limadata.people.enrich.json` | architecture/limadata.md |
+| `src/treg/catalog/examples/limadata.people.identity.from-email.json` | architecture/limadata.md |
+| `src/treg/catalog/examples/limadata.people.identity.resolve.json` | architecture/limadata.md |
+| `src/treg/catalog/examples/limadata.people.phone.find.json` | architecture/limadata.md |
+| `src/treg/catalog/examples/limadata.people.search.json` | architecture/limadata.md |
+| `src/treg/catalog/examples/limadata.web.extract.json` | architecture/limadata.md |
+| `src/treg/catalog/examples/limadata.web.research.json` | architecture/limadata.md |
 | `src/treg/catalog/examples/millionverifier.account.usage.json` | architecture/catalog.md |
 | `src/treg/catalog/examples/millionverifier.people.email.verify.json` | architecture/catalog.md |
 | `src/treg/catalog/examples/minimax.video-gen.from_image.json` | architecture/catalog.md |
@@ -292,6 +327,22 @@ Regenerate via `scripts/build-map.py`.
 | `src/treg/catalog/examples/moltsets.people.enrich.name.json` | architecture/moltsets.md |
 | `src/treg/catalog/examples/moltsets.people.phone.find.json` | architecture/moltsets.md |
 | `src/treg/catalog/examples/moltsets.people.search.json` | architecture/moltsets.md |
+| `src/treg/catalog/examples/openmart.businesses.lookup.google-place.json` | architecture/openmart.md |
+| `src/treg/catalog/examples/openmart.businesses.lookup.openmart.json` | architecture/openmart.md |
+| `src/treg/catalog/examples/openmart.businesses.search.ids.json` | architecture/openmart.md |
+| `src/treg/catalog/examples/openmart.businesses.search.json` | architecture/openmart.md |
+| `src/treg/catalog/examples/openmart.companies.email.find.batch.json` | architecture/openmart.md |
+| `src/treg/catalog/examples/openmart.companies.enrich.json` | architecture/openmart.md |
+| `src/treg/catalog/examples/openmart.companies.search.json` | architecture/openmart.md |
+| `src/treg/catalog/examples/openmart.deny-rules.check.json` | architecture/openmart.md |
+| `src/treg/catalog/examples/openmart.deny-rules.create.json` | architecture/openmart.md |
+| `src/treg/catalog/examples/openmart.deny-rules.delete.json` | architecture/openmart.md |
+| `src/treg/catalog/examples/openmart.people.enrich.batch.json` | architecture/openmart.md |
+| `src/treg/catalog/examples/openmart.people.find.batch.json` | architecture/openmart.md |
+| `src/treg/catalog/examples/openmart.tasks.batch.ids.json` | architecture/openmart.md |
+| `src/treg/catalog/examples/openmart.tasks.batch.status.json` | architecture/openmart.md |
+| `src/treg/catalog/examples/openmart.tasks.get.json` | architecture/openmart.md |
+| `src/treg/catalog/examples/openmart.technologies.find.batch.json` | architecture/openmart.md |
 | `src/treg/catalog/examples/openrouter.video-gen.seedance-2-5.json` | architecture/catalog.md |
 | `src/treg/catalog/examples/openrouter.x.alibaba-wan-3-0.json` | architecture/catalog.md |
 | `src/treg/catalog/examples/piapi.image-gen.gemini-3-pro-image.json` | architecture/catalog.md |
@@ -345,8 +396,11 @@ Regenerate via `scripts/build-map.py`.
 | `src/treg/catalog/examples/wiza.meta.locations.search.json` | architecture/wiza.md |
 | `src/treg/catalog/examples/wiza.meta.technologies.search.json` | architecture/wiza.md |
 | `src/treg/catalog/examples/wiza.people.search.json` | architecture/wiza.md |
+| `src/treg/catalog/examples/zerobounce.companies.email_pattern.json` | architecture/zerobounce.md |
+| `src/treg/catalog/examples/zerobounce.people.email.find.json` | architecture/zerobounce.md |
+| `src/treg/catalog/examples/zerobounce.people.email.verify.json` | architecture/zerobounce.md |
 | `src/treg/catalog/financialdatasets.yaml` | architecture/catalog.md |
-| `src/treg/catalog/fx.yaml` | architecture/bounceban.md, architecture/catalog.md, architecture/dropleads.md, architecture/getleadsio.md, architecture/moltsets.md, architecture/prospeo.md, architecture/scrubby.md, architecture/wiza.md |
+| `src/treg/catalog/fx.yaml` | architecture/aiark.md, architecture/bounceban.md, architecture/catalog.md, architecture/dropleads.md, architecture/getleadsio.md, architecture/limadata.md, architecture/moltsets.md, architecture/openmart.md, architecture/prospeo.md, architecture/scrubby.md, architecture/wiza.md, architecture/zerobounce.md |
 | `src/treg/catalog/getleadsio.yaml` | architecture/getleadsio.md |
 | `src/treg/catalog/google-search-console.extended.yaml` | architecture/catalog.md |
 | `src/treg/catalog/google-search-console.yaml` | architecture/catalog.md |
@@ -357,10 +411,12 @@ Regenerate via `scripts/build-map.py`.
 | `src/treg/catalog/instagram.extended.yaml` | architecture/catalog.md, architecture/instagram-oauth.md |
 | `src/treg/catalog/instagram.yaml` | architecture/catalog.md, architecture/instagram-oauth.md |
 | `src/treg/catalog/justoneapi.extended.yaml` | architecture/catalog.md |
+| `src/treg/catalog/limadata.yaml` | architecture/limadata.md |
 | `src/treg/catalog/millionverifier.yaml` | architecture/catalog.md |
 | `src/treg/catalog/minimax.yaml` | architecture/catalog.md |
 | `src/treg/catalog/moltsets.yaml` | architecture/moltsets.md |
 | `src/treg/catalog/oceanio.yaml` | architecture/catalog.md |
+| `src/treg/catalog/openmart.yaml` | architecture/openmart.md |
 | `src/treg/catalog/openrouter.extended.yaml` | architecture/catalog.md |
 | `src/treg/catalog/openrouter.yaml` | architecture/catalog.md |
 | `src/treg/catalog/piapi.yaml` | architecture/catalog.md |
@@ -373,16 +429,19 @@ Regenerate via `scripts/build-map.py`.
 | `src/treg/catalog/scrapecreators.extended.yaml` | architecture/catalog.md |
 | `src/treg/catalog/scrapecreators.yaml` | architecture/catalog.md |
 | `src/treg/catalog/scrubby.yaml` | architecture/scrubby.md |
+| `src/treg/catalog/serpapi.extended.yaml` | architecture/catalog.md |
+| `src/treg/catalog/serpapi.yaml` | architecture/catalog.md |
 | `src/treg/catalog/sumble.extended.yaml` | architecture/sumble.md |
 | `src/treg/catalog/sumble.yaml` | architecture/sumble.md |
 | `src/treg/catalog/tikhub.extended.yaml` | architecture/catalog.md |
 | `src/treg/catalog/tomba.yaml` | architecture/catalog.md, architecture/money.md |
 | `src/treg/catalog/trykitt.yaml` | architecture/catalog.md |
 | `src/treg/catalog/wiza.yaml` | architecture/wiza.md |
+| `src/treg/catalog/zerobounce.yaml` | architecture/zerobounce.md |
 | `src/treg/cli.py` | architecture/instagram-oauth.md, interface/cli.md, interface/onboarding.md, interface/shell.md |
 | `src/treg/cli_analytics.py` | interface/cli.md |
 | `src/treg/client_identity.py` | architecture/import-boundaries.md, architecture/proxy-model.md, interface/api.md |
-| `src/treg/config.py` | architecture/archive.md, architecture/auth-secrets.md, architecture/bounceban.md, architecture/dropleads.md, architecture/feedback.md, architecture/getleadsio.md, architecture/harvestapi.md, architecture/moltsets.md, architecture/prospeo.md, architecture/scrubby.md, architecture/super-admin.md, architecture/wiza.md, guides/expanding-a-category.md, ops/deploy.md |
+| `src/treg/config.py` | architecture/aiark.md, architecture/archive.md, architecture/auth-secrets.md, architecture/bounceban.md, architecture/dropleads.md, architecture/feedback.md, architecture/getleadsio.md, architecture/harvestapi.md, architecture/limadata.md, architecture/moltsets.md, architecture/openmart.md, architecture/prospeo.md, architecture/scrubby.md, architecture/super-admin.md, architecture/wiza.md, architecture/zerobounce.md, guides/expanding-a-category.md, ops/deploy.md |
 | `src/treg/convert.py` | interface/cli.md |
 | `src/treg/crypto.py` | architecture/auth-secrets.md |
 | `src/treg/domain/__init__.py` | architecture/import-boundaries.md |
@@ -390,11 +449,11 @@ Regenerate via `scripts/build-map.py`.
 | `src/treg/domain/arena_insights.py` | interface/enrich-arena.md |
 | `src/treg/domain/asynctasks/__init__.py` | architecture/import-boundaries.md, architecture/money.md |
 | `src/treg/domain/capacity/__init__.py` | architecture/import-boundaries.md, ops/capacity.md |
-| `src/treg/domain/capacity/collectors.py` | architecture/bounceban.md, architecture/dropleads.md, architecture/getleadsio.md, architecture/harvestapi.md, architecture/moltsets.md, architecture/prospeo.md, architecture/scrubby.md, architecture/wiza.md, ops/capacity.md |
+| `src/treg/domain/capacity/collectors.py` | architecture/aiark.md, architecture/bounceban.md, architecture/dropleads.md, architecture/getleadsio.md, architecture/harvestapi.md, architecture/limadata.md, architecture/moltsets.md, architecture/openmart.md, architecture/prospeo.md, architecture/scrubby.md, architecture/wiza.md, architecture/zerobounce.md, ops/capacity.md |
 | `src/treg/domain/capacity/marks.py` | ops/capacity.md |
 | `src/treg/domain/capacity/overflow_seed.json` | ops/capacity.md |
 | `src/treg/domain/capacity/overflow_spend.py` | ops/capacity.md |
-| `src/treg/domain/capacity/policy.py` | architecture/bounceban.md, architecture/dropleads.md, architecture/getleadsio.md, architecture/harvestapi.md, architecture/moltsets.md, architecture/prospeo.md, architecture/scrubby.md, architecture/wiza.md, ops/capacity.md |
+| `src/treg/domain/capacity/policy.py` | architecture/aiark.md, architecture/bounceban.md, architecture/dropleads.md, architecture/getleadsio.md, architecture/harvestapi.md, architecture/limadata.md, architecture/moltsets.md, architecture/openmart.md, architecture/prospeo.md, architecture/scrubby.md, architecture/wiza.md, architecture/zerobounce.md, ops/capacity.md |
 | `src/treg/domain/capacity/routes.py` | ops/capacity.md |
 | `src/treg/domain/capacity/routes_view.py` | ops/capacity.md |
 | `src/treg/domain/capacity/signatures.py` | ops/capacity.md |
@@ -409,7 +468,7 @@ Regenerate via `scripts/build-map.py`.
 | `src/treg/domain/catalog/routing/plan.py` | architecture/catalog.md |
 | `src/treg/domain/catalog/routing/synthetic.py` | architecture/catalog.md |
 | `src/treg/domain/catalog/stats.py` | architecture/catalog.md |
-| `src/treg/domain/catalog/store.py` | architecture/catalog.md, architecture/harvestapi.md, architecture/instagram-oauth.md, interface/api.md, interface/catalog-review-proposal.md |
+| `src/treg/domain/catalog/store.py` | architecture/catalog.md, architecture/harvestapi.md, architecture/instagram-oauth.md, architecture/openmart.md, interface/api.md, interface/catalog-review-proposal.md |
 | `src/treg/domain/connections/__init__.py` | architecture/auth-secrets.md, architecture/import-boundaries.md |
 | `src/treg/domain/connections/authorization.py` | architecture/auth-secrets.md, architecture/import-boundaries.md, architecture/instagram-oauth.md, guides/expanding-a-category.md |
 | `src/treg/domain/connections/oauth_flow.py` | architecture/auth-secrets.md, architecture/import-boundaries.md, architecture/instagram-oauth.md, guides/expanding-a-category.md |
@@ -467,8 +526,8 @@ Regenerate via `scripts/build-map.py`.
 | `src/treg/mcp_install.py` | interface/skill.md |
 | `src/treg/models.py` | architecture/data-model.md, architecture/media.md, architecture/money.md, architecture/multi-tenancy.md, interface/enrich-arena.md |
 | `src/treg/oauth.py` | architecture/auth-secrets.md |
-| `src/treg/oauth_providers.py` | architecture/auth-secrets.md, architecture/bounceban.md, architecture/dropleads.md, architecture/getleadsio.md, architecture/harvestapi.md, architecture/moltsets.md, architecture/prospeo.md, architecture/scrubby.md, architecture/wiza.md, guides/expanding-a-category.md |
-| `src/treg/providers.py` | architecture/moltsets.md, interface/env-import.md |
+| `src/treg/oauth_providers.py` | architecture/aiark.md, architecture/auth-secrets.md, architecture/bounceban.md, architecture/dropleads.md, architecture/getleadsio.md, architecture/harvestapi.md, architecture/limadata.md, architecture/moltsets.md, architecture/openmart.md, architecture/prospeo.md, architecture/scrubby.md, architecture/wiza.md, architecture/zerobounce.md, guides/expanding-a-category.md |
+| `src/treg/providers.py` | architecture/limadata.md, architecture/moltsets.md, architecture/openmart.md, interface/env-import.md |
 | `src/treg/ratestore.py` | architecture/data-model.md, interface/api.md |
 | `src/treg/reconcile.py` | architecture/money.md |
 | `src/treg/routers/__init__.py` | interface/api.md |
@@ -513,6 +572,7 @@ Regenerate via `scripts/build-map.py`.
 | `src/treg/web/install.sh` | interface/landing-sandbox.md |
 | `src/treg/web/landing.html` | interface/seo.md |
 | `src/treg/web/llms.txt` | interface/seo.md |
+| `src/treg/web/logos/aiark.svg` | architecture/aiark.md |
 | `src/treg/web/logos/apollo.svg` | interface/enrich-arena.md |
 | `src/treg/web/logos/bounceban.svg` | architecture/bounceban.md |
 | `src/treg/web/logos/branddev.svg` | interface/enrich-arena.md |
@@ -526,8 +586,10 @@ Regenerate via `scripts/build-map.py`.
 | `src/treg/web/logos/icypeas.svg` | interface/enrich-arena.md |
 | `src/treg/web/logos/leadmagic.svg` | interface/enrich-arena.md |
 | `src/treg/web/logos/leadsforge.svg` | interface/enrich-arena.md |
+| `src/treg/web/logos/limadata.svg` | architecture/limadata.md |
 | `src/treg/web/logos/lusha.svg` | interface/enrich-arena.md |
 | `src/treg/web/logos/moltsets.svg` | architecture/moltsets.md |
+| `src/treg/web/logos/openmart.svg` | architecture/openmart.md |
 | `src/treg/web/logos/pdl.svg` | interface/enrich-arena.md |
 | `src/treg/web/logos/predictleads.svg` | interface/enrich-arena.md |
 | `src/treg/web/logos/prospeo.svg` | architecture/prospeo.md |
@@ -536,6 +598,7 @@ Regenerate via `scripts/build-map.py`.
 | `src/treg/web/logos/thecompaniesapi.svg` | interface/enrich-arena.md |
 | `src/treg/web/logos/tomba.svg` | interface/enrich-arena.md |
 | `src/treg/web/logos/wiza.svg` | architecture/wiza.md |
+| `src/treg/web/logos/zerobounce.svg` | architecture/zerobounce.md |
 | `src/treg/web/media/astra/page.css` | interface/seo.md |
 | `src/treg/web/media/astra/page.js` | interface/seo.md |
 | `src/treg/web/people-search.html` | interface/seo.md |
@@ -560,7 +623,7 @@ Regenerate via `scripts/build-map.py`.
 | `src/treg/web/vendor/README.md` | interface/dashboard.md |
 | `src/treg/web/vendor/vue-3.5.41.global.prod.js` | interface/dashboard.md |
 | `src/treg/worker.py` | ops/capacity.md, ops/deploy.md |
-| `tests/conftest.py` | architecture/moltsets.md, architecture/scrubby.md, architecture/wiza.md |
+| `tests/conftest.py` | architecture/aiark.md, architecture/limadata.md, architecture/moltsets.md, architecture/openmart.md, architecture/scrubby.md, architecture/wiza.md, architecture/zerobounce.md |
 | `tests/fake_object_store.py` | architecture/archive.md |
 | `tests/fixtures/aggregators/verification/contactout.json` | architecture/contactout.md |
 | `tests/js/arena-bench.test.cjs` | interface/enrich-arena.md |
@@ -570,6 +633,7 @@ Regenerate via `scripts/build-map.py`.
 | `tests/test_alembic_expand_safety.py` | architecture/data-model.md |
 | `tests/test_api_keys.py` | architecture/auth-secrets.md, architecture/data-model.md, interface/cli.md, interface/dashboard.md |
 | `tests/test_app_roles.py` | architecture/composition.md |
+| `tests/test_archive.py` | architecture/zerobounce.md |
 | `tests/test_archive_r2.py` | architecture/archive.md |
 | `tests/test_arena_insights.py` | interface/enrich-arena.md |
 | `tests/test_arena_verification_insights.py` | interface/enrich-arena.md |
@@ -580,18 +644,18 @@ Regenerate via `scripts/build-map.py`.
 | `tests/test_call_architecture.py` | architecture/import-boundaries.md, architecture/money.md, architecture/proxy-model.md |
 | `tests/test_call_cancellation.py` | architecture/proxy-model.md |
 | `tests/test_call_response_limits.py` | architecture/proxy-model.md |
-| `tests/test_capacity_collectors.py` | architecture/bounceban.md, architecture/contactout.md, architecture/dropleads.md, architecture/getleadsio.md, architecture/prospeo.md, architecture/scrubby.md, architecture/wiza.md, ops/capacity.md |
+| `tests/test_capacity_collectors.py` | architecture/aiark.md, architecture/bounceban.md, architecture/contactout.md, architecture/dropleads.md, architecture/getleadsio.md, architecture/limadata.md, architecture/openmart.md, architecture/prospeo.md, architecture/scrubby.md, architecture/wiza.md, architecture/zerobounce.md, ops/capacity.md |
 | `tests/test_capacity_know.py` | ops/capacity.md |
 | `tests/test_capacity_overflow.py` | architecture/contactout.md, ops/capacity.md |
-| `tests/test_capacity_overflow_routes.py` | architecture/bounceban.md, architecture/getleadsio.md, architecture/moltsets.md, architecture/scrubby.md, architecture/wiza.md, ops/capacity.md |
+| `tests/test_capacity_overflow_routes.py` | architecture/aiark.md, architecture/bounceban.md, architecture/getleadsio.md, architecture/limadata.md, architecture/moltsets.md, architecture/openmart.md, architecture/scrubby.md, architecture/wiza.md, architecture/zerobounce.md, ops/capacity.md |
 | `tests/test_capacity_overflow_spend.py` | ops/capacity.md |
 | `tests/test_capacity_protect.py` | ops/capacity.md |
 | `tests/test_capacity_smoothing.py` | ops/capacity.md |
-| `tests/test_catalog_api.py` | architecture/catalog.md, architecture/getleadsio.md |
-| `tests/test_catalog_validate.py` | architecture/bounceban.md, architecture/catalog.md, architecture/contactout.md, architecture/dropleads.md, architecture/getleadsio.md, architecture/prospeo.md |
+| `tests/test_catalog_api.py` | architecture/catalog.md, architecture/getleadsio.md, architecture/openmart.md |
+| `tests/test_catalog_validate.py` | architecture/aiark.md, architecture/bounceban.md, architecture/catalog.md, architecture/contactout.md, architecture/dropleads.md, architecture/getleadsio.md, architecture/limadata.md, architecture/prospeo.md, architecture/zerobounce.md |
 | `tests/test_cli_key_compatibility.py` | interface/cli.md |
 | `tests/test_dataforseo_constraints.py` | architecture/catalog.md |
-| `tests/test_enrich_arena.py` | architecture/bounceban.md, interface/enrich-arena.md |
+| `tests/test_enrich_arena.py` | architecture/aiark.md, architecture/bounceban.md, architecture/limadata.md, architecture/openmart.md, architecture/zerobounce.md, interface/enrich-arena.md |
 | `tests/test_error_capture.py` | architecture/proxy-model.md |
 | `tests/test_feedback.py` | architecture/feedback.md |
 | `tests/test_feedback_handling_schema.py` | architecture/feedback.md |
@@ -601,25 +665,25 @@ Regenerate via `scripts/build-map.py`.
 | `tests/test_import_lightness.py` | architecture/import-boundaries.md |
 | `tests/test_influencersclub_overflow.py` | ops/capacity.md |
 | `tests/test_instagram_oauth_architecture.py` | architecture/instagram-oauth.md |
-| `tests/test_key_providers.py` | architecture/auth-secrets.md, architecture/bounceban.md, architecture/contactout.md, architecture/dropleads.md, architecture/getleadsio.md, architecture/moltsets.md, architecture/prospeo.md, architecture/scrubby.md, architecture/wiza.md |
+| `tests/test_key_providers.py` | architecture/aiark.md, architecture/auth-secrets.md, architecture/bounceban.md, architecture/contactout.md, architecture/dropleads.md, architecture/getleadsio.md, architecture/limadata.md, architecture/moltsets.md, architecture/openmart.md, architecture/prospeo.md, architecture/scrubby.md, architecture/wiza.md, architecture/zerobounce.md |
 | `tests/test_kv.py` | architecture/feedback.md |
-| `tests/test_marketplace_call.py` | architecture/bounceban.md, architecture/contactout.md, architecture/dropleads.md, architecture/getleadsio.md, architecture/mcp-oauth.md, architecture/prospeo.md, architecture/proxy-model.md |
-| `tests/test_mcp.py` | architecture/mcp-oauth.md |
+| `tests/test_marketplace_call.py` | architecture/aiark.md, architecture/bounceban.md, architecture/contactout.md, architecture/dropleads.md, architecture/getleadsio.md, architecture/limadata.md, architecture/mcp-oauth.md, architecture/openmart.md, architecture/prospeo.md, architecture/proxy-model.md, architecture/zerobounce.md |
+| `tests/test_mcp.py` | architecture/mcp-oauth.md, architecture/openmart.md |
 | `tests/test_mcp_directory.py` | architecture/mcp-oauth.md |
 | `tests/test_mcp_oauth.py` | architecture/mcp-oauth.md |
 | `tests/test_media.py` | architecture/media.md |
 | `tests/test_moltsets.py` | architecture/moltsets.md |
 | `tests/test_oauth_billed.py` | architecture/proxy-model.md |
-| `tests/test_oauth_providers_m3.py` | architecture/bounceban.md, architecture/getleadsio.md, architecture/moltsets.md, architecture/scrubby.md, architecture/wiza.md |
+| `tests/test_oauth_providers_m3.py` | architecture/aiark.md, architecture/bounceban.md, architecture/getleadsio.md, architecture/limadata.md, architecture/moltsets.md, architecture/openmart.md, architecture/scrubby.md, architecture/wiza.md, architecture/zerobounce.md |
 | `tests/test_oauth_refresh.py` | architecture/auth-secrets.md |
 | `tests/test_passthrough.py` | architecture/proxy-model.md |
 | `tests/test_postgres_reset.py` | architecture/data-model.md |
-| `tests/test_providers.py` | architecture/moltsets.md |
+| `tests/test_providers.py` | architecture/limadata.md, architecture/moltsets.md |
 | `tests/test_released_cli_compat.py` | interface/cli.md |
 | `tests/test_reviews.py` | architecture/feedback.md |
 | `tests/test_route_cost_ceiling.py` | architecture/catalog.md |
 | `tests/test_router_dependencies.py` | architecture/multi-tenancy.md |
-| `tests/test_routing.py` | architecture/bounceban.md, architecture/catalog.md, architecture/contactout.md, architecture/dropleads.md, architecture/prospeo.md, architecture/wiza.md |
+| `tests/test_routing.py` | architecture/aiark.md, architecture/bounceban.md, architecture/catalog.md, architecture/contactout.md, architecture/dropleads.md, architecture/limadata.md, architecture/openmart.md, architecture/prospeo.md, architecture/wiza.md, architecture/zerobounce.md |
 | `tests/test_scrubby.py` | architecture/scrubby.md |
 | `tests/test_ssrf_public_addresses.py` | architecture/proxy-model.md |
 | `tests/test_sumble.py` | architecture/sumble.md |
@@ -634,10 +698,11 @@ Regenerate via `scripts/build-map.py`.
 | Fragment | Sources |
 |---|---|
 | `architecture/ads-conversions.md` | `adsconv.py`, `signup.py`, `adtrack.js`, `gtag.js` |
+| `architecture/aiark.md` | `aiark.yaml`, `aiark.companies.search.json`, `aiark.lists.upsert.json`, `aiark.people.email.find.bulk.submissions.json`, `aiark.people.email.find.json`, `aiark.people.enrich.json`, `aiark.people.export.submissions.json`, `aiark.people.personality.analyze.json`, `aiark.people.phone.find.json`, `aiark.people.preview.json`, `aiark.people.search.json`, `adapters.yaml`, `fx.yaml`, `config.py`, `oauth_providers.py`, `collectors.py`, `policy.py`, `settle.py`, `aiark.svg`, `test_catalog_validate.py`, `test_capacity_collectors.py`, `test_capacity_overflow_routes.py`, `test_enrich_arena.py`, `test_key_providers.py`, `test_marketplace_call.py`, `test_oauth_providers_m3.py`, `test_routing.py`, `conftest.py` |
 | `architecture/archive.md` | `archive.py`, `hunter.yaml`, `results.py`, `0031_archive_result_admission.py`, `test_cache_result_admission.py`, `archive_bodies.py`, `config.py`, `object_store.py`, `0032_archive_body_storage.py`, `test_archive_r2.py`, `fake_object_store.py`, `smoke_archive_r2.py`, `0002_archive_tables.py`, `0003_callrecord_cached.py`, `0004_archivekey_request_shape.py`, `0011_callrecord_archive_link.py`, `service.py`, `settle.py`, `0039_archive_own_key_and_repeat_pricing.py`, `backfill_call_archive_links.py`, `api.py`, `bootstrap.py`, `admin.py`, `asynctasks.py` |
 | `architecture/auth-secrets.md` | `injectors.py`, `ssrf.py`, `crypto.py`, `oauth.py`, `__init__.py`, `authorization.py`, `oauth_flow.py`, `refresh.py`, `oauth_exchange.py`, `oauth_refresh.py`, `oauth_providers.py`, `health.py`, `connect.py`, `connections.py`, `resources.py`, `__init__.py`, `bindings.py`, `bundles.py`, `api_keys.py`, `access.py`, `api_keys.py`, `test_api_keys.py`, `test_oauth_refresh.py`, `test_financialdatasets.py`, `test_key_providers.py`, `config.py` |
 | `architecture/bounceban.md` | `bounceban.yaml`, `bounceban.people.email.verify.json`, `bounceban.people.email.verify.waterfall.json`, `bounceban.people.email.verify.status.json`, `bounceban.people.email.verify.bulk.json`, `bounceban.people.email.verify.bulk.status.json`, `bounceban.people.email.verify.bulk.emails.json`, `bounceban.people.email.verify.bulk.dump.json`, `bounceban.people.email.verify.bulk.export.json`, `bounceban.account.usage.json`, `adapters.yaml`, `fx.yaml`, `config.py`, `oauth_providers.py`, `collectors.py`, `policy.py`, `bounceban.svg`, `test_key_providers.py`, `test_oauth_providers_m3.py`, `test_capacity_collectors.py`, `test_capacity_overflow_routes.py`, `test_catalog_validate.py`, `test_marketplace_call.py`, `test_routing.py`, `test_enrich_arena.py` |
-| `architecture/catalog.md` | `financialdatasets.yaml`, `financialdatasets.company.facts.json`, `financialdatasets.company.facts.ciks.json`, `financialdatasets.company.facts.tickers.json`, `financialdatasets.earnings.json`, `financialdatasets.earnings.tickers.json`, `financialdatasets.filings.json`, `financialdatasets.filings.ciks.json`, `financialdatasets.filings.tickers.json`, `financialdatasets.filings.types.json`, `financialdatasets.financial-metrics.json`, `financialdatasets.financial-metrics.snapshot.json`, `financialdatasets.financial-metrics.snapshot.tickers.json`, `financialdatasets.financials.json`, `financialdatasets.financials.balance-sheets.json`, `financialdatasets.financials.cash-flow-statements.json`, `financialdatasets.financials.income-statements.json`, `financialdatasets.financials.income-statements.segments.json`, `financialdatasets.financials.search.screener.json`, `financialdatasets.financials.search.screener.filters.json`, `financialdatasets.insider-trades.json`, `financialdatasets.index-funds.json`, `financialdatasets.index-funds.tickers.json`, `financialdatasets.institutional-holdings.json`, `financialdatasets.institutional-holdings.investors.json`, `financialdatasets.institutional-holdings.tickers.json`, `financialdatasets.ipos.json`, `financialdatasets.kpi.guidance.json`, `financialdatasets.kpi.metrics.json`, `financialdatasets.kpi.non-gaap.json`, `financialdatasets.macro.interest-rates.json`, `financialdatasets.macro.interest-rates.banks.json`, `financialdatasets.news.json`, `financialdatasets.prices.json`, `financialdatasets.prices.snapshot.json`, `financialdatasets.prices.snapshot.tickers.json`, `financialdatasets.prices.tickers.json`, `test_financialdatasets.py`, `quickenrich.yaml`, `quickenrich.extended.yaml`, `quickenrich.companies.search.json`, `quickenrich.people.email.find.json`, `quickenrich.people.enrich.json`, `quickenrich.people.phone.find.json`, `quickenrich.people.search.domain.json`, `quickenrich.people.search.json`, `quickenrich.x.company-services.json`, `quickenrich.x.country-codes.json`, `quickenrich.x.employee-ranges.json`, `quickenrich.x.industries.json`, `quickenrich.x.revenue-ranges.json`, `trykitt.yaml`, `trykitt.people.email.find.json`, `trykitt.people.email.verify.json`, `contracts.yaml`, `millionverifier.yaml`, `millionverifier.people.email.verify.json`, `millionverifier.account.usage.json`, `adapters.yaml`, `prospeo.yaml`, `test_route_cost_ceiling.py`, `tomba.yaml`, `tomba.people.email.verify.json`, `findymail.search.business-profile.json`, `__init__.py`, `contracts.py`, `paths.py`, `plan.py`, `synthetic.py`, `route.py`, `test_routing.py`, `catalog-drift.yml`, `catalog_drift.py`, `catalog_ingest.py`, `catalog_validate.py`, `aliases.yaml`, `fx.yaml`, `cloro.yaml`, `aviato.yaml`, `crustdata.yaml`, `aviato.companies.acquisitions.json`, `aviato.companies.employees.json`, `aviato.companies.enrich.bulk.json`, `aviato.companies.enrich.json`, `aviato.companies.founders.json`, `aviato.companies.funding_rounds.json`, `aviato.companies.investments.json`, `aviato.companies.outbound_investments.json`, `aviato.companies.search.json`, `aviato.linkedin.company.posts.json`, `aviato.linkedin.post.comments.json`, `aviato.linkedin.post.reactions.json`, `aviato.linkedin.post.reposts.json`, `aviato.linkedin.user.posts.json`, `aviato.people.contact.get.json`, `aviato.people.email.find.json`, `aviato.people.enrich.bulk.json`, `aviato.people.enrich.json`, `aviato.people.phone.find.json`, `aviato.people.search.json`, `aviato.people.search.simple.json`, `crustdata.companies.autocomplete.json`, `crustdata.companies.enrich.json`, `crustdata.companies.identify.json`, `crustdata.companies.jobs.search.json`, `crustdata.companies.search.json`, `crustdata.people.autocomplete.json`, `crustdata.people.enrich.json`, `crustdata.people.search.json`, `google-search-console.yaml`, `google-search-console.extended.yaml`, `google-tag-manager.yaml`, `google-tag-manager.extended.yaml`, `instagram.yaml`, `instagram.extended.yaml`, `justoneapi.extended.yaml`, `minimax.yaml`, `apify.yaml`, `brightdata.yaml`, `companyenrich.yaml`, `oceanio.yaml`, `akta.extended.yaml`, `dataforseo.yaml`, `dataforseo.extended.yaml`, `test_dataforseo_constraints.py`, `scrapecreators.yaml`, `scrapecreators.extended.yaml`, `diffbot.yaml`, `diffbot.extended.yaml`, `tikhub.extended.yaml`, `minimax.video-gen.result.retrieve.json`, `minimax.video-gen.from_image.json`, `minimax.video-gen.task.status.json`, `openrouter.yaml`, `openrouter.extended.yaml`, `openrouter.x.alibaba-wan-3-0.json`, `openrouter.video-gen.seedance-2-5.json`, `replicate.yaml`, `replicate.extended.yaml`, `reapi.yaml`, `piapi.yaml`, `replicate.image-gen.nano-banana-pro.json`, `replicate.image-gen.gpt-image-2.json`, `replicate.image-gen.gpt-image-2-5-flare.json`, `replicate.image-gen.gpt-image-2-5-sunburst.json`, `reapi.tasks.get.json`, `reapi.video-gen.seedance-2-5.json`, `reapi.video-gen.seedance-2-5.unrestricted.json`, `reapi.image-gen.gpt-image-2-5.json`, `reapi.image-gen.gpt-image-2.json`, `reapi.image-gen.gemini-3-pro-image.json`, `piapi.task.get.json`, `piapi.video-gen.seedance-2-5.json`, `piapi.video-gen.seedance-2-5.less-restriction.json`, `piapi.image-gen.gemini-3-pro-image.json`, `piapi.image-gen.gpt-image-2-5.json`, `piapi.image-gen.gpt-image-2.json`, `replicate.image-gen.flux-schnell.json`, `__init__.py`, `store.py`, `hunter.yaml`, `mcp.py`, `settlement.py`, `stats.py`, `catalog_observations.py`, `catalog_stats.py`, `0038_endpoint_day_stats.py`, `catalog.py`, `test_aigc_pr_b.py`, `test_catalog_api.py`, `test_catalog_validate.py` |
+| `architecture/catalog.md` | `financialdatasets.yaml`, `financialdatasets.company.facts.json`, `financialdatasets.company.facts.ciks.json`, `financialdatasets.company.facts.tickers.json`, `financialdatasets.earnings.json`, `financialdatasets.earnings.tickers.json`, `financialdatasets.filings.json`, `financialdatasets.filings.ciks.json`, `financialdatasets.filings.tickers.json`, `financialdatasets.filings.types.json`, `financialdatasets.financial-metrics.json`, `financialdatasets.financial-metrics.snapshot.json`, `financialdatasets.financial-metrics.snapshot.tickers.json`, `financialdatasets.financials.json`, `financialdatasets.financials.balance-sheets.json`, `financialdatasets.financials.cash-flow-statements.json`, `financialdatasets.financials.income-statements.json`, `financialdatasets.financials.income-statements.segments.json`, `financialdatasets.financials.search.screener.json`, `financialdatasets.financials.search.screener.filters.json`, `financialdatasets.insider-trades.json`, `financialdatasets.index-funds.json`, `financialdatasets.index-funds.tickers.json`, `financialdatasets.institutional-holdings.json`, `financialdatasets.institutional-holdings.investors.json`, `financialdatasets.institutional-holdings.tickers.json`, `financialdatasets.ipos.json`, `financialdatasets.kpi.guidance.json`, `financialdatasets.kpi.metrics.json`, `financialdatasets.kpi.non-gaap.json`, `financialdatasets.macro.interest-rates.json`, `financialdatasets.macro.interest-rates.banks.json`, `financialdatasets.news.json`, `financialdatasets.prices.json`, `financialdatasets.prices.snapshot.json`, `financialdatasets.prices.snapshot.tickers.json`, `financialdatasets.prices.tickers.json`, `test_financialdatasets.py`, `quickenrich.yaml`, `quickenrich.extended.yaml`, `quickenrich.companies.search.json`, `quickenrich.people.email.find.json`, `quickenrich.people.enrich.json`, `quickenrich.people.phone.find.json`, `quickenrich.people.search.domain.json`, `quickenrich.people.search.json`, `quickenrich.x.company-services.json`, `quickenrich.x.country-codes.json`, `quickenrich.x.employee-ranges.json`, `quickenrich.x.industries.json`, `quickenrich.x.revenue-ranges.json`, `trykitt.yaml`, `trykitt.people.email.find.json`, `trykitt.people.email.verify.json`, `contracts.yaml`, `millionverifier.yaml`, `millionverifier.people.email.verify.json`, `millionverifier.account.usage.json`, `adapters.yaml`, `prospeo.yaml`, `test_route_cost_ceiling.py`, `tomba.yaml`, `tomba.people.email.verify.json`, `findymail.search.business-profile.json`, `__init__.py`, `contracts.py`, `paths.py`, `plan.py`, `synthetic.py`, `route.py`, `test_routing.py`, `catalog-drift.yml`, `catalog_drift.py`, `catalog_ingest.py`, `catalog_validate.py`, `aliases.yaml`, `fx.yaml`, `cloro.yaml`, `aviato.yaml`, `crustdata.yaml`, `aviato.companies.acquisitions.json`, `aviato.companies.employees.json`, `aviato.companies.enrich.bulk.json`, `aviato.companies.enrich.json`, `aviato.companies.founders.json`, `aviato.companies.funding_rounds.json`, `aviato.companies.investments.json`, `aviato.companies.outbound_investments.json`, `aviato.companies.search.json`, `aviato.linkedin.company.posts.json`, `aviato.linkedin.post.comments.json`, `aviato.linkedin.post.reactions.json`, `aviato.linkedin.post.reposts.json`, `aviato.linkedin.user.posts.json`, `aviato.people.contact.get.json`, `aviato.people.email.find.json`, `aviato.people.enrich.bulk.json`, `aviato.people.enrich.json`, `aviato.people.phone.find.json`, `aviato.people.search.json`, `aviato.people.search.simple.json`, `crustdata.companies.autocomplete.json`, `crustdata.companies.enrich.json`, `crustdata.companies.identify.json`, `crustdata.companies.jobs.search.json`, `crustdata.companies.search.json`, `crustdata.people.autocomplete.json`, `crustdata.people.enrich.json`, `crustdata.people.search.json`, `google-search-console.yaml`, `google-search-console.extended.yaml`, `google-tag-manager.yaml`, `google-tag-manager.extended.yaml`, `instagram.yaml`, `instagram.extended.yaml`, `justoneapi.extended.yaml`, `minimax.yaml`, `apify.yaml`, `brightdata.yaml`, `companyenrich.yaml`, `oceanio.yaml`, `akta.extended.yaml`, `dataforseo.yaml`, `dataforseo.extended.yaml`, `test_dataforseo_constraints.py`, `scrapecreators.yaml`, `scrapecreators.extended.yaml`, `serpapi.yaml`, `serpapi.extended.yaml`, `diffbot.yaml`, `diffbot.extended.yaml`, `tikhub.extended.yaml`, `minimax.video-gen.result.retrieve.json`, `minimax.video-gen.from_image.json`, `minimax.video-gen.task.status.json`, `openrouter.yaml`, `openrouter.extended.yaml`, `openrouter.x.alibaba-wan-3-0.json`, `openrouter.video-gen.seedance-2-5.json`, `replicate.yaml`, `replicate.extended.yaml`, `reapi.yaml`, `piapi.yaml`, `replicate.image-gen.nano-banana-pro.json`, `replicate.image-gen.gpt-image-2.json`, `replicate.image-gen.gpt-image-2-5-flare.json`, `replicate.image-gen.gpt-image-2-5-sunburst.json`, `reapi.tasks.get.json`, `reapi.video-gen.seedance-2-5.json`, `reapi.video-gen.seedance-2-5.unrestricted.json`, `reapi.image-gen.gpt-image-2-5.json`, `reapi.image-gen.gpt-image-2.json`, `reapi.image-gen.gemini-3-pro-image.json`, `piapi.task.get.json`, `piapi.video-gen.seedance-2-5.json`, `piapi.video-gen.seedance-2-5.less-restriction.json`, `piapi.image-gen.gemini-3-pro-image.json`, `piapi.image-gen.gpt-image-2-5.json`, `piapi.image-gen.gpt-image-2.json`, `replicate.image-gen.flux-schnell.json`, `__init__.py`, `store.py`, `hunter.yaml`, `mcp.py`, `settlement.py`, `stats.py`, `catalog_observations.py`, `catalog_stats.py`, `0038_endpoint_day_stats.py`, `catalog.py`, `test_aigc_pr_b.py`, `test_catalog_api.py`, `test_catalog_validate.py` |
 | `architecture/composition.md` | `bootstrap.py`, `bootstrap_handlers.py`, `bootstrap_http.py`, `call_surface.py`, `connect.py`, `mcp_oauth.py`, `session.py`, `admin.py`, `auth.py`, `billing.py`, `call.py`, `connections.py`, `onboard.py`, `orgs.py`, `resources.py`, `referrals.py`, `web.py`, `dump_surface.py`, `test_app_roles.py` |
 | `architecture/contactout.md` | `contactout.yaml`, `adapters.yaml`, `contactout.people.email.verify.json`, `test_routing.py`, `contactout.companies.search.json`, `contactout.companies.enrich.json`, `resolve.py`, `contactout.py`, `contactout.svg`, `test_marketplace_call.py`, `test_key_providers.py`, `test_capacity_collectors.py`, `test_catalog_validate.py`, `test_capacity_overflow.py`, `contactout_overflow_verify.py`, `contactout.json` |
 | `architecture/data-model.md` | `alembic.ini`, `env.py`, `0001_baseline_current_schema.py`, `0002_archive_tables.py`, `0003_callrecord_cached.py`, `0004_archivekey_request_shape.py`, `0005_capacity_policy_snapshot.py`, `0006_overflow_route.py`, `0007_overflow_spend.py`, `0008_org_platform_overflow_disabled.py`, `0009_callrecord_hit.py`, `0017_async_task_record.py`, `0018_async_resource_ownership.py`, `0019_async_poll_failures.py`, `0020_callrecord_created_at_indexes.py`, `0021_ledgerentry_org_created_at_index.py`, `0022_org_spent_today_counter.py`, `0023_callrecord_org_user_created_at_index.py`, `0024_membership_calls_today_counter.py`, `0027_enrich_arena.py`, `0028_arena_insights.py`, `0029_arena_verification_snapshot.py`, `0011_callrecord_archive_link.py`, `0015_idempotentcall_membership_cascade.py`, `0034_managed_api_keys.py`, `0035_default_key_generation.py`, `0036_activity_key_indexes.py`, `0038_endpoint_day_stats.py`, `maintenance.py`, `sitetrack.js`, `models.py`, `0031_archive_result_admission.py`, `0032_archive_body_storage.py`, `0039_archive_own_key_and_repeat_pricing.py`, `0033_signup_promo_eligibility.py`, `timeutil.py`, `db.py`, `referrals.py`, `audit.py`, `analytics.py`, `bootstrap_handlers.py`, `ratestore.py`, `auth.py`, `test_postgres_reset.py`, `test_alembic_expand_safety.py`, `test_api_keys.py` |
@@ -647,6 +712,7 @@ Regenerate via `scripts/build-map.py`.
 | `architecture/harvestapi.md` | `contracts.py`, `harvestapi.yaml`, `harvestapi.svg`, `oauth_providers.py`, `config.py`, `store.py`, `resolve.py`, `collectors.py`, `policy.py`, `adapters.yaml`, `catalog_validate.py`, `test_harvestapi.py`, `harvestapi.linkedin.ads.get.json`, `harvestapi.linkedin.ads.search.json`, `harvestapi.linkedin.comment.reactions.json`, `harvestapi.linkedin.company.posts.json`, `harvestapi.linkedin.company.profile.json`, `harvestapi.linkedin.company.search.json`, `harvestapi.linkedin.geo.search.json`, `harvestapi.linkedin.group.get.json`, `harvestapi.linkedin.group.search.json`, `harvestapi.linkedin.job.get.json`, `harvestapi.linkedin.leads.search.json`, `harvestapi.linkedin.post.comment_replies.json`, `harvestapi.linkedin.post.comments.json`, `harvestapi.linkedin.post.get.json`, `harvestapi.linkedin.post.reactions.json`, `harvestapi.linkedin.post.search.json`, `harvestapi.linkedin.profile.search.json`, `harvestapi.linkedin.search.jobs.json`, `harvestapi.linkedin.service.search.json`, `harvestapi.linkedin.user.comments.json`, `harvestapi.linkedin.user.posts.json`, `harvestapi.linkedin.user.profile.email.json`, `harvestapi.linkedin.user.profile.json`, `harvestapi.linkedin.user.profile.main.json`, `harvestapi.linkedin.user.reactions.json` |
 | `architecture/import-boundaries.md` | `pyproject.toml`, `ci.yml`, `__init__.py`, `__init__.py`, `access.py`, `authorize.py`, `idempotency.py`, `overflow.py`, `route.py`, `__init__.py`, `intake.py`, `resolve.py`, `reserve.py`, `settle.py`, `evidence.py`, `service.py`, `types.py`, `client_identity.py`, `__init__.py`, `__init__.py`, `access.py`, `budgets.py`, `publicdemo.py`, `teams.py`, `usage.py`, `__init__.py`, `__init__.py`, `authorization.py`, `oauth_flow.py`, `refresh.py`, `__init__.py`, `__init__.py`, `__init__.py`, `__init__.py`, `__init__.py`, `injectors.py`, `relay.py`, `__init__.py`, `limiter.py`, `test_call_architecture.py`, `test_import_lightness.py` |
 | `architecture/instagram-oauth.md` | `catalog_ingest.py`, `access.py`, `resolve.py`, `service.py`, `instagram.yaml`, `instagram.extended.yaml`, `cli.py`, `store.py`, `authorization.py`, `oauth_flow.py`, `oauth_exchange.py`, `mcp.py`, `call.py`, `index.html`, `0010_oauth_authorization_method.py`, `test_instagram_oauth_architecture.py` |
+| `architecture/limadata.md` | `limadata.yaml`, `limadata.people.enrich.json`, `limadata.companies.enrich.json`, `limadata.database.autocomplete.json`, `limadata.companies.count.json`, `limadata.people.count.json`, `limadata.companies.search.json`, `limadata.people.search.json`, `limadata.people.employees.search.json`, `limadata.people.audience.resolve.json`, `limadata.people.audience.email-hash.json`, `limadata.people.email.find.personal.json`, `limadata.people.email.verify.json`, `limadata.people.email.find.name.json`, `limadata.people.email.find.linkedin.json`, `limadata.companies.linkedin.find.json`, `limadata.people.phone.find.json`, `limadata.people.identity.resolve.json`, `limadata.people.identity.from-email.json`, `limadata.web.extract.json`, `limadata.web.research.json`, `limadata.google.serp.organic.json`, `limadata.people.audience.batch.start.json`, `limadata.people.email.verify.batch.start.json`, `limadata.people.batch.results.json`, `adapters.yaml`, `fx.yaml`, `config.py`, `oauth_providers.py`, `providers.py`, `collectors.py`, `policy.py`, `limadata.svg`, `test_catalog_validate.py`, `test_enrich_arena.py`, `test_key_providers.py`, `test_marketplace_call.py`, `test_oauth_providers_m3.py`, `test_providers.py`, `test_routing.py`, `test_capacity_collectors.py`, `test_capacity_overflow_routes.py`, `conftest.py` |
 | `architecture/local-proxy.md` | `localproxy.py`, `server.js` |
 | `architecture/local-run.md` | `localrun.py`, `egress.py`, `fsjail.py` |
 | `architecture/mcp-oauth.md` | `auth.py`, `mcp.py`, `health.py`, `mcp_oauth.py`, `session.py`, `access.py`, `api_keys.py`, `api_keys.py`, `auth.py`, `claude-connector.html`, `connect-demo.html`, `CLAUDE-CONNECTOR-SUBMISSION.md`, `test_mcp.py`, `test_mcp_oauth.py`, `test_mcp_directory.py`, `test_marketplace_call.py` |
@@ -654,12 +720,14 @@ Regenerate via `scripts/build-map.py`.
 | `architecture/moltsets.md` | `moltsets.yaml`, `moltsets.people.search.json`, `moltsets.companies.search.json`, `moltsets.linkedin.profile.search.json`, `moltsets.people.email.find.name.json`, `moltsets.people.enrich.name.json`, `moltsets.people.email.find.json`, `moltsets.people.email.find.business.json`, `moltsets.people.email.find.personal.json`, `moltsets.people.email.find.personal-best.json`, `moltsets.people.phone.find.json`, `moltsets.people.enrich.email.json`, `moltsets.people.enrich.linkedin.json`, `moltsets.people.audiences.maid.json`, `moltsets.people.audiences.sha256.json`, `moltsets.people.audiences.hashes.json`, `moltsets.linkedin.profile.from-email.json`, `moltsets.companies.identify.ip.json`, `adapters.yaml`, `fx.yaml`, `oauth_providers.py`, `providers.py`, `config.py`, `collectors.py`, `policy.py`, `moltsets.svg`, `test_moltsets.py`, `test_capacity_overflow_routes.py`, `conftest.py`, `test_key_providers.py`, `test_oauth_providers_m3.py`, `test_providers.py` |
 | `architecture/money.md` | `__init__.py`, `settlement.py`, `__init__.py`, `models.py`, `billing.py`, `idempotency.py`, `intake.py`, `resolve.py`, `service.py`, `reserve.py`, `settle.py`, `tomba.yaml`, `asynctasks.py`, `0017_async_task_record.py`, `0018_async_resource_ownership.py`, `0019_async_poll_failures.py`, `referrals.py`, `budgets.py`, `__init__.py`, `stripe.py`, `reconcile.py`, `referrals.py`, `api.py`, `signup.py`, `promotions.py`, `0033_signup_promo_eligibility.py`, `admin.py`, `billing.py`, `call.py`, `orgs.py`, `referrals.py`, `test_call_architecture.py`, `test_asynctasks.py` |
 | `architecture/multi-tenancy.md` | `models.py`, `api.py`, `caller_metadata.py`, `auth.py`, `asynctasks.py`, `resolve.py`, `signup.py`, `access.py`, `budgets.py`, `publicdemo.py`, `teams.py`, `usage.py`, `access.py`, `api_keys.py`, `session.py`, `promotions.py`, `test_team_limit.py`, `test_auth.py`, `test_token_revocation.py`, `auth.py`, `orgs.py`, `resources.py`, `bundles.py`, `db.py`, `0017_async_task_record.py`, `0018_async_resource_ownership.py`, `test_router_dependencies.py`, `test_asynctasks.py` |
+| `architecture/openmart.md` | `openmart.yaml`, `openmart.businesses.search.json`, `openmart.businesses.search.ids.json`, `openmart.businesses.lookup.openmart.json`, `openmart.businesses.lookup.google-place.json`, `openmart.companies.enrich.json`, `openmart.companies.search.json`, `openmart.people.find.batch.json`, `openmart.technologies.find.batch.json`, `openmart.companies.email.find.batch.json`, `openmart.people.enrich.batch.json`, `openmart.tasks.batch.status.json`, `openmart.tasks.batch.ids.json`, `openmart.tasks.get.json`, `openmart.deny-rules.create.json`, `openmart.deny-rules.check.json`, `openmart.deny-rules.delete.json`, `adapters.yaml`, `fx.yaml`, `oauth_providers.py`, `providers.py`, `config.py`, `access.py`, `resolve.py`, `settle.py`, `store.py`, `collectors.py`, `policy.py`, `openmart.svg`, `test_capacity_overflow_routes.py`, `test_capacity_collectors.py`, `test_catalog_api.py`, `conftest.py`, `test_key_providers.py`, `test_marketplace_call.py`, `test_mcp.py`, `test_oauth_providers_m3.py`, `test_enrich_arena.py`, `test_routing.py` |
 | `architecture/prospeo.md` | `prospeo.yaml`, `prospeo.people.email.find.json`, `prospeo.people.phone.find.json`, `prospeo.people.enrich.json`, `prospeo.people.enrich.bulk.json`, `prospeo.people.search.json`, `prospeo.companies.enrich.json`, `prospeo.companies.enrich.bulk.json`, `prospeo.companies.search.json`, `prospeo.search.suggestions.json`, `adapters.yaml`, `fx.yaml`, `config.py`, `oauth_providers.py`, `resolve.py`, `settle.py`, `collectors.py`, `policy.py`, `prospeo.svg`, `provider_balances.py`, `test_catalog_validate.py`, `test_key_providers.py`, `test_marketplace_call.py`, `test_routing.py`, `test_capacity_collectors.py` |
 | `architecture/proxy-model.md` | `relay.py`, `ssrf.py`, `api.py`, `authorize.py`, `idempotency.py`, `intake.py`, `resolve.py`, `reserve.py`, `settle.py`, `evidence.py`, `service.py`, `types.py`, `asynctasks.py`, `client_identity.py`, `call_surface.py`, `sandbox_identity.py`, `access.py`, `publicdemo.py`, `usage.py`, `call.py`, `test_ssrf_public_addresses.py`, `test_call_application_contract.py`, `test_call_cancellation.py`, `test_call_response_limits.py`, `test_error_capture.py`, `test_marketplace_call.py`, `test_oauth_billed.py`, `test_passthrough.py`, `test_tag_billing.py`, `test_tag_billing_adversarial.py`, `test_call_architecture.py`, `test_asynctasks.py` |
 | `architecture/scrubby.md` | `scrubby.yaml`, `scrubby.people.email.verify.json`, `scrubby.people.email.verify.bulk.json`, `scrubby.people.email.verify.bulk.results.json`, `scrubby.people.email.verify.deep.json`, `scrubby.people.email.verify.deep.results.json`, `adapters.yaml`, `fx.yaml`, `config.py`, `oauth_providers.py`, `settle.py`, `collectors.py`, `policy.py`, `scrubby.svg`, `test_scrubby.py`, `test_key_providers.py`, `test_oauth_providers_m3.py`, `test_capacity_overflow_routes.py`, `test_capacity_collectors.py`, `conftest.py` |
 | `architecture/sumble.md` | `sumble.yaml`, `sumble.extended.yaml`, `sumble.organizations.json`, `sumble.py`, `test_sumble.py`, `sumble.svg` |
 | `architecture/super-admin.md` | `api.py`, `admin.py`, `access.py`, `config.py` |
 | `architecture/wiza.md` | `wiza.yaml`, `wiza.people.search.json`, `wiza.companies.search.json`, `wiza.companies.enrich.json`, `wiza.meta.locations.search.json`, `wiza.meta.technologies.search.json`, `adapters.yaml`, `fx.yaml`, `config.py`, `oauth_providers.py`, `collectors.py`, `policy.py`, `wiza.svg`, `test_wiza.py`, `test_key_providers.py`, `test_oauth_providers_m3.py`, `test_capacity_overflow_routes.py`, `test_capacity_collectors.py`, `test_routing.py`, `conftest.py` |
+| `architecture/zerobounce.md` | `zerobounce.yaml`, `zerobounce.people.email.verify.json`, `zerobounce.people.email.find.json`, `zerobounce.companies.email_pattern.json`, `adapters.yaml`, `fx.yaml`, `config.py`, `oauth_providers.py`, `collectors.py`, `policy.py`, `zerobounce.svg`, `conftest.py`, `test_archive.py`, `test_capacity_collectors.py`, `test_catalog_validate.py`, `test_enrich_arena.py`, `test_key_providers.py`, `test_marketplace_call.py`, `test_oauth_providers_m3.py`, `test_capacity_overflow_routes.py`, `test_routing.py` |
 | `foundation/charter.md` | `2026-06-30-jason-tools-registry.md`, `README.md` |
 | `guides/expanding-a-category.md` | `oauth_providers.py`, `authorization.py`, `oauth_flow.py`, `oauth_exchange.py`, `connect.py`, `connections.py`, `config.py` |
 | `interface/api.md` | `media.py`, `sitetrack.js`, `api.py`, `bootstrap_handlers.py`, `bootstrap_http.py`, `call_surface.py`, `caller_metadata.py`, `client_identity.py`, `auth.py`, `access.py`, `authorize.py`, `idempotency.py`, `intake.py`, `resolve.py`, `reserve.py`, `settle.py`, `evidence.py`, `service.py`, `types.py`, `relay.py`, `connect.py`, `onboard.py`, `referrals.py`, `signup.py`, `__init__.py`, `admin.py`, `auth.py`, `auth_helpers.py`, `billing.py`, `call.py`, `catalog.py`, `connections.py`, `onboard.py`, `orgs.py`, `api_keys.py`, `resources.py`, `referrals.py`, `signup_cookies.py`, `web.py`, `access.py`, `api_keys.py`, `teams.py`, `access.py`, `budgets.py`, `publicdemo.py`, `usage.py`, `mcp_oauth.py`, `session.py`, `timeutil.py`, `store.py`, `email.py`, `runner.py`, `ratestore.py` |

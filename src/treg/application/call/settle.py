@@ -26,7 +26,7 @@ from ...infra.db import session_maker
 from ...models import Org
 from ...timeutil import utcnow_naive as _utcnow_naive
 from .idempotency import _release_idempotent_claim
-from .resolve import MarketplaceCall, _usd_to_micro
+from .resolve import MarketplaceCall, _openmart_credits, _usd_to_micro
 from .types import GatewayFailed, UpstreamResponse
 
 
@@ -108,6 +108,29 @@ def _brightdata_record_count(body: bytes) -> int | None:
         # records bill at the snapshot download), an early download's {"status": "running"}, or any
         # other envelope. Pay-per-success means an answer with no records costs nothing.
         return 0
+    return None
+
+
+def _openmart_record_count(endpoint_id: str, doc: object) -> int | None:
+    """Count only the response containers verified for Openmart's synchronous data reads."""
+    if endpoint_id in (
+        "openmart.businesses.search",
+        "openmart.companies.enrich",
+    ):
+        if isinstance(doc, list):
+            return sum(item is not None for item in doc)
+        if isinstance(doc, dict) and isinstance(doc.get("data"), list):
+            return sum(item is not None for item in doc["data"])
+        return None
+    if endpoint_id == "openmart.companies.search":
+        if isinstance(doc, dict) and isinstance(doc.get("data"), list):
+            return sum(item is not None for item in doc["data"])
+        return None
+    if endpoint_id in (
+        "openmart.businesses.lookup.openmart",
+        "openmart.businesses.lookup.google-place",
+    ):
+        return sum(item is not None for item in doc.values()) if isinstance(doc, dict) else None
     return None
 
 
@@ -201,7 +224,13 @@ def _prospeo_cost_micro(mk: MarketplaceCall, doc: dict) -> int | None:
 
 
 # Providers whose exact charge rides a response header, in provider credits (fx.yaml rate).
-_CREDIT_HEADERS = {"crustdata": "x-credits-used", "cloro": "x-credits-charged"}
+# The multiplier makes the provider's sign convention explicit: most report a positive charge,
+# while AI Ark reports debits as negative `X-Credit` values.
+_CREDIT_HEADERS = {
+    "crustdata": ("x-credits-used", 1),
+    "cloro": ("x-credits-charged", 1),
+    "aiark": ("x-credit", -1),
+}
 
 
 def _observed_cost_micro(mk: MarketplaceCall, body: bytes, headers=None) -> int | None:
@@ -246,9 +275,11 @@ def _observed_cost_micro(mk: MarketplaceCall, body: bytes, headers=None) -> int 
         charge for a 2xx whose payload is an embedded error (verified live 2026-07-30 — see
         docs/context/architecture/catalog.md, "the provider decides what counts as success").
 
-      - crustdata / cloro: REPORTED in credits in a response HEADER (`_CREDIT_HEADERS`), the only
-        place the charge exists — cloro's ChatGPT/Google routes price their include flags and US
-        state targeting per request, so the catalog value is an upper bound and the header is the bill.
+      - crustdata / cloro / aiark: REPORTED in credits in a response HEADER (`_CREDIT_HEADERS`),
+        the only place the charge exists. AI Ark reports debits as negative `X-Credit` values; its
+        explicit -1 multiplier converts that convention to a nonnegative charge. cloro's
+        ChatGPT/Google routes price their include flags and US state targeting per request, so the
+        catalog value is an upper bound and the header is the bill.
       - exa: REPORTED in dollars, `costDollars.total` on every 2xx body (same contract as
         dataforseo's `cost`) — the only place the per-result and per-content riders exist.
       - fiber-ai: REPORTED in credits, `chargeInfo.creditsCharged` on every envelope, honoured
@@ -266,20 +297,21 @@ def _observed_cost_micro(mk: MarketplaceCall, body: bytes, headers=None) -> int 
         # the catalog base. Aviato simple search earned this rule from two multi-row live probes:
         # enrich=true returned only id rows and charged the same 0.25-credit base both times.
         return _usd_to_micro(float(cost["usd"]))
-    header_name = _CREDIT_HEADERS.get(provider)
-    if header_name and headers is not None:
+    header_spec = _CREDIT_HEADERS.get(provider)
+    if header_spec and headers is not None:
+        header_name, charge_multiplier = header_spec
         # REPORTED in a response HEADER rather than the body: Crustdata's X-Credits-Used and
-        # cloro's X-Credits-Charged are the exact per-call charge (cloro omits the header on its
-        # free routes and on a failed extraction, both of which it does not bill — an absent header
-        # therefore settles as unreported, at the estimate, not at zero).
+        # cloro's X-Credits-Charged are positive charges; AI Ark's X-Credit is a negative debit.
+        # cloro omits the header on its free routes and on a failed extraction, both of which it
+        # does not bill. An absent header settles as unreported, at the estimate, not at zero.
         raw = headers.get(header_name)
         rate = catalog_store.load().credit_rates.get(provider)
         try:
-            credits = float(raw)
+            charged_credits = float(raw) * charge_multiplier
         except (TypeError, ValueError):
-            credits = -1
-        if credits >= 0 and rate:
-            return _usd_to_micro(credits * rate)
+            charged_credits = -1
+        if math.isfinite(charged_credits) and charged_credits >= 0 and rate:
+            return _usd_to_micro(charged_credits * rate)
     if not body:
         return 0 if provider == "contactout" else None
     if provider == "brightdata" and mk.cost_type == "per_result" and mk.unit_micro > 0:
@@ -291,6 +323,9 @@ def _observed_cost_micro(mk: MarketplaceCall, body: bytes, headers=None) -> int 
         doc = json.loads(body)
     except (ValueError, UnicodeDecodeError):
         return 0 if provider == "contactout" else None
+    if provider == "openmart" and mk.cost_type == "per_result" and mk.unit_micro > 0:
+        records = _openmart_record_count(mk.endpoint_id, doc)
+        return None if records is None else _openmart_credits(records) * mk.unit_micro
     if provider == "aviato" and mk.endpoint_id == "aviato.people.enrich.bulk":
         if isinstance(doc, list) and mk.unit_micro > 0:
             return sum(item is not None for item in doc) * mk.unit_micro

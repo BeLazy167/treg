@@ -130,6 +130,17 @@ async def _moltsets(c, key):
     }
 
 
+async def _openmart(c, key):
+    d = await _get(c, "https://api.openmart.ai/api/v2/credit-balance",
+                   headers={"Authorization": f"Bearer {key}"})
+    balance = d.get("balance") if isinstance(d, dict) else None
+    if type(balance) is not int or balance < 0:
+        balance = None
+    period_end = d.get("period_end") if isinstance(d, dict) else None
+    return {"value": balance, "unit": "credits",
+            "note": f"Monthly subscription balance; current period ends {period_end or 'at the account renewal date'}."}
+
+
 async def _harvestapi(c, key):
     d = await _get(c, "https://api.harvestapi.io/users/my-api-user",
                    headers={"X-API-Key": key})
@@ -193,6 +204,20 @@ async def _prospeo(c, key):
         "note": (f"plan {response.get('current_plan', 'unknown')}, "
                  f"{response.get('used_credits', 'unknown')} used, renews "
                  f"{response.get('next_quota_renewal_date', 'unknown')}"),
+    }
+
+
+async def _aiark(c, key):
+    d = await _get(c, "https://api.ai-ark.com/api/developer-portal/v1/payments/credits",
+                   headers={"X-TOKEN": key, "Content-Type": "application/json"})
+    remaining = d.get("total") if isinstance(d, dict) else None
+    if (isinstance(remaining, bool) or not isinstance(remaining, (int, float))
+            or not math.isfinite(remaining) or remaining < 0):
+        raise ValueError("AI Ark returned no valid remaining-credit balance")
+    return {
+        "value": remaining,
+        "unit": "credits",
+        "note": "Monthly subscription credits; unused credits can roll over to twice the allowance",
     }
 
 
@@ -295,6 +320,28 @@ async def _bounceban(c, key):
             or not math.isfinite(credits) or credits < 0):
         raise ValueError("BounceBan returned no valid verification-credit balance")
     return {"value": credits, "unit": "verification credits", "note": ""}
+
+
+async def _zerobounce(c, key):
+    # Free balance route. ZeroBounce returns the balance as either a JSON number or a decimal
+    # string. A bad key can still answer HTTP 200 with the documented -1 sentinel.
+    try:
+        d = await _get(c, "https://api.zerobounce.net/v2/getcredits",
+                       params={"api_key": key})
+    except httpx.HTTPError as exc:
+        # HTTP errors may include the request URL and its private query key.
+        raise ValueError(f"ZeroBounce balance request failed ({type(exc).__name__})") from None
+    raw = d.get("Credits") if isinstance(d, dict) else None
+    if type(raw) is int:
+        credits = raw
+    elif isinstance(raw, str) and raw.strip().isdigit():
+        credits = int(raw.strip())
+    else:
+        raise ValueError("ZeroBounce returned no valid credit balance") from None
+    if credits < 0:
+        raise ValueError("ZeroBounce rejected the balance request")
+    return {"value": credits, "unit": "credits",
+            "note": "PAYG balance; treg treats replenishment as manual"}
 
 
 async def _leadmagic(c, key):
@@ -582,14 +629,17 @@ BALANCE_ROUTES = {
     "harvestapi": _harvestapi,
     "quickenrich": _quickenrich,
     "prospeo": _prospeo,
+    "aiark": _aiark,
     "wiza": _wiza,
     "getleadsio": _getleadsio,
     "sumble": _sumble,
     "moltsets": _moltsets,
+    "openmart": _openmart,
     "trykitt": _trykitt,
     "contactout": _contactout,
     "millionverifier": _millionverifier,
     "bounceban": _bounceban,
+    "zerobounce": _zerobounce,
     "leadmagic": _leadmagic,
     "lusha": _lusha,
     "diffbot": _diffbot,
@@ -618,6 +668,8 @@ NO_BALANCE_API = {
                          "prepaid Credits are visible in the vendor dashboard only",
     "justoneapi": "balance available only via MCP server (get_account_balance tool), no public REST "
                   "endpoint documented (checked docs.justoneapi.com 2026-08-31) — dashboard only",
+    "limadata": "no free standalone balance or usage endpoint in the official Basic v2 API "
+                "(checked api.limadata.com/docs/basic_v2 2026-09-17) — dashboard only",
     "marketstack": "no usage endpoint (checked 2026-08-31) — monthly quota in the dashboard, "
                    "email alerts at 75/90/100%",
     "scrubby": "no free standalone balance or usage endpoint in the official API "

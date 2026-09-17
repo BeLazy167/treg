@@ -409,6 +409,10 @@ validated before resolving the shared HTTP client. `/auth/logout` remains an HTT
   disappear from discovery, and return 410 on call/access checks. `platform_blocked` entries
   remain discoverable for BYOK but cannot use treg's key.
 
+  A platform access check normally estimates the default page size. Openmart is the provider-specific
+  exception: its runnable catalog example is priced with the same whole-credit request formula used
+  for reserve, so the pre-call estimate reflects that example's requested record count.
+
   Zero-result searches emit `SearchMiss` rows through the lossy audit queue. A team-pinned Default
   token provides the same human and team attribution as an older hash-backed membership token.
   Sources distinguish HTTP, team MCP and the Claude connector. Tool requests may attach a token

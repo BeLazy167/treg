@@ -44,11 +44,24 @@ related:
 
 # Provider capacity
 
+LimaData exposes no free standalone balance API, so capacity reports its credit balance as
+dashboard-only. The assigned account's existing automatic top-up is enabled, and the default policy
+is `credits / auto_recharge / manual`. Shared-key smoothing uses the documented default one request
+per second; BYOK bypasses it. See [LimaData](../architecture/limadata.md).
+
 BounceBan's collector calls the free `GET /v1/account` route with the raw `Authorization` key and
 reads `available_credits`. Zero and finite nonnegative numbers are exact balances; missing, Boolean,
 string, negative, and non-finite values are unknown. Its policy is `credits / manual / api`, with a
 conservative shared-key rate of 25 requests per second. No reset, renewal, or auto-top-up behavior is
 inferred, and no overflow route is claimed. See [BounceBan](../architecture/bounceban.md).
+
+ZeroBounce's collector calls the free `GET /v2/getcredits` route with the query-bound key and reads
+`Credits`. Nonnegative integers and decimal strings are exact balances. Boolean, missing,
+malformed, and negative values are unknown; this includes the provider's invalid-key `-1` sentinel.
+Its policy is `credits / auto_recharge / api` for vendor-managed Auto-Pay, but treg does not read or
+change that setting. Shared-key pacing starts at 25 requests per second. No empty-account
+response was forced and no overflow route is claimed. See
+[ZeroBounce](../architecture/zerobounce.md).
 
 `collectors._moltsets` reads the free account envelope and reports the tighter rolling enrichment
 record remainder, with both enrichment/search request and record pools in its note. Missing

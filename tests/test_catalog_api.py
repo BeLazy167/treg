@@ -19,6 +19,40 @@ from treg.domain.catalog import store as cs
 from treg import oauth_providers as P
 
 
+def test_openmart_surface_separates_platform_reads_from_byok_lifecycles():
+    cat = cs.load()
+    rows = cat.for_provider("openmart")
+    assert len(rows) == 16
+    assert len({(e["method"], e["path"]) for e in rows}) == 16
+    assert {e["id"] for e in rows if cat.platform_eligible(e)} == {
+        "openmart.businesses.search",
+        "openmart.businesses.lookup.openmart",
+        "openmart.businesses.lookup.google-place",
+        "openmart.companies.enrich",
+        "openmart.companies.search",
+    }
+    assert all(e.get("verified") and e.get("example_file") for e in rows)
+    assert cat.credit_rates["openmart"] == .0298
+    assert "openmart.account.balance" not in cat.by_id
+
+
+def test_openmart_pricing_and_lifecycle_boundaries_stay_visible():
+    cat = cs.load()
+    assert cat.by_id["openmart.people.find.batch"]["cost"]["value"] == 11
+    assert cat.by_id["openmart.technologies.find.batch"]["cost"]["value"] == 2
+    company_email = cat.by_id["openmart.companies.email.find.batch"]
+    assert company_email["cost"]["value"] == .3
+    assert company_email["cost"]["confidence"] == "documented"
+    fast = cat.by_id["openmart.businesses.search.ids"]
+    assert fast["cost"]["value"] is None and fast["cost"]["confidence"] == "unknown"
+    assert all(cat.by_id[key]["scope"] == "own_account" for key in (
+        "openmart.tasks.batch.status", "openmart.tasks.batch.ids", "openmart.tasks.get",
+        "openmart.deny-rules.create", "openmart.deny-rules.check",
+        "openmart.deny-rules.delete",
+    ))
+    assert cat.by_id["openmart.deny-rules.delete"]["cache"] == "forbidden"
+
+
 # ---- platform listing --------------------------------------------------------------------
 async def test_platforms_lists_the_curated_shelves_busiest_first(clients: AsyncClient):
     r = await clients.get("/catalog/platforms")
@@ -1345,28 +1379,37 @@ def test_hunter_domain_search_advertises_one_search_credit():
 
 
 def test_dataforseo_related_keywords_does_not_advertise_order_by():
-    """Feedback #54: live related_keywords/live rejects order_by with 40501.
+    """Feedback #54 / #439: live related_keywords/live rejects order_by and
+    filters with 40501.
 
-    Vendor docs still list the field; the live API does not. catalog_get must not
-    offer it on this id. ranked_keywords (a sibling Labs route) still sorts.
+    Vendor docs still list both fields; the live API does not. catalog_get must
+    not offer them on this id. ranked_keywords (a sibling Labs route) still
+    sorts and filters.
     """
     cat = cs.load()
     ideas = cat.by_id["dataforseo.google.keywords.ideas"]
     assert ideas["path"] == "/dataforseo_labs/google/related_keywords/live"
     body = ideas["input"]["body"]
     assert "order_by" not in body
-    assert "filters" in body
-    assert "order_by" in ideas["input"]["note"]
+    assert "filters" not in body
+    note = ideas["input"]["note"]
+    assert "order_by" in note
+    assert "filters" in note
     ranked = cat.by_id["dataforseo.google.domain.ranked_keywords"]
     assert "order_by" in ranked["input"]["body"]
+    assert "filters" in ranked["input"]["body"]
     for task in ideas["test_request"]["body"]:
         assert "order_by" not in task
+        assert "filters" not in task
 
 
 async def test_catalog_get_dataforseo_related_keywords_omits_order_by(clients: AsyncClient):
     body = (await clients.get("/catalog/endpoints/dataforseo.google.keywords.ideas")).json()
     assert "order_by" not in body["endpoint"]["input"]["body"]
-    assert "order_by" in body["endpoint"]["input"]["note"]
+    assert "filters" not in body["endpoint"]["input"]["body"]
+    note = body["endpoint"]["input"]["note"]
+    assert "order_by" in note
+    assert "filters" in note
 
 
 def test_dataforseo_backlinks_summary_is_single_task():
@@ -1418,6 +1461,27 @@ async def test_catalog_get_dataforseo_ai_mode_live_names_the_single_task_limit(
     tmpl = body["call_template"]
     assert tmpl.startswith(
         "treg call dataforseo.x.serp-google-ai-mode-live-advanced --method POST")
+
+
+async def test_catalog_get_dataforseo_claude_llm_responses_live_names_working_model(
+        clients: AsyncClient):
+    """Feedback #358: catalog_get must not advertise claude-opus-4-0 or multi-task batching."""
+    body = (await clients.get(
+        "/catalog/endpoints/dataforseo.x.ai-optimization-claude-llm-responses-live")).json()
+    fields = body["endpoint"]["input"]["body"]
+    assert fields["model_name"]["example"] == "claude-sonnet-4-5"
+    model_note = fields["model_name"]["note"]
+    assert "40501" in model_note or "llm_responses/models" in model_note
+    note = body["endpoint"]["input"]["note"]
+    assert "exactly one task" in note.lower() or "exactly 1 task" in note.lower()
+    assert "40000" in note
+    assert "one object per task" not in note.lower()
+    example = body.get("example_response")
+    if isinstance(example, dict):
+        tasks = example.get("tasks") or []
+        assert not tasks or tasks[0].get("status_code") != 40501, (
+            "catalog_get must not advertise the 40501 Invalid Field failure as the example"
+        )
 
 
 async def test_catalog_get_dataforseo_page_audit_names_browser_preset_dependency(
@@ -1537,3 +1601,45 @@ async def test_catalog_get_dataforseo_llm_mentions_historical_names_and_semantic
     assert "en.wikipedia.org" in tmpl
     assert "exclude" in tmpl
     assert "bmw" in tmpl
+
+
+GOOGLE_TRENDS_ID = "serpapi.x.google-trends"
+
+
+def test_serpapi_google_trends_data_type_names_geo_map_cardinality():
+    """Feedback #440: GEO_MAP is compared regional breakdown (multiple queries);
+    GEO_MAP_0 is interest by region (single query).
+
+    catalog_get used to list TIMESERIES | GEO_MAP | GEO_MAP_0 | RELATED_TOPICS |
+    RELATED_QUERIES with no cardinality, so agents sent GEO_MAP with one keyword
+    and got HTTP 400. Settlement is unchanged.
+
+    Ref: https://serpapi.com/google-trends-api
+    """
+    cat = cs.load()
+    ep = cat.by_id[GOOGLE_TRENDS_ID]
+    assert ep["path"] == "/search"
+    note = ep["input"]["queryParams"]["data_type"]["note"].lower()
+    assert "geo_map" in note
+    assert "multiple" in note
+    assert "compar" in note
+    assert "geo_map_0" in note
+    assert "single" in note
+    assert "timeseries" in note
+    assert "related_topics" in note
+    assert "related_queries" in note
+
+
+async def test_catalog_get_serpapi_google_trends_data_type_cardinality(
+        clients: AsyncClient):
+    """Feedback #440: catalog_get must warn GEO_MAP needs multiple queries."""
+    body = (await clients.get(f"/catalog/endpoints/{GOOGLE_TRENDS_ID}")).json()
+    note = body["endpoint"]["input"]["queryParams"]["data_type"]["note"].lower()
+    assert "geo_map" in note
+    assert "multiple" in note
+    assert "compar" in note
+    assert "geo_map_0" in note
+    assert "single" in note
+    assert "timeseries" in note
+    assert "related_topics" in note
+    assert "related_queries" in note

@@ -17,6 +17,7 @@ covers (frontmatter `sources:`). Regenerate this index with
 | Fragment | Status | Covers |
 |---|---|---|
 | [Google Ads conversion tracking — capture, outbox, upload](architecture/ads-conversions.md) | shipped | adsconv.py, signup.py, adtrack.js, gtag.js |
+| [AI Ark — bounded synchronous enrichment and BYOK async jobs](architecture/aiark.md) | shipped | aiark.yaml, aiark.companies.search.json, aiark.lists.upsert.json, aiark.people.email.find.bulk.submissions.json, … |
 | [Archive - versioned history and cache admission](architecture/archive.md) | building | archive.py, hunter.yaml, results.py, 0031_archive_result_admission.py, … |
 | [Auth & secrets — injectors, encryption, OAuth freshness, health](architecture/auth-secrets.md) | shipped | injectors.py, ssrf.py, crypto.py, oauth.py, … |
 | [BounceBan — email verification, billing boundaries and capacity](architecture/bounceban.md) | shipped | bounceban.yaml, bounceban.people.email.verify.json, bounceban.people.email.verify.waterfall.json, bounceban.people.email.verify.status.json, … |
@@ -30,6 +31,7 @@ covers (frontmatter `sources:`). Regenerate this index with
 | [HarvestAPI — API-key-only LinkedIn reads and reported USD charges](architecture/harvestapi.md) | implemented; upstream and local platform/BYOK integration verified | contracts.py, harvestapi.yaml, harvestapi.svg, oauth_providers.py, … |
 | [Enforced import boundaries](architecture/import-boundaries.md) | shipped | pyproject.toml, ci.yml, __init__.py, __init__.py, … |
 | [Instagram OAuth — direct Login and optional Facebook Page tools](architecture/instagram-oauth.md) | built; Meta configuration and live verification pending | catalog_ingest.py, access.py, resolve.py, service.py, … |
+| [LimaData — Basic v2 enrichment, research, and bounded shared-key calls](architecture/limadata.md) | shipped | limadata.yaml, limadata.people.enrich.json, limadata.companies.enrich.json, limadata.database.autocomplete.json, … |
 | [Local proxy — catch a program's own outgoing calls (`treg <command>`)](architecture/local-proxy.md) | shipped | localproxy.py, server.js |
 | [Local CLI runs — run a vendor CLI as a dedicated user with a server-held credential (`treg run`)](architecture/local-run.md) | shipped | localrun.py, egress.py, fsjail.py |
 | [MCP — the front door for assistants, and treg as an OAuth authorization server](architecture/mcp-oauth.md) | shipped | auth.py, mcp.py, health.py, mcp_oauth.py, … |
@@ -37,12 +39,14 @@ covers (frontmatter `sources:`). Regenerate this index with
 | [MoltSets — enrichment records, shared-plan pricing and BYOK](architecture/moltsets.md) | shipped | moltsets.yaml, moltsets.people.search.json, moltsets.companies.search.json, moltsets.linkedin.profile.search.json, … |
 | [Money — prepaid balance, the ledger, Stripe, and the reports that check it](architecture/money.md) | shipped | __init__.py, settlement.py, __init__.py, models.py, … |
 | [Multi-tenancy — orgs, memberships, invites, per-org scoping](architecture/multi-tenancy.md) | shipped | models.py, api.py, caller_metadata.py, auth.py, … |
+| [Openmart — metered synchronous data and BYOK lifecycle boundaries](architecture/openmart.md) | shipped | openmart.yaml, openmart.businesses.search.json, openmart.businesses.search.ids.json, openmart.businesses.lookup.openmart.json, … |
 | [Prospeo — people and company enrichment](architecture/prospeo.md) | shipped | prospeo.yaml, prospeo.people.email.find.json, prospeo.people.phone.find.json, prospeo.people.enrich.json, … |
 | [The proxy — faithful credential-injecting relay + tool resolution](architecture/proxy-model.md) | shipped | relay.py, ssrf.py, api.py, authorize.py, … |
 | [Scrubby — quick and deep email verification](architecture/scrubby.md) | implemented; live authentication, billing and asynchronous behavior verified | scrubby.yaml, scrubby.people.email.verify.json, scrubby.people.email.verify.bulk.json, scrubby.people.email.verify.bulk.results.json, … |
 | [Sumble — account intelligence, subscription credits and BYOK](architecture/sumble.md) | shipped | sumble.yaml, sumble.extended.yaml, sumble.organizations.json, sumble.py, … |
 | [Super-admin — cross-tenant read + control](architecture/super-admin.md) | shipped | api.py, admin.py, access.py, config.py |
 | [Wiza — synchronous search and company enrichment, BYOK async jobs](architecture/wiza.md) | shipped | wiza.yaml, wiza.people.search.json, wiza.companies.search.json, wiza.companies.enrich.json, … |
+| [ZeroBounce — email validation, finding, patterns, and account capacity](architecture/zerobounce.md) | implemented; live authentication and response shapes verified | zerobounce.yaml, zerobounce.people.email.verify.json, zerobounce.people.email.find.json, zerobounce.companies.email_pattern.json, … |
 
 ## Interfaces (API · CLI · skill)
 

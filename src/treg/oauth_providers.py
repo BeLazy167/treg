@@ -1330,6 +1330,23 @@ MOLTSETS = OAuthProvider(
     # Live 2026-09-16: bogus Bearer 401; valid key 200. Account calls consume no records.
 )
 
+OPENMART = OAuthProvider(
+    service="openmart", display_name="Openmart", auth_kind="key",
+    token_label="API key", token_placeholder="your Openmart API key",
+    token_header="Authorization", token_format="Bearer {secret}",
+    setup_url="https://app.openmart.com/",
+    setup_action_label="Get your Openmart API key",
+    setup_steps=("Sign in to Openmart and open the API settings.",
+                 "Create an API key and copy it."),
+    setup_note="Searches and enrichment consume account credits. Batch tasks can charge after submission; connection verification is free.",
+    auth_uri="", token_uri="", scopes={}, client_id_setting="", client_secret_setting="",
+    category="Enrichment",
+    summary="Search and enrich businesses, find decision makers and contact details, and detect technologies.",
+    base_url="https://api.openmart.ai", docs_url="https://app.openmart.com/api-docs",
+    probe_path="/api/v2/credit-balance", probe_method="GET",
+    # Live 2026-09-17: missing and bogus Bearer keys returned 401; a valid key returned 200.
+)
+
 HARVESTAPI = OAuthProvider(
     service="harvestapi", display_name="HarvestAPI", auth_kind="key",
     token_label="API key", token_placeholder="your HarvestAPI API key",
@@ -1416,6 +1433,25 @@ PROSPEO = OAuthProvider(
     probe_path="/account-information", probe_method="GET",
 )
 
+AIARK = OAuthProvider(
+    service="aiark", display_name="AI Ark", auth_kind="key",
+    token_label="API key", token_placeholder="your AI Ark API key",
+    token_header="X-TOKEN", token_format="{secret}",
+    setup_url="https://app.ai-ark.com/settings/api-management/dashboard",
+    setup_action_label="Get your AI Ark API key",
+    setup_steps=("Sign in to AI Ark and open the API Management dashboard.",
+                 "Create or copy an API key and paste it here."),
+    setup_note=("Search and synchronous enrichment use monthly credits. Connection verification "
+                "reads the remaining balance for free."),
+    auth_uri="", token_uri="", scopes={}, client_id_setting="", client_secret_setting="",
+    category="Enrichment",
+    summary="Search people and companies, find verified emails and mobiles, and enrich profiles.",
+    base_url="https://api.ai-ark.com/api/developer-portal",
+    docs_url="https://docs.ai-ark.com/",
+    # Live 2026-09-17: missing and bogus keys returned 401; the assigned key returned 200.
+    probe_path="/v1/payments/credits", probe_method="GET",
+)
+
 WIZA = OAuthProvider(
     service="wiza", display_name="Wiza", auth_kind="key",
     token_label="API key", token_placeholder="your Wiza API key",
@@ -1433,6 +1469,25 @@ WIZA = OAuthProvider(
     # Live 2026-09-16: a bogus Bearer key returned 401; the assigned key returned 200.
     # This route is internal and is also the free capacity collector.
     probe_path="/api/meta/credits", probe_method="GET",
+)
+
+LIMADATA = OAuthProvider(
+    service="limadata", display_name="LimaData", auth_kind="key",
+    token_label="API key", token_placeholder="your LimaData API key",
+    token_header="x-api-key", token_format="{secret}",
+    setup_url="https://app.limadata.com/",
+    setup_action_label="Get your LimaData API key",
+    setup_steps=("Sign in to LimaData and open the API key settings.",
+                 "Create or copy an API key and paste it here."),
+    setup_note=("Search, enrichment, contact lookup and research use one credit balance. "
+                "Connection verification sends an invalid empty search request, which costs no credits."),
+    auth_uri="", token_uri="", scopes={}, client_id_setting="", client_secret_setting="",
+    category="Enrichment",
+    summary="Enrich people and companies, find contact details, search a B2B database, and research the web.",
+    base_url="https://api.limadata.com", docs_url="https://api.limadata.com/docs/basic_v2",
+    # Live 2026-09-17: POST with {} is a free 400 for the assigned key and 401 for a bogus key.
+    probe_path="/api/v1/search/web", probe_method="POST", probe_json={},
+    probe_reject_statuses=(401, 403),
 )
 
 GETLEADSIO = OAuthProvider(
@@ -1476,6 +1531,27 @@ SCRUBBY = OAuthProvider(
     token_ok_field="detail",
     token_ok_value="No results found for this identifier.",
     probe_reject_statuses=(401, 403),
+)
+
+ZEROBOUNCE = OAuthProvider(
+    service="zerobounce", display_name="ZeroBounce", auth_kind="key",
+    token_label="API key", token_placeholder="your ZeroBounce API key",
+    token_location="query", token_param="api_key", token_format="{secret}",
+    setup_url="https://www.zerobounce.net/members/api",
+    setup_action_label="Get your ZeroBounce API key",
+    setup_steps=("Sign in to ZeroBounce and open the API section.",
+                 "Create or copy an API key and paste it here."),
+    setup_note=("Single email validation uses one credit for a non-unknown result. Unknown results "
+                "are not charged. Connection verification reads API usage for free."),
+    auth_uri="", token_uri="", scopes={}, client_id_setting="", client_secret_setting="",
+    category="Enrichment",
+    summary="Verify email deliverability and inspect validation usage and credit balance.",
+    base_url="https://api.zerobounce.net",
+    docs_url="https://www.zerobounce.net/docs/email-validation-api-quickstart",
+    # Live 2026-09-17: no/bogus key returned 403; the assigned key returned 200. Use usage rather
+    # than getcredits for connection verification because getcredits reports a bad key as the
+    # HTTP-200 sentinel {"Credits": -1}. Dates are a valid closed historical range.
+    probe_path="/v2/getapiusage?start_date=2026-01-01&end_date=2026-12-31",
 )
 
 TRYKITT = OAuthProvider(
@@ -3132,7 +3208,10 @@ REGISTRY: dict[str, OAuthProvider] = {
         GOOGLE_ADS, YOUTUBE,
         LINKEDIN, SLACK, X, TIKTOK, FACEBOOK, INSTAGRAM, META_ADS,
         # API-key providers
-        APOLLO, PDL, AKTA, HUNTER, SUMBLE, MOLTSETS, HARVESTAPI, DROPLEADS, QUICKENRICH, PROSPEO, WIZA, GETLEADSIO, SCRUBBY, TRYKITT, CONTACTOUT, MILLIONVERIFIER, BOUNCEBAN, CRUNCHBASE, MINIMAX, OPENROUTER, REPLICATE,
+        APOLLO, PDL, AKTA, HUNTER, SUMBLE, MOLTSETS, OPENMART, HARVESTAPI, DROPLEADS,
+        QUICKENRICH, PROSPEO, AIARK, WIZA, LIMADATA, GETLEADSIO, SCRUBBY, ZEROBOUNCE,
+        TRYKITT, CONTACTOUT, MILLIONVERIFIER, BOUNCEBAN, CRUNCHBASE, MINIMAX, OPENROUTER,
+        REPLICATE,
         REAPI, PIAPI,
         TIKHUB, BRIGHTDATA, SEMRUSH, JUSTONEAPI,
         SCRAPECREATORS,

@@ -696,6 +696,104 @@ def test_prospeo_catalog_surface_excludes_account_info_and_prices_mobile_at_the_
     assert all(catalog.platform_eligible(ep) for ep in rows)
 
 
+def test_aiark_catalog_covers_the_selected_documented_surface():
+    catalog = catalog_store.load()
+    endpoints = {eid: ep for eid, ep in catalog.by_id.items() if eid.startswith("aiark.")}
+    assert set(endpoints) == {
+        "aiark.people.search", "aiark.people.preview", "aiark.companies.search",
+        "aiark.people.email.find", "aiark.people.phone.find", "aiark.people.enrich",
+        "aiark.people.personality.analyze", "aiark.lists.upsert",
+        "aiark.people.export.start", "aiark.people.export.results",
+        "aiark.people.export.statistics", "aiark.people.export.submissions",
+        "aiark.people.export.webhook.resend", "aiark.people.email.find.bulk",
+        "aiark.people.email.find.bulk.results", "aiark.people.email.find.bulk.statistics",
+        "aiark.people.email.find.bulk.submissions",
+        "aiark.people.email.find.bulk.webhook.resend",
+    }
+    assert not any(ep["path"] in {
+        "/v1/payments/credits", "/v1/people/export/single",
+        "/v1/people/mobile-phone-finder",
+    } for ep in endpoints.values())
+    assert all(
+        ep.get("platform_blocked")
+        for eid, ep in endpoints.items()
+        if ".export." in eid or ".bulk" in eid or eid == "aiark.lists.upsert"
+    )
+    assert endpoints["aiark.people.search"]["input"]["body"]["size"]["enum"] == [1]
+    assert endpoints["aiark.people.search"]["platform_request"] == {"body.size": 1}
+    assert catalog.cost_view(
+        endpoints["aiark.people.email.find"]["cost"], "aiark"
+    )["usd"] == 0.005267
+    assert catalog.cost_view(
+        endpoints["aiark.people.phone.find"]["cost"], "aiark"
+    )["usd"] == 0.026335
+
+
+def test_limadata_catalog_covers_basic_v2_and_keeps_unsafe_calls_byok_only():
+    catalog = catalog_store.load()
+    rows = [ep for ep in catalog.endpoints if ep["provider"] == "limadata"]
+    assert {(ep["method"], ep["path"]) for ep in rows} == {
+        ("POST", "/api/v1/enrich/person"),
+        ("POST", "/api/v1/enrich/company"),
+        ("POST", "/api/v1/database/autocomplete"),
+        ("POST", "/api/v1/database/count_companies"),
+        ("POST", "/api/v1/database/count_people"),
+        ("POST", "/api/v1/database/search_companies"),
+        ("POST", "/api/v1/database/search_people"),
+        ("POST", "/api/v1/database/search_people_employees"),
+        ("POST", "/api/v1/find/ad_audience"),
+        ("POST", "/api/v1/find/audience_identifiers"),
+        ("POST", "/api/v1/find/email_personal"),
+        ("POST", "/api/v1/find/email_verify"),
+        ("POST", "/api/v1/find/email_work"),
+        ("POST", "/api/v1/find/email_work_linkedin"),
+        ("POST", "/api/v1/find/pages_company"),
+        ("POST", "/api/v1/find/phone"),
+        ("POST", "/api/v1/find/profiles_person"),
+        ("POST", "/api/v1/find/reverse_email_lookup"),
+        ("POST", "/api/v1/research/extract"),
+        ("POST", "/api/v1/research/search"),
+        ("POST", "/api/v1/search/web"),
+        ("POST", "/api/v2/batch/ad_audiences"),
+        ("POST", "/api/v2/batch/email_verify"),
+        ("GET", "/api/v2/batch/results"),
+    }
+    platform = {ep["id"] for ep in rows if catalog.platform_eligible(ep)}
+    assert len(rows) == 24 and len(platform) == 14
+    assert {
+        "limadata.people.enrich",
+        "limadata.people.count",
+        "limadata.companies.search",
+        "limadata.people.search",
+        "limadata.people.employees.search",
+        "limadata.people.identity.resolve",
+        "limadata.web.extract",
+        "limadata.people.audience.batch.start",
+        "limadata.people.email.verify.batch.start",
+        "limadata.people.batch.results",
+    }.isdisjoint(platform)
+
+
+def test_zerobounce_catalog_exposes_verified_single_record_tools_only():
+    catalog = catalog_store.load()
+    rows = [ep for ep in catalog.endpoints if ep["provider"] == "zerobounce"]
+    assert [ep["id"] for ep in rows] == [
+        "zerobounce.people.email.verify",
+        "zerobounce.people.email.find",
+        "zerobounce.companies.email_pattern",
+    ]
+    validation = catalog.by_id["zerobounce.people.email.verify"]
+    assert validation["method"] == "GET"
+    assert validation["path"] == "/v2/validate"
+    assert catalog.cost_view(validation["cost"], "zerobounce")["usd"] == 0.0138
+    finder = catalog.by_id["zerobounce.people.email.find"]
+    pattern = catalog.by_id["zerobounce.companies.email_pattern"]
+    assert finder["path"] == pattern["path"] == "/v2/guessformat"
+    assert catalog.cost_view(finder["cost"], "zerobounce")["usd"] == 0.276
+    assert catalog.cost_view(pattern["cost"], "zerobounce")["usd"] == 0.276
+    assert all(catalog.platform_eligible(ep) for ep in rows)
+
+
 def test_bounceban_catalog_has_one_platform_tool_and_complete_safe_byok_lifecycle():
     catalog = catalog_store.load()
     rows = [ep for ep in catalog.endpoints if ep["provider"] == "bounceban"]

@@ -23,7 +23,7 @@ from treg import oauth_providers as P
 def test_key_providers_are_offerable_without_deployment_credentials():
     """The user brings the key, so treg holds no app of its own — a key provider must be offerable,
     not shown as 'not configured' the way an unset OAuth provider is."""
-    for svc in ("apollo", "pdl", "akta", "hunter", "sumble", "moltsets", "harvestapi", "dropleads", "quickenrich", "prospeo", "wiza", "getleadsio", "scrubby", "contactout", "millionverifier", "bounceban", "trykitt", "crunchbase", "tikhub", "brightdata", "semrush",
+    for svc in ("apollo", "pdl", "akta", "hunter", "sumble", "moltsets", "openmart", "harvestapi", "dropleads", "quickenrich", "prospeo", "aiark", "wiza", "limadata", "getleadsio", "scrubby", "zerobounce", "contactout", "millionverifier", "bounceban", "trykitt", "crunchbase", "tikhub", "brightdata", "semrush",
                 "justoneapi", "dataforseo", "seranking", "moz", "majestic", "serpstat", "exa",
                 "cloro",
                 "lusha", "coresignal", "diffbot", "thecompaniesapi", "leadmagic", "fiber-ai",
@@ -50,11 +50,86 @@ def test_key_providers_appear_in_the_marketplace_listing():
     assert listing["financialdatasets"]["category"] == "Market data"
     assert listing["bounceban"]["category"] == "Enrichment"
     assert listing["bounceban"]["auth_kind"] == "key"
+    assert listing["zerobounce"]["category"] == "Enrichment"
+    assert listing["zerobounce"]["auth_kind"] == "key"
     assert listing["minimax"]["category"] == "AI generation"
     assert listing["openrouter"]["auth_kind"] == "token"
     assert listing["replicate"]["base_url"] == "https://api.replicate.com/v1"
     assert "Enrichment" in P.CATEGORY_ORDER
     assert "Market data" in P.CATEGORY_ORDER
+
+
+def test_openmart_registry_uses_the_free_balance_probe_and_bearer_key(monkeypatch):
+    monkeypatch.setenv("TREG_PLATFORM_KEY_OPENMART", "PLATFORM-OPENMART")
+    monkeypatch.setenv("TREG_PLATFORM_PROVIDERS", "openmart")
+    provider = P.get("openmart")
+    settings = Settings(_env_file=None)
+    assert provider.base_url == "https://api.openmart.ai"
+    assert provider.probe_path == "/api/v2/credit-balance"
+    assert provider.probe_method == "GET"
+    assert settings.platform_key_for("openmart") == "PLATFORM-OPENMART"
+    assert P.platform_bindings(provider) == [{
+        "platform_setting": "platform_key_openmart",
+        "injector": "env",
+        "location": "header",
+        "name": "Authorization",
+        "format": "Bearer {secret}",
+    }]
+
+
+async def test_openmart_connect_rejects_bad_key_and_accepts_valid_key(clients, monkeypatch):
+    def probe(request):
+        assert request.method == "GET"
+        assert request.url.path == "/api/v2/credit-balance"
+        if request.headers["authorization"] == "Bearer bad":
+            return httpx.Response(401, json={"detail": "Invalid API Key"})
+        return httpx.Response(200, json={"balance": 4800})
+
+    async with AsyncClient(transport=httpx.MockTransport(probe)) as upstream:
+        monkeypatch.setattr(app.state, "http", upstream)
+        bad = await clients.post(
+            "/connections/token", json={"provider": "openmart", "token": "bad"})
+        assert bad.status_code == 422
+        good = await clients.post(
+            "/connections/token", json={"provider": "openmart", "token": "own-key"})
+        assert good.status_code == 200, good.text
+
+
+def test_zerobounce_registry_uses_internal_usage_probe_and_query_key(monkeypatch):
+    monkeypatch.setenv("TREG_PLATFORM_KEY_ZEROBOUNCE", "PLATFORM-ZEROBOUNCE")
+    monkeypatch.setenv("TREG_PLATFORM_PROVIDERS", "zerobounce")
+    provider = P.get("zerobounce")
+    settings = Settings(_env_file=None)
+    assert provider.base_url == "https://api.zerobounce.net"
+    assert provider.probe_path.startswith("/v2/getapiusage?")
+    assert settings.platform_key_for("zerobounce") == "PLATFORM-ZEROBOUNCE"
+    assert P.platform_bindings(provider) == [{
+        "platform_setting": "platform_key_zerobounce",
+        "injector": "env",
+        "location": "query",
+        "name": "api_key",
+        "format": "{secret}",
+    }]
+
+
+async def test_zerobounce_connect_rejects_bad_key_and_accepts_valid_key(clients, monkeypatch):
+    def probe(request):
+        assert request.url.path == "/v2/getapiusage"
+        assert request.url.params["start_date"] == "2026-01-01"
+        assert request.url.params["end_date"] == "2026-12-31"
+        key = request.url.params["api_key"]
+        if key == "bad-key":
+            return httpx.Response(403, json={"error": "invalid api key"})
+        return httpx.Response(200, json={"total": 0, "status_valid": 0})
+
+    async with AsyncClient(transport=httpx.MockTransport(probe)) as upstream:
+        monkeypatch.setattr(app.state, "http", upstream)
+        bad = await clients.post(
+            "/connections/token", json={"provider": "zerobounce", "token": "bad-key"})
+        assert bad.status_code == 422
+        good = await clients.post(
+            "/connections/token", json={"provider": "zerobounce", "token": "own-key"})
+        assert good.status_code == 200, good.text
 
 
 def test_dropleads_registry_uses_the_standard_key_provider_paths(monkeypatch):
@@ -150,6 +225,94 @@ async def test_prospeo_connect_provisions_a_single_catalog_host(clients, monkeyp
     tools = {tool["name"]: tool for tool in (await clients.get("/tools")).json()}
     assert set(tools) == {"prospeo"}
     assert tools["prospeo"]["base_url"] == "https://api.prospeo.io"
+
+
+def test_aiark_registry_uses_credits_probe_and_x_token(monkeypatch):
+    monkeypatch.setenv("TREG_PLATFORM_KEY_AIARK", "PLATFORM-AIARK")
+    monkeypatch.setenv("TREG_PLATFORM_PROVIDERS", "aiark")
+    settings = Settings(_env_file=None)
+    provider = P.get("aiark")
+    assert provider.base_url == "https://api.ai-ark.com/api/developer-portal"
+    assert provider.probe_path == "/v1/payments/credits"
+    assert provider.probe_method == "GET"
+    assert settings.platform_key_for("aiark") == "PLATFORM-AIARK"
+    assert P.platform_bindings(provider) == [{
+        "platform_setting": "platform_key_aiark",
+        "injector": "env",
+        "location": "header",
+        "name": "X-TOKEN",
+        "format": "{secret}",
+    }]
+
+
+async def test_aiark_connect_rejects_a_bad_key_and_provisions_the_catalog_host(
+        clients, monkeypatch):
+    def probe(request):
+        assert request.url.path == "/api/developer-portal/v1/payments/credits"
+        key = request.headers["x-token"]
+        if key == "bad":
+            return httpx.Response(401, json={"error": "Unauthorized"})
+        return httpx.Response(200, json={"total": 15000})
+
+    async with AsyncClient(transport=httpx.MockTransport(probe)) as upstream:
+        monkeypatch.setattr(app.state, "http", upstream)
+        bad = await clients.post(
+            "/connections/token", json={"provider": "aiark", "token": "bad"}
+        )
+        assert bad.status_code == 422
+        good = await clients.post(
+            "/connections/token", json={"provider": "aiark", "token": "own-key"}
+        )
+        assert good.status_code == 200, good.text
+
+    tools = {tool["name"]: tool for tool in (await clients.get("/tools")).json()}
+    assert set(tools) == {"aiark"}
+    assert tools["aiark"]["base_url"] == "https://api.ai-ark.com/api/developer-portal"
+
+
+def test_limadata_registry_uses_the_free_validation_probe_and_x_api_key(monkeypatch):
+    monkeypatch.setenv("TREG_PLATFORM_KEY_LIMADATA", "PLATFORM-LIMADATA")
+    monkeypatch.setenv("TREG_PLATFORM_PROVIDERS", "limadata")
+    settings = Settings(_env_file=None)
+    provider = P.get("limadata")
+    assert provider.base_url == "https://api.limadata.com"
+    assert provider.probe_path == "/api/v1/search/web"
+    assert provider.probe_method == "POST"
+    assert provider.probe_json == {}
+    assert provider.probe_reject_statuses == (401, 403)
+    assert settings.platform_key_for("limadata") == "PLATFORM-LIMADATA"
+    assert P.platform_bindings(provider) == [{
+        "platform_setting": "platform_key_limadata",
+        "injector": "env",
+        "location": "header",
+        "name": "x-api-key",
+        "format": "{secret}",
+    }]
+
+
+async def test_limadata_connect_rejects_bad_key_and_accepts_validation_error(
+        clients, monkeypatch):
+    def probe(request):
+        assert request.url == "https://api.limadata.com/api/v1/search/web"
+        assert request.content == b"{}"
+        if request.headers["x-api-key"] == "bad":
+            return httpx.Response(401, json={"message": "Unauthorized"})
+        return httpx.Response(400, json={"message": "query is required"})
+
+    async with AsyncClient(transport=httpx.MockTransport(probe)) as upstream:
+        monkeypatch.setattr(app.state, "http", upstream)
+        bad = await clients.post(
+            "/connections/token", json={"provider": "limadata", "token": "bad"}
+        )
+        assert bad.status_code == 422
+        good = await clients.post(
+            "/connections/token", json={"provider": "limadata", "token": "own-key"}
+        )
+        assert good.status_code == 200, good.text
+
+    tools = {tool["name"]: tool for tool in (await clients.get("/tools")).json()}
+    assert set(tools) == {"limadata"}
+    assert tools["limadata"]["base_url"] == "https://api.limadata.com"
 
 
 def test_getleadsio_registry_uses_bearer_and_the_free_usage_probe(monkeypatch):

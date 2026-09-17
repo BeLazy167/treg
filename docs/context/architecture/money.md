@@ -44,6 +44,11 @@ related:
 
 # Money
 
+LimaData converts credits at the assigned account's sustainable automatic-top-up replacement rate:
+$100 for 6,667 credits, rounded up to $0.015 per credit. Only fixed, synchronous prices use the
+shared key. Variable charges, a route billed on HTTP 404, extraction modifiers, and asynchronous
+refunds remain BYOK-only, so no LimaData settlement branch is needed. See [LimaData](limadata.md).
+
 MoltSets is the first real `treg_shared_plan` catalog rate: $0.01 per ordinary successful record on
 the flat $27 subscription. Its verified 5,000-record weekly allowance is conservatively 20,000 per
 four-week month, so the disclosed 2,700-call monthly break-even is 13.5% utilization. Generic
@@ -481,7 +486,7 @@ Provider-specific calculation stays outside the faithful relay.
 | Evidence | Settlement behavior |
 |---|---|
 | Reported charge | DataForSEO `cost`, ScrapeCreators and Dropleads finder/verifier `credits_charged`, Akta and Dropleads person enrichment `credits_consumed`, Dropleads company `credits.creditsDeducted`, Lusha `billing.creditsCharged`, Exa `costDollars.total`, and Prospeo bulk `total_cost`; credit amounts use the catalog FX rate |
-| Crustdata, cloro | Read the charge from a response HEADER (`_CREDIT_HEADERS`: Crustdata `X-Credits-Used`, cloro `X-Credits-Charged`) using the same FX rate. cloro omits the header on its free routes and on a failed extraction, neither of which it bills, so an absent header settles at the estimate, not at zero |
+| Crustdata, cloro, AI Ark | Read the charge from a response header through `_CREDIT_HEADERS` using the same FX rate. Crustdata `X-Credits-Used` and cloro `X-Credits-Charged` are positive charges; AI Ark `X-Credit` is a negative debit and declares an explicit -1 multiplier. Invalid signs and non-finite values are ignored. cloro omits the header on its free routes and on a failed extraction, neither of which it bills, so an absent header settles at the estimate, not at zero |
 | cloro reserve | `cost.value` is the full-surface `test_request` price (ChatGPT 9, Google SERP 7); the plain call settles lower from the header (verified live 2026-09-07 at the then-Lite rate: reserve 7,200 µ$, settled 5,600, refunded 1,600; at the Hobby rate 3,600 → 2,800, re-verified 2026-09-14). The top-level `state` body field is a `cost.modifiers` rider (+2 credits) reserved through the same generic path Aviato uses, which is open to any credit-priced provider with a FX rate |
 | Apollo | Known empty organization results are free |
 | Tomba domain search | Non-empty pages cost ceil(`meta.pageSize` / 10) credits, even when partially filled; empty `data.emails` is free. Reservation uses requested `limit`, default 10. Missing/malformed page evidence falls back to the estimate. Upstream duplicate discounts are not detected |
@@ -491,6 +496,7 @@ Provider-specific calculation stays outside the faithful relay.
 | TikHub | Honor explicit no-charge prose; an embedded error that says it is charged still costs the estimate |
 | Bright Data | Count delivered JSON-array records or CSV/NDJSON lines; a JSON object containing a status/snapshot handoff has zero records |
 | Aviato | Fixed routes use the estimate; bulk enrichment counts successful records; catalog `settle: base` and `settle: modifiers` release documented-but-unbilled `reserve_only` riders |
+| ZeroBounce | The verified `per_success` adapter treats `status=unknown` as a zero-cost miss; other completed verdicts settle at the frozen one-credit estimate |
 
 Bright Data snapshot downloads are billable per result, including repeat downloads. Gzip or a
 buffer-truncated response falls back to the estimate because the record count is unknown.
@@ -505,7 +511,6 @@ settled 20 rows, moz's one `targets` entry settled 20 quota rows; 2026-09-02: lu
 catalogued FREE, answered 44 contacts for one domain and settled $5.49 from `billing.creditsCharged`
 with nothing reserved). Without any signal it is the
 20-row page, and a settle-at-estimate provider then charges that page.
-
 The page default has no meaning at all when the catalog prices per INPUT entity, and the estimator
 knows the difference since 2026-09-05: a `per_result`/`quota_rows` cost whose `unit` is `target`,
 `domain`, `keyword` or `call` (`resolve._ENTITY_UNITS`) is counted by `_entity_count` — repeated or
