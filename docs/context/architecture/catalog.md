@@ -1666,6 +1666,27 @@ keeps example `google`. Settlement is unchanged. Enforced by
 `test_llm_mentions_platform_omitted_is_google_only` and
 `test_catalog_get_dataforseo_llm_mentions_platform_omitted_is_google_only`.
 
+### DataForSEO LLM Mentions Live `chat_gpt` location is United States only
+
+DataForSEO's LLM Mentions live routes take optional `location_code` /
+`location_name` alongside `platform`. Official docs
+(https://docs.dataforseo.com/v3/ai_optimization/llm_mentions/top_mentioned_domains/live/)
+say `chat_gpt` data is available for United States (`location_code` 2840)
+and English only. A live POST with `platform=chat_gpt` and
+`location_code=2036` returns HTTP 200 + top-level `status_code` 20000 Ok
+with `items_count=0`, while `tasks[].status_code` is `40501 Invalid Field:
+'location_code'`. Feedback #359:
+`dataforseo.x.ai-optimization-llm-mentions-top-mentioned-domains-live` (and
+the rest of the Live family) listed location fields without that constraint,
+so agents sent country codes and treated envelope Ok as success.
+Catalog-only: each llm-mentions Live `location_code.note` /
+`location_name.note` now names 2840 / United States and 40501, and tells
+agents to check `tasks[].status_code`. `platform.note` cross-references
+location 2840 / language en. Examples that already use 2840 + `chat_gpt`
+are unchanged. Settlement is unchanged. Enforced by
+`test_llm_mentions_chat_gpt_location_is_us_only` and
+`test_catalog_get_dataforseo_llm_mentions_chat_gpt_location_is_us_only`.
+
 ### ScrapeCreators Instagram reels search `date_posted`
 
 ScrapeCreators' OpenAPI for `GET /v2/instagram/reels/search` restricts `date_posted` to
