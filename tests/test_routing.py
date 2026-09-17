@@ -158,6 +158,31 @@ def test_prospeo_routing_surface_uses_fixed_single_record_modes():
     assert phone_body["only_verified_mobile"] is True
 
 
+def test_aiark_routing_surface_uses_verified_bounded_adapters():
+    catalog = catalog_store.load()
+    expected = {
+        "aiark.people.search",
+        "aiark.companies.search",
+        "aiark.people.email.find",
+        "aiark.people.phone.find",
+        "aiark.people.enrich",
+    }
+    assert {eid for eid in expected if catalog.adapters[eid].verified} == expected
+    _, people = catalog.adapters["aiark.people.search"].to_upstream({
+        "company_domain": "example.com",
+    })
+    _, companies = catalog.adapters["aiark.companies.search"].to_upstream({
+        "domain": "example.com",
+    })
+    bounded = {
+        "account": {"domain": {"any": {"include": ["example.com"]}}},
+        "page": 0,
+        "size": 1,
+    }
+    assert people == bounded
+    assert companies == bounded
+
+
 def test_wiza_routing_surface_uses_bounded_single_record_searches():
     catalog = catalog_store.load()
     expected = {

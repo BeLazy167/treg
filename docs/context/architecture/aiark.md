@@ -21,10 +21,12 @@ sources:
   - src/treg/domain/capacity/collectors.py
   - src/treg/domain/capacity/policy.py
   - src/treg/web/logos/aiark.svg
-  - tests/test_aiark.py
+  - tests/test_catalog_validate.py
   - tests/test_capacity_collectors.py
   - tests/test_capacity_overflow_routes.py
+  - tests/test_enrich_arena.py
   - tests/test_key_providers.py
+  - tests/test_marketplace_call.py
   - tests/test_oauth_providers_m3.py
   - tests/test_routing.py
   - tests/conftest.py

@@ -301,6 +301,35 @@ async def test_prospeo_balance_collector_uses_remaining_credits(remaining, expec
             assert "plan STARTER" in row["note"]
 
 
+@pytest.mark.parametrize(
+    "remaining,expected",
+    [(15000, 15000), (0, 0), (15000.5, 15000.5), (-1, None), (True, None)],
+)
+async def test_aiark_balance_collector_uses_total(remaining, expected):
+    def serve(request):
+        assert request.url.path == "/api/developer-portal/v1/payments/credits"
+        assert request.headers["x-token"] == "test-key"
+        return httpx.Response(200, json={"total": remaining})
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(serve)) as upstream:
+        if expected is None:
+            with pytest.raises(ValueError):
+                await collectors._aiark(upstream, "test-key")
+        else:
+            row = await collectors._aiark(upstream, "test-key")
+            assert row["value"] == expected
+            assert row["unit"] == "credits"
+            assert "roll over" in row["note"]
+
+
+def test_aiark_policy_uses_subscription_and_documented_rate():
+    row = policy.default_policy("aiark", has_key=True)
+    assert row.capacity_type == "monthly_quota"
+    assert row.funding_mode == "quota_reset"
+    assert row.auto_funding_enabled is False
+    assert row.rate_limit == {"limit": 5, "window_s": 1, "source": "docs"}
+
+
 @pytest.mark.parametrize("remaining,expected", [(997, 997), (0, 0), (-1, None), (True, None)])
 async def test_getleadsio_balance_collector_uses_fair_use_credits(remaining, expected):
     def serve(request):

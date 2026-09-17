@@ -579,7 +579,6 @@ Regenerate via `scripts/build-map.py`.
 | `tests/js/arena-bench.test.cjs` | interface/enrich-arena.md |
 | `tests/js/arena-template.test.cjs` | interface/enrich-arena.md |
 | `tests/js/enrich-arena.test.cjs` | interface/enrich-arena.md |
-| `tests/test_aiark.py` | architecture/aiark.md |
 | `tests/test_aigc_pr_b.py` | architecture/catalog.md |
 | `tests/test_alembic_expand_safety.py` | architecture/data-model.md |
 | `tests/test_api_keys.py` | architecture/auth-secrets.md, architecture/data-model.md, interface/cli.md, interface/dashboard.md |
@@ -602,10 +601,10 @@ Regenerate via `scripts/build-map.py`.
 | `tests/test_capacity_protect.py` | ops/capacity.md |
 | `tests/test_capacity_smoothing.py` | ops/capacity.md |
 | `tests/test_catalog_api.py` | architecture/catalog.md, architecture/getleadsio.md |
-| `tests/test_catalog_validate.py` | architecture/bounceban.md, architecture/catalog.md, architecture/contactout.md, architecture/dropleads.md, architecture/getleadsio.md, architecture/prospeo.md |
+| `tests/test_catalog_validate.py` | architecture/aiark.md, architecture/bounceban.md, architecture/catalog.md, architecture/contactout.md, architecture/dropleads.md, architecture/getleadsio.md, architecture/prospeo.md |
 | `tests/test_cli_key_compatibility.py` | interface/cli.md |
 | `tests/test_dataforseo_constraints.py` | architecture/catalog.md |
-| `tests/test_enrich_arena.py` | architecture/bounceban.md, interface/enrich-arena.md |
+| `tests/test_enrich_arena.py` | architecture/aiark.md, architecture/bounceban.md, interface/enrich-arena.md |
 | `tests/test_error_capture.py` | architecture/proxy-model.md |
 | `tests/test_feedback.py` | architecture/feedback.md |
 | `tests/test_feedback_handling_schema.py` | architecture/feedback.md |
@@ -617,7 +616,7 @@ Regenerate via `scripts/build-map.py`.
 | `tests/test_instagram_oauth_architecture.py` | architecture/instagram-oauth.md |
 | `tests/test_key_providers.py` | architecture/aiark.md, architecture/auth-secrets.md, architecture/bounceban.md, architecture/contactout.md, architecture/dropleads.md, architecture/getleadsio.md, architecture/moltsets.md, architecture/prospeo.md, architecture/scrubby.md, architecture/wiza.md |
 | `tests/test_kv.py` | architecture/feedback.md |
-| `tests/test_marketplace_call.py` | architecture/bounceban.md, architecture/contactout.md, architecture/dropleads.md, architecture/getleadsio.md, architecture/mcp-oauth.md, architecture/prospeo.md, architecture/proxy-model.md |
+| `tests/test_marketplace_call.py` | architecture/aiark.md, architecture/bounceban.md, architecture/contactout.md, architecture/dropleads.md, architecture/getleadsio.md, architecture/mcp-oauth.md, architecture/prospeo.md, architecture/proxy-model.md |
 | `tests/test_mcp.py` | architecture/mcp-oauth.md |
 | `tests/test_mcp_directory.py` | architecture/mcp-oauth.md |
 | `tests/test_mcp_oauth.py` | architecture/mcp-oauth.md |
@@ -648,7 +647,7 @@ Regenerate via `scripts/build-map.py`.
 | Fragment | Sources |
 |---|---|
 | `architecture/ads-conversions.md` | `adsconv.py`, `signup.py`, `adtrack.js`, `gtag.js` |
-| `architecture/aiark.md` | `AIARK-PRD.md`, `aiark.yaml`, `aiark.companies.search.json`, `aiark.lists.upsert.json`, `aiark.people.email.find.bulk.submissions.json`, `aiark.people.email.find.json`, `aiark.people.enrich.json`, `aiark.people.export.submissions.json`, `aiark.people.personality.analyze.json`, `aiark.people.phone.find.json`, `aiark.people.preview.json`, `aiark.people.search.json`, `adapters.yaml`, `fx.yaml`, `config.py`, `oauth_providers.py`, `collectors.py`, `policy.py`, `aiark.svg`, `test_aiark.py`, `test_capacity_collectors.py`, `test_capacity_overflow_routes.py`, `test_key_providers.py`, `test_oauth_providers_m3.py`, `test_routing.py`, `conftest.py` |
+| `architecture/aiark.md` | `AIARK-PRD.md`, `aiark.yaml`, `aiark.companies.search.json`, `aiark.lists.upsert.json`, `aiark.people.email.find.bulk.submissions.json`, `aiark.people.email.find.json`, `aiark.people.enrich.json`, `aiark.people.export.submissions.json`, `aiark.people.personality.analyze.json`, `aiark.people.phone.find.json`, `aiark.people.preview.json`, `aiark.people.search.json`, `adapters.yaml`, `fx.yaml`, `config.py`, `oauth_providers.py`, `collectors.py`, `policy.py`, `aiark.svg`, `test_catalog_validate.py`, `test_capacity_collectors.py`, `test_capacity_overflow_routes.py`, `test_enrich_arena.py`, `test_key_providers.py`, `test_marketplace_call.py`, `test_oauth_providers_m3.py`, `test_routing.py`, `conftest.py` |
 | `architecture/archive.md` | `archive.py`, `hunter.yaml`, `results.py`, `0031_archive_result_admission.py`, `test_cache_result_admission.py`, `archive_bodies.py`, `config.py`, `object_store.py`, `0032_archive_body_storage.py`, `test_archive_r2.py`, `fake_object_store.py`, `smoke_archive_r2.py`, `0002_archive_tables.py`, `0003_callrecord_cached.py`, `0004_archivekey_request_shape.py`, `0011_callrecord_archive_link.py`, `service.py`, `settle.py`, `0039_archive_own_key_and_repeat_pricing.py`, `backfill_call_archive_links.py`, `api.py`, `bootstrap.py`, `admin.py`, `asynctasks.py` |
 | `architecture/auth-secrets.md` | `injectors.py`, `ssrf.py`, `crypto.py`, `oauth.py`, `__init__.py`, `authorization.py`, `oauth_flow.py`, `refresh.py`, `oauth_exchange.py`, `oauth_refresh.py`, `oauth_providers.py`, `health.py`, `connect.py`, `connections.py`, `resources.py`, `__init__.py`, `bindings.py`, `bundles.py`, `api_keys.py`, `access.py`, `api_keys.py`, `test_api_keys.py`, `test_oauth_refresh.py`, `test_financialdatasets.py`, `test_key_providers.py`, `config.py` |
 | `architecture/bounceban.md` | `bounceban.yaml`, `bounceban.people.email.verify.json`, `bounceban.people.email.verify.waterfall.json`, `bounceban.people.email.verify.status.json`, `bounceban.people.email.verify.bulk.json`, `bounceban.people.email.verify.bulk.status.json`, `bounceban.people.email.verify.bulk.emails.json`, `bounceban.people.email.verify.bulk.dump.json`, `bounceban.people.email.verify.bulk.export.json`, `bounceban.account.usage.json`, `adapters.yaml`, `fx.yaml`, `config.py`, `oauth_providers.py`, `collectors.py`, `policy.py`, `bounceban.svg`, `test_key_providers.py`, `test_oauth_providers_m3.py`, `test_capacity_collectors.py`, `test_capacity_overflow_routes.py`, `test_catalog_validate.py`, `test_marketplace_call.py`, `test_routing.py`, `test_enrich_arena.py` |

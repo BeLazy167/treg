@@ -3151,6 +3151,81 @@ async def test_prospeo_platform_email_settles_one_credit(
     assert before - await _balance(clients) == 24_500
 
 
+async def test_aiark_platform_settles_hit_releases_miss_and_byok_wins(
+    clients, monkeypatch,
+):
+    monkeypatch.setenv("TREG_PLATFORM_KEY_AIARK", "PLATFORM-AIARK")
+    monkeypatch.setenv("TREG_PLATFORM_PROVIDERS", "aiark")
+    get_settings.cache_clear()
+    hit = {
+        "status": 200,
+        "error": None,
+        "data": {
+            "profile": {"first_name": "Jane", "last_name": "Example"},
+            "email": {"output": [{"address": "jane@example.com", "status": "VALID"}]},
+            "link": {"linkedin": "https://www.linkedin.com/in/example"},
+        },
+    }
+    monkeypatch.setattr(
+        call_service, "relay", _fake_relay(200, json.dumps(hit).encode())
+    )
+    before = await _balance(clients)
+    response = await clients.post("/call/aiark.people.email.find", json={
+        "url": "https://www.linkedin.com/in/example",
+    })
+    assert response.status_code == 200, response.text
+    assert response.headers["x-treg-cost-micro"] == "5267"
+    assert await _balance(clients) == before - 5267
+
+    miss = {"status": 200, "error": None, "data": None}
+    monkeypatch.setattr(
+        call_service, "relay", _fake_relay(200, json.dumps(miss).encode())
+    )
+    before_miss = await _balance(clients)
+    response = await clients.post("/call/aiark.people.email.find", json={
+        "url": "https://www.linkedin.com/in/missing",
+    })
+    assert response.status_code == 200
+    assert response.headers["x-treg-cost-micro"] == "0"
+    assert await _balance(clients) == before_miss
+
+    await clients.post("/secrets", json={"name": "aiark", "value": "OWN-AIARK"})
+    before_byok = await _balance(clients)
+    response = await clients.post("/call/aiark.people.email.find", json={
+        "url": "https://www.linkedin.com/in/example",
+    })
+    assert response.status_code == 200
+    assert "x-treg-cost-micro" not in response.headers
+    assert await _balance(clients) == before_byok
+    get_settings.cache_clear()
+
+
+async def test_aiark_platform_releases_rejected_request_and_enforces_search_bound(
+    clients, monkeypatch,
+):
+    monkeypatch.setenv("TREG_PLATFORM_KEY_AIARK", "PLATFORM-AIARK")
+    monkeypatch.setenv("TREG_PLATFORM_PROVIDERS", "aiark")
+    get_settings.cache_clear()
+    rejected = {"status": 400, "error": "invalid input"}
+    monkeypatch.setattr(
+        call_service, "relay", _fake_relay(400, json.dumps(rejected).encode())
+    )
+    before = await _balance(clients)
+    response = await clients.post("/call/aiark.people.email.find", json={})
+    assert response.status_code == 400
+    assert await _balance(clients) == before
+
+    response = await clients.post("/call/aiark.people.search", json={
+        "account": {"domain": {"any": {"include": ["example.com"]}}},
+        "page": 0,
+        "size": 2,
+    })
+    assert response.status_code == 400
+    assert response.json()["detail"]["error"] == "catalog_parameter_invalid"
+    assert await _balance(clients) == before
+    get_settings.cache_clear()
+
+
 @pytest.mark.parametrize("doc", [
     {"id": "task-1", "status": "success", "result": "deliverable", "score": 99,
      "credits_consumed": 1, "credits_remaining": 9996},
