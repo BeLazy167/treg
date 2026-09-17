@@ -47,10 +47,17 @@ def test_connection_and_binding_contract():
     p = P.get("moltsets")
     assert p.base_url == "https://api.moltsets.com/api/v1/tools"
     assert p.probe_path == "/get_account" and p.probe_method == "POST" and p.probe_json == {}
-    binding = P.platform_bindings(p)[0]
+    assert p.required_headers == (("User-Agent", "treg/1.0 (+https://treg.to)"),)
+    bindings = P.platform_bindings(p)
+    binding = bindings[0]
     assert binding["location"] == "header" and binding["name"] == "Authorization"
     assert binding["format"] == "Bearer {secret}"
     assert binding["platform_setting"] == "platform_key_moltsets"
+    assert bindings[1] == {
+        "platform_setting": "platform_key_moltsets", "injector": "env",
+        "location": "header", "name": "User-Agent",
+        "format": "treg/1.0 (+https://treg.to)",
+    }
 
 
 async def test_connection_probe_rejects_bad_key_and_saves_good_key(clients, monkeypatch):
@@ -59,6 +66,7 @@ async def test_connection_probe_rejects_bad_key_and_saves_good_key(clients, monk
     def probe(request):
         assert request.method == "POST" and request.url.path.endswith("/get_account")
         assert json.loads(request.content) == {}
+        assert request.headers["user-agent"] == "treg/1.0 (+https://treg.to)"
         if request.headers["authorization"] == "Bearer bogus":
             return httpx.Response(401, json={"error": {"code": "unauthorized"}})
         return httpx.Response(200, json={"results": {"status": "active"}, "status": "ok"})
@@ -123,10 +131,13 @@ async def test_byok_can_call_blocked_batch_and_phone_tools_without_treg_meter(cl
         "people.phone.find": {"linkedin_url": "https://linkedin.com/in/a"},
     }
     for endpoint, body in bodies.items():
-        response = await clients.post("/call/moltsets." + endpoint, json=body)
+        response = await clients.post(
+            "/call/moltsets." + endpoint, json=body, headers={"User-Agent": ""}
+        )
         assert response.status_code == 200, response.text
         echoed = response.json()
         assert echoed["auth"] == "Bearer OWN-MOLTSETS"
+        assert echoed["headers"]["user-agent"] == "treg/1.0 (+https://treg.to)"
         assert json.loads(echoed["body"]) == body
     assert await _balance(clients) == before
     assert not [e for e in await _entries(clients) if e["kind"] in ("reserve", "settle", "release")]
@@ -163,6 +174,7 @@ async def test_capacity_probe_and_policy(five_hour, weekly, token_balance, expec
     def probe(request):
         assert request.method == "POST" and json.loads(request.content) == {}
         assert request.headers["authorization"] == "Bearer test"
+        assert request.headers["user-agent"] == "treg/1.0 (+https://treg.to)"
         return httpx.Response(200, json={"results": account, "status": "ok"})
     async with httpx.AsyncClient(transport=httpx.MockTransport(probe)) as client:
         row = await collectors._moltsets(client, "test")

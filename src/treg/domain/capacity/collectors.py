@@ -93,7 +93,8 @@ async def _sumble(c, key):
 
 async def _moltsets(c, key):
     r = await c.post("https://api.moltsets.com/api/v1/tools/get_account",
-                     headers={"Authorization": f"Bearer {key}"}, json={})
+                     headers={"Authorization": f"Bearer {key}",
+                              "User-Agent": "treg/1.0 (+https://treg.to)"}, json={})
     r.raise_for_status()
     doc = r.json()
     account = doc.get("results") if isinstance(doc, dict) else None

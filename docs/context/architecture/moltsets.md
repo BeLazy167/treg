@@ -47,9 +47,13 @@ related:
 MoltSets is a pasted Bearer-key enrichment provider at
 `https://api.moltsets.com/api/v1/tools`. `oauth_providers.MOLTSETS` verifies a key with free
 `POST /get_account`; the account, billing, and usage operations stay internal probes rather than
-public tools. A team's own key wins and is never metered by treg. `platform_key_moltsets` supplies
-the optional shared credential, and the existing provider allow-list remains the production switch.
-This integration does not change that switch.
+public tools. MoltSets requires a `User-Agent` on every API request as of 2026-09-16, so
+`required_headers` pins `treg/1.0 (+https://treg.to)` for connection probes and every BYOK or
+shared-key relay. The capacity collector sends the same value explicitly. This does not rely on
+httpx's default client header, and the generic constant-binding path overwrites an empty or stale
+caller value without adding provider logic to the relay. A team's own key wins and is never metered
+by treg. `platform_key_moltsets` supplies the optional shared credential, and the existing provider
+allow-list remains the production switch. This integration does not change that switch.
 
 The catalog exposes all 17 documented data operations: people and company search, name/company
 lookups, four profile-to-email variants, phone lookup, two reverse enrichments, three audience/hash
