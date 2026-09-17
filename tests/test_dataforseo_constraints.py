@@ -30,6 +30,11 @@ DataForSEO has provider-specific rules that generic catalog validation can't cat
    docs still say omitting it returns both platforms, and some routes also
    list default `google`. Live paired calls show omit equals google only.
 
+8. LLM Mentions Live `location_code` / `location_name` with `platform=chat_gpt`
+   are United States only (`2840`). Any other code (e.g. 2036) returns task
+   status 40501 Invalid Field: 'location_code' while the HTTP envelope may
+   still be 200 / top-level status_code 20000 Ok with items_count=0.
+
 These tests ensure catalog test_requests and documentation stay aligned with live behavior.
 """
 
@@ -699,3 +704,96 @@ def test_llm_mentions_platform_omitted_is_google_only():
             assert example == "google", (
                 f"{ep['id']}: keep platform example google, got {example!r}"
             )
+
+
+def test_llm_mentions_chat_gpt_location_is_us_only():
+    """Feedback #359: llm-mentions Live chat_gpt location is United States only.
+
+    Official DataForSEO docs say chat_gpt data is available for United States
+    (location_code 2840) and English only. A live POST with platform=chat_gpt
+    and location_code=2036 returns HTTP 200 + top-level status_code 20000 Ok
+    with items_count=0, while tasks[].status_code is 40501 Invalid Field:
+    'location_code'. Catalog-only: location_code / location_name notes name
+    2840 / United States and 40501, and tell agents to check tasks[].
+    Settlement is unchanged.
+
+    Ref: https://docs.dataforseo.com/v3/ai_optimization/llm_mentions/top_mentioned_domains/live/
+    """
+    endpoints = load_dataforseo_endpoints()
+    mentions = [ep for ep in endpoints if "llm-mentions" in (ep.get("id") or "")]
+    assert mentions, "expected llm-mentions endpoints in the DataForSEO catalog"
+
+    with_location = []
+    for ep in mentions:
+        body = (ep.get("input") or {}).get("body") or {}
+        if "platform" in body and ("location_code" in body or "location_name" in body):
+            with_location.append(ep)
+
+    assert len(with_location) >= 15, (
+        f"expected ~15 llm-mentions Live routes with platform + location, got "
+        f"{len(with_location)}: {[ep['id'] for ep in with_location]}"
+    )
+
+    for ep in with_location:
+        body = (ep.get("input") or {}).get("body") or {}
+        loc = body.get("location_code") or {}
+        name = body.get("location_name") or {}
+        platform = body.get("platform") or {}
+        assert loc, f"{ep['id']}: expected location_code alongside platform"
+        assert name, f"{ep['id']}: expected location_name alongside platform"
+
+        loc_note = (loc.get("note") or "").lower()
+        assert "chat_gpt" in loc_note, (
+            f"{ep['id']}: location_code.note must name platform=chat_gpt"
+        )
+        assert "2840" in loc_note, (
+            f"{ep['id']}: location_code.note must name 2840 as the only chat_gpt code"
+        )
+        assert "united states" in loc_note, (
+            f"{ep['id']}: location_code.note must name United States"
+        )
+        assert "40501" in loc_note, (
+            f"{ep['id']}: location_code.note must name upstream 40501"
+        )
+        assert "2036" in loc_note or "any other" in loc_note, (
+            f"{ep['id']}: location_code.note should warn that non-US codes fail"
+        )
+        assert "tasks[]" in loc_note or "tasks[" in loc_note, (
+            f"{ep['id']}: location_code.note must tell agents to check tasks[].status_code"
+        )
+        assert loc.get("example") == 2840, (
+            f"{ep['id']}: location_code.example must stay 2840, got {loc.get('example')!r}"
+        )
+
+        name_note = (name.get("note") or "").lower()
+        assert "chat_gpt" in name_note, (
+            f"{ep['id']}: location_name.note must name platform=chat_gpt"
+        )
+        assert "united states" in name_note, (
+            f"{ep['id']}: location_name.note must name United States as the only chat_gpt location"
+        )
+        assert "40501" in name_note, (
+            f"{ep['id']}: location_name.note must name upstream 40501"
+        )
+        assert "tasks[]" in name_note or "tasks[" in name_note, (
+            f"{ep['id']}: location_name.note must tell agents to check tasks[].status_code"
+        )
+
+        plat_note = (platform.get("note") or "").lower()
+        assert "2840" in plat_note, (
+            f"{ep['id']}: platform.note should cross-reference location 2840 for chat_gpt"
+        )
+        assert "40501" in plat_note, (
+            f"{ep['id']}: platform.note should cross-reference 40501 for non-US chat_gpt"
+        )
+
+        test_req = ep.get("test_request") or {}
+        tasks = test_req.get("body") or []
+        for i, task in enumerate(tasks):
+            if not isinstance(task, dict):
+                continue
+            if task.get("platform") == "chat_gpt":
+                assert task.get("location_code") == 2840, (
+                    f"{ep['id']}: test_request.body[{i}] with platform=chat_gpt "
+                    "must keep location_code 2840"
+                )

@@ -1699,6 +1699,50 @@ def test_dataforseo_llm_mentions_platform_omitted_is_google_only():
         assert field["example"] == "google"
 
 
+LLM_MENTIONS_TOP_DOMAINS_ID = (
+    "dataforseo.x.ai-optimization-llm-mentions-top-mentioned-domains-live"
+)
+
+
+def test_dataforseo_llm_mentions_chat_gpt_location_is_us_only():
+    """Feedback #359: historical + top-domains chat_gpt location is US-only.
+
+    catalog_get used to list location_code without the chat_gpt 2840 / 40501
+    caveat, so agents sent country codes (e.g. 2036) and read envelope Ok as
+    success. Settlement is unchanged.
+    """
+    cat = cs.load()
+    for endpoint_id in (LLM_MENTIONS_HISTORICAL_ID, LLM_MENTIONS_TOP_DOMAINS_ID):
+        ep = cat.by_id[endpoint_id]
+        loc = ep["input"]["body"]["location_code"]
+        name = ep["input"]["body"]["location_name"]
+        loc_note = loc["note"].lower()
+        assert "chat_gpt" in loc_note
+        assert "2840" in loc_note
+        assert "united states" in loc_note
+        assert "40501" in loc_note
+        assert "tasks[]" in loc_note or "tasks[" in loc_note
+        assert loc["example"] == 2840
+        name_note = name["note"].lower()
+        assert "chat_gpt" in name_note
+        assert "united states" in name_note
+        assert "40501" in name_note
+
+
+async def test_catalog_get_dataforseo_llm_mentions_chat_gpt_location_is_us_only(
+        clients: AsyncClient):
+    """Feedback #359: catalog_get must name chat_gpt US-only location / 40501."""
+    for endpoint_id in (LLM_MENTIONS_HISTORICAL_ID, LLM_MENTIONS_TOP_DOMAINS_ID):
+        body = (await clients.get(f"/catalog/endpoints/{endpoint_id}")).json()
+        loc = body["endpoint"]["input"]["body"]["location_code"]
+        note = loc["note"].lower()
+        assert "chat_gpt" in note
+        assert "2840" in note
+        assert "40501" in note
+        assert "tasks[]" in note or "tasks[" in note
+        assert loc["example"] == 2840
+
+
 async def test_catalog_get_dataforseo_llm_mentions_platform_omitted_is_google_only(
         clients: AsyncClient):
     """Feedback #489: catalog_get must not say omit returns both platforms."""
