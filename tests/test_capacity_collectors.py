@@ -14,6 +14,30 @@ import httpx
 import pytest
 
 
+async def test_openmart_balance_collector_and_policy():
+    def probe(request):
+        assert request.method == "GET"
+        assert request.url.path == "/api/v2/credit-balance"
+        assert request.headers["authorization"] == "Bearer test"
+        return httpx.Response(200, json={
+            "balance": 4800,
+            "period_start": "2026-09-01T00:00:00Z",
+            "period_end": "2026-10-01T00:00:00Z",
+        })
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(probe)) as client:
+        row = await collectors._openmart(client, "test")
+    assert row == {
+        "value": 4800,
+        "unit": "credits",
+        "note": "Monthly subscription balance; current period ends 2026-10-01T00:00:00Z.",
+    }
+    capacity = policy.default_policy("openmart", has_key=True)
+    assert capacity.capacity_type == "credits"
+    assert capacity.funding_mode == "subscription"
+    assert capacity.rate_limit == {"limit": 15, "window_s": 1, "source": "docs"}
+
+
 @pytest.mark.parametrize("value,expected", [(0, 0), (71, 71), ("5000", 5000)])
 async def test_zerobounce_balance_accepts_nonnegative_integer_values(monkeypatch, value, expected):
     monkeypatch.setenv("TREG_PLATFORM_KEY_ZEROBOUNCE", "private-test-key")

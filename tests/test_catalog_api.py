@@ -19,6 +19,40 @@ from treg.domain.catalog import store as cs
 from treg import oauth_providers as P
 
 
+def test_openmart_surface_separates_platform_reads_from_byok_lifecycles():
+    cat = cs.load()
+    rows = cat.for_provider("openmart")
+    assert len(rows) == 16
+    assert len({(e["method"], e["path"]) for e in rows}) == 16
+    assert {e["id"] for e in rows if cat.platform_eligible(e)} == {
+        "openmart.businesses.search",
+        "openmart.businesses.lookup.openmart",
+        "openmart.businesses.lookup.google-place",
+        "openmart.companies.enrich",
+        "openmart.companies.search",
+    }
+    assert all(e.get("verified") and e.get("example_file") for e in rows)
+    assert cat.credit_rates["openmart"] == .0298
+    assert "openmart.account.balance" not in cat.by_id
+
+
+def test_openmart_pricing_and_lifecycle_boundaries_stay_visible():
+    cat = cs.load()
+    assert cat.by_id["openmart.people.find.batch"]["cost"]["value"] == 11
+    assert cat.by_id["openmart.technologies.find.batch"]["cost"]["value"] == 2
+    company_email = cat.by_id["openmart.companies.email.find.batch"]
+    assert company_email["cost"]["value"] == .3
+    assert company_email["cost"]["confidence"] == "documented"
+    fast = cat.by_id["openmart.businesses.search.ids"]
+    assert fast["cost"]["value"] is None and fast["cost"]["confidence"] == "unknown"
+    assert all(cat.by_id[key]["scope"] == "own_account" for key in (
+        "openmart.tasks.batch.status", "openmart.tasks.batch.ids", "openmart.tasks.get",
+        "openmart.deny-rules.create", "openmart.deny-rules.check",
+        "openmart.deny-rules.delete",
+    ))
+    assert cat.by_id["openmart.deny-rules.delete"]["cache"] == "forbidden"
+
+
 # ---- platform listing --------------------------------------------------------------------
 async def test_platforms_lists_the_curated_shelves_busiest_first(clients: AsyncClient):
     r = await clients.get("/catalog/platforms")

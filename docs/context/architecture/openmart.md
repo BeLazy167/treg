@@ -27,16 +27,18 @@ sources:
   - src/treg/application/call/resolve.py
   - src/treg/application/call/settle.py
   - src/treg/domain/catalog/store.py
-  - scripts/catalog_validate.py
   - src/treg/domain/capacity/collectors.py
   - src/treg/domain/capacity/policy.py
   - src/treg/web/logos/openmart.svg
-  - tests/test_openmart.py
   - tests/test_capacity_overflow_routes.py
+  - tests/test_capacity_collectors.py
+  - tests/test_catalog_api.py
   - tests/conftest.py
   - tests/test_key_providers.py
+  - tests/test_marketplace_call.py
   - tests/test_mcp.py
   - tests/test_oauth_providers_m3.py
+  - tests/test_routing.py
 related:
   - architecture/catalog.md
   - architecture/auth-secrets.md
@@ -57,10 +59,15 @@ balance route is deliberately not a tool: it is internal connection/capacity inf
 
 Five synchronous data operations support both a team's own key and treg's metered platform key:
 business search, both full-record ID lookups, company enrichment, and brand search. The team's key
-still wins and is never metered. Their catalog `cost.result_count` declarations count only the
-documented returned-record containers: a root array or `data[]` for search/enrichment, `data[]` for
-brand search, and values in the ID-keyed lookup maps. Holds use the bounded request limit or raw
-input-array cardinality; a present empty container settles at zero.
+still wins and is never metered. Openmart's provider-specific settlement path counts only the
+verified returned-record containers: a root array or `data[]` for search/enrichment, `data[]` for
+brand search, and values in the ID-keyed lookup maps. It charges
+`ceil(0.3 × returned_records)` credits per operation; a present empty container settles at zero.
+
+Shared-key requests require an explicit count from 1 to 25 before reserve or relay: `limit` for
+business search and company enrichment, `pagination.limit` for brand search, and raw array
+cardinality for both ID lookups. The reserve applies the same rounded formula, so 25 requested
+records hold eight credits. Own-key calls bypass the guard and retain the upstream limits.
 
 The other 11 operations remain BYOK-only. Fast ID search has no proven fractional price. The four
 batch submissions and three task reads are one delayed, account-owned lifecycle whose charges
@@ -69,12 +76,12 @@ private account state and forbid caching. The shared balance route is absent fro
 caller can inspect operational inventory.
 
 The catalog records the active subscription conversion of $149 for 5,000 credits, or $0.0298 per
-credit, before configured platform margin. Search, full-record lookup, and company enrichment cost
-0.3 credit per returned record ($0.00894 raw); find-people data costs 3 credits for email and 8 for
-phone; a technology result costs 2. It does not claim auto-top-up. The integer balance is capacity
-evidence only: a one-result search and a three-result search each displayed a one-credit decrease,
-and neither response reported usage. That disproves one-credit-per-record and proves balance deltas
-cannot settle a call whose fractional debit is hidden.
+credit, before configured platform margin. Openmart support confirmed that search, full-record
+lookup, and company enrichment are priced at three credits per ten returned records, rounded up per
+operation. Ten live one-result searches each returned one record and deducted one credit, matching
+that rule. A 25-record platform call therefore reserves at most eight credits ($0.2384 raw). People
+data costs 3 credits for email and 8 for phone; a technology result costs 2. The catalog does not
+claim auto-top-up.
 
 ## Routing and Arena
 

@@ -26,7 +26,7 @@ from ...infra.db import session_maker
 from ...models import Org
 from ...timeutil import utcnow_naive as _utcnow_naive
 from .idempotency import _release_idempotent_claim
-from .resolve import MarketplaceCall, _usd_to_micro
+from .resolve import MarketplaceCall, _openmart_credits, _usd_to_micro
 from .types import GatewayFailed, UpstreamResponse
 
 
@@ -108,6 +108,29 @@ def _brightdata_record_count(body: bytes) -> int | None:
         # records bill at the snapshot download), an early download's {"status": "running"}, or any
         # other envelope. Pay-per-success means an answer with no records costs nothing.
         return 0
+    return None
+
+
+def _openmart_record_count(endpoint_id: str, doc: object) -> int | None:
+    """Count only the response containers verified for Openmart's synchronous data reads."""
+    if endpoint_id in (
+        "openmart.businesses.search",
+        "openmart.companies.enrich",
+    ):
+        if isinstance(doc, list):
+            return sum(item is not None for item in doc)
+        if isinstance(doc, dict) and isinstance(doc.get("data"), list):
+            return sum(item is not None for item in doc["data"])
+        return None
+    if endpoint_id == "openmart.companies.search":
+        if isinstance(doc, dict) and isinstance(doc.get("data"), list):
+            return sum(item is not None for item in doc["data"])
+        return None
+    if endpoint_id in (
+        "openmart.businesses.lookup.openmart",
+        "openmart.businesses.lookup.google-place",
+    ):
+        return sum(item is not None for item in doc.values()) if isinstance(doc, dict) else None
     return None
 
 
@@ -300,22 +323,9 @@ def _observed_cost_micro(mk: MarketplaceCall, body: bytes, headers=None) -> int 
         doc = json.loads(body)
     except (ValueError, UnicodeDecodeError):
         return 0 if provider == "contactout" else None
-    result_count = (ep.get("cost") or {}).get("result_count") if ep else None
-    if result_count and mk.cost_type == "per_result" and mk.unit_micro > 0:
-        # Catalog-declared response counting is the provider-neutral path for per-result APIs that
-        # do not report a charge. Each alternative states both a JSON path (empty means the root)
-        # and the expected container, so a root object cannot be mistaken for an array envelope.
-        # The first matching shape wins; an empty matching container is observed zero, while an
-        # undocumented shape remains unobserved and safely falls back to the frozen reservation.
-        for alternative in result_count.get("response") or []:
-            path = str(alternative.get("path") or "")
-            value = doc if not path else _dig(doc, path)
-            container = alternative.get("type")
-            if container == "array" and isinstance(value, list):
-                return sum(item is not None for item in value) * mk.unit_micro
-            if container == "object" and isinstance(value, dict):
-                return sum(item is not None for item in value.values()) * mk.unit_micro
-        return None
+    if provider == "openmart" and mk.cost_type == "per_result" and mk.unit_micro > 0:
+        records = _openmart_record_count(mk.endpoint_id, doc)
+        return None if records is None else _openmart_credits(records) * mk.unit_micro
     if provider == "aviato" and mk.endpoint_id == "aviato.people.enrich.bulk":
         if isinstance(doc, list) and mk.unit_micro > 0:
             return sum(item is not None for item in doc) * mk.unit_micro

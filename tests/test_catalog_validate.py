@@ -511,24 +511,6 @@ def test_reported_charge_requires_supported_units_and_path(rule):
     assert bool(errors) is (rule != {'path': 'billing.charge', 'unit': 'usd'})
 
 
-@pytest.mark.parametrize(("rule", "valid"), [
-    ({"response": [{"path": "data", "type": "array"}, {"path": "", "type": "array"}],
-      "reserve_default": 100, "reserve_max": 500}, True),
-    ({"response": [{"path": "", "type": "object"}], "reserve_max": 100}, True),
-    ({"response": []}, False),
-    ({"response": [{"path": "data[*]", "type": "array"}]}, False),
-    ({"response": [{"path": "data", "type": "scalar"}]}, False),
-    ({"response": [{"path": "data", "type": "array"}], "reserve_default": 20,
-      "reserve_max": 10}, False),
-])
-def test_result_count_requires_typed_alternatives_and_bounded_reserve(rule, valid):
-    cost = dict(catalog_store.load().by_id["openmart.businesses.search"]["cost"])
-    cost["result_count"] = rule
-    errors = []
-    validator.check_cost(cost, "test", errors, [])
-    assert (not errors) is valid
-
-
 @pytest.mark.parametrize('rule,valid', [
     ({'body.realtime': True}, True),
     ({'body.realtime': 1}, False),

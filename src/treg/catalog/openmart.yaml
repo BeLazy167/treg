@@ -1,7 +1,9 @@
 # Openmart API. Live-verified 2026-09-17 with synthetic inputs.
 # Synchronous data reads whose price and returned-record shape are proven can use either a team's
-# own key or treg's metered platform key. Async lifecycles, account mutations, and unresolved prices
-# remain BYOK-only. The shared balance endpoint is internal capacity infrastructure, not a tool.
+# own key or treg's metered platform key. Openmart rounds 0.3-credit record prices up to whole
+# credits per operation; the call runtime applies that provider-specific rule and caps shared-key
+# requests at 25 records. Async lifecycles, account mutations, and unresolved prices remain
+# BYOK-only. The shared balance endpoint is internal capacity infrastructure, not a tool.
 provider: openmart
 source:
   docs: https://app.openmart.com/api-docs
@@ -49,11 +51,7 @@ endpoints:
     source_url: https://www.openmart.com/pricing
     checked: '2026-09-17'
     confidence: verified
-    note: Dashboard price is 0.3 credit per returned company record. Integer account-balance changes are not usage evidence; 1-row and 3-row searches each displayed a one-credit decrease and carried no per-call charge field.
-    result_count:
-      response: [{path: data, type: array}, {path: '', type: array}]
-      reserve_default: 1000
-      reserve_max: 1000
+    note: Openmart support confirmed 3 credits per 10 returned records, rounded up per operation; the effective charge is ceil(0.3 × returned records), and zero records cost zero. Ten live one-result calls each deducted one whole credit. Shared-key calls require an explicit limit from 1 to 25; own-key calls keep the upstream limit.
   verified: '2026-09-17'
   example_response: examples/openmart.businesses.search.json
   docs_url: https://app.openmart.com/api-docs
@@ -110,11 +108,7 @@ endpoints:
     source_url: https://www.openmart.com/pricing
     checked: '2026-09-17'
     confidence: documented
-    note: Full company records are priced at 0.3 credit per returned record; omitted IDs are free because the response map contains no value for them.
-    result_count:
-      response: [{path: '', type: object}]
-      reserve_default: 100
-      reserve_max: 100
+    note: Full company records use the same ceil(0.3 × returned records) per-operation charge; omitted IDs are free because the response map contains no value for them. Shared-key calls accept at most 25 IDs; own-key calls keep the upstream limit.
   verified: '2026-09-17'
   example_response: examples/openmart.businesses.lookup.openmart.json
   docs_url: https://app.openmart.com/api-docs
@@ -164,11 +158,7 @@ endpoints:
     source_url: https://www.openmart.com/pricing
     checked: '2026-09-17'
     confidence: verified
-    note: Dashboard price is 0.3 credit per returned store record; a no-match returns an empty declared array and settles at zero.
-    result_count:
-      response: [{path: data, type: array}, {path: '', type: array}]
-      reserve_default: 50
-      reserve_max: 50
+    note: Openmart support confirmed ceil(0.3 × returned records) per operation; a no-match returns an empty array and costs zero. Shared-key calls require an explicit limit from 1 to 25; own-key calls keep the upstream limit.
   verified: '2026-09-17'
   example_response: examples/openmart.companies.enrich.json
   docs_url: https://app.openmart.com/api-docs
@@ -198,11 +188,7 @@ endpoints:
     source_url: https://www.openmart.com/pricing
     checked: '2026-09-17'
     confidence: verified
-    note: Dashboard price is 0.3 credit per returned company record; brand rows are always returned in data[].
-    result_count:
-      response: [{path: data, type: array}]
-      reserve_default: 100
-      reserve_max: 500
+    note: Openmart support confirmed ceil(0.3 × returned records) per operation; brand rows are returned in data[], and an empty page costs zero. Shared-key calls require pagination.limit from 1 to 25; own-key calls keep the upstream limit.
   verified: '2026-09-17'
   example_response: examples/openmart.companies.search.json
   docs_url: https://app.openmart.com/api-docs

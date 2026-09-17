@@ -135,6 +135,15 @@ def diffbot_platform_on(monkeypatch):
     get_settings.cache_clear()
 
 
+@pytest.fixture
+def openmart_platform_on(monkeypatch):
+    monkeypatch.setenv("TREG_PLATFORM_KEY_OPENMART", "PLATFORM-OPENMART")
+    monkeypatch.setenv("TREG_PLATFORM_PROVIDERS", "openmart")
+    get_settings.cache_clear()
+    yield
+    get_settings.cache_clear()
+
+
 async def _balance(clients: AsyncClient) -> int:
     org_id = (await clients.get("/orgs")).json()[0]["org_id"]
     return (await clients.get(f"/orgs/{org_id}/balance")).json()["balance_micro"]
@@ -800,6 +809,123 @@ def _mk(provider: str, **kw) -> call_resolution.MarketplaceCall:
     kw.setdefault("tier", "platform")
     kw.setdefault("endpoint_id", "ep")  # hunter's derived cost is keyed on the endpoint, not just the provider
     return call_resolution.MarketplaceCall(tool=None, upstream="", consumed=set(), provider=provider, **kw)
+
+
+@pytest.mark.parametrize(("endpoint", "body", "credits"), [
+    ("openmart.businesses.search", b'[]', 0),
+    ("openmart.businesses.search", b'[{"id":"1"}]', 1),
+    ("openmart.businesses.search", b'[{"id":"1"},{"id":"2"},{"id":"3"}]', 1),
+    ("openmart.businesses.search", b'[{},{},{},{}]', 2),
+    ("openmart.businesses.search", b'{"data":[{},{},{},{},{},{},{},{},{},{}]}', 3),
+    ("openmart.companies.enrich", b'{"data":[]}', 0),
+    ("openmart.companies.search", b'{"data":[{},{}]}', 1),
+    ("openmart.businesses.lookup.openmart", b'{"a":{},"b":{}}', 1),
+])
+def test_openmart_settlement_rounds_three_credits_per_ten_records(endpoint, body, credits):
+    mk = _mk("openmart", endpoint_id=endpoint, cost_type="per_result", unit_micro=29_800)
+    assert call_settle._observed_cost_micro(mk, body) == credits * 29_800
+
+
+def test_openmart_settlement_rejects_undocumented_response_shapes():
+    search = _mk("openmart", endpoint_id="openmart.businesses.search",
+                 cost_type="per_result", unit_micro=29_800)
+    lookup = _mk("openmart", endpoint_id="openmart.businesses.lookup.openmart",
+                 cost_type="per_result", unit_micro=29_800)
+    assert call_settle._observed_cost_micro(search, b'{"data":{}}') is None
+    assert call_settle._observed_cost_micro(lookup, b'[]') is None
+
+
+@pytest.mark.parametrize(("endpoint", "body", "expected"), [
+    ("openmart.businesses.search", {"query": "coffee", "limit": 1}, 29_800),
+    ("openmart.businesses.search", {"query": "coffee", "limit": 4}, 59_600),
+    ("openmart.companies.search", {"pagination": {"limit": 25}}, 238_400),
+    ("openmart.businesses.lookup.openmart", ["a", "b", "c"], 29_800),
+])
+def test_openmart_reservations_use_the_same_whole_credit_rounding(endpoint, body, expected):
+    cat = catalog_store.load()
+    cost = cat.cost_view(cat.by_id[endpoint]["cost"], "openmart")
+    estimate, unit = call_resolution._marketplace_pricing(
+        "openmart", endpoint, cost, {}, json.dumps(body).encode())
+    assert estimate == expected
+    assert unit == 29_800
+
+
+@pytest.mark.parametrize(("endpoint", "body"), [
+    ("openmart.businesses.search", {"query": "coffee"}),
+    ("openmart.businesses.search", {"query": "coffee", "limit": 26}),
+    ("openmart.companies.search", {"pagination": {"limit": 26}}),
+    ("openmart.businesses.lookup.openmart", [str(i) for i in range(26)]),
+])
+async def test_openmart_platform_calls_require_an_explicit_one_to_25_cap(
+    clients, openmart_platform_on, endpoint, body,
+):
+    before = await _balance(clients)
+    response = await clients.request(
+        catalog_store.load().by_id[endpoint]["method"], f"/call/{endpoint}",
+        content=json.dumps(body), headers={"content-type": "application/json"},
+    )
+    assert response.status_code == 400, response.text
+    assert await _balance(clients) == before
+    assert not [e for e in await _entries(clients) if e["kind"] in ("reserve", "settle", "release")]
+
+
+async def test_openmart_platform_search_settles_from_returned_rows(
+    clients, openmart_platform_on, monkeypatch,
+):
+    rows = [{"id": "1"}, {"id": "2"}, {"id": "3"}]
+    monkeypatch.setattr(call_service, "relay", _fake_relay(200, json.dumps(rows).encode()))
+    before = await _balance(clients)
+    response = await clients.post("/call/openmart.businesses.search", json={
+        "query": "coffee", "limit": 5,
+    })
+    assert response.status_code == 200, response.text
+    assert await _balance(clients) == before - 29_800
+    money = [e for e in await _entries(clients) if e["kind"] in ("reserve", "settle", "release")]
+    assert [e["kind"] for e in money[:2]] == ["settle", "reserve"]
+
+
+async def test_openmart_byok_keeps_upstream_limits_and_is_unmetered(clients, openmart_platform_on):
+    await clients.post("/secrets", json={"name": "openmart", "value": "OWN-OPENMART"})
+    before = await _balance(clients)
+    body = {"query": "coffee", "limit": 100}
+    response = await clients.post("/call/openmart.businesses.search", json=body)
+    assert response.status_code == 200, response.text
+    echoed = response.json()
+    assert echoed["auth"] == "Bearer OWN-OPENMART"
+    assert json.loads(echoed["body"]) == body
+    assert await _balance(clients) == before
+    assert not [e for e in await _entries(clients) if e["kind"] in ("reserve", "settle", "release")]
+
+
+async def test_openmart_byok_lookup_preserves_the_documented_get_array_body(
+    clients, openmart_platform_on,
+):
+    await clients.post("/secrets", json={"name": "openmart", "value": "OWN-OPENMART"})
+    ids = ["00000000-0000-4000-8000-000000000001"]
+    response = await clients.request(
+        "GET", "/call/openmart.businesses.lookup.openmart",
+        content=json.dumps(ids), headers={"content-type": "application/json"},
+    )
+    assert response.status_code == 200, response.text
+    assert response.json()["auth"] == "Bearer OWN-OPENMART"
+    assert json.loads(response.json()["body"]) == ids
+
+
+async def test_openmart_unpriced_fast_ids_are_blocked_before_relay_or_money(
+    clients, openmart_platform_on, monkeypatch,
+):
+    before = await _balance(clients)
+
+    async def forbidden(*args, **kwargs):
+        raise AssertionError("platform guard must precede relay")
+
+    monkeypatch.setattr(call_service, "relay", forbidden)
+    response = await clients.post("/call/openmart.businesses.search.ids", json={
+        "query": "coffee", "limit": 1,
+    })
+    assert response.status_code == 404, response.text
+    assert await _balance(clients) == before
+    assert not [e for e in await _entries(clients) if e["kind"] in ("reserve", "settle", "release")]
 
 
 def test_observed_cost_only_trusts_a_real_number():

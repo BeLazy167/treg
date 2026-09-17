@@ -490,7 +490,6 @@ Provider-specific calculation stays outside the faithful relay.
 | Hunter email finder | One whole credit when an email is present; a known miss is free |
 | TikHub | Honor explicit no-charge prose; an embedded error that says it is charged still costs the estimate |
 | Bright Data | Count delivered JSON-array records or CSV/NDJSON lines; a JSON object containing a status/snapshot handoff has zero records |
-| Declarative result count | Any scalar `per_result` cost can declare ordered array/object response alternatives in `cost.result_count.response`. The first matching shape counts non-null returned values at the catalog's per-result USD price, including fractional provider credits. A present empty container is observed zero; an absent/malformed shape falls back to the reserve. `reserve_default` and `reserve_max` replace the generic 20/100 page bounds where the provider documents different limits. Openmart uses this for root-array/`data[]` alternatives and ID-keyed maps without a provider branch |
 | Aviato | Fixed routes use the estimate; bulk enrichment counts successful records; catalog `settle: base` and `settle: modifiers` release documented-but-unbilled `reserve_only` riders |
 | ZeroBounce | The verified `per_success` adapter treats `status=unknown` as a zero-cost miss; other completed verdicts settle at the frozen one-credit estimate |
 
@@ -507,11 +506,6 @@ settled 20 rows, moz's one `targets` entry settled 20 quota rows; 2026-09-02: lu
 catalogued FREE, answered 44 contacts for one domain and settled $5.49 from `billing.creditsCharged`
 with nothing reserved). Without any signal it is the
 20-row page, and a settle-at-estimate provider then charges that page.
-For a declarative result counter the endpoint may override that default and ceiling with bounded
-`reserve_default`/`reserve_max`; raw JSON input arrays already reserve by cardinality. Settlement
-never derives usage from before/after account balances because integer meters can hide fractional
-charges and concurrent activity makes deltas ambiguous.
-
 The page default has no meaning at all when the catalog prices per INPUT entity, and the estimator
 knows the difference since 2026-09-05: a `per_result`/`quota_rows` cost whose `unit` is `target`,
 `domain`, `keyword` or `call` (`resolve._ENTITY_UNITS`) is counted by `_entity_count` — repeated or

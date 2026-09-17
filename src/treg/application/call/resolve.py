@@ -479,7 +479,6 @@ def _platform_estimate_micro(cost: dict, query, body: bytes = b"") -> int:
         # 2026-09-05). The request names how many entities it asks about.
         n = 1 if cost.get("unit") == "call" else _entity_count(query, body)
     elif cost.get("type") in ("per_result", "quota_rows"):
-        count_rule = cost.get("result_count") if isinstance(cost.get("result_count"), dict) else {}
         asked = None
         for name in _LIMIT_PARAMS:
             raw = query.get(name)
@@ -488,9 +487,7 @@ def _platform_estimate_micro(cost: dict, query, body: bytes = b"") -> int:
                 break
         if asked is None:
             asked = _body_limit(body)  # POST providers put the row count in the body, not the query
-        default = count_rule.get("reserve_default", _PLATFORM_PAGE_DEFAULT)
-        maximum = count_rule.get("reserve_max", _PLATFORM_PAGE_MAX)
-        n = max(1, min(asked or default, maximum))
+        n = max(1, min(asked or _PLATFORM_PAGE_DEFAULT, _PLATFORM_PAGE_MAX))
     # Round to 9 dp BEFORE the ceil: float artifacts (0.0015 × 3 → 4500.000000001) must not
     # over-reserve a phantom micro-dollar.
     raw_micro = round(usd * n * 1_000_000, 9)
@@ -516,6 +513,45 @@ def _usd_to_micro(usd: float) -> int:
 def _truthy(value) -> bool:
     """Provider query/body booleans arrive as strings or JSON booleans; interpret both."""
     return value is True or (isinstance(value, str) and value.strip().lower() in ("1", "true", "yes"))
+
+
+_OPENMART_METERED_ENDPOINTS = frozenset({
+    "openmart.businesses.search",
+    "openmart.businesses.lookup.openmart",
+    "openmart.businesses.lookup.google-place",
+    "openmart.companies.enrich",
+    "openmart.companies.search",
+})
+_OPENMART_LOOKUP_ENDPOINTS = frozenset({
+    "openmart.businesses.lookup.openmart",
+    "openmart.businesses.lookup.google-place",
+})
+_OPENMART_PLATFORM_MAX_RECORDS = 25
+
+
+def _openmart_credits(records: int) -> int:
+    """Openmart bills 3 credits per 10 returned records, rounded up per operation."""
+    return 0 if records <= 0 else (3 * records + 9) // 10
+
+
+def _openmart_requested_records(endpoint_id: str, body: bytes) -> int | None:
+    """Read the requested Openmart result ceiling without changing a BYOK request."""
+    if not body:
+        return None
+    try:
+        document = json.loads(body)
+    except (ValueError, UnicodeDecodeError):
+        return None
+    if endpoint_id in _OPENMART_LOOKUP_ENDPOINTS:
+        return len(document) if isinstance(document, list) else None
+    if not isinstance(document, dict):
+        return None
+    if endpoint_id == "openmart.companies.search":
+        pagination = document.get("pagination")
+        value = pagination.get("limit") if isinstance(pagination, dict) else None
+    else:
+        value = document.get("limit")
+    return value if type(value) is int else None
 
 
 def _json_object(body: bytes) -> dict:
@@ -583,6 +619,14 @@ def _marketplace_pricing(
     """
     if not cost:
         return 0, 0
+    if provider == "openmart" and endpoint_id in _OPENMART_METERED_ENDPOINTS:
+        rate = catalog_store.load().credit_rates.get("openmart")
+        if rate:
+            requested = _openmart_requested_records(endpoint_id, body)
+            bounded = max(1, min(requested or _OPENMART_PLATFORM_MAX_RECORDS,
+                                 _OPENMART_PLATFORM_MAX_RECORDS))
+            credit_micro = _usd_to_micro(rate)
+            return _openmart_credits(bounded) * credit_micro, credit_micro
     if provider == "sumble" and cost.get("sumble"):
         from . import sumble
         credit = _usd_to_micro(float(cost.get("usd") or 0) * int(cost.get("per") or 1))
@@ -618,12 +662,7 @@ def _marketplace_pricing(
     estimate = _platform_estimate_micro(cost, query, body)
     credit_rate = (catalog_store.load().credit_rates.get(provider)
                    if cost.get("currency") == "credit" else None)
-    if cost.get("result_count") and cost.get("usd") is not None:
-        # A declarative response count multiplies the catalog's price for ONE returned unit. This
-        # matters for fractional-credit rates (0.3 credit/result): one provider credit would be a
-        # 3.33x overcharge. Provider-reported credit counters below still use one full credit.
-        unit = _usd_to_micro(cost["usd"])
-    elif credit_rate and cost.get("type") in ("per_result", "quota_rows"):
+    if credit_rate and cost.get("type") in ("per_result", "quota_rows"):
         unit = _usd_to_micro(credit_rate)
     elif cost.get("type") == "per_success" and cost.get("usd"):
         unit = _usd_to_micro(cost["usd"])
@@ -1107,6 +1146,26 @@ def _enforce_platform_request(ep: dict, body: bytes) -> None:
     has a singleton enum is the row identity, not caller choice: accepting another value lets a cheap
     row reserve for an expensive model. Full schema validation remains out of the faithful BYOK path.
     """
+    if ep.get("provider") == "openmart" and ep.get("id") in _OPENMART_METERED_ENDPOINTS:
+        requested = _openmart_requested_records(ep["id"], body)
+        parameter = (
+            "body" if ep["id"] in _OPENMART_LOOKUP_ENDPOINTS
+            else "body.pagination.limit" if ep["id"] == "openmart.companies.search"
+            else "body.limit"
+        )
+        if requested is None or not 1 <= requested <= _OPENMART_PLATFORM_MAX_RECORDS:
+            raise ResolutionFailed(
+                "catalog_parameter_invalid", status_code=400, detail={
+                    "error": "catalog_parameter_invalid",
+                    "endpoint_id": ep["id"],
+                    "parameter": parameter,
+                    "message": (
+                        "Openmart platform calls require an explicit result count from 1 to 25; "
+                        "connect your own key for the upstream limit"
+                    ),
+                },
+            )
+
     input_schema = ep.get("input") or {}
     selectors: dict[str, object] = {
         path.removeprefix("body."): value

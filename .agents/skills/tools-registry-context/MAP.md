@@ -32,7 +32,7 @@ Regenerate via `scripts/build-map.py`.
 | `scripts/build_plugin.py` | interface/skill.md |
 | `scripts/catalog_drift.py` | architecture/catalog.md |
 | `scripts/catalog_ingest.py` | architecture/catalog.md, architecture/instagram-oauth.md |
-| `scripts/catalog_validate.py` | architecture/catalog.md, architecture/harvestapi.md, architecture/openmart.md |
+| `scripts/catalog_validate.py` | architecture/catalog.md, architecture/harvestapi.md |
 | `scripts/contactout_overflow_verify.py` | architecture/contactout.md |
 | `scripts/dev-local.sh` | ops/deploy.md |
 | `scripts/dump_surface.py` | architecture/composition.md |
@@ -616,14 +616,14 @@ Regenerate via `scripts/build-map.py`.
 | `tests/test_call_architecture.py` | architecture/import-boundaries.md, architecture/money.md, architecture/proxy-model.md |
 | `tests/test_call_cancellation.py` | architecture/proxy-model.md |
 | `tests/test_call_response_limits.py` | architecture/proxy-model.md |
-| `tests/test_capacity_collectors.py` | architecture/aiark.md, architecture/bounceban.md, architecture/contactout.md, architecture/dropleads.md, architecture/getleadsio.md, architecture/prospeo.md, architecture/scrubby.md, architecture/wiza.md, architecture/zerobounce.md, ops/capacity.md |
+| `tests/test_capacity_collectors.py` | architecture/aiark.md, architecture/bounceban.md, architecture/contactout.md, architecture/dropleads.md, architecture/getleadsio.md, architecture/openmart.md, architecture/prospeo.md, architecture/scrubby.md, architecture/wiza.md, architecture/zerobounce.md, ops/capacity.md |
 | `tests/test_capacity_know.py` | ops/capacity.md |
 | `tests/test_capacity_overflow.py` | architecture/contactout.md, ops/capacity.md |
 | `tests/test_capacity_overflow_routes.py` | architecture/aiark.md, architecture/bounceban.md, architecture/getleadsio.md, architecture/moltsets.md, architecture/openmart.md, architecture/scrubby.md, architecture/wiza.md, architecture/zerobounce.md, ops/capacity.md |
 | `tests/test_capacity_overflow_spend.py` | ops/capacity.md |
 | `tests/test_capacity_protect.py` | ops/capacity.md |
 | `tests/test_capacity_smoothing.py` | ops/capacity.md |
-| `tests/test_catalog_api.py` | architecture/catalog.md, architecture/getleadsio.md |
+| `tests/test_catalog_api.py` | architecture/catalog.md, architecture/getleadsio.md, architecture/openmart.md |
 | `tests/test_catalog_validate.py` | architecture/aiark.md, architecture/bounceban.md, architecture/catalog.md, architecture/contactout.md, architecture/dropleads.md, architecture/getleadsio.md, architecture/prospeo.md, architecture/zerobounce.md |
 | `tests/test_cli_key_compatibility.py` | interface/cli.md |
 | `tests/test_dataforseo_constraints.py` | architecture/catalog.md |
@@ -639,7 +639,7 @@ Regenerate via `scripts/build-map.py`.
 | `tests/test_instagram_oauth_architecture.py` | architecture/instagram-oauth.md |
 | `tests/test_key_providers.py` | architecture/aiark.md, architecture/auth-secrets.md, architecture/bounceban.md, architecture/contactout.md, architecture/dropleads.md, architecture/getleadsio.md, architecture/moltsets.md, architecture/openmart.md, architecture/prospeo.md, architecture/scrubby.md, architecture/wiza.md, architecture/zerobounce.md |
 | `tests/test_kv.py` | architecture/feedback.md |
-| `tests/test_marketplace_call.py` | architecture/aiark.md, architecture/bounceban.md, architecture/contactout.md, architecture/dropleads.md, architecture/getleadsio.md, architecture/mcp-oauth.md, architecture/prospeo.md, architecture/proxy-model.md, architecture/zerobounce.md |
+| `tests/test_marketplace_call.py` | architecture/aiark.md, architecture/bounceban.md, architecture/contactout.md, architecture/dropleads.md, architecture/getleadsio.md, architecture/mcp-oauth.md, architecture/openmart.md, architecture/prospeo.md, architecture/proxy-model.md, architecture/zerobounce.md |
 | `tests/test_mcp.py` | architecture/mcp-oauth.md, architecture/openmart.md |
 | `tests/test_mcp_directory.py` | architecture/mcp-oauth.md |
 | `tests/test_mcp_oauth.py` | architecture/mcp-oauth.md |
@@ -648,7 +648,6 @@ Regenerate via `scripts/build-map.py`.
 | `tests/test_oauth_billed.py` | architecture/proxy-model.md |
 | `tests/test_oauth_providers_m3.py` | architecture/aiark.md, architecture/bounceban.md, architecture/getleadsio.md, architecture/moltsets.md, architecture/openmart.md, architecture/scrubby.md, architecture/wiza.md, architecture/zerobounce.md |
 | `tests/test_oauth_refresh.py` | architecture/auth-secrets.md |
-| `tests/test_openmart.py` | architecture/openmart.md |
 | `tests/test_passthrough.py` | architecture/proxy-model.md |
 | `tests/test_postgres_reset.py` | architecture/data-model.md |
 | `tests/test_providers.py` | architecture/moltsets.md |
@@ -656,7 +655,7 @@ Regenerate via `scripts/build-map.py`.
 | `tests/test_reviews.py` | architecture/feedback.md |
 | `tests/test_route_cost_ceiling.py` | architecture/catalog.md |
 | `tests/test_router_dependencies.py` | architecture/multi-tenancy.md |
-| `tests/test_routing.py` | architecture/aiark.md, architecture/bounceban.md, architecture/catalog.md, architecture/contactout.md, architecture/dropleads.md, architecture/prospeo.md, architecture/wiza.md, architecture/zerobounce.md |
+| `tests/test_routing.py` | architecture/aiark.md, architecture/bounceban.md, architecture/catalog.md, architecture/contactout.md, architecture/dropleads.md, architecture/openmart.md, architecture/prospeo.md, architecture/wiza.md, architecture/zerobounce.md |
 | `tests/test_scrubby.py` | architecture/scrubby.md |
 | `tests/test_ssrf_public_addresses.py` | architecture/proxy-model.md |
 | `tests/test_sumble.py` | architecture/sumble.md |
@@ -692,7 +691,7 @@ Regenerate via `scripts/build-map.py`.
 | `architecture/moltsets.md` | `moltsets.yaml`, `moltsets.people.search.json`, `moltsets.companies.search.json`, `moltsets.linkedin.profile.search.json`, `moltsets.people.email.find.name.json`, `moltsets.people.enrich.name.json`, `moltsets.people.email.find.json`, `moltsets.people.email.find.business.json`, `moltsets.people.email.find.personal.json`, `moltsets.people.email.find.personal-best.json`, `moltsets.people.phone.find.json`, `moltsets.people.enrich.email.json`, `moltsets.people.enrich.linkedin.json`, `moltsets.people.audiences.maid.json`, `moltsets.people.audiences.sha256.json`, `moltsets.people.audiences.hashes.json`, `moltsets.linkedin.profile.from-email.json`, `moltsets.companies.identify.ip.json`, `adapters.yaml`, `fx.yaml`, `oauth_providers.py`, `providers.py`, `config.py`, `collectors.py`, `policy.py`, `moltsets.svg`, `test_moltsets.py`, `test_capacity_overflow_routes.py`, `conftest.py`, `test_key_providers.py`, `test_oauth_providers_m3.py`, `test_providers.py` |
 | `architecture/money.md` | `__init__.py`, `settlement.py`, `__init__.py`, `models.py`, `billing.py`, `idempotency.py`, `intake.py`, `resolve.py`, `service.py`, `reserve.py`, `settle.py`, `tomba.yaml`, `asynctasks.py`, `0017_async_task_record.py`, `0018_async_resource_ownership.py`, `0019_async_poll_failures.py`, `referrals.py`, `budgets.py`, `__init__.py`, `stripe.py`, `reconcile.py`, `referrals.py`, `api.py`, `signup.py`, `promotions.py`, `0033_signup_promo_eligibility.py`, `admin.py`, `billing.py`, `call.py`, `orgs.py`, `referrals.py`, `test_call_architecture.py`, `test_asynctasks.py` |
 | `architecture/multi-tenancy.md` | `models.py`, `api.py`, `caller_metadata.py`, `auth.py`, `asynctasks.py`, `resolve.py`, `signup.py`, `access.py`, `budgets.py`, `publicdemo.py`, `teams.py`, `usage.py`, `access.py`, `api_keys.py`, `session.py`, `promotions.py`, `test_team_limit.py`, `test_auth.py`, `test_token_revocation.py`, `auth.py`, `orgs.py`, `resources.py`, `bundles.py`, `db.py`, `0017_async_task_record.py`, `0018_async_resource_ownership.py`, `test_router_dependencies.py`, `test_asynctasks.py` |
-| `architecture/openmart.md` | `openmart.yaml`, `openmart.businesses.search.json`, `openmart.businesses.search.ids.json`, `openmart.businesses.lookup.openmart.json`, `openmart.businesses.lookup.google-place.json`, `openmart.companies.enrich.json`, `openmart.companies.search.json`, `openmart.people.find.batch.json`, `openmart.technologies.find.batch.json`, `openmart.companies.email.find.batch.json`, `openmart.people.enrich.batch.json`, `openmart.tasks.batch.status.json`, `openmart.tasks.batch.ids.json`, `openmart.tasks.get.json`, `openmart.deny-rules.create.json`, `openmart.deny-rules.check.json`, `openmart.deny-rules.delete.json`, `adapters.yaml`, `fx.yaml`, `oauth_providers.py`, `providers.py`, `config.py`, `resolve.py`, `settle.py`, `store.py`, `catalog_validate.py`, `collectors.py`, `policy.py`, `openmart.svg`, `test_openmart.py`, `test_capacity_overflow_routes.py`, `conftest.py`, `test_key_providers.py`, `test_mcp.py`, `test_oauth_providers_m3.py` |
+| `architecture/openmart.md` | `openmart.yaml`, `openmart.businesses.search.json`, `openmart.businesses.search.ids.json`, `openmart.businesses.lookup.openmart.json`, `openmart.businesses.lookup.google-place.json`, `openmart.companies.enrich.json`, `openmart.companies.search.json`, `openmart.people.find.batch.json`, `openmart.technologies.find.batch.json`, `openmart.companies.email.find.batch.json`, `openmart.people.enrich.batch.json`, `openmart.tasks.batch.status.json`, `openmart.tasks.batch.ids.json`, `openmart.tasks.get.json`, `openmart.deny-rules.create.json`, `openmart.deny-rules.check.json`, `openmart.deny-rules.delete.json`, `adapters.yaml`, `fx.yaml`, `oauth_providers.py`, `providers.py`, `config.py`, `resolve.py`, `settle.py`, `store.py`, `collectors.py`, `policy.py`, `openmart.svg`, `test_capacity_overflow_routes.py`, `test_capacity_collectors.py`, `test_catalog_api.py`, `conftest.py`, `test_key_providers.py`, `test_marketplace_call.py`, `test_mcp.py`, `test_oauth_providers_m3.py`, `test_routing.py` |
 | `architecture/prospeo.md` | `prospeo.yaml`, `prospeo.people.email.find.json`, `prospeo.people.phone.find.json`, `prospeo.people.enrich.json`, `prospeo.people.enrich.bulk.json`, `prospeo.people.search.json`, `prospeo.companies.enrich.json`, `prospeo.companies.enrich.bulk.json`, `prospeo.companies.search.json`, `prospeo.search.suggestions.json`, `adapters.yaml`, `fx.yaml`, `config.py`, `oauth_providers.py`, `resolve.py`, `settle.py`, `collectors.py`, `policy.py`, `prospeo.svg`, `provider_balances.py`, `test_catalog_validate.py`, `test_key_providers.py`, `test_marketplace_call.py`, `test_routing.py`, `test_capacity_collectors.py` |
 | `architecture/proxy-model.md` | `relay.py`, `ssrf.py`, `api.py`, `authorize.py`, `idempotency.py`, `intake.py`, `resolve.py`, `reserve.py`, `settle.py`, `evidence.py`, `service.py`, `types.py`, `asynctasks.py`, `client_identity.py`, `call_surface.py`, `sandbox_identity.py`, `access.py`, `publicdemo.py`, `usage.py`, `call.py`, `test_ssrf_public_addresses.py`, `test_call_application_contract.py`, `test_call_cancellation.py`, `test_call_response_limits.py`, `test_error_capture.py`, `test_marketplace_call.py`, `test_oauth_billed.py`, `test_passthrough.py`, `test_tag_billing.py`, `test_tag_billing_adversarial.py`, `test_call_architecture.py`, `test_asynctasks.py` |
 | `architecture/scrubby.md` | `scrubby.yaml`, `scrubby.people.email.verify.json`, `scrubby.people.email.verify.bulk.json`, `scrubby.people.email.verify.bulk.results.json`, `scrubby.people.email.verify.deep.json`, `scrubby.people.email.verify.deep.results.json`, `adapters.yaml`, `fx.yaml`, `config.py`, `oauth_providers.py`, `settle.py`, `collectors.py`, `policy.py`, `scrubby.svg`, `test_scrubby.py`, `test_key_providers.py`, `test_oauth_providers_m3.py`, `test_capacity_overflow_routes.py`, `test_capacity_collectors.py`, `conftest.py` |
