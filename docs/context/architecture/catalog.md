@@ -1597,6 +1597,19 @@ accepts both. Settlement is unchanged. Enforced by
 `test_dataforseo_related_keywords_does_not_advertise_order_by` and
 `test_catalog_get_dataforseo_related_keywords_omits_order_by`.
 
+### DataForSEO Maps live/advanced rejects `location_name`
+
+Vendor SERP docs still list `location_name` as an alternative to
+`location_code` / `location_coordinate` on `/serp/google/maps/live/advanced`.
+A live POST with that field returns HTTP 200 + task status
+`40501 Invalid Field: 'location_name'` and `$0`. Feedback #516:
+`dataforseo.x.serp-google-maps-live-advanced` advertised the field, so agents
+sent it. The catalog omits it; `input.note` and the remaining location-field
+notes say to use `location_code` or `location_coordinate`. Sibling News
+`live/advanced` still lists `location_name`. Settlement is unchanged. Enforced
+by `test_google_maps_live_advanced_omits_location_name` and
+`test_catalog_get_dataforseo_maps_live_omits_location_name`.
+
 ### DataForSEO LLM Mentions `target` is one AND-combined filter
 
 DataForSEO's LLM Mentions live routes take a `target` array of up to 10 domain/keyword

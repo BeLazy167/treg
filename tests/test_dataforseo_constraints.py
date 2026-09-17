@@ -21,6 +21,11 @@ DataForSEO has provider-specific rules that generic catalog validation can't cat
    keyed sets. Extra items return task status 40501. The live route is a rolling
    window, not monthly history.
 
+6. Google Maps live/advanced does not accept location_name. Vendor SERP docs
+   still list it as an alternative to location_code / location_coordinate, but a
+   live POST with that field returns task status 40501 Invalid Field:
+   'location_name' and $0.
+
 These tests ensure catalog test_requests and documentation stay aligned with live behavior.
 """
 
@@ -102,6 +107,86 @@ def test_live_endpoints_have_single_task_test_requests():
 
 
 GOOGLE_TRENDS_EXPLORE_LIVE_ID = "dataforseo.x.keywords-data-google-trends-explore-live"
+GOOGLE_MAPS_LIVE_ADVANCED_ID = "dataforseo.x.serp-google-maps-live-advanced"
+GOOGLE_NEWS_LIVE_ADVANCED_ID = "dataforseo.x.serp-google-news-live-advanced"
+
+
+def test_google_maps_live_advanced_omits_location_name():
+    """Live /serp/google/maps/live/advanced rejects location_name (40501).
+
+    Vendor SERP docs still list location_name as an alternative to
+    location_code / location_coordinate. A live POST with that field
+    returns HTTP 200 + task status 40501 Invalid Field: 'location_name'
+    and $0. Feedback #516: catalog_get advertised the field, so agents
+    sent it. Sibling News live/advanced still accepts location_name.
+
+    Ref: https://docs.dataforseo.com/v3/serp/google/maps/live/advanced/
+    """
+    endpoints = {ep.get("id"): ep for ep in load_dataforseo_endpoints()}
+    endpoint = endpoints.get(GOOGLE_MAPS_LIVE_ADVANCED_ID)
+    assert endpoint is not None, f"{GOOGLE_MAPS_LIVE_ADVANCED_ID} not found"
+    assert endpoint.get("path") == "/serp/google/maps/live/advanced"
+
+    body = (endpoint.get("input") or {}).get("body") or {}
+    assert "location_name" not in body, (
+        f"{GOOGLE_MAPS_LIVE_ADVANCED_ID}: input.body must not document location_name "
+        "(live API rejects the field with 40501)"
+    )
+    assert "location_code" in body, (
+        f"{GOOGLE_MAPS_LIVE_ADVANCED_ID}: keep location_code as a documented location field"
+    )
+    assert "location_coordinate" in body, (
+        f"{GOOGLE_MAPS_LIVE_ADVANCED_ID}: keep location_coordinate as a documented location field"
+    )
+    assert body.get("location_code", {}).get("example") == 2840, (
+        f"{GOOGLE_MAPS_LIVE_ADVANCED_ID}: location_code.example must stay 2840"
+    )
+
+    note = (endpoint.get("input") or {}).get("note", "")
+    assert "location_name" in note and "do not send" in note.lower(), (
+        f"{GOOGLE_MAPS_LIVE_ADVANCED_ID}: input.note should tell agents not to send location_name"
+    )
+    assert "40501" in note, (
+        f"{GOOGLE_MAPS_LIVE_ADVANCED_ID}: input.note should name the live 40501"
+    )
+    assert "location_code" in note and "location_coordinate" in note, (
+        f"{GOOGLE_MAPS_LIVE_ADVANCED_ID}: input.note should point agents at "
+        "location_code or location_coordinate"
+    )
+
+    stale_alt = "required field if you don't specify location_name"
+    for field_name in ("location_code", "location_coordinate"):
+        field_note = (body.get(field_name) or {}).get("note") or ""
+        assert stale_alt not in field_note.lower(), (
+            f"{GOOGLE_MAPS_LIVE_ADVANCED_ID}: {field_name}.note still treats "
+            "location_name as an accepted alternative"
+        )
+        assert "location_name" in field_note and "40501" in field_note, (
+            f"{GOOGLE_MAPS_LIVE_ADVANCED_ID}: {field_name}.note should say Live Maps "
+            "rejects location_name with 40501"
+        )
+
+    test_req = endpoint.get("test_request") or {}
+    tasks = test_req.get("body") or []
+    assert isinstance(tasks, list) and tasks, (
+        f"{GOOGLE_MAPS_LIVE_ADVANCED_ID}: test_request.body must stay a task array"
+    )
+    for i, task in enumerate(tasks):
+        if isinstance(task, dict):
+            assert "location_name" not in task, (
+                f"{GOOGLE_MAPS_LIVE_ADVANCED_ID}: test_request.body[{i}] must not send location_name"
+            )
+            assert task.get("location_code") == 2840, (
+                f"{GOOGLE_MAPS_LIVE_ADVANCED_ID}: test_request.body[{i}].location_code must stay 2840"
+            )
+
+    sibling = endpoints.get(GOOGLE_NEWS_LIVE_ADVANCED_ID)
+    assert sibling is not None, f"{GOOGLE_NEWS_LIVE_ADVANCED_ID} not found"
+    sibling_body = (sibling.get("input") or {}).get("body") or {}
+    assert "location_name" in sibling_body, (
+        f"{GOOGLE_NEWS_LIVE_ADVANCED_ID}: sibling News live/advanced still documents "
+        "location_name; do not strip it globally"
+    )
 
 
 def test_google_trends_explore_live_omits_item_types():

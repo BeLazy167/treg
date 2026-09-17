@@ -8595,7 +8595,7 @@ endpoints:
       location_code:
         type: integer
         required: false
-        note: '<p><em>search engine location code</em><p><strong>required field if you don''t specify</strong> <code>location_name</code>&nbsp;or <code>location_coordinate</code><p><strong>if you use this field, you don''t need to specify <code>location_name</code> or <code>location_coordinate</code></strong><p>you '
+        note: "search engine location code. Required field if you don't specify location_coordinate; 2840 = United States. Use location_code or location_coordinate; Live Maps rejects location_name with 40501 Invalid Field even though vendor docs list it."
         example: 2840
       language_code:
         type: string
@@ -8610,10 +8610,6 @@ endpoints:
         type: string
         required: false
         note: '<p><em>device type</em><p>optional field<p>return results for a specific device type<p>can take the values:<code>desktop</code>, <code>mobile</code><p>default value: <code>desktop</code><p><strong>note:</strong> for <code>mobile</code> device, only 20 results are returned for every SERP</p>'
-      location_name:
-        type: string
-        required: false
-        note: <p><em>full name of search engine location</em><p><strong>required field if you don't specify</strong> <code>location_code</code> or <code>location_coordinate</code><p><strong>if you use this field, you don't need to specify <code>location_code</code> or <code>location_coordinate</code></strong><p>y
       language_name:
         type: string
         required: false
@@ -8637,7 +8633,7 @@ endpoints:
       location_coordinate:
         type: string
         required: false
-        note: <p><em>GPS coordinates of a location</em><p><strong>required field if you don't specify</strong> <code>location_name</code>&nbsp;or <code>location_code</code><p><strong>if you use this field, you don't need to specify <code>location_name</code> or <code>location_code</code></strong><p><code>location
+        note: "GPS coordinates of a location. Required field if you don't specify location_code. Use location_code or location_coordinate; Live Maps rejects location_name with 40501 Invalid Field even though vendor docs list it."
       se_domain:
         type: string
         required: false
@@ -8650,7 +8646,7 @@ endpoints:
         type: boolean
         required: false
         note: <p><em>search places mode</em><p>optional field<p>the search places mode allows to obtain Google Maps results on a certain place (e.g., Apple Store in New York)<p>however, due to the pecularities of our data mining algorithm, this mode might interfere with some local-intent queries - and display res
-    note: the POST body is an ARRAY of task objects with these fields — one object per task
+    note: "the POST body is an ARRAY of task objects with these fields — one object per task. Use location_code or location_coordinate; do not send location_name (live API returns 40501 Invalid Field even though vendor docs list it)."
   test_request:
     body:
     - language_code: en
