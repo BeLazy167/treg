@@ -49,6 +49,12 @@ Everything else in this file is guidance; these are the contract, and they win o
 5. Balances change only through money's five entries: grant, topup, reserve, settle, release.
    There is deliberately no refund or adjustment entry; an ops correction is a grant.
 
+Per-result platform tools may derive their final charge only from a provider-reported charge or a
+catalog-declared response count. A count declaration names every accepted array/object response
+shape; the reservation comes from the bounded request limit or input cardinality. Missing and empty
+results settle at zero only when the declared shape is present. Never infer usage from an account
+balance delta.
+
 **Changing any invariant in this file means editing this file in the same PR.** Routed endpoints
 and overflow once shipped with every other doc updated while this file still said "no router";
 agents then built against a constitution that was wrong.

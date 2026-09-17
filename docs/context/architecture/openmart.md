@@ -1,5 +1,5 @@
 ---
-title: Openmart — business search, asynchronous enrichment and BYOK boundaries
+title: Openmart — metered synchronous data and BYOK lifecycle boundaries
 status: shipped
 sources:
   - src/treg/catalog/openmart.yaml
@@ -19,12 +19,15 @@ sources:
   - src/treg/catalog/examples/openmart.deny-rules.create.json
   - src/treg/catalog/examples/openmart.deny-rules.check.json
   - src/treg/catalog/examples/openmart.deny-rules.delete.json
-  - src/treg/catalog/examples/openmart.account.balance.json
   - src/treg/catalog/adapters.yaml
   - src/treg/catalog/fx.yaml
   - src/treg/oauth_providers.py
   - src/treg/providers.py
   - src/treg/config.py
+  - src/treg/application/call/resolve.py
+  - src/treg/application/call/settle.py
+  - src/treg/domain/catalog/store.py
+  - scripts/catalog_validate.py
   - src/treg/domain/capacity/collectors.py
   - src/treg/domain/capacity/policy.py
   - src/treg/web/logos/openmart.svg
@@ -46,36 +49,38 @@ related:
 
 Openmart is a pasted Bearer-key enrichment provider at `https://api.openmart.ai`. The free
 `GET /api/v2/credit-balance` operation verifies a connection and supplies the capacity collector.
-The catalog exposes every documented API operation: business and brand search, two ID lookups,
-company enrichment, four batch submission types, three task reads, three deny-rule operations, and
-the credit balance.
+The catalog exposes 16 caller-facing operations: business and brand search, two ID lookups, company
+enrichment, four batch submission types, three task reads, and three deny-rule operations. The
+balance route is deliberately not a tool: it is internal connection/capacity infrastructure.
 
 ## Shared-key boundary
 
-Every Openmart operation is BYOK-only. This is one boundary with three reasons:
+Five synchronous data operations support both a team's own key and treg's metered platform key:
+business search, both full-record ID lookups, company enrichment, and brand search. The team's key
+still wins and is never metered. Their catalog `cost.result_count` declarations count only the
+documented returned-record containers: a root array or `data[]` for search/enrichment, `data[]` for
+brand search, and values in the ID-keyed lookup maps. Holds use the bounded request limit or raw
+input-array cardinality; a present empty container settles at zero.
 
-- Search and lookup costs depend on returned records. The generic runtime does not count Openmart
-  result envelopes.
-- Batch submission and task reads form an asynchronous lifecycle. Charges can land after submit,
-  results can mix outcomes, and task ownership belongs to the key that created the batch.
-- Balance and deny-rule operations read or mutate private account state. A shared key would expose
-  one team's state to another. Deny writes also forbid caching.
-
-`platform_key_openmart` exists so the standard provider configuration and capacity machinery can
-hold the optional account key. It does not make a catalog operation eligible. The provider
-allow-list remains the production switch. This integration does not change that switch.
+The other 11 operations remain BYOK-only. Fast ID search has no proven fractional price. The four
+batch submissions and three task reads are one delayed, account-owned lifecycle whose charges
+cannot be assigned safely by a synchronous response. The three deny-rule operations read or mutate
+private account state and forbid caching. The shared balance route is absent from the catalog so no
+caller can inspect operational inventory.
 
 The catalog records the active subscription conversion of $149 for 5,000 credits, or $0.0298 per
-credit. It does not claim auto-top-up. The fast ID-only rate stays unknown because documentation
-says reduced billing while small live checks moved no whole credit. The company-email rate also
-stays explicitly uncertain because the public 0.3-credit statement did not match the whole-credit
-account meter in one successful live task.
+credit, before configured platform margin. Search, full-record lookup, and company enrichment cost
+0.3 credit per returned record ($0.00894 raw); find-people data costs 3 credits for email and 8 for
+phone; a technology result costs 2. It does not claim auto-top-up. The integer balance is capacity
+evidence only: a one-result search and a three-result search each displayed a one-credit decrease,
+and neither response reported usage. That disproves one-credit-per-record and proves balance deltas
+cannot settle a call whose fractional debit is hidden.
 
 ## Routing and Arena
 
 Only `openmart.companies.search` has an adapter. It maps a canonical text or name, optional country,
 and limit to brand search. Its stored fixture verifies companies, count, and cursor output. The
-child remains BYOK-routed because the direct tool is not platform-eligible.
+child is platform-eligible and participates in the generated `treg.companies.search` tool.
 
 Company enrichment can return several location matches. Choosing the first would change semantics,
 so it does not join `companies.enrich`. People operations are asynchronous and do not join the
@@ -90,5 +95,5 @@ published endpoint-family limit. Direct BYOK calls bypass shared-key smoothing.
 
 Live checks used synthetic inputs and stayed within the task cap. They covered authentication,
 search pagination, hits, misses, validation, every data operation, the full batch lifecycle, deny
-checks, and balance reads. Stored examples use reserved synthetic identities only. No key or raw
-live response is stored.
+checks, and internal balance reads. Stored examples use reserved synthetic identities only. No key
+or raw live response is stored.

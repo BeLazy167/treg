@@ -553,6 +553,32 @@ def check_cost(cost: dict, where: str, errors: list[str], warnings: list[str],
             fail(errors, where, "cost.reported_charge requires a JSON path and unit: usd")
         if "table" in cost or "settle" in cost or cost.get("type") == "free":
             fail(errors, where, "cost.reported_charge requires a paid scalar price without cost.settle")
+    result_count = cost.get("result_count")
+    if result_count is not None:
+        response = result_count.get("response") if isinstance(result_count, dict) else None
+        allowed = {"response", "reserve_default", "reserve_max"}
+        if (not isinstance(result_count, dict) or set(result_count) - allowed
+                or not isinstance(response, list) or not response):
+            fail(errors, where, "cost.result_count requires response alternatives and optional reserve bounds")
+        else:
+            for alternative in response:
+                if (not isinstance(alternative, dict) or set(alternative) != {"path", "type"}
+                        or not isinstance(alternative.get("path"), str)
+                        or (alternative["path"] and not JSON_PATH.fullmatch(alternative["path"]))
+                        or alternative.get("type") not in {"array", "object"}):
+                    fail(errors, where, "each cost.result_count.response item needs a JSON path (empty is root) and type array/object")
+        for key in ("reserve_default", "reserve_max"):
+            value = result_count.get(key) if isinstance(result_count, dict) else None
+            if value is not None and (type(value) is not int or not 1 <= value <= 10_000):
+                fail(errors, where, f"cost.result_count.{key} must be an integer from 1 to 10000")
+        if (isinstance(result_count, dict)
+                and type(result_count.get("reserve_default")) is int
+                and type(result_count.get("reserve_max")) is int
+                and result_count["reserve_default"] > result_count["reserve_max"]):
+            fail(errors, where, "cost.result_count.reserve_default cannot exceed reserve_max")
+        if cost.get("type") != "per_result" or "table" in cost or "settle" in cost \
+                or cost.get("value") is None:
+            fail(errors, where, "cost.result_count requires a paid scalar per_result price without cost.settle")
     if "display" in cost:
         display = cost["display"]
         if (not isinstance(display, dict) or not isinstance(display.get("unit"), str)

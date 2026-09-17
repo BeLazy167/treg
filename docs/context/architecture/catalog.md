@@ -989,6 +989,26 @@ cost:
   note: "…"               # free text: the half of the charge the schema cannot hold, caveats, traps
 ```
 
+A paid scalar `per_result` route that reports no charge may declare response-derived counting:
+
+```yaml
+  result_count:
+    response:
+      - {path: data, type: array}
+      - {path: '', type: array}  # empty path means the response root
+    reserve_default: 100
+    reserve_max: 500
+```
+
+Alternatives are ordered and each pins both a dotted JSON path and its expected container. Arrays
+count non-null items; objects count non-null values. The first matching shape is the bill, including
+an empty matching container as zero. If no declared shape matches, settlement falls back to the
+reservation rather than guessing. The optional positive reserve bounds replace the generic page
+default/maximum; an explicit request limit or raw input-array cardinality still wins within the
+ceiling. The validator permits this only on paid scalar `per_result` costs. This is deliberately
+provider-neutral: a provider file declares its wire shapes, while the call runtime contains no
+provider branch. Account-balance deltas are never a count source.
+
 For finite AIGC matrices, linear rates, and usage-settled generation, `value` is replaced by an
 ordered first-match `table` plus an explicit fallback upper bound:
 

@@ -479,6 +479,7 @@ def _platform_estimate_micro(cost: dict, query, body: bytes = b"") -> int:
         # 2026-09-05). The request names how many entities it asks about.
         n = 1 if cost.get("unit") == "call" else _entity_count(query, body)
     elif cost.get("type") in ("per_result", "quota_rows"):
+        count_rule = cost.get("result_count") if isinstance(cost.get("result_count"), dict) else {}
         asked = None
         for name in _LIMIT_PARAMS:
             raw = query.get(name)
@@ -487,7 +488,9 @@ def _platform_estimate_micro(cost: dict, query, body: bytes = b"") -> int:
                 break
         if asked is None:
             asked = _body_limit(body)  # POST providers put the row count in the body, not the query
-        n = max(1, min(asked or _PLATFORM_PAGE_DEFAULT, _PLATFORM_PAGE_MAX))
+        default = count_rule.get("reserve_default", _PLATFORM_PAGE_DEFAULT)
+        maximum = count_rule.get("reserve_max", _PLATFORM_PAGE_MAX)
+        n = max(1, min(asked or default, maximum))
     # Round to 9 dp BEFORE the ceil: float artifacts (0.0015 × 3 → 4500.000000001) must not
     # over-reserve a phantom micro-dollar.
     raw_micro = round(usd * n * 1_000_000, 9)
@@ -615,7 +618,12 @@ def _marketplace_pricing(
     estimate = _platform_estimate_micro(cost, query, body)
     credit_rate = (catalog_store.load().credit_rates.get(provider)
                    if cost.get("currency") == "credit" else None)
-    if credit_rate and cost.get("type") in ("per_result", "quota_rows"):
+    if cost.get("result_count") and cost.get("usd") is not None:
+        # A declarative response count multiplies the catalog's price for ONE returned unit. This
+        # matters for fractional-credit rates (0.3 credit/result): one provider credit would be a
+        # 3.33x overcharge. Provider-reported credit counters below still use one full credit.
+        unit = _usd_to_micro(cost["usd"])
+    elif credit_rate and cost.get("type") in ("per_result", "quota_rows"):
         unit = _usd_to_micro(credit_rate)
     elif cost.get("type") == "per_success" and cost.get("usd"):
         unit = _usd_to_micro(cost["usd"])
