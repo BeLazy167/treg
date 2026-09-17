@@ -1556,6 +1556,18 @@ JS-only audits omit `browser_preset`. Settlement is unchanged. Enforced by
 `test_instant_pages_browser_preset_requires_browser_rendering` and
 `test_catalog_get_dataforseo_page_audit_names_browser_preset_dependency`.
 
+### DataForSEO related_keywords/live rejects `order_by` and `filters`
+
+Vendor Labs docs still list `order_by` and `filters` on
+`/dataforseo_labs/google/related_keywords/live`. A live POST with either field
+returns HTTP 200 + task status `40501 Invalid Field` and `$0`. Feedback #54
+(`order_by`) / #439 (`filters`): `dataforseo.google.keywords.ideas` advertised
+them as optional task fields, so agents sent them. The catalog omits both;
+`input.note` says not to send them. Sibling Labs `ranked_keywords` still
+accepts both. Settlement is unchanged. Enforced by
+`test_dataforseo_related_keywords_does_not_advertise_order_by` and
+`test_catalog_get_dataforseo_related_keywords_omits_order_by`.
+
 ### DataForSEO LLM Mentions `target` is one AND-combined filter
 
 DataForSEO's LLM Mentions live routes take a `target` array of up to 10 domain/keyword

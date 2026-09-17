@@ -1345,28 +1345,37 @@ def test_hunter_domain_search_advertises_one_search_credit():
 
 
 def test_dataforseo_related_keywords_does_not_advertise_order_by():
-    """Feedback #54: live related_keywords/live rejects order_by with 40501.
+    """Feedback #54 / #439: live related_keywords/live rejects order_by and
+    filters with 40501.
 
-    Vendor docs still list the field; the live API does not. catalog_get must not
-    offer it on this id. ranked_keywords (a sibling Labs route) still sorts.
+    Vendor docs still list both fields; the live API does not. catalog_get must
+    not offer them on this id. ranked_keywords (a sibling Labs route) still
+    sorts and filters.
     """
     cat = cs.load()
     ideas = cat.by_id["dataforseo.google.keywords.ideas"]
     assert ideas["path"] == "/dataforseo_labs/google/related_keywords/live"
     body = ideas["input"]["body"]
     assert "order_by" not in body
-    assert "filters" in body
-    assert "order_by" in ideas["input"]["note"]
+    assert "filters" not in body
+    note = ideas["input"]["note"]
+    assert "order_by" in note
+    assert "filters" in note
     ranked = cat.by_id["dataforseo.google.domain.ranked_keywords"]
     assert "order_by" in ranked["input"]["body"]
+    assert "filters" in ranked["input"]["body"]
     for task in ideas["test_request"]["body"]:
         assert "order_by" not in task
+        assert "filters" not in task
 
 
 async def test_catalog_get_dataforseo_related_keywords_omits_order_by(clients: AsyncClient):
     body = (await clients.get("/catalog/endpoints/dataforseo.google.keywords.ideas")).json()
     assert "order_by" not in body["endpoint"]["input"]["body"]
-    assert "order_by" in body["endpoint"]["input"]["note"]
+    assert "filters" not in body["endpoint"]["input"]["body"]
+    note = body["endpoint"]["input"]["note"]
+    assert "order_by" in note
+    assert "filters" in note
 
 
 def test_dataforseo_backlinks_summary_is_single_task():
