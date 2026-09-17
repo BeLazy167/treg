@@ -183,6 +183,20 @@ def test_aiark_routing_surface_uses_verified_bounded_adapters():
     assert companies == bounded
 
 
+def test_aiark_finders_treat_present_but_empty_outputs_as_misses():
+    catalog = catalog_store.load()
+    email = catalog.adapters["aiark.people.email.find"]
+    phone = catalog.adapters["aiark.people.phone.find"]
+    assert email.is_miss({"data": None})
+    assert email.is_miss({"data": {"email": {"output": []}}})
+    assert not email.is_miss({"data": {"email": {"output": [{
+        "address": "jane@example.com",
+    }]}}})
+    assert phone.is_miss({"data": None})
+    assert phone.is_miss({"data": {"data": [[]]}})
+    assert not phone.is_miss({"data": {"data": [["+15550101000"]]}})
+
+
 def test_wiza_routing_surface_uses_bounded_single_record_searches():
     catalog = catalog_store.load()
     expected = {

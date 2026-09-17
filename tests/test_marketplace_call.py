@@ -836,6 +836,37 @@ def test_crustdata_settles_from_the_response_credit_header():
         mk, b'{"rows": []}', httpx.Headers({"X-Credits-Used": "not-a-number"})) is None
 
 
+def test_aiark_settles_from_the_negative_response_credit_header():
+    """AI Ark reports a debit as a negative X-Credit value; the sign rule is provider-specific."""
+    mk = _mk("aiark", endpoint_id="aiark.people.phone.find",
+             cost_type="per_success", unit_micro=26_335)
+    body = b'{"data": {"data": [["+15550101000"]]}}'
+    assert call_settle._observed_cost_micro(
+        mk, body, httpx.Headers({"X-Credit": "-5"})) == 26_335
+    assert call_settle._observed_cost_micro(
+        mk, body, httpx.Headers({"X-Credit": "-0.5"})) == 2_634
+    assert call_settle._observed_cost_micro(
+        mk, body, httpx.Headers({"X-Credit": "0"})) == 0
+    assert call_settle._observed_cost_micro(
+        mk, body, httpx.Headers({"X-Credit": "5"})) is None
+    assert call_settle._observed_cost_micro(
+        mk, body, httpx.Headers({"X-Credit": "not-a-number"})) is None
+    assert call_settle._observed_cost_micro(
+        mk, body, httpx.Headers({"X-Credit": "NaN"})) is None
+    assert call_settle._observed_cost_micro(
+        mk, body, httpx.Headers({"X-Credit": "-Infinity"})) is None
+    assert call_settle._observed_cost_micro(mk, body, httpx.Headers()) is None
+
+
+@pytest.mark.parametrize(("endpoint", "doc"), [
+    ("aiark.people.email.find", {"data": {"email": {"output": []}}}),
+    ("aiark.people.phone.find", {"data": {"data": [[]]}}),
+])
+def test_aiark_present_but_empty_outputs_settle_as_free_misses(endpoint, doc):
+    mk = _mk("aiark", endpoint_id=endpoint, cost_type="per_success")
+    assert call_settle._observed_cost_micro(mk, json.dumps(doc).encode()) == 0
+
+
 def test_aviato_conditional_prices_follow_live_balance_deltas():
     cat = A.catalog_store.load()
 

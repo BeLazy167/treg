@@ -2,7 +2,6 @@
 title: AI Ark — bounded synchronous enrichment and BYOK async jobs
 status: shipped
 sources:
-  - docs/AIARK-PRD.md
   - src/treg/catalog/aiark.yaml
   - src/treg/catalog/examples/aiark.companies.search.json
   - src/treg/catalog/examples/aiark.lists.upsert.json
@@ -20,6 +19,7 @@ sources:
   - src/treg/oauth_providers.py
   - src/treg/domain/capacity/collectors.py
   - src/treg/domain/capacity/policy.py
+  - src/treg/application/call/settle.py
   - src/treg/web/logos/aiark.svg
   - tests/test_catalog_validate.py
   - tests/test_capacity_collectors.py
@@ -58,7 +58,9 @@ Seven synchronous reads can use the platform key: people search, masked preview,
 single email finding, single mobile finding, reverse lookup and personality analysis. treg's people
 and company search tools require `size=1`; larger pages remain available by calling AI Ark directly
 with an own key. The singleton schema and `platform_request` bound give every platform search a fixed
-maximum hold.
+maximum hold. Successful platform responses settle from the provider's exact `X-Credit` header.
+AI Ark reports debits as negative numbers, so `_CREDIT_HEADERS` declares an explicit -1 multiplier;
+positive, missing, nonnumeric and non-finite values remain untrusted and fall back to other evidence.
 
 List mutation and ten async submission, result, status, history and webhook-resend tools are
 BYOK-only. AI Ark track ids are account-scoped, a search track id is single-use, and delivery failure
@@ -77,12 +79,13 @@ Platform search prices are bounded by the one-row input: 0.5 credit for a return
 credit for a returned company. Preview costs one credit per served page. A valid email costs one
 credit, a mobile costs five, reverse lookup costs 0.5 on a successful profile and personality
 analysis costs four on success. Fixture-verified adapters and `expect` evidence let generic
-`per_success` settlement release misses; upstream rejections also release the hold. No
-provider-specific settlement function exists.
+`per_success` settlement release misses; upstream rejections also release the hold. The shared
+credit-header mechanism reads the exact charge without adding an AI Ark-specific settlement branch.
 
-AI Ark's V2 email and mobile endpoints return HTTP 200 with `data: null` for a miss. Their adapters
-make that envelope an explicit miss rather than treating every 200 as billable. The phone output is
-nested under `data.data[0][0]`; the adapter uses the existing `get` expression to normalize it. A
+AI Ark's V2 email and mobile endpoints return HTTP 200 with `data: null` for an observed miss. Their
+adapters test the requested email or phone field itself, so a present envelope with an empty output
+array is also a zero-cost miss. The phone output is nested under `data.data[0][0]`; the adapter uses
+the existing `get` expression to normalize it. A
 reverse-lookup miss returned HTTP 404 and used no credit even though the public reference describes
 a per-request charge, so treg conservatively settles only a successful profile.
 
