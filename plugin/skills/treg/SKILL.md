@@ -214,6 +214,7 @@ How it works:
   can fetch.** Do not reach for a paste host: they fail vendor probes at random (catbox, tmpfiles,
   uguu all did). `treg host face.jpg` prints a public URL (30 MB, 7 days, free) that drops straight
   into `image_urls` / `audio_urls`: `--data "{\"image_urls\":[\"$(treg host face.jpg)\"], …}"`.
+  Requires CLI ≥ 0.20.0; run `treg update` if `treg host` is unrecognised.
 - **CLI agents: raise your shell tool's timeout or run the call in the background.** A video takes
   1-5 minutes; a runtime's default 2-minute command limit cuts it off mid-wait.
 - **MCP and raw-HTTP agents:** the response header `X-Treg-Async` is the descriptor - where to poll,

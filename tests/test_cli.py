@@ -57,6 +57,21 @@ def test_admin_and_skill_parsers():
     assert p.parse_args(["skill", "add", "--dir", "/s"]).fn is cli.cmd_skill_add
 
 
+def test_host_subcommand_is_registered_not_mistaken_for_system_binary():
+    """Issue #557: `treg host` must parse as the host subcommand, not fall through to /usr/bin/host.
+    When `host` was missing from an older release, `_looks_like_a_program` matched it to the system
+    `host` binary (DNS lookup tool), causing `treg host face.jpg` to run `/usr/bin/host face.jpg`
+    via `treg with` — banner, then a confusing DNS error. The fix: keep `host` as a registered
+    subcommand so the bare-word fallback never applies."""
+    p = cli.build_parser()
+    subcommands = cli._subcommands(p)
+    assert "host" in subcommands, "`host` must be a registered subcommand"
+    assert p.parse_args(["host", "face.jpg"]).fn is cli.cmd_host
+    # The bare-word fallback (`treg claude` → `treg with claude`) must NOT treat `host` as a program
+    # even though /usr/bin/host exists on most Unix systems.
+    assert cli._looks_like_a_program(["host", "face.jpg"], subcommands) is False
+
+
 def test_config_v2_roundtrip(tmp_path, monkeypatch):
     monkeypatch.setattr(cli, "CONFIG_PATH", tmp_path / "config.json")
     cli._save_config({"base_url": "https://treg.to", "token": "T", "email": "me@x.dev",
