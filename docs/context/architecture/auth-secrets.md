@@ -43,6 +43,12 @@ binding; a team's key still wins and remains unmetered. Provisioning includes th
 and its explicit waterfall-host companion without exposing the credential. See
 [BounceBan](bounceban.md).
 
+ZeroBounce uses the standard pasted-key flow with an `api_key` query parameter. Its free usage
+probe rejects bad keys with HTTP 403 and accepts the supplied key with HTTP 200. The probe does not
+use the balance route because that route can answer a bad key with HTTP 200 and `Credits=-1`.
+`TREG_PLATFORM_KEY_ZEROBOUNCE` supplies the optional shared binding; a team's key still wins and
+remains unmetered. See [ZeroBounce](zerobounce.md).
+
 `MOLTSETS` is a pasted Bearer-key provider whose free `POST /get_account` probe validates both team
 and optional platform credentials. The existing own-key-first ladder and deployment allow-list apply;
 see [MoltSets](moltsets.md).

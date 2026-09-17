@@ -117,6 +117,15 @@ def bounceban_platform_on(monkeypatch):
 
 
 @pytest.fixture
+def zerobounce_platform_on(monkeypatch):
+    monkeypatch.setenv("TREG_PLATFORM_KEY_ZEROBOUNCE", "PLATFORM-ZEROBOUNCE")
+    monkeypatch.setenv("TREG_PLATFORM_PROVIDERS", "zerobounce")
+    get_settings.cache_clear()
+    yield
+    get_settings.cache_clear()
+
+
+@pytest.fixture
 def diffbot_platform_on(monkeypatch):
     """Enable Diffbot tier 4 without exposing or calling a real provider credential."""
     monkeypatch.setenv("TREG_PLATFORM_KEY_DIFFBOT", "PLATFORM-DIFFBOT-KEY")
@@ -3207,6 +3216,94 @@ async def test_bounceban_platform_releases_invalid_input_and_byok_wins_unmetered
     assert seen == ["OWN-BOUNCEBAN"]
     assert "x-treg-cost-micro" not in own.headers
     assert await _balance(clients) == before
+
+
+async def test_zerobounce_platform_settlement_release_and_byok_precedence(
+    clients, monkeypatch, zerobounce_platform_on,
+):
+    answers = {
+        "bad@example.com": (200, {"status": "invalid"}),
+        "wait@example.com": (200, {"status": "unknown"}),
+        "fail@example.com": (500, {"error": "temporary"}),
+        "good@example.com": (200, {"status": "valid"}),
+    }
+    seen_keys = []
+
+    def serve(request):
+        seen_keys.append(request.url.params["api_key"])
+        if request.url.path == "/v2/guessformat":
+            if request.url.params.get("first_name") == "Missing":
+                return _dropleads_response(200, {"email": "", "failure_reason": "NO_DATA_FOR_THIS_DOMAIN"})
+            if request.url.params.get("first_name"):
+                return _dropleads_response(200, {"email": "ada@example.com", "failure_reason": ""})
+            if request.url.params.get("domain") == "missing.example":
+                return _dropleads_response(200, {"format": "", "failure_reason": "NO_DATA_FOR_THIS_DOMAIN"})
+            return _dropleads_response(200, {"format": "first.last", "failure_reason": ""})
+        status, doc = answers[request.url.params["email"]]
+        return _dropleads_response(status, doc)
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(serve)) as upstream:
+        monkeypatch.setattr(A.app.state, "http", upstream)
+        before = await _balance(clients)
+        invalid = await clients.get(
+            "/call/zerobounce.people.email.verify", params={"email": "bad@example.com"})
+        assert invalid.status_code == 200
+        assert invalid.headers["x-treg-cost-micro"] == "13800"
+        assert await _balance(clients) == before - 13_800
+
+        before_unknown = await _balance(clients)
+        unknown = await clients.get(
+            "/call/zerobounce.people.email.verify", params={"email": "wait@example.com"})
+        assert unknown.status_code == 200
+        assert unknown.headers["x-treg-cost-micro"] == "0"
+        assert await _balance(clients) == before_unknown
+
+        before_failure = await _balance(clients)
+        failure = await clients.get(
+            "/call/zerobounce.people.email.verify", params={"email": "fail@example.com"})
+        assert failure.status_code == 500
+        assert await _balance(clients) == before_failure
+
+        before_finder = await _balance(clients)
+        finder = await clients.get("/call/zerobounce.people.email.find", params={
+            "domain": "example.com", "first_name": "Ada", "last_name": "Lovelace",
+        })
+        assert finder.status_code == 200
+        assert finder.headers["x-treg-cost-micro"] == "276000"
+        assert await _balance(clients) == before_finder - 276_000
+
+        before_finder_miss = await _balance(clients)
+        finder_miss = await clients.get("/call/zerobounce.people.email.find", params={
+            "domain": "example.com", "first_name": "Missing", "last_name": "Person",
+        })
+        assert finder_miss.status_code == 200
+        assert finder_miss.headers["x-treg-cost-micro"] == "0"
+        assert await _balance(clients) == before_finder_miss
+
+        before_pattern = await _balance(clients)
+        pattern = await clients.get(
+            "/call/zerobounce.companies.email_pattern", params={"domain": "example.com"})
+        assert pattern.status_code == 200
+        assert pattern.headers["x-treg-cost-micro"] == "276000"
+        assert await _balance(clients) == before_pattern - 276_000
+
+        before_pattern_miss = await _balance(clients)
+        pattern_miss = await clients.get(
+            "/call/zerobounce.companies.email_pattern", params={"domain": "missing.example"})
+        assert pattern_miss.status_code == 200
+        assert pattern_miss.headers["x-treg-cost-micro"] == "0"
+        assert await _balance(clients) == before_pattern_miss
+
+        await clients.post(
+            "/secrets", json={"name": "zerobounce", "value": "OWN-ZEROBOUNCE"})
+        before_byok = await _balance(clients)
+        own = await clients.get(
+            "/call/zerobounce.people.email.verify", params={"email": "good@example.com"})
+        assert own.status_code == 200
+        assert "x-treg-cost-micro" not in own.headers
+        assert await _balance(clients) == before_byok
+
+    assert seen_keys == ["PLATFORM-ZEROBOUNCE"] * 7 + ["OWN-ZEROBOUNCE"]
 
 
 async def test_prospeo_platform_person_enrich_uses_non_free_flag_when_email_is_null(

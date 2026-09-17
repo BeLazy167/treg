@@ -58,6 +58,39 @@ async def test_bounceban_enters_email_verification_arena_via_verified_adapter(
     get_settings.cache_clear()
 
 
+async def test_zerobounce_verifier_enters_arena_but_expensive_finder_does_not(
+    clients, monkeypatch,
+):
+    from treg.config import get_settings
+    monkeypatch.setenv("TREG_PLATFORM_KEY_ZEROBOUNCE", "PLATFORM-ZEROBOUNCE")
+    monkeypatch.setenv("TREG_PLATFORM_PROVIDERS", "zerobounce")
+    get_settings.cache_clear()
+    response = await clients.post("/arena/plans", json={
+        "capability": "people.email.verify",
+        "identity": {"email": "valid@example.com"},
+        "mode": "compare",
+        "providers": ["zerobounce"],
+        "max_cost_micro": 20_000,
+    })
+    assert response.status_code == 200, response.text
+    quote = response.json()
+    assert len(quote["providers"]) == 1
+    assert quote["providers"][0]["provider"] == "zerobounce"
+    assert quote["providers"][0]["endpoint_id"] == "zerobounce.people.email.verify"
+    assert quote["estimate_micro"] == 13_800
+
+    finder_response = await clients.post("/arena/plans", json={
+        "capability": "people.email.find",
+        "identity": {"full_name": "Ada Lovelace", "domain": "example.com"},
+        "mode": "compare",
+        "providers": ["zerobounce"],
+        "max_cost_micro": 300_000,
+    })
+    assert finder_response.status_code == 422
+    assert "cannot use this input" in finder_response.text
+    get_settings.cache_clear()
+
+
 async def finish(c, quote):
     r = await c.post(f"/arena/runs/{quote['id']}/start")
     assert r.status_code == 200, r.text

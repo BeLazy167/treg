@@ -23,7 +23,7 @@ from treg import oauth_providers as P
 def test_key_providers_are_offerable_without_deployment_credentials():
     """The user brings the key, so treg holds no app of its own — a key provider must be offerable,
     not shown as 'not configured' the way an unset OAuth provider is."""
-    for svc in ("apollo", "pdl", "akta", "hunter", "sumble", "moltsets", "harvestapi", "dropleads", "quickenrich", "prospeo", "wiza", "getleadsio", "scrubby", "contactout", "millionverifier", "bounceban", "trykitt", "crunchbase", "tikhub", "brightdata", "semrush",
+    for svc in ("apollo", "pdl", "akta", "hunter", "sumble", "moltsets", "harvestapi", "dropleads", "quickenrich", "prospeo", "wiza", "getleadsio", "scrubby", "zerobounce", "contactout", "millionverifier", "bounceban", "trykitt", "crunchbase", "tikhub", "brightdata", "semrush",
                 "justoneapi", "dataforseo", "seranking", "moz", "majestic", "serpstat", "exa",
                 "cloro",
                 "lusha", "coresignal", "diffbot", "thecompaniesapi", "leadmagic", "fiber-ai",
@@ -50,11 +50,50 @@ def test_key_providers_appear_in_the_marketplace_listing():
     assert listing["financialdatasets"]["category"] == "Market data"
     assert listing["bounceban"]["category"] == "Enrichment"
     assert listing["bounceban"]["auth_kind"] == "key"
+    assert listing["zerobounce"]["category"] == "Enrichment"
+    assert listing["zerobounce"]["auth_kind"] == "key"
     assert listing["minimax"]["category"] == "AI generation"
     assert listing["openrouter"]["auth_kind"] == "token"
     assert listing["replicate"]["base_url"] == "https://api.replicate.com/v1"
     assert "Enrichment" in P.CATEGORY_ORDER
     assert "Market data" in P.CATEGORY_ORDER
+
+
+def test_zerobounce_registry_uses_internal_usage_probe_and_query_key(monkeypatch):
+    monkeypatch.setenv("TREG_PLATFORM_KEY_ZEROBOUNCE", "PLATFORM-ZEROBOUNCE")
+    monkeypatch.setenv("TREG_PLATFORM_PROVIDERS", "zerobounce")
+    provider = P.get("zerobounce")
+    settings = Settings(_env_file=None)
+    assert provider.base_url == "https://api.zerobounce.net"
+    assert provider.probe_path.startswith("/v2/getapiusage?")
+    assert settings.platform_key_for("zerobounce") == "PLATFORM-ZEROBOUNCE"
+    assert P.platform_bindings(provider) == [{
+        "platform_setting": "platform_key_zerobounce",
+        "injector": "env",
+        "location": "query",
+        "name": "api_key",
+        "format": "{secret}",
+    }]
+
+
+async def test_zerobounce_connect_rejects_bad_key_and_accepts_valid_key(clients, monkeypatch):
+    def probe(request):
+        assert request.url.path == "/v2/getapiusage"
+        assert request.url.params["start_date"] == "2026-01-01"
+        assert request.url.params["end_date"] == "2026-12-31"
+        key = request.url.params["api_key"]
+        if key == "bad-key":
+            return httpx.Response(403, json={"error": "invalid api key"})
+        return httpx.Response(200, json={"total": 0, "status_valid": 0})
+
+    async with AsyncClient(transport=httpx.MockTransport(probe)) as upstream:
+        monkeypatch.setattr(app.state, "http", upstream)
+        bad = await clients.post(
+            "/connections/token", json={"provider": "zerobounce", "token": "bad-key"})
+        assert bad.status_code == 422
+        good = await clients.post(
+            "/connections/token", json={"provider": "zerobounce", "token": "own-key"})
+        assert good.status_code == 200, good.text
 
 
 def test_dropleads_registry_uses_the_standard_key_provider_paths(monkeypatch):

@@ -313,6 +313,14 @@ adapters:
     out: {valid: "result == 'Valid'", status: result}
     # Invalid, Risky and Unknown are useful verdicts. Only a missing verdict is a miss.
     miss: "result == null"
+  zerobounce.people.email.verify:
+    accepts: [[email]]
+    in: {email: queryParams.email}
+    out: {valid: "status == 'valid'", status: status}
+    # Invalid, catch-all, abuse, spamtrap and do_not_mail are useful answers. ZeroBounce documents
+    # unknown as uncharged; treating it as a miss lets the existing generic success settlement
+    # release the hold and lets a routed waterfall continue.
+    miss: "coalesce(status, 'unknown') == 'unknown'"
   trykitt.people.email.verify:
     accepts: [[email]]
     in: {email: body.email}

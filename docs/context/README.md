@@ -43,6 +43,7 @@ covers (frontmatter `sources:`). Regenerate this index with
 | [Sumble — account intelligence, subscription credits and BYOK](architecture/sumble.md) | shipped | sumble.yaml, sumble.extended.yaml, sumble.organizations.json, sumble.py, … |
 | [Super-admin — cross-tenant read + control](architecture/super-admin.md) | shipped | api.py, admin.py, access.py, config.py |
 | [Wiza — synchronous search and company enrichment, BYOK async jobs](architecture/wiza.md) | shipped | wiza.yaml, wiza.people.search.json, wiza.companies.search.json, wiza.companies.enrich.json, … |
+| [ZeroBounce — email validation, finding, patterns, and account capacity](architecture/zerobounce.md) | implemented; live authentication and response shapes verified | zerobounce.yaml, zerobounce.people.email.verify.json, zerobounce.people.email.find.json, zerobounce.companies.email_pattern.json, … |
 
 ## Interfaces (API · CLI · skill)
 

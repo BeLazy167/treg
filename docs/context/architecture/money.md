@@ -491,6 +491,7 @@ Provider-specific calculation stays outside the faithful relay.
 | TikHub | Honor explicit no-charge prose; an embedded error that says it is charged still costs the estimate |
 | Bright Data | Count delivered JSON-array records or CSV/NDJSON lines; a JSON object containing a status/snapshot handoff has zero records |
 | Aviato | Fixed routes use the estimate; bulk enrichment counts successful records; catalog `settle: base` and `settle: modifiers` release documented-but-unbilled `reserve_only` riders |
+| ZeroBounce | The verified `per_success` adapter treats `status=unknown` as a zero-cost miss; other completed verdicts settle at the frozen one-credit estimate |
 
 Bright Data snapshot downloads are billable per result, including repeat downloads. Gzip or a
 buffer-truncated response falls back to the estimate because the record count is unknown.
