@@ -24,6 +24,7 @@ sources:
   - src/treg/oauth_providers.py
   - src/treg/providers.py
   - src/treg/config.py
+  - src/treg/application/call/access.py
   - src/treg/application/call/resolve.py
   - src/treg/application/call/settle.py
   - src/treg/domain/catalog/store.py
@@ -38,6 +39,7 @@ sources:
   - tests/test_marketplace_call.py
   - tests/test_mcp.py
   - tests/test_oauth_providers_m3.py
+  - tests/test_enrich_arena.py
   - tests/test_routing.py
 related:
   - architecture/catalog.md
@@ -67,7 +69,9 @@ brand search, and values in the ID-keyed lookup maps. It charges
 Shared-key requests require an explicit count from 1 to 25 before reserve or relay: `limit` for
 business search and company enrichment, `pagination.limit` for brand search, and raw array
 cardinality for both ID lookups. The reserve applies the same rounded formula, so 25 requested
-records hold eight credits. Own-key calls bypass the guard and retain the upstream limits.
+records hold eight credits. Own-key calls bypass the guard and retain the upstream limits. The
+catalog access check prices each endpoint's runnable example with this same Openmart-specific
+formula instead of the generic 20-row estimate.
 
 The other 11 operations remain BYOK-only. Fast ID search has no proven fractional price. The four
 batch submissions and three task reads are one delayed, account-owned lifecycle whose charges
@@ -85,13 +89,12 @@ claim auto-top-up.
 
 ## Routing and Arena
 
-Only `openmart.companies.search` has an adapter. It maps a canonical text or name, optional country,
-and limit to brand search. Its stored fixture verifies companies, count, and cursor output. The
-child is platform-eligible and participates in the generated `treg.companies.search` tool.
-
-Company enrichment can return several location matches. Choosing the first would change semantics,
-so it does not join `companies.enrich`. People operations are asynchronous and do not join the
-synchronous people routes or Arena tasks. No new routed contract or Arena branch is added.
+Openmart tools are direct-call only: none has a routing adapter and none appears in Enrich Arena.
+The direct platform-eligible tools remain callable with treg's key. A live nonsense business query
+returned an unrelated fallback row with `match_score: 0`, so direct callers must treat that score as
+a miss; the result is not safe for automatic selection. Company enrichment can return several
+location matches, so choosing the first would also change semantics. People operations are
+asynchronous and do not join the synchronous people routes or Arena tasks.
 
 ## Capacity and evidence
 

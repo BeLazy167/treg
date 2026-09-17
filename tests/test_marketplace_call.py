@@ -1317,6 +1317,24 @@ async def test_access_probe_reports_the_platform_tier(clients: AsyncClient, plat
     assert "no key needed" in d["detail"] and "0.001" in d["detail"]
 
 
+@pytest.mark.parametrize(("endpoint", "expected"), [
+    ("openmart.businesses.search", 29_800),
+    ("openmart.businesses.lookup.openmart", 29_800),
+    ("openmart.businesses.lookup.google-place", 29_800),
+    ("openmart.companies.enrich", 29_800),
+    ("openmart.companies.search", 89_400),
+])
+async def test_openmart_access_estimate_prices_the_runnable_example(
+    clients: AsyncClient, openmart_platform_on, endpoint, expected,
+):
+    response = await clients.get(f"/catalog/endpoints/{endpoint}/access")
+    assert response.status_code == 200, response.text
+    detail = response.json()
+    assert detail["tier"] == "platform"
+    assert detail["estimated_cost_micro"] == expected
+    assert f"${expected / 1_000_000:g}/call" in detail["detail"]
+
+
 async def test_a_user_may_not_forge_a_platform_binding(clients: AsyncClient, platform_on):
     """The other door onto treg's keys: a tool the caller registers themselves. `relay` resolves
     `platform_setting` from settings without looking at ownership, so the validator has to refuse it."""

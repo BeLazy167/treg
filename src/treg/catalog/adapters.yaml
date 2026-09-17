@@ -1002,16 +1002,6 @@ adapters:
     const: {body.category: company}
     out: {companies: results, count: "len(results)"}
     miss: "results == []"
-  openmart.companies.search:
-    accepts: [[q], [name]]
-    in: {}
-    in_expr:
-      body.search_param.search_term: "coalesce(q, name)"
-      body.search_param.location: "choose(country, list(obj('country', upper(country))), null)"
-      body.pagination.limit: limit
-    test_identity: {q: coffee shop, country: US}
-    out: {companies: data, count: "len(data)", next_cursor: encoded_cursor}
-    miss: "data == []"
   hunter.x.discover-companies:
     accepts: [[q]]
     in:  {q: body.query}
