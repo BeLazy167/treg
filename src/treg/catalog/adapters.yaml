@@ -321,12 +321,6 @@ adapters:
     # unknown as uncharged; treating it as a miss lets the existing generic success settlement
     # release the hold and lets a routed waterfall continue.
     miss: "coalesce(status, 'unknown') == 'unknown'"
-  zerobounce.people.email.find:
-    accepts: [[full_name, domain], [first_name, last_name, domain]]
-    in: {first_name: queryParams.first_name, last_name: queryParams.last_name,
-         domain: queryParams.domain}
-    out: {email: email}
-    miss: "coalesce(email, 'no-results-found') == 'no-results-found'"
   trykitt.people.email.verify:
     accepts: [[email]]
     in: {email: body.email}

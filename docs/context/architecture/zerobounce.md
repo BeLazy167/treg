@@ -61,12 +61,12 @@ provider status, and sets valid only for `status=valid`. Invalid, catch-all, spa
 do-not-mail are useful answers. Unknown or a missing status is a miss, so a waterfall can continue.
 Arena discovers the same adapter without provider-specific code.
 
-The verified finder adapter joins `zerobounce.people.email.find` to
-`treg.people.email.find`, so it participates in automatic routing and the Enrich Arena. It maps a
-canonical name and domain into `first_name`, `last_name`, and `domain`; an empty or absent email is
-a free miss. `zerobounce.companies.email_pattern` uses the same upstream `/v2/guessformat` path with
-domain-only input. It stays a direct catalog tool because `companies.email_pattern` has no routed
-contract or Arena task.
+The Email Finder is deliberately not given a routing adapter. At $0.276 per successful result it is
+about 3.45 times the next-most-expensive routed contender and roughly 57 times the cheapest, so it
+stays an explicit platform/BYOK catalog choice rather than an automatic `treg.people.email.find`
+fallback or Enrich Arena contender. `zerobounce.companies.email_pattern` uses the same upstream
+`/v2/guessformat` path with domain-only input and likewise stays a direct catalog tool because
+`companies.email_pattern` has no routed contract or Arena task.
 
 The supplied acquisition rate is $69 / 5,000 credits, or $0.0138 per credit. Official material says
 a completed non-unknown single validation uses one credit and an unknown result uses none. The tool
@@ -76,8 +76,9 @@ hold on upstream errors. No ZeroBounce branch is added to money code.
 
 Email Finder and Domain Search each document 20 credits per successful result and zero for an
 undetermined result. At the same replacement rate, each successful result reserves and settles
-276,000 micro-USD. Finder uses its verified adapter to identify an empty email; Domain Search uses
-its provider success rule to identify a nonempty format response. The account's first 10 successful
+276,000 micro-USD. Neither tool has a routing adapter, so each declares the same provider success
+rule: an empty `failure_reason` is billable, while an undetermined response releases the hold. The
+account's first 10 successful
 Finder/Domain Search calls used a promotional allocation. The next successful Email Finder call
 reduced the PAYG balance by exactly 20 credits, so Finder pricing is live-verified. Domain Search
 retains documented price confidence until its own paid result is observed.

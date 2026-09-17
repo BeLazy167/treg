@@ -66,6 +66,10 @@ endpoints:
       note: "Provide domain or company_name, plus the person's available name fields. A successful result costs 20 credits; an undetermined result costs nothing. The returned confidence is ZeroBounce's estimate, not proof of deliverability; verify the address before outreach."
     test_request:
       queryParams: {domain: "stripe.com", first_name: "Patrick", last_name: "Collison"}
+    # Deliberately no routing adapter: at $0.276 per hit this tool is an explicit catalog choice,
+    # not an automatic people.email.find fallback or Arena contender. Without an adapter, the
+    # generic per_success settler uses this provider success rule to release free misses.
+    expect: {json_path: failure_reason, equals: ""}
     cost:
       type: per_success
       value: 20
@@ -97,6 +101,8 @@ endpoints:
       note: "Provide domain or company_name. This returns address formats such as first or first.last, not a specific person's email. A successful format result costs 20 credits; an undetermined result costs nothing."
     test_request:
       queryParams: {domain: "openai.com"}
+    # Domain Search also has no routed contract, so its free-miss settlement uses the same explicit
+    # provider success rule rather than an adapter predicate.
     expect: {json_path: failure_reason, equals: ""}
     cost:
       type: per_success

@@ -58,7 +58,7 @@ async def test_bounceban_enters_email_verification_arena_via_verified_adapter(
     get_settings.cache_clear()
 
 
-async def test_zerobounce_enters_email_verification_arena_via_verified_adapter(
+async def test_zerobounce_verifier_enters_arena_but_expensive_finder_does_not(
     clients, monkeypatch,
 ):
     from treg.config import get_settings
@@ -86,10 +86,8 @@ async def test_zerobounce_enters_email_verification_arena_via_verified_adapter(
         "providers": ["zerobounce"],
         "max_cost_micro": 300_000,
     })
-    assert finder_response.status_code == 200, finder_response.text
-    finder_quote = finder_response.json()
-    assert finder_quote["providers"][0]["endpoint_id"] == "zerobounce.people.email.find"
-    assert finder_quote["estimate_micro"] == 276_000
+    assert finder_response.status_code == 422
+    assert "cannot use this input" in finder_response.text
     get_settings.cache_clear()
 
 
