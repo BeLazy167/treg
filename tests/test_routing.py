@@ -1774,7 +1774,8 @@ def test_quickenrich_paid_adapter_fixtures_verify_success_outputs():
         assert adapter.verified is True
         assert adapter.verify_note == ''
         example = json.loads(
-            (Path('src/treg/catalog/examples') / cat.by_id[endpoint_id]['example_file']).read_text()
+            (Path(__file__).resolve().parents[1] / 'src/treg/catalog/examples'
+             / cat.by_id[endpoint_id]['example_file']).read_text()
         )
         assert not adapter.is_miss(example)
         assert adapter.from_upstream(example)[field] == value
