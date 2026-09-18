@@ -652,6 +652,7 @@ def _normalize(raw: dict, provider: str, directory: Path) -> dict:
             if raw.get("platform_auth") is not None else None
         ),
         "strict_query": raw.get("strict_query") is True,
+        "strict_body": raw.get("strict_body") is True,
         "cost": _effective_cost(raw),
         # Absent `tier` means core: the curated first wave predates the split, and treating an
         # unmarked endpoint as extended would hide it from the platform view entirely.
@@ -762,6 +763,7 @@ def endpoint_view(ep: dict, provider_display: str, cat: Catalog | None = None) -
         # the dashboard can show what comes BACK (example_response) but not what to SEND
         "input": ep.get("input") or None,
         **({"strict_query": True} if ep.get("strict_query") else {}),
+        **({"strict_body": True} if ep.get("strict_body") else {}),
         # the exact request that live-verified this endpoint — the Try-it drawer prefills from it
         # verbatim (it also carries the ground truth the input spec can't express: whether the
         # body is a bare object or an ARRAY of tasks, which dataforseo requires)

@@ -23,8 +23,8 @@ def moltsets_on(monkeypatch, platform_on):
 def test_surface_platform_boundary_and_shared_plan_rate():
     cat = store.load()
     rows = cat.for_provider("moltsets")
-    assert len(rows) == 17
-    assert len({(e["method"], e["path"]) for e in rows}) == 17
+    assert len(rows) == 12
+    assert len({(e["method"], e["path"]) for e in rows}) == 12
     enabled = {e["id"] for e in rows if cat.platform_eligible(e)}
     assert enabled == {
         "moltsets.people.email.find.name",
@@ -41,6 +41,11 @@ def test_surface_platform_boundary_and_shared_plan_rate():
     assert cat.shared_plans["moltsets"] == {"usd": .01, "fee_usd_month": 27}
     assert all(e.get("verified") and e.get("example_file") for e in rows)
     assert not any(e["path"].startswith("/get_") for e in rows)
+    assert {
+        "moltsets.people.email.find", "moltsets.people.email.find.business",
+        "moltsets.people.email.find.personal", "moltsets.people.email.find.personal-best",
+        "moltsets.people.phone.find",
+    }.isdisjoint(cat.by_id)
 
 
 def test_connection_and_binding_contract():
@@ -105,13 +110,8 @@ async def test_platform_success_charges_and_miss_or_error_does_not(clients, molt
     ("people.search", {"query": "engineer", "limit": 2}),
     ("companies.search", {"query": "example", "limit": 2}),
     ("linkedin.profile.search", {"name": "Alex Example"}),
-    ("people.email.find", {"linkedin_url": "https://linkedin.com/in/alex-example"}),
-    ("people.email.find.business", {"linkedin_urls": ["https://linkedin.com/in/alex-example"]}),
-    ("people.email.find.personal", {"linkedin_url": "https://linkedin.com/in/alex-example"}),
-    ("people.email.find.personal-best", {"linkedin_url": "https://linkedin.com/in/alex-example"}),
-    ("people.phone.find", {"linkedin_url": "https://linkedin.com/in/alex-example"}),
 ])
-async def test_variable_batch_and_phone_tools_are_not_shared_key_offers(
+async def test_variable_search_tools_are_not_shared_key_offers(
         clients, moltsets_on, monkeypatch, endpoint, body):
     async def forbidden(*args, **kwargs):
         raise AssertionError("platform guard must precede relay")
@@ -122,13 +122,11 @@ async def test_variable_batch_and_phone_tools_are_not_shared_key_offers(
     assert not [e for e in await _entries(clients) if e["kind"] in ("reserve", "settle", "release")]
 
 
-async def test_byok_can_call_blocked_batch_and_phone_tools_without_treg_meter(clients, moltsets_on):
+async def test_byok_can_call_blocked_search_tools_without_treg_meter(clients, moltsets_on):
     await clients.post("/secrets", json={"name": "moltsets", "value": "OWN-MOLTSETS"})
     before = await _balance(clients)
     bodies = {
         "people.search": {"query": "engineer", "limit": 2},
-        "people.email.find": {"linkedin_urls": ["https://linkedin.com/in/a", "https://linkedin.com/in/b"]},
-        "people.phone.find": {"linkedin_url": "https://linkedin.com/in/a"},
     }
     for endpoint, body in bodies.items():
         response = await clients.post(
@@ -141,18 +139,6 @@ async def test_byok_can_call_blocked_batch_and_phone_tools_without_treg_meter(cl
         assert json.loads(echoed["body"]) == body
     assert await _balance(clients) == before
     assert not [e for e in await _entries(clients) if e["kind"] in ("reserve", "settle", "release")]
-
-
-def test_phone_price_keeps_both_upstream_meters_visible():
-    from treg.routers.web import _price_label
-
-    cat = store.load()
-    endpoint = cat.by_id["moltsets.people.phone.find"]
-    cost = cat.cost_view(endpoint["cost"], "moltsets")
-    assert cost["usd"] == .51
-    assert _price_label(cost) == "$0.51/result"
-    assert "$0.01" in cost["note"] and "$0.50" in cost["note"]
-    assert endpoint["platform_blocked"]
 
 
 @pytest.mark.parametrize("five_hour,weekly,token_balance,expected", [
@@ -205,8 +191,8 @@ async def test_provider_page_shows_complete_inventory_and_access_split(clients):
     response = await clients.get("/tools/moltsets")
     assert response.status_code == 200
     html = response.text
-    assert "17 tools · 9 platform + BYOK · 8 BYOK only" in html
-    assert "17 of 17 tools on this page are live-verified" in html
-    assert "$0.51/result" in html
+    assert "12 tools · 9 platform + BYOK · 3 BYOK only" in html
+    assert "12 of 12 tools on this page are live-verified" in html
+    assert "moltsets.people.phone.find" not in html
     for endpoint in store.load().for_provider("moltsets"):
         assert "<code>" + endpoint["id"] + "</code>" in html

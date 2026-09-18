@@ -184,20 +184,21 @@ related:
 
 # Endpoint catalog — platform-grouped operations per provider
 
-LimaData adds all 24 Basic v2 operations. Fifteen fixed, synchronous operations can use the shared
-key; variable, 404-billed, and account-scoped batch operations require a team's own key. Six
+LimaData exposes 21 of 24 Basic v2 operations. Fourteen fixed, synchronous operations can use the
+shared key; variable and 404-billed operations require a team's own key. Account-scoped batch
+submission and result operations are omitted. Six
 fixture-verified adapters join existing routing and Enrich Arena contracts. See
 [LimaData](limadata.md) for the full boundary and live evidence.
 
 ## BounceBan email verification (2026-09-16)
 
-BounceBan adds nine tools across standard single verification, BYOK waterfall verification, BYOK
-single/bulk lifecycle reads, JSON bulk submission, and account usage. Only the standard single tool
+BounceBan adds four tools across standard single verification, BYOK waterfall verification, BYOK
+single-result polling, and account usage. Only the standard single tool
 is platform eligible. It has a fixed observed cost of one credit, priced at the supplied acquisition
 rate of $0.004, and uses `per_call` so an accepted `status=verifying` submission is charged while a
 rejected HTTP 400 request releases its hold. Waterfall retries, conditional zero-credit catch-all
-results, bulk refunds, and task ownership make the other lifecycle operations unsafe for a shared
-key, so they remain BYOK only.
+results make waterfall unsafe for a shared key. Bulk submission and lifecycle operations are
+omitted until an explicit cost-confirmation and owned-job workflow exists.
 
 The verified adapter adds only the standard endpoint to `treg.people.email.verify`; routing and
 Arena discover it from that adapter. Multipart upload, destructive bulk deletion, and the separately
@@ -214,15 +215,18 @@ showed that it needs the key in its JSON body, which the faithful relay does not
 state-changing, and ambiguous-price operations are also outside the safe first surface. See
 [ZeroBounce](zerobounce.md) for the inventory and evidence.
 
-MoltSets adds 17 verified data tools: nine single-result shared-plan offers and eight BYOK-only
-variable, batch, or dual-meter tools. See [MoltSets](moltsets.md) for the boundary and evidence.
+MoltSets adds 12 verified data tools: nine single-result shared-plan offers and three BYOK-only
+variable-result searches. Five hybrid scalar/batch email and phone operations are omitted. See
+[MoltSets](moltsets.md) for the boundary and evidence.
 
 Sumble adds the full v9 surface with verified platform operations and explicit BYOK restrictions. See [Sumble](sumble.md) for schemas, pricing rules, routing and live evidence.
 
-GetLeads.io adds 12 direct contact-data tools. Every tool accepts BYOK or a $0 platform trial with
+GetLeads.io adds 11 direct contact-data tools. Every tool accepts BYOK or a $0 platform trial with
 five successful credit-using calls per team per day; its two free discovery tools do not consume
-that allowance. The caller controls provider-valid page limits and batch
-sizes; the allowance counts calls rather than returned records or upstream credits. Internal
+that allowance. Three enrichment tools keep the upstream `items` array but opt into `strict_body`
+with exactly one item. `_enforce_catalog_body` rejects invalid cardinality on every credential tier
+without rewriting an accepted request. The allowance counts calls rather than returned records or
+upstream credits. Internal
 account routes, stateful exports and monitoring are excluded. See [GetLeads.io](getleadsio.md) for
 the boundary and evidence.
 
@@ -2275,8 +2279,11 @@ before any example is committed, all learned the hard way:
 
 1. **No named private individuals.** Contact-lookup routes (LinkedIn contact info, people-enrichment
    by email) return a real person's name, personal email and phone. Such an endpoint stays in the
-   catalog — the route is real and useful — but it is marked `untestable:` with the reason, carries
-   NO `test_request` (so a re-verify cannot silently re-capture it), and no example is stored.
+   catalog — the route is real and useful — but it is marked `untestable:` with the reason and
+   carries NO `test_request` (so a re-verify cannot silently re-capture it). No captured person
+   response is stored. A routing adapter may use a hand-sanitized structural fixture only when its
+   contact values use reserved fake domains/numbers, it cannot be refreshed by the verifier, and
+   separate live evidence establishes the mapped response fields.
 2. **No third-party PII riding along.** Emails and phones turn up inside unrelated payloads — a
    YouTube description, a review body. Sweep every captured example for address-shaped strings and
    mask anything that isn't a business contact.
@@ -2338,8 +2345,11 @@ and signature test files. The reusable setup is in `tests/conftest.py`.
 
 `contactout.yaml` adds the core LinkedIn/contact surface with explicit work/personal selectors,
 on-hit Starter rates supplied by the account owner, free verification, and deferred batches.
-People lookup/search entries are `untestable:` without test requests or stored examples under the
-PII rule. Their routing adapters are omitted; company search/enrichment and email verification
+Contact reveals and availability checks live on the People shelf; profile identity tools remain
+on LinkedIn. People entries stay `untestable:` without test requests under the PII rule. Work-email
+and phone lookup use reserved-value structural fixtures and verified adapters for the existing
+People routes. Personal email remains direct-only because the shared email contract is work-only;
+people search/profile adapters remain omitted. Company search/enrichment and email verification
 retain verified adapters. Profile-only LinkedIn enrichment costs $0.02 when found.
 See [ContactOut](contactout.md) for request limitations, derived settlement and live evidence.
 
@@ -2380,19 +2390,19 @@ The single verified adapter is usable by Arena; the two-provider public routing 
 
 ## Dropleads integration
 
-`dropleads.yaml` adds twelve synchronous people and company tools. The balance check and export-cost
+`dropleads.yaml` adds ten synchronous people and company tools. The balance check and export-cost
 route stay outside the public catalog. Seven verified adapters add email finding, phone finding,
 email verification, people search and enrichment, and company search and enrichment to the existing
-routed tools and Enrich Arena. The count and synchronous bulk tools stay direct. The provider uses
+routed tools and Enrich Arena. Count tools stay direct; two ten-person bulk tools are omitted. The provider uses
 the existing `CatalogTarget` allow-list for its second API host; catalog data cannot send a
 credential to another host. See [Dropleads](dropleads.md) for the surface, prices and live evidence.
 
 
 ## Prospeo integration
 
-`prospeo.yaml` adds nine people and company tools on both own and platform keys. Six verified
+`prospeo.yaml` adds seven people and company tools on both own and platform keys. Six verified
 adapters add email finding, phone finding, person/company enrichment and person/company search to
-the routed tools and Enrich Arena; bulk enrichment and search suggestions stay direct-only. Search
+the routed tools and Enrich Arena; search suggestions stay direct-only and bulk enrichment is omitted. Search
 pages are fixed at 25 upstream, so adapters cannot forward the contract `limit`; they expose
 Prospeo's `pagination.total_count` while relaying the native result page. The account-information
 route remains internal for key verification and capacity. See [Prospeo](prospeo.md) for pricing,

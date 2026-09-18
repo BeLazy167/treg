@@ -11,8 +11,6 @@ source:
 limits: 'Starter: enrich routes 5/second, 300/minute, 2,000/day; search routes 1/second, 30/minute, 1,000/day. Search suggestions: 15/second on every plan.'
 pricing_url: https://prospeo.io/pricing
 proposed_capabilities:
-  people.enrich.bulk: Synchronously enrich up to 50 people
-  companies.enrich.bulk: Synchronously enrich up to 50 companies
   people.search.suggestions: Resolve canonical Prospeo search-filter values
 endpoints:
   - id: prospeo.people.email.find
@@ -127,48 +125,6 @@ endpoints:
     docs_url: https://prospeo.io/api-docs/enrich-person
     verified: '2026-09-16'
     example_response: examples/prospeo.people.enrich.json
-
-  - id: prospeo.people.enrich.bulk
-    capability: people.enrich.bulk
-    platform: people
-    scope: any_account
-    domain: contacts
-    method: POST
-    path: /bulk-enrich-person
-    name: Bulk enrich people
-    summary: Synchronously enrich up to 50 people with profile, email and optional mobile data.
-    input:
-      bodyType: json
-      body:
-        only_verified_email: {type: boolean, required: false, default: false}
-        enrich_mobile: {type: boolean, required: false, default: false}
-        only_verified_mobile: {type: boolean, required: false, default: false}
-        data:
-          type: array[object]
-          required: true
-          min: 1
-          max: 50
-          example: [{identifier: public-example, linkedin_url: https://www.linkedin.com/in/eoghanmccabe}]
-          note: Each record needs a unique identifier and one of the identity combinations accepted by the single-person endpoint.
-    test_request:
-      body: {only_verified_email: true, enrich_mobile: false, data: [{identifier: public-example, linkedin_url: https://www.linkedin.com/in/eoghanmccabe}]}
-    cost:
-      type: per_result
-      value: 1
-      currency: credit
-      per: 1
-      unit: record
-      source: observed
-      source_url: https://prospeo.io/api-docs/bulk-enrich-person
-      checked: '2026-09-16'
-      confidence: verified
-      note: One credit per charged email enrichment, or ten per charged mobile enrichment, up to 50 inputs. Response total_cost is authoritative, including zero.
-      modifiers:
-        enrich_mobile: {location: body, when: truthy, add_credits_per_result: 9}
-    docs_url: https://prospeo.io/api-docs/bulk-enrich-person
-    verified: '2026-09-16'
-    example_response: examples/prospeo.people.enrich.bulk.json
-
   - id: prospeo.companies.enrich
     capability: companies.enrich
     platform: companies
@@ -194,43 +150,6 @@ endpoints:
     docs_url: https://prospeo.io/api-docs/enrich-company
     verified: '2026-09-16'
     example_response: examples/prospeo.companies.enrich.json
-
-  - id: prospeo.companies.enrich.bulk
-    capability: companies.enrich.bulk
-    platform: companies
-    scope: any_account
-    domain: companies
-    method: POST
-    path: /bulk-enrich-company
-    name: Bulk company lookup and enrichment
-    summary: Synchronously enrich up to 50 companies.
-    input:
-      bodyType: json
-      body:
-        data:
-          type: array[object]
-          required: true
-          min: 1
-          max: 50
-          example: [{identifier: public-example, company_website: intercom.com}]
-          note: Each record needs a unique identifier and at least one company identity field accepted by the single endpoint.
-    test_request:
-      body: {data: [{identifier: public-example, company_website: intercom.com}]}
-    cost:
-      type: per_result
-      value: 1
-      currency: credit
-      per: 1
-      unit: record
-      source: observed
-      source_url: https://prospeo.io/api-docs/bulk-enrich-company
-      checked: '2026-09-16'
-      confidence: verified
-      note: One credit per matched company, up to 50 inputs. Response total_cost is authoritative, including zero.
-    docs_url: https://prospeo.io/api-docs/bulk-enrich-company
-    verified: '2026-09-16'
-    example_response: examples/prospeo.companies.enrich.bulk.json
-
   - id: prospeo.people.search
     capability: people.search
     platform: people

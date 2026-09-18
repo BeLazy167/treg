@@ -2108,6 +2108,28 @@ async def test_getleadsio_platform_call_is_free_and_preserves_the_requested_limi
     assert await _balance(clients) == before
 
 
+@pytest.mark.parametrize("endpoint", [
+    "getleadsio.people.enrich.from_email",
+    "getleadsio.people.enrich.from_linkedin",
+    "getleadsio.people.enrich.from_person",
+])
+@pytest.mark.parametrize("own_key", [False, True])
+async def test_getleadsio_enrichment_rejects_more_than_one_item_on_every_credential_tier(
+        clients: AsyncClient, getleadsio_trial_on, endpoint, own_key):
+    if own_key:
+        created = await clients.post(
+            "/secrets", json={"name": "getleadsio", "value": "OWN-GETLEADSIO"},
+        )
+        assert created.status_code == 200, created.text
+    result = await clients.post(
+        f"/call/{endpoint}", json={"items": [{"id": "one"}, {"id": "two"}]},
+    )
+    assert result.status_code == 400, result.text
+    detail = result.json()["detail"]
+    assert detail["error"] == "catalog_parameter_invalid"
+    assert detail["parameter"] == "body.items"
+
+
 async def test_getleadsio_own_key_wins_and_is_unmetered(
         clients: AsyncClient, getleadsio_trial_on):
     await clients.post("/secrets", json={"name": "getleadsio", "value": "OWN-GETLEADSIO"})
@@ -3216,8 +3238,6 @@ async def test_dropleads_byok_wins_and_is_never_metered(
 @pytest.mark.parametrize(
     "endpoint,body,expected",
     [
-        ("dropleads.people.enrich.bulk", {"details": [{"id": str(i)} for i in range(10)]}, 36_000),
-        ("dropleads.people.enrich.verified.bulk", {"details": [{"id": str(i)} for i in range(3)]}, 10_800),
         ("dropleads.companies.enrich", {"domains": [f"{i}.test" for i in range(25)],
                                          "companyNames": [str(i) for i in range(25)]}, 90_000),
         ("dropleads.companies.search", {"filters": {},
@@ -3263,8 +3283,6 @@ def test_dropleads_request_shapes_reserve_exact_valid_maxima(endpoint, body, exp
          {"error": False, "free": False, "results": [{"person": {"person_id": "p1"}}]}, 24_500),
         ("prospeo.companies.search",
          {"error": False, "free": True, "results": [{"company": {"company_id": "c1"}}]}, 0),
-        ("prospeo.people.enrich.bulk",
-         {"error": False, "total_cost": 3, "matched": []}, 73_500),
         ("prospeo.search.suggestions",
          {"error": False, "location_results": []}, 0),
         ("prospeo.people.email.find", {"error": True, "error_code": "NO_MATCH"}, 0),
@@ -3273,14 +3291,6 @@ def test_dropleads_request_shapes_reserve_exact_valid_maxima(endpoint, body, exp
 def test_prospeo_settles_only_from_response_evidence(endpoint, doc, expected):
     mk = _mk("prospeo", endpoint_id=endpoint, cost_type="per_success", unit_micro=24_500)
     assert call_settle._observed_cost_micro(mk, json.dumps(doc).encode()) == expected
-
-
-@pytest.mark.parametrize("total_cost", [float("inf"), float("-inf"), float("nan")])
-def test_prospeo_bulk_non_finite_cost_keeps_the_estimate(total_cost):
-    mk = _mk("prospeo", endpoint_id="prospeo.people.enrich.bulk",
-             cost_type="per_result", unit_micro=24_500)
-    body = json.dumps({"error": False, "total_cost": total_cost}).encode()
-    assert call_settle._observed_cost_micro(mk, body) is None
 
 
 @pytest.mark.parametrize(
@@ -3300,26 +3310,6 @@ def test_prospeo_phone_settlement_requires_an_actual_mobile(doc, expected):
     mk = _mk("prospeo", endpoint_id="prospeo.people.phone.find",
              cost_type="per_success", unit_micro=245_000)
     assert call_settle._observed_cost_micro(mk, json.dumps(doc).encode()) == expected
-
-
-@pytest.mark.parametrize(
-    "endpoint,body,expected",
-    [
-        ("prospeo.people.enrich.bulk", {"data": [{"id": i} for i in range(4)]}, 98_000),
-        ("prospeo.people.enrich.bulk",
-         {"enrich_mobile": True, "data": [{"id": i} for i in range(4)]}, 980_000),
-        ("prospeo.companies.enrich.bulk", {"data": [{"id": i} for i in range(50)]}, 1_225_000),
-    ],
-)
-def test_prospeo_bulk_reserves_the_maximum_documented_charge(endpoint, body, expected):
-    catalog = catalog_store.load()
-    ep = catalog.by_id[endpoint]
-    cost = catalog.cost_view(ep["cost"], "prospeo")
-    estimate, unit = call_resolution._marketplace_pricing(
-        "prospeo", endpoint, cost, {}, json.dumps(body).encode()
-    )
-    assert estimate == expected
-    assert unit == 24_500
 
 
 async def test_prospeo_platform_email_settles_one_credit(

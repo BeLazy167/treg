@@ -6,11 +6,6 @@ sources:
   - src/treg/catalog/examples/bounceban.people.email.verify.json
   - src/treg/catalog/examples/bounceban.people.email.verify.waterfall.json
   - src/treg/catalog/examples/bounceban.people.email.verify.status.json
-  - src/treg/catalog/examples/bounceban.people.email.verify.bulk.json
-  - src/treg/catalog/examples/bounceban.people.email.verify.bulk.status.json
-  - src/treg/catalog/examples/bounceban.people.email.verify.bulk.emails.json
-  - src/treg/catalog/examples/bounceban.people.email.verify.bulk.dump.json
-  - src/treg/catalog/examples/bounceban.people.email.verify.bulk.export.json
   - src/treg/catalog/examples/bounceban.account.usage.json
   - src/treg/catalog/adapters.yaml
   - src/treg/catalog/fx.yaml
@@ -44,11 +39,10 @@ BounceBan supplies email verification through two hosts. The standard API uses
 
 ## Catalog boundary
 
-The catalog exposes nine safe operations: standard and waterfall single verification, single-task
-status, JSON bulk creation, four bulk read/export operations, and account usage. The documented
-multipart CSV upload is omitted because the catalog has no file-upload contract. Bulk destruction
-is omitted because it is destructive. `/v1/check` is omitted because it uses a separate Check Plan
-whose acquisition price and capacity were not supplied.
+The catalog exposes four operations: standard and waterfall single verification, single-task status,
+and account usage. JSON and multipart bulk creation, bulk reads/exports, bulk destruction, and
+`/v1/check` are omitted. Bulk work needs an explicit cost-confirmation and owned-job workflow;
+`/v1/check` uses a separate plan whose acquisition price and capacity were not supplied.
 
 Only `bounceban.people.email.verify` is platform eligible. It uses the standard host and does not
 expose `disable_catchall_verify` or webhook inputs. Every accepted request therefore has the proven
@@ -57,12 +51,10 @@ body says `status=verifying`; malformed input returned HTTP 400 with no reported
 the hold through the shared settlement rule. One credit costs $0.004 from the supplied $40 / 10,000
 purchase. No provider-specific money branch is added.
 
-Waterfall and bulk operations are BYOK only. Waterfall same-address retries inside 30 minutes do
-not deduct a new credit, but the repeated response reports the original credit count. A waterfall
-catch-all skipped with `disable_catchall_verify=1` can also cost zero. Bulk submission reserves
-credits first and refunds unknown results only when the task finishes. Those delayed and ambiguous
-rules cannot be settled exactly on a shared key, and task identifiers belong to the connected
-account. The related status, result, dump, and export operations stay with that account.
+Waterfall remains BYOK-only. Same-address retries inside 30 minutes do not deduct a new credit, but
+the repeated response reports the original credit count; a catch-all skipped with
+`disable_catchall_verify=1` can also cost zero. Bulk operations are omitted because submission
+reserves many credits, refunds arrive only after completion, and task identifiers are account-owned.
 
 ## Routing and Arena
 

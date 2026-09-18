@@ -15,6 +15,13 @@
 
 adapters:
   # ---- people.email.find --------------------------------------------------------------------
+  contactout.people.contact.work:
+    accepts: [[linkedin_url]]
+    in: {linkedin_url: queryParams.profile}
+    const: {queryParams.email_type: work, queryParams.include_phone: false}
+    test_identity: {linkedin_url: "https://www.linkedin.com/in/routing-fixture"}
+    out: {email: "profile.work_email[0]"}
+    miss: "at_least(status_code != 200, coalesce(profile.work_email) == null)"
   dropleads.people.email.find:
     accepts: [[first_name, last_name, domain]]
     in: {first_name: body.first_name, last_name: body.last_name, domain: body.company_domain}
@@ -258,6 +265,13 @@ adapters:
     miss: "data.creator_info.unique_id == null"
 
   # ---- people.phone.find --------------------------------------------------------------------
+  contactout.people.contact.phone:
+    accepts: [[linkedin_url]]
+    in: {linkedin_url: queryParams.profile}
+    const: {queryParams.email_type: none, queryParams.include_phone: true}
+    test_identity: {linkedin_url: "https://www.linkedin.com/in/routing-fixture"}
+    out: {phone: "profile.phone[0]", line_type: "'mobile'"}
+    miss: "at_least(status_code != 200, coalesce(profile.phone) == null)"
   dropleads.people.phone.find:
     accepts: [[linkedin_url]]
     in: {linkedin_url: body.linkedin_url}
@@ -2352,8 +2366,10 @@ adapters:
 
 
 
-  # ContactOut people search/profile adapters are omitted: the PII rule excludes
-  # their verification fixtures. Direct tools remain available. Company discovery:
+  # ContactOut work-email and phone lookups use sanitized structural fixtures above. People
+  # search/profile adapters remain omitted because their PII-bearing responses have no safe
+  # routing fixture. Personal email stays direct-only because the shared email contract is work-only.
+  # Company discovery:
   contactout.companies.search:
     accepts: [[domain], [name], [industry], [technology]]
     in: {domain: body.domain, name: body.name, industry: body.industry, technology: body.technologies}

@@ -1304,7 +1304,7 @@ async def test_lusha_is_the_last_rung_of_the_phone_waterfall_and_settles_on_its_
     get_settings.cache_clear()
     routed = "treg.people.phone.find"
     plan = (await clients.get(f"/catalog/endpoints/{routed}")).json()["routing"]["plan"]
-    assert plan[-1]["endpoint_id"] == "lusha.people.phone.find" and len(plan) == 11, [c["endpoint_id"] for c in plan]
+    assert plan[-1]["endpoint_id"] == "lusha.people.phone.find" and len(plan) == 12, [c["endpoint_id"] for c in plan]
     def misses():
         return {"aviato": [(404, {"message": "Not Found"})], "tomba": [(200, {"data": {"e164_format": None}})],
                 "leadmagic": [(200, {"mobile_number": None, "credits_consumed": 0})],
@@ -1504,11 +1504,6 @@ def test_bounceban_verdicts_join_existing_email_verification_route(result, valid
     assert cat.platform_eligible(cat.by_id[eid])
     for blocked in (
         "bounceban.people.email.verify.waterfall",
-        "bounceban.people.email.verify.bulk",
-        "bounceban.people.email.verify.bulk.status",
-        "bounceban.people.email.verify.bulk.emails",
-        "bounceban.people.email.verify.bulk.dump",
-        "bounceban.people.email.verify.bulk.export",
         "bounceban.account.usage",
     ):
         assert not cat.platform_eligible(cat.by_id[blocked])
@@ -1981,6 +1976,18 @@ def test_row_values_and_nested_lookup_expressions(value, expected):
 
 
 _CONTACTOUT_DISCOVERY = [
+    ('people.email.find', 'people.contact.work',
+     {'linkedin_url': 'https://www.linkedin.com/in/example'},
+     'GET', {'profile': 'https://www.linkedin.com/in/example',
+             'email_type': 'work', 'include_phone': False}, None,
+     {'status_code': 200, 'profile': {'work_email': ['work@example.test']}},
+     'email', 'work@example.test', 150_000),
+    ('people.phone.find', 'people.contact.phone',
+     {'linkedin_url': 'https://www.linkedin.com/in/example'},
+     'GET', {'profile': 'https://www.linkedin.com/in/example',
+             'email_type': 'none', 'include_phone': True}, None,
+     {'status_code': 200, 'profile': {'phone': ['+10000000000']}},
+     'phone', '+10000000000', 250_000),
     ('companies.search', 'companies.search', {'domain': 'example.test'},
      'POST', {}, {'domain': ['example.test']},
      {'status_code': 200, 'companies': [{'name': 'Example'}]}, 'companies', [{'name': 'Example'}], 20_000),
@@ -2033,10 +2040,12 @@ async def test_contactout_discovery_empty_or_error_response_is_not_a_hit(
         assert not (await db.execute(select(Hold))).scalars().all()
 
 
-def test_contactout_pii_routes_are_not_enabled_without_verification_examples():
+def test_contactout_unverified_pii_routes_stay_direct_only():
     cat = catalog_store.load()
     for cap, child in [('people.search', 'people.search'), ('people.enrich', 'people.enrich'),
                        ('linkedin.user.profile', 'people.linkedin.enrich')]:
         eid = 'contactout.' + child
         assert eid not in cat.adapters
         assert eid not in cat.by_id['treg.' + cap]['routed_children']
+    assert 'contactout.people.contact.personal' not in cat.adapters
+    assert cat.by_id['contactout.people.contact.personal']['platform'] == 'people'

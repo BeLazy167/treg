@@ -1,14 +1,12 @@
 ---
-title: AI Ark — bounded synchronous enrichment and BYOK async jobs
+title: AI Ark — bounded synchronous enrichment
 status: shipped
 sources:
   - src/treg/catalog/aiark.yaml
   - src/treg/catalog/examples/aiark.companies.search.json
   - src/treg/catalog/examples/aiark.lists.upsert.json
-  - src/treg/catalog/examples/aiark.people.email.find.bulk.submissions.json
   - src/treg/catalog/examples/aiark.people.email.find.json
   - src/treg/catalog/examples/aiark.people.enrich.json
-  - src/treg/catalog/examples/aiark.people.export.submissions.json
   - src/treg/catalog/examples/aiark.people.personality.analyze.json
   - src/treg/catalog/examples/aiark.people.phone.find.json
   - src/treg/catalog/examples/aiark.people.preview.json
@@ -49,7 +47,7 @@ first and treg never meters it.
 
 ## Catalog surface and boundary
 
-`aiark.yaml` exposes 18 tools from 21 documented operations. It uses the V2 single-email and mobile
+`aiark.yaml` exposes eight bounded tools from 21 documented operations. It uses the V2 single-email and mobile
 routes and omits their duplicate V1 forms. The free credits route stays internal to connection
 verification and `collectors._aiark`, so catalog callers cannot inspect either their own or treg's
 account balance.
@@ -62,11 +60,10 @@ maximum hold. Successful platform responses settle from the provider's exact `X-
 AI Ark reports debits as negative numbers, so `_CREDIT_HEADERS` declares an explicit -1 multiplier;
 positive, missing, nonnumeric and non-finite values remain untrusted and fall back to other evidence.
 
-List mutation and ten async submission, result, status, history and webhook-resend tools are
-BYOK-only. AI Ark track ids are account-scoped, a search track id is single-use, and delivery failure
-can trigger a refund up to ten hours after submission. The current shared async contract does not
-persist caller ownership and terminal charge/refund evidence for that lifecycle. The integration
-therefore adds no AI Ark branch to the call, money, async, routing or Arena runtime.
+List mutation remains BYOK-only. Ten async submission, result, status, history and webhook-resend
+operations are omitted from the catalog: AI Ark track ids are account-scoped, a search track id is
+single-use, and delivery failure can trigger a refund up to ten hours after submission. They require
+a purpose-built workflow with explicit cost and lifecycle ownership before agents can call them.
 
 ## Pricing and settlement
 
@@ -89,8 +86,8 @@ the existing `get` expression to normalize it. A
 reverse-lookup miss returned HTTP 404 and used no credit even though the public reference describes
 a per-request charge, so treg conservatively settles only a successful profile.
 
-The two async submission tools retain documented `per_result` prices as BYOK information. They do
-not advertise a platform estimate, reserve a team balance or imply that delayed refunds are handled.
+The omitted async submissions do not advertise a platform estimate, reserve a team balance or imply
+that delayed refunds are handled.
 
 ## Routing and Arena
 
@@ -101,7 +98,7 @@ provider's observed response shapes. Sanitized fixtures verify every adapter whe
 The tools become route and Enrich Arena candidates through the generic capability machinery.
 
 Preview and personality analysis stay direct tools because the existing routed contracts do not
-describe their outputs. Stateful list and async operations never enter Arena. There is no
+describe their outputs. The stateful list operation never enters Arena. There is no
 AI Ark-specific provider choice, retry or response wrapping.
 
 ## Capacity

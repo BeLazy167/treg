@@ -174,19 +174,10 @@ def _quickenrich_cost_micro(mk: MarketplaceCall, doc: dict) -> int | None:
 
 
 def _prospeo_cost_micro(mk: MarketplaceCall, doc: dict) -> int | None:
-    """Settle from Prospeo's dedupe flags, endpoint success field, and exact bulk charge."""
+    """Settle from Prospeo's dedupe flags and endpoint-specific success fields."""
     if doc.get("error") is True:
         return 0
     if doc.get("error") is not False:
-        return None
-    if mk.endpoint_id in (
-        "prospeo.people.enrich.bulk",
-        "prospeo.companies.enrich.bulk",
-    ):
-        credits = doc.get("total_cost")
-        if (isinstance(credits, (int, float)) and not isinstance(credits, bool)
-                and math.isfinite(credits) and credits >= 0):
-            return int(credits * mk.unit_micro + 0.5)
         return None
     if mk.endpoint_id in ("prospeo.people.search", "prospeo.companies.search"):
         if doc.get("free") is True:

@@ -9,13 +9,6 @@ sources:
   - src/treg/catalog/examples/openmart.businesses.lookup.google-place.json
   - src/treg/catalog/examples/openmart.companies.enrich.json
   - src/treg/catalog/examples/openmart.companies.search.json
-  - src/treg/catalog/examples/openmart.people.find.batch.json
-  - src/treg/catalog/examples/openmart.technologies.find.batch.json
-  - src/treg/catalog/examples/openmart.companies.email.find.batch.json
-  - src/treg/catalog/examples/openmart.people.enrich.batch.json
-  - src/treg/catalog/examples/openmart.tasks.batch.status.json
-  - src/treg/catalog/examples/openmart.tasks.batch.ids.json
-  - src/treg/catalog/examples/openmart.tasks.get.json
   - src/treg/catalog/examples/openmart.deny-rules.create.json
   - src/treg/catalog/examples/openmart.deny-rules.check.json
   - src/treg/catalog/examples/openmart.deny-rules.delete.json
@@ -53,8 +46,8 @@ related:
 
 Openmart is a pasted Bearer-key enrichment provider at `https://api.openmart.ai`. The free
 `GET /api/v2/credit-balance` operation verifies a connection and supplies the capacity collector.
-The catalog exposes 16 caller-facing operations: business and brand search, two ID lookups, company
-enrichment, four batch submission types, three task reads, and three deny-rule operations. The
+The catalog exposes nine caller-facing operations: business and brand search, two ID lookups,
+company enrichment, and three deny-rule operations. The
 balance route is deliberately not a tool: it is internal connection/capacity infrastructure.
 
 ## Shared-key boundary
@@ -73,10 +66,10 @@ records hold eight credits. Own-key calls bypass the guard and retain the upstre
 catalog access check prices each endpoint's runnable example with this same Openmart-specific
 formula instead of the generic 20-row estimate.
 
-The other 11 operations remain BYOK-only. Fast ID search has no proven fractional price. The four
-batch submissions and three task reads are one delayed, account-owned lifecycle whose charges
-cannot be assigned safely by a synchronous response. The three deny-rule operations read or mutate
-private account state and forbid caching. The shared balance route is absent from the catalog so no
+The other four exposed operations remain BYOK-only. Fast ID search has no proven fractional price,
+and the three deny-rule operations read or mutate private account state and forbid caching. Four
+batch submissions and three task reads are omitted because their delayed, account-owned lifecycle
+needs explicit cost confirmation and durable ownership. The shared balance route is absent from the catalog so no
 caller can inspect operational inventory.
 
 The catalog records the active subscription conversion of $149 for 5,000 credits, or $0.0298 per
@@ -93,8 +86,7 @@ Openmart tools are direct-call only: none has a routing adapter and none appears
 The direct platform-eligible tools remain callable with treg's key. A live nonsense business query
 returned an unrelated fallback row with `match_score: 0`, so direct callers must treat that score as
 a miss; the result is not safe for automatic selection. Company enrichment can return several
-location matches, so choosing the first would also change semantics. People operations are
-asynchronous and do not join the synchronous people routes or Arena tasks.
+location matches, so choosing the first would also change semantics. Asynchronous people operations are omitted and do not join the synchronous people routes or Arena tasks.
 
 ## Capacity and evidence
 
