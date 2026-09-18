@@ -1736,6 +1736,21 @@ and example `last-week`. Sibling `date_posted` fields (Google search, LinkedIn p
 their own windows. Enforced by `test_scrapecreators_instagram_reels_search_date_posted_enum`
 and `test_catalog_get_scrapecreators_instagram_reels_search_date_posted`.
 
+### ScrapeCreators YouTube search `sortBy` / `uploadDate` / `type` / `duration`
+
+ScrapeCreators' OpenAPI for `GET /v1/youtube/search` restricts `sortBy` to `relevance`
+and `popular` only; `uploadDate` to `today | this_week | this_month | this_year`;
+`type` to the plural forms `videos | shorts | channels | playlists`; and `duration`
+to `under_3_min | between_3_and_20_min | over_20_min` (videos only, not shorts).
+Feedback #117 / #370: `scrapecreators.x.v1-youtube-search` advertised a vague
+"Sort by" note with example `relevance` and no enums, so agents sent
+`sortBy=view_count` (the common YouTube Data API / justoneapi / tikhub value) and
+got HTTP 400. Catalog-only: the four fields now name the OpenAPI enums; `sortBy`
+notes that `view_count`, `upload_date`, and `rating` are not accepted.
+`test_request` / `call_template` still use `sortBy=relevance`. Settlement is
+unchanged. Enforced by `test_scrapecreators_youtube_search_filter_enums` and
+`test_catalog_get_scrapecreators_youtube_search_filter_enums`.
+
 ### SerpApi Google Trends `data_type` query cardinality
 
 SerpApi's Google Trends engine (`GET /search?engine=google_trends`) accepts five `data_type`

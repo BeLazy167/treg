@@ -1911,3 +1911,88 @@ async def test_catalog_get_tikhub_tiktok_ads_search_ads_period_and_limit(
     assert "default 20" in limit_note
     assert "≤ 20" in fields["limit"]["note"]
     assert fields["limit"]["example"] == 20
+
+
+YOUTUBE_SEARCH_ID = "scrapecreators.x.v1-youtube-search"
+YOUTUBE_SEARCH_SORTBY = ["relevance", "popular"]
+YOUTUBE_SEARCH_UPLOAD_DATE = ["today", "this_week", "this_month", "this_year"]
+YOUTUBE_SEARCH_TYPE = ["videos", "shorts", "channels", "playlists"]
+YOUTUBE_SEARCH_DURATION = ["under_3_min", "between_3_and_20_min", "over_20_min"]
+
+
+def test_scrapecreators_youtube_search_filter_enums():
+    """Feedback #117 / #370: GET /v1/youtube/search only accepts OpenAPI enums.
+
+    catalog_get used to advertise sortBy as a free string (example relevance)
+    with no enum, so agents sent view_count from sibling YouTube search APIs
+    (justoneapi / tikhub) and got HTTP 400. Upstream OpenAPI enum is
+    relevance | popular only. uploadDate / type / duration have their own
+    enums; type uses plural forms (not video/channel). call_template stays
+    sortBy=relevance. Settlement is unchanged.
+
+    Ref: https://docs.scrapecreators.com/openapi.json
+    """
+    cat = cs.load()
+    ep = cat.by_id[YOUTUBE_SEARCH_ID]
+    assert ep["path"] == "/v1/youtube/search"
+    params = ep["input"]["queryParams"]
+
+    sort_by = params["sortBy"]
+    assert sort_by["enum"] == YOUTUBE_SEARCH_SORTBY
+    assert sort_by["example"] == "relevance"
+    sort_note = sort_by["note"].lower()
+    assert "relevance" in sort_note and "popular" in sort_note
+    assert "view_count" in sort_note
+    assert "upload_date" in sort_note
+    assert "rating" in sort_note
+    assert "400" in sort_note
+    assert "not accepted" in sort_note
+
+    upload = params["uploadDate"]
+    assert upload["enum"] == YOUTUBE_SEARCH_UPLOAD_DATE
+    assert "today" in upload["note"]
+    assert "this_week" in upload["note"]
+    assert "this_month" in upload["note"]
+    assert "this_year" in upload["note"]
+
+    type_field = params["type"]
+    assert type_field["enum"] == YOUTUBE_SEARCH_TYPE
+    assert type_field["example"] == "videos"
+    type_note = type_field["note"].lower()
+    assert "plural" in type_note
+    assert "not video/channel" in type_note
+
+    duration = params["duration"]
+    assert duration["enum"] == YOUTUBE_SEARCH_DURATION
+    assert duration["example"] == "under_3_min"
+    duration_note = duration["note"].lower()
+    assert "not shorts" in duration_note
+
+    assert (ep.get("test_request") or {}).get("queryParams", {}).get("sortBy") == "relevance"
+    assert "sortBy=relevance" in cs.call_template(ep)
+    assert ep["cost"]["value"] == 1
+    assert ep["cost"]["currency"] == "credit"
+
+    sibling = cat.by_id["justoneapi.x.youtube-search-v1"]["input"]["queryParams"]["sortBy"]
+    assert "view_count" in sibling["enum"]
+
+
+async def test_catalog_get_scrapecreators_youtube_search_filter_enums(
+        clients: AsyncClient):
+    """Feedback #117 / #370: catalog_get must name relevance|popular, not view_count."""
+    body = (await clients.get(f"/catalog/endpoints/{YOUTUBE_SEARCH_ID}")).json()
+    params = body["endpoint"]["input"]["queryParams"]
+    assert params["sortBy"]["enum"] == YOUTUBE_SEARCH_SORTBY
+    assert params["sortBy"]["example"] == "relevance"
+    note = params["sortBy"]["note"].lower()
+    assert "relevance" in note and "popular" in note
+    assert "view_count" in note
+    assert "not accepted" in note
+    assert "400" in note
+    assert params["uploadDate"]["enum"] == YOUTUBE_SEARCH_UPLOAD_DATE
+    assert params["type"]["enum"] == YOUTUBE_SEARCH_TYPE
+    assert params["duration"]["enum"] == YOUTUBE_SEARCH_DURATION
+    tmpl = body["call_template"]
+    assert tmpl.startswith(f"treg call {YOUTUBE_SEARCH_ID}")
+    assert "sortBy=relevance" in tmpl
+    assert "view_count" not in tmpl
