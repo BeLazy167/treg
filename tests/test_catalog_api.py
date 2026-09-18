@@ -1861,3 +1861,53 @@ async def test_catalog_get_serpapi_google_maps_place_id(clients: AsyncClient):
     assert "type=search" in tmpl
     assert "q=pizza" in tmpl
     assert "place_id=" not in tmpl
+
+
+TIKTOK_ADS_SEARCH_ID = "tikhub.x.tiktok-ads-search-ads"
+TIKTOK_ADS_SEARCH_PERIOD = "7 | 30 | 120 | 180"
+
+
+def test_tikhub_tiktok_ads_search_ads_period_and_limit_notes():
+    """Feedback #561 / #459: period is 7|30|120|180; live limit max is ~20.
+
+    catalog_get used to advertise period as a free integer (example 180) and
+    limit as "Items per page" (example 20). Live Creative Center / TikHub
+    nested validation rejects other period values and rejects limit=30/50 even
+    though some OpenAPI text says max 50. Catalog-only: name the period oneof
+    and prefer limit ≤ 20. Settlement is unchanged.
+    """
+    cat = cs.load()
+    ep = cat.by_id[TIKTOK_ADS_SEARCH_ID]
+    assert ep["path"] == "/api/v1/tiktok/ads/search_ads"
+    body = ep["input"]["body"]
+
+    period = body["period"]
+    assert period["type"] == "integer"
+    assert period["example"] == 180
+    assert TIKTOK_ADS_SEARCH_PERIOD in period["note"]
+
+    limit = body["limit"]
+    assert limit["type"] == "integer"
+    assert limit["example"] == 20
+    limit_note = limit["note"].lower()
+    assert "default 20" in limit_note
+    assert "≤ 20" in limit["note"]
+    assert "50" in limit_note
+    assert (ep.get("test_request") or {}).get("body", {}).get("limit") == 5
+
+    sibling = cat.by_id["tikhub.x.tiktok-ads-get-top-ads-spotlight"]
+    assert sibling["input"]["body"]["limit"]["note"] == "Items per page"
+
+
+async def test_catalog_get_tikhub_tiktok_ads_search_ads_period_and_limit(
+        clients: AsyncClient):
+    """Feedback #561 / #459: catalog_get must name period oneof and limit ≤ 20."""
+    body = (await clients.get(f"/catalog/endpoints/{TIKTOK_ADS_SEARCH_ID}")).json()
+    fields = body["endpoint"]["input"]["body"]
+    assert TIKTOK_ADS_SEARCH_PERIOD in fields["period"]["note"]
+    assert fields["period"]["type"] == "integer"
+    assert fields["period"]["example"] == 180
+    limit_note = fields["limit"]["note"].lower()
+    assert "default 20" in limit_note
+    assert "≤ 20" in fields["limit"]["note"]
+    assert fields["limit"]["example"] == 20
