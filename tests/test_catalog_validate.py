@@ -565,11 +565,12 @@ def test_contactout_catalog_distribution_preserves_ids_and_global_discovery():
     cat = catalog_store.load()
     entries = [e for e in cat.endpoints if e.get("provider") == "contactout"]
     assert Counter(e["platform"] for e in entries) == {
-        "linkedin": 8, "people": 10, "companies": 2}
+        "linkedin": 2, "people": 16, "companies": 2}
     for e in entries:
         assert e["capability"].split(".")[0] == e["platform"]
-    assert cat.by_id["contactout.people.contact.work"]["platform"] == "linkedin"
-    results, _ = catalog_store.search("contactout linkedin work email", cat, limit=100)
+    assert cat.by_id["contactout.people.contact.work"]["platform"] == "people"
+    assert cat.by_id["contactout.people.contact.personal"]["capability"] == "people.email.personal.find"
+    results, _ = catalog_store.search("contactout people work email", cat, limit=100)
     assert any(e["id"] == "contactout.people.contact.work" for e, _ in results)
 
 
@@ -580,12 +581,20 @@ def test_contactout_person_routes_cannot_recapture_pii():
     endpoints = yaml.safe_load(path.read_text())["endpoints"]
     safe = {"contactout.people.count", "contactout.people.email.verify",
             "contactout.companies.search", "contactout.companies.enrich"}
+    structural = {"contactout.people.contact.work", "contactout.people.contact.phone"}
     for ep in endpoints:
         if ep["id"] in safe:
             continue
         assert ep["untestable"]
-        assert not any(key in ep for key in ("test_request", "verified", "example_response"))
-        assert not (path.parent / "examples" / (ep["id"] + ".json")).exists()
+        assert not any(key in ep for key in ("test_request", "verified"))
+        example = path.parent / "examples" / (ep["id"] + ".json")
+        if ep["id"] in structural:
+            assert ep["example_response"] == "examples/" + example.name
+            payload = example.read_text()
+            assert "example.invalid" in payload or "+10000000000" in payload
+        else:
+            assert "example_response" not in ep
+            assert not example.exists()
     work = next(ep for ep in endpoints if ep["id"] == "contactout.people.enrich.work_email")
     assert work["cost"]["value"] == 0.17
 
@@ -617,6 +626,20 @@ def test_strict_query_contract_validation(patch, valid):
           'input': {'queryParams': {'mode': {'type': 'string', 'enum': ['true']}}}}
     errors = []
     validator.check_strict_query(ep | patch, 'example', errors)
+    assert bool(errors) is not valid
+
+
+@pytest.mark.parametrize('patch,valid', [
+    ({}, True),
+    ({'strict_body': 'yes'}, False),
+    ({'method': 'GET'}, False),
+    ({'input': {'body': {'items': {'type': 'array[object]', 'min': 2, 'max': 1}}}}, False),
+])
+def test_strict_body_contract_validation(patch, valid):
+    ep = {'strict_body': True, 'method': 'POST', 'path': '/lookup',
+          'input': {'body': {'items': {'type': 'array[object]', 'min': 1, 'max': 1}}}}
+    errors = []
+    validator.check_strict_body(ep | patch, 'example', errors)
     assert bool(errors) is not valid
 
 
@@ -656,7 +679,7 @@ def test_missing_platform_auth_normalizes_as_absent():
 def test_dropleads_catalog_surface_is_bounded_and_excludes_internal_routes():
     catalog = catalog_store.load()
     rows = [ep for ep in catalog.endpoints if ep["provider"] == "dropleads"]
-    assert len(rows) == 12
+    assert len(rows) == 10
     assert all(catalog.platform_eligible(ep) for ep in rows)
     assert not any(
         "credits/balance" in ep["path"] or "export/cost" in ep["path"]
@@ -681,18 +704,15 @@ def test_dropleads_catalog_surface_is_bounded_and_excludes_internal_routes():
 def test_prospeo_catalog_surface_excludes_account_info_and_prices_mobile_at_the_documented_maximum():
     catalog = catalog_store.load()
     rows = [ep for ep in catalog.endpoints if ep["provider"] == "prospeo"]
-    assert len(rows) == 9
+    assert len(rows) == 7
     assert not any(ep["path"] == "/account-information" for ep in rows)
     assert {ep["path"] for ep in rows} == {
-        "/enrich-person", "/bulk-enrich-person", "/enrich-company",
-        "/bulk-enrich-company", "/search-person", "/search-company",
+        "/enrich-person", "/enrich-company", "/search-person", "/search-company",
         "/search-suggestions",
     }
     phone = catalog.by_id["prospeo.people.phone.find"]
     assert not phone.get("platform_blocked")
     assert phone["cost"]["value"] == 10
-    bulk_mobile = catalog.by_id["prospeo.people.enrich.bulk"]["cost"]["modifiers"]
-    assert bulk_mobile["enrich_mobile"]["add_credits_per_result"] == 9
     assert all(catalog.platform_eligible(ep) for ep in rows)
 
 
@@ -703,21 +723,14 @@ def test_aiark_catalog_covers_the_selected_documented_surface():
         "aiark.people.search", "aiark.people.preview", "aiark.companies.search",
         "aiark.people.email.find", "aiark.people.phone.find", "aiark.people.enrich",
         "aiark.people.personality.analyze", "aiark.lists.upsert",
-        "aiark.people.export.start", "aiark.people.export.results",
-        "aiark.people.export.statistics", "aiark.people.export.submissions",
-        "aiark.people.export.webhook.resend", "aiark.people.email.find.bulk",
-        "aiark.people.email.find.bulk.results", "aiark.people.email.find.bulk.statistics",
-        "aiark.people.email.find.bulk.submissions",
-        "aiark.people.email.find.bulk.webhook.resend",
     }
     assert not any(ep["path"] in {
         "/v1/payments/credits", "/v1/people/export/single",
         "/v1/people/mobile-phone-finder",
     } for ep in endpoints.values())
     assert all(
-        ep.get("platform_blocked")
-        for eid, ep in endpoints.items()
-        if ".export." in eid or ".bulk" in eid or eid == "aiark.lists.upsert"
+        ep.get("platform_blocked") for eid, ep in endpoints.items()
+        if eid == "aiark.lists.upsert"
     )
     assert endpoints["aiark.people.search"]["input"]["body"]["size"]["enum"] == [1]
     assert endpoints["aiark.people.search"]["platform_request"] == {"body.size": 1}
@@ -754,12 +767,9 @@ def test_limadata_catalog_covers_basic_v2_and_keeps_unsafe_calls_byok_only():
         ("POST", "/api/v1/research/extract"),
         ("POST", "/api/v1/research/search"),
         ("POST", "/api/v1/search/web"),
-        ("POST", "/api/v2/batch/ad_audiences"),
-        ("POST", "/api/v2/batch/email_verify"),
-        ("GET", "/api/v2/batch/results"),
     }
     platform = {ep["id"] for ep in rows if catalog.platform_eligible(ep)}
-    assert len(rows) == 24 and len(platform) == 14
+    assert len(rows) == 21 and len(platform) == 14
     assert {
         "limadata.people.enrich",
         "limadata.people.count",
@@ -768,9 +778,6 @@ def test_limadata_catalog_covers_basic_v2_and_keeps_unsafe_calls_byok_only():
         "limadata.people.employees.search",
         "limadata.people.identity.resolve",
         "limadata.web.extract",
-        "limadata.people.audience.batch.start",
-        "limadata.people.email.verify.batch.start",
-        "limadata.people.batch.results",
     }.isdisjoint(platform)
 
 
@@ -794,18 +801,13 @@ def test_zerobounce_catalog_exposes_verified_single_record_tools_only():
     assert all(catalog.platform_eligible(ep) for ep in rows)
 
 
-def test_bounceban_catalog_has_one_platform_tool_and_complete_safe_byok_lifecycle():
+def test_bounceban_catalog_has_one_platform_tool_and_no_bulk_lifecycle():
     catalog = catalog_store.load()
     rows = [ep for ep in catalog.endpoints if ep["provider"] == "bounceban"]
-    assert len(rows) == 9
+    assert len(rows) == 4
     assert {ep["path"] for ep in rows} == {
         "/v1/verify/single",
         "/v1/verify/single/status",
-        "/v1/verify/bulk",
-        "/v1/verify/bulk/status",
-        "/v1/verify/bulk/emails",
-        "/v1/verify/bulk/dump",
-        "/v1/verify/bulk/export",
         "/v1/account",
     }
     assert not any(ep["path"] in ("/v1/verify/bulk/file", "/v1/verify/bulk/destroy", "/v1/check")
@@ -821,13 +823,17 @@ def test_bounceban_catalog_has_one_platform_tool_and_complete_safe_byok_lifecycl
     assert waterfall["platform_blocked"]
 
 
-def test_getleadsio_original_routes_are_available_to_byok_and_platform_callers():
+def test_getleadsio_scalar_routes_are_available_to_byok_and_platform_callers():
     catalog = catalog_store.load()
     rows = [ep for ep in catalog.endpoints if ep["provider"] == "getleadsio"]
-    assert len(rows) == 12
+    assert len(rows) == 11
     assert not any(ep["path"] in {
         "/api/v1/usage/fair-use", "/api/v1/contacts/health"
     } for ep in rows)
     assert all(catalog.platform_eligible(ep) for ep in rows)
     assert not any(ep["id"].endswith(".trial") for ep in rows)
     assert not any(ep.get("platform_request") or ep.get("platform_blocked") for ep in rows)
+    scalar = [ep for ep in rows if ep["id"].startswith("getleadsio.people.enrich.from_")]
+    assert len(scalar) == 3
+    assert all(ep["strict_body"] and ep["input"]["body"]["items"]["max"] == 1
+               for ep in scalar)

@@ -7,7 +7,6 @@ sources:
   - src/treg/catalog/examples/getleadsio.people.enrich.from_linkedin.json
   - src/treg/catalog/examples/getleadsio.people.enrich.from_person.json
   - src/treg/catalog/examples/getleadsio.people.phone.lookup.json
-  - src/treg/catalog/examples/getleadsio.people.phone.lookup_batch.json
   - src/treg/catalog/examples/getleadsio.people.colleagues.json
   - src/treg/catalog/examples/getleadsio.people.decision_makers.json
   - src/treg/catalog/examples/getleadsio.people.search.json
@@ -44,16 +43,16 @@ a positive credit balance. A team's own key wins over treg's key and is never me
 
 ## Public surface
 
-The catalog publishes 12 direct tools: email, LinkedIn, and person enrichment; single and batch
-phone lookup; colleague and decision-maker lookup; contact search and count; filter discovery; and
-funding and acquisition feeds. The fair-use and contacts-health routes remain internal. CSV upload,
+The catalog publishes 11 direct tools: three single-person enrichment operations, single phone
+lookup, colleague and decision-maker lookup, contact search and count, filter discovery, and funding
+and acquisition feeds. The phone batch operation is omitted. The fair-use and contacts-health routes remain internal. CSV upload,
 asynchronous search export, and profile-monitoring state are excluded because they introduce files,
 jobs, or account-owned resources that this integration does not yet model.
 
-All 12 tools can use either a team's own key or treg's key. The catalog exposes only the original
-provider operations and does not add restricted `.trial` copies. Callers choose any value that the
-provider accepts for page limits, batch sizes, and other request fields. treg does not insert,
-reduce, or otherwise rewrite those values. No provider-specific relay branch is added.
+All 11 tools can use either a team's own key or treg's key. The catalog exposes only the original
+provider operations and does not add restricted `.trial` copies. The three enrichment tools preserve the upstream `items` array but require exactly one entry on every
+credential tier; invalid cardinality is rejected before relay and accepted requests are not rewritten.
+Other provider-native request fields remain a faithful relay.
 
 No GetLeads.io tool joins routed capabilities or Enrich Arena. Live synthetic misses were not a
 reliable success signal: reserved invalid inputs on email, LinkedIn, and person enrichment returned
@@ -91,7 +90,7 @@ contact values, or absolute balances.
 | Search count and filter values | 200 | Reported zero usage; balance unchanged |
 | Contact search, two one-row pages | 200 | Distinct rows; one reported and consumed credit per page |
 | Contact search, zero-row miss | 200 | Reported zero usage; balance unchanged |
-| Phone lookup and phone batch, synthetic miss | 200 | No match; balance unchanged |
+| Phone lookup, synthetic miss | 200 | No match; balance unchanged |
 | Colleagues and decision makers, synthetic miss | 200 | Zero rows and zero reported usage; balance unchanged |
 | Email, LinkedIn, and person enrichment, reserved invalid inputs | 200 | Each returned success and consumed one credit; motivates no adapter |
 | Funding feed, limit one | 200 | One row and one reported/consumed credit |

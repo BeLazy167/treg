@@ -2,8 +2,8 @@
 # Synchronous data reads whose price and returned-record shape are proven can use either a team's
 # own key or treg's metered platform key. Openmart rounds 0.3-credit record prices up to whole
 # credits per operation; the call runtime applies that provider-specific rule and caps shared-key
-# requests at 25 records. Async lifecycles, account mutations, and unresolved prices remain
-# BYOK-only. The shared balance endpoint is internal capacity infrastructure, not a tool.
+# requests at 25 records. Async lifecycles are omitted; account mutations and unresolved prices
+# remain BYOK-only. The shared balance endpoint is internal capacity infrastructure, not a tool.
 provider: openmart
 source:
   docs: https://app.openmart.com/api-docs
@@ -16,9 +16,6 @@ proposed_capabilities:
   companies.lookup: Retrieve company records by provider identifier.
   companies.technologies: Detect technologies used by a company.
   companies.email.find: Find company-level email addresses.
-  companies.tasks.status: Read an asynchronous company-task batch status.
-  companies.tasks.list: List task identifiers in an asynchronous company batch.
-  companies.tasks.get: Read one asynchronous company-task result.
   companies.deny-rules.create: Add private company-account deny rules.
   companies.deny-rules.check: Check private company-account deny rules.
   companies.deny-rules.delete: Delete private company-account deny rules.
@@ -193,175 +190,6 @@ endpoints:
   verified: '2026-09-17'
   example_response: examples/openmart.companies.search.json
   docs_url: https://app.openmart.com/api-docs
-
-- id: openmart.people.find.batch
-  domain: contacts
-  capability: people.find
-  platform: people
-  scope: any_account
-  method: POST
-  path: /api/v1/task/batch/find_people
-  name: Find decision makers
-  summary: Start up to 100 decision-maker tasks for businesses
-  input: &task_batch_input
-    bodyType: json
-    body:
-      tasks: {type: array, items: {type: object, additionalProperties: true}, minItems: 1, maxItems: 100}
-  test_request: {body: {tasks: [{website: example.invalid, max_k: 1}]}}
-  cost:
-    type: per_result
-    value: 11
-    currency: credit
-    per: 1
-    unit: result
-    source: docs
-    source_url: https://www.openmart.com/pricing
-    checked: '2026-09-17'
-    confidence: verified
-    note: Email costs 3 credits and phone costs 8; requesting both can cost 11 per found person. A live both-fields task reserved 3 at submit and charged the remainder asynchronously.
-  platform_blocked: Async fan-out, mixed outcomes, and delayed charges cannot be assigned safely; connect your own Openmart key.
-  verified: '2026-09-17'
-  example_response: examples/openmart.people.find.batch.json
-  docs_url: https://app.openmart.com/api-docs
-
-- id: openmart.technologies.find.batch
-  domain: companies
-  capability: companies.technologies
-  platform: companies
-  scope: any_account
-  method: POST
-  path: /api/v1/task/batch/find_tech
-  name: Find technologies
-  summary: Start up to 100 technology-detection tasks
-  input: *task_batch_input
-  test_request: {body: {tasks: [{website: example.invalid}]}}
-  cost:
-    type: per_result
-    value: 2
-    currency: credit
-    per: 1
-    unit: result
-    source: observed
-    source_url: https://www.openmart.com/pricing
-    checked: '2026-09-17'
-    confidence: verified
-    note: Two credits per completed result, reconciled from the live batch and the published $6 per 100 rate.
-  platform_blocked: Async batch ownership and delayed per-result charging cannot be assigned safely; connect your own Openmart key.
-  verified: '2026-09-17'
-  example_response: examples/openmart.technologies.find.batch.json
-  docs_url: https://app.openmart.com/api-docs
-
-- id: openmart.companies.email.find.batch
-  domain: contacts
-  capability: companies.email.find
-  platform: companies
-  scope: any_account
-  method: POST
-  path: /api/v1/task/batch/lookup_business_email
-  name: Find company emails
-  summary: Start up to 100 company-email lookup tasks
-  input: *task_batch_input
-  test_request: {body: {tasks: [{website: example.invalid}]}}
-  cost:
-    type: per_result
-    value: 0.3
-    currency: credit
-    per: 1
-    unit: result
-    source: docs
-    source_url: https://www.openmart.com/pricing
-    checked: '2026-09-17'
-    confidence: documented
-    note: Dashboard price is 0.3 credit per returned company email. Integer balance deltas hide fractional usage and are not settlement evidence.
-  platform_blocked: Async ownership and delayed charging make this unsafe for a shared key; connect your own Openmart key.
-  verified: '2026-09-17'
-  example_response: examples/openmart.companies.email.find.batch.json
-  docs_url: https://app.openmart.com/api-docs
-
-- id: openmart.people.enrich.batch
-  domain: contacts
-  capability: people.enrich
-  platform: people
-  scope: any_account
-  method: POST
-  path: /api/v1/task/batch/lookup_people
-  name: Enrich known people
-  summary: Start email or phone enrichment for known people
-  input: *task_batch_input
-  test_request: {body: {tasks: [{people: [{name: Treg Example}], info_access: [EMAIL]}]}}
-  cost:
-    type: per_result
-    value: 11
-    currency: credit
-    per: 1
-    unit: result
-    source: docs
-    source_url: https://www.openmart.com/pricing
-    checked: '2026-09-17'
-    confidence: verified
-    note: Email costs 3 credits and phone costs 8; callers choose EMAIL, PHONE, or both.
-  platform_blocked: Mixed requested fields and asynchronous per-person results cannot be settled safely; connect your own Openmart key.
-  verified: '2026-09-17'
-  example_response: examples/openmart.people.enrich.batch.json
-  docs_url: https://app.openmart.com/api-docs
-
-- id: openmart.tasks.batch.status
-  domain: async
-  capability: companies.tasks.status
-  platform: companies
-  scope: own_account
-  method: GET
-  path: /api/v1/task/batch/{batch_id}/status
-  name: Get batch status
-  summary: Get status counts for an Openmart batch
-  input: &batch_id_input
-    pathParams:
-      batch_id: {type: string}
-  test_request: {pathParams: {batch_id: 00000000-0000-4000-8000-000000000000}}
-  cost: &free_task_read {type: free, value: 0, currency: USD, unit: call, source: observed, checked: '2026-09-17', confidence: verified, note: Live task reads used no credits.}
-  platform_blocked: Batch ownership is account-scoped; connect the Openmart key that created it.
-  verified: '2026-09-17'
-  example_response: examples/openmart.tasks.batch.status.json
-  docs_url: https://app.openmart.com/api-docs
-
-- id: openmart.tasks.batch.ids
-  domain: async
-  capability: companies.tasks.list
-  platform: companies
-  scope: own_account
-  method: GET
-  path: /api/v1/task/batch/{batch_id}/task_ids
-  name: List batch task IDs
-  summary: List task IDs in a batch, optionally filtered by status
-  input:
-    pathParams: {batch_id: {type: string}}
-    query:
-      status: {type: string, enum: [PENDING, PROCESSING, COMPLETED, FAILED]}
-  test_request: {pathParams: {batch_id: 00000000-0000-4000-8000-000000000000}, query: {status: COMPLETED}}
-  cost: *free_task_read
-  platform_blocked: Batch ownership is account-scoped; connect the Openmart key that created it.
-  verified: '2026-09-17'
-  example_response: examples/openmart.tasks.batch.ids.json
-  docs_url: https://app.openmart.com/api-docs
-
-- id: openmart.tasks.get
-  domain: async
-  capability: companies.tasks.get
-  platform: companies
-  scope: own_account
-  method: GET
-  path: /api/v1/task/{task_id}
-  name: Get task result
-  summary: Get one asynchronous task and its result
-  input:
-    pathParams: {task_id: {type: string}}
-  test_request: {pathParams: {task_id: 00000000-0000-4000-8000-000000000000}}
-  cost: *free_task_read
-  platform_blocked: Task ownership is account-scoped; connect the Openmart key that created it.
-  verified: '2026-09-17'
-  example_response: examples/openmart.tasks.get.json
-  docs_url: https://app.openmart.com/api-docs
-
 - id: openmart.deny-rules.create
   domain: governance
   capability: companies.deny-rules.create

@@ -1,4 +1,4 @@
-# LimaData Basic v2. All documented operations are available with a connected customer key.
+# LimaData Basic v2. Batch submission and result operations are omitted from the catalog.
 # Shared platform access is limited to synchronous operations whose full cost the generic money
 # model can bound before the call. BYOK always wins and is never metered by treg.
 provider: limadata
@@ -20,9 +20,6 @@ proposed_capabilities:
   people.identity.from_email: Resolve an email address to social profiles
   web.extract: Extract clean page content from URLs
   web.research: Search and synthesize web research for a question
-  people.audience.batch.start: Start a batch advertising-audience job
-  people.email.verify.batch.start: Start a batch email-verification job
-  people.batch.results: Read a LimaData batch job and its results
 endpoints:
   - id: limadata.people.enrich
     capability: people.enrich
@@ -572,100 +569,3 @@ endpoints:
     docs_url: https://api.limadata.com/docs/basic_v2
     verified: '2026-09-17'
     example_response: examples/limadata.google.serp.organic.json
-
-  - id: limadata.people.audience.batch.start
-    capability: people.audience.batch.start
-    platform: people
-    scope: any_account
-    domain: contacts
-    method: POST
-    path: /api/v2/batch/ad_audiences
-    name: Start a batch audience job
-    summary: Start asynchronous advertising-audience resolution for up to 100,000 profiles.
-    input:
-      bodyType: json
-      body:
-        name: {type: string, required: false}
-        urls: {type: array, required: true, minItems: 1, maxItems: 100000, items: {type: string}}
-        target_network: {type: string, required: false, enum: [meta, google, x, reddit, tiktok, linkedin, snapchat, pinterest, amazon, universal]}
-        notification_url: {type: string, required: false}
-    test_request: {body: {name: treg-test, urls: ['https://www.linkedin.com/in/example'], target_network: universal}}
-    cost:
-      type: per_success
-      value: 3
-      currency: credit
-      per: 1
-      unit: result
-      source: docs
-      source_url: https://api.limadata.com/docs/basic_v2
-      checked: '2026-09-17'
-      confidence: verified
-      note: Three credits are held per submitted URL and misses are refunded after completion.
-    platform_blocked: Final-result refunds and shared-key task ownership require durable task settlement; connect your own LimaData key.
-    docs_url: https://api.limadata.com/docs/basic_v2
-    verified: '2026-09-17'
-    example_response: examples/limadata.people.audience.batch.start.json
-
-  - id: limadata.people.email.verify.batch.start
-    capability: people.email.verify.batch.start
-    platform: people
-    scope: any_account
-    domain: contacts
-    method: POST
-    path: /api/v2/batch/email_verify
-    name: Start batch email verification
-    summary: Start asynchronous deliverability checks for up to 100,000 email addresses.
-    input:
-      bodyType: json
-      body:
-        name: {type: string, required: false}
-        emails: {type: array, required: true, minItems: 1, maxItems: 100000, items: {type: string}}
-        notification_url: {type: string, required: false}
-    test_request: {body: {name: treg-test, emails: [person@example.com]}}
-    cost:
-      type: per_result
-      value: 0.3
-      currency: credit
-      per: 1
-      unit: item
-      source: docs
-      source_url: https://api.limadata.com/docs/basic_v2
-      checked: '2026-09-17'
-      confidence: verified
-      note: 0.3 credit per submitted email, charged when the job starts.
-    platform_blocked: Shared-key task ownership is not available; connect your own LimaData key.
-    docs_url: https://api.limadata.com/docs/basic_v2
-    verified: '2026-09-17'
-    example_response: examples/limadata.people.email.verify.batch.start.json
-
-  - id: limadata.people.batch.results
-    capability: people.batch.results
-    platform: people
-    scope: any_account
-    domain: contacts
-    kind: utility
-    method: GET
-    path: /api/v2/batch/results
-    name: Read batch results
-    summary: Read status and paginated results for a LimaData batch job.
-    input:
-      query:
-        batch_id: {type: integer, required: true, example: 12345}
-        page: {type: integer, required: false, min: 1, default: 1}
-      note: Results expire after 30 days. Poll no more often than once per 60 seconds.
-    test_request: {query: {batch_id: 12345, page: 1}}
-    cost:
-      type: free
-      value: 0
-      currency: USD
-      per: 1
-      unit: call
-      source: docs
-      source_url: https://api.limadata.com/docs/basic_v2
-      checked: '2026-09-17'
-      confidence: verified
-      note: Polling is free. A live response carried a task-related credit header but created no usage row, so it is not a polling price.
-    platform_blocked: Batch identifiers are account-scoped and shared-key task ownership is not available; connect your own LimaData key.
-    docs_url: https://api.limadata.com/docs/basic_v2
-    verified: '2026-09-17'
-    example_response: examples/limadata.people.batch.results.json

@@ -42,21 +42,12 @@ async def _balance(clients):
     return (await clients.get(f"/orgs/{org_id}/balance")).json()["balance_micro"]
 
 
-def test_scrubby_catalog_covers_the_documented_surface():
+def test_scrubby_catalog_exposes_single_verification_only():
     catalog = catalog_store.load()
     endpoints = {eid: ep for eid, ep in catalog.by_id.items() if eid.startswith("scrubby.")}
-    assert set(endpoints) == {
-        "scrubby.people.email.verify",
-        "scrubby.people.email.verify.bulk",
-        "scrubby.people.email.verify.bulk.results",
-        "scrubby.people.email.verify.deep",
-        "scrubby.people.email.verify.deep.results",
-    }
+    assert set(endpoints) == {"scrubby.people.email.verify"}
     assert endpoints["scrubby.people.email.verify"]["path"] == "/validate_email"
-    assert "ownership" in endpoints["scrubby.people.email.verify.bulk"]["platform_blocked"]
-    assert "ownership" in endpoints["scrubby.people.email.verify.deep"]["platform_blocked"]
     assert catalog.cost_view(endpoints["scrubby.people.email.verify"]["cost"], "scrubby")["usd"] == 0.008
-    assert catalog.cost_view(endpoints["scrubby.people.email.verify.deep"]["cost"], "scrubby")["usd"] == 0.024
 
 
 @pytest.mark.parametrize("credits,expected", [(0, 0), (1, 8_000), (3, 24_000), (-1, None), (True, None), (1.5, None), (None, None)])

@@ -24,9 +24,6 @@ sources:
   - src/treg/catalog/examples/limadata.web.extract.json
   - src/treg/catalog/examples/limadata.web.research.json
   - src/treg/catalog/examples/limadata.google.serp.organic.json
-  - src/treg/catalog/examples/limadata.people.audience.batch.start.json
-  - src/treg/catalog/examples/limadata.people.email.verify.batch.start.json
-  - src/treg/catalog/examples/limadata.people.batch.results.json
   - src/treg/catalog/adapters.yaml
   - src/treg/catalog/fx.yaml
   - src/treg/config.py
@@ -64,13 +61,13 @@ allows `limadata`. A team's own key remains first and treg never meters it.
 
 ## Surface and shared-key boundary
 
-`limadata.yaml` catalogs all 24 operations in the official Basic v2 OpenAPI document. Connected
-teams can call every operation. Fourteen synchronous operations can use the shared key because their
+`limadata.yaml` exposes 21 of the 24 operations in the official Basic v2 OpenAPI document. The two
+batch submissions and their shared result reader are omitted from the catalog. Fourteen synchronous operations can use the shared key because their
 successful charge is fixed and bounded: company enrichment, database autocomplete, company count,
 five contact and identity lookups, email verification, company LinkedIn lookup, phone lookup, AI
 research, and web search.
 
-Ten operations stay BYOK-only:
+Seven exposed operations stay BYOK-only:
 
 - Person enrichment varies from one to 15 credits based on the identifier and optional results.
 - People count requires People Database API access, which is not enabled on treg's shared account.
@@ -80,10 +77,7 @@ Ten operations stay BYOK-only:
 - Identity resolution costs two credits even on HTTP 404. Generic settlement releases a hold on an
   upstream error, so shared service would undercharge.
 - URL extraction varies by URL count and JavaScript-rendering mode.
-- Both batch submissions and batch result reads use account-scoped job identifiers. Advertising
-  batches refund misses only after completion.
-
-The batch-results route is free. A live completed-job response carried `x-credits-cost: 1`, but the
+The omitted batch-results route is free. A live completed-job response carried `x-credits-cost: 1`, but the
 dashboard showed no polling activity or debit. That header describes task evidence and must not be
 used as the current request price. No LimaData branch is added to the shared settlement runtime.
 

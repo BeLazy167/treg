@@ -22,8 +22,8 @@ from treg import oauth_providers as P
 def test_openmart_surface_separates_platform_reads_from_byok_lifecycles():
     cat = cs.load()
     rows = cat.for_provider("openmart")
-    assert len(rows) == 16
-    assert len({(e["method"], e["path"]) for e in rows}) == 16
+    assert len(rows) == 9
+    assert len({(e["method"], e["path"]) for e in rows}) == 9
     assert {e["id"] for e in rows if cat.platform_eligible(e)} == {
         "openmart.businesses.search",
         "openmart.businesses.lookup.openmart",
@@ -36,17 +36,15 @@ def test_openmart_surface_separates_platform_reads_from_byok_lifecycles():
     assert "openmart.account.balance" not in cat.by_id
 
 
-def test_openmart_pricing_and_lifecycle_boundaries_stay_visible():
+def test_openmart_pricing_and_account_boundaries_stay_visible():
     cat = cs.load()
-    assert cat.by_id["openmart.people.find.batch"]["cost"]["value"] == 11
-    assert cat.by_id["openmart.technologies.find.batch"]["cost"]["value"] == 2
-    company_email = cat.by_id["openmart.companies.email.find.batch"]
-    assert company_email["cost"]["value"] == .3
-    assert company_email["cost"]["confidence"] == "documented"
+    assert not any(
+        eid.startswith("openmart.tasks.") or eid.endswith(".batch")
+        for eid in cat.by_id if eid.startswith("openmart.")
+    )
     fast = cat.by_id["openmart.businesses.search.ids"]
     assert fast["cost"]["value"] is None and fast["cost"]["confidence"] == "unknown"
     assert all(cat.by_id[key]["scope"] == "own_account" for key in (
-        "openmart.tasks.batch.status", "openmart.tasks.batch.ids", "openmart.tasks.get",
         "openmart.deny-rules.create", "openmart.deny-rules.check",
         "openmart.deny-rules.delete",
     ))

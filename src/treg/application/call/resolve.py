@@ -658,14 +658,6 @@ def _marketplace_pricing(
         doc = _json_object(body)
         rate = float(cost.get("usd") or 0)
         unit = _usd_to_micro(rate)
-        if endpoint_id in (
-            "dropleads.people.enrich.verified.bulk",
-            "dropleads.people.enrich.bulk",
-        ):
-            details = doc.get("details")
-            count = len(details) if isinstance(details, list) else 1
-            # More than 10 is rejected before charging; reserve the maximum valid request.
-            return _usd_to_micro(rate * max(1, min(count, 10))), unit
         if endpoint_id == "dropleads.companies.enrich":
             domains = doc.get("domains") if isinstance(doc.get("domains"), list) else []
             names = doc.get("companyNames") if isinstance(doc.get("companyNames"), list) else []
@@ -727,14 +719,7 @@ def _marketplace_pricing(
             credits = -(-asked // 10)  # ceil division: whole credits, minimum 1
             return _usd_to_micro(credits * rate), _usd_to_micro(rate)
         return estimate, unit
-    record_count = None
-    if provider == "prospeo" and endpoint_id in (
-        "prospeo.people.enrich.bulk",
-        "prospeo.companies.enrich.bulk",
-    ):
-        records = _json_object(body).get("data")
-        record_count = max(1, min(len(records) if isinstance(records, list) else 1, 50))
-    if provider != "aviato" and not cost.get("modifiers") and record_count is None:
+    if provider != "aviato" and not cost.get("modifiers"):
         return estimate, unit
 
     # Credit-priced providers with a `cost.modifiers` block (Aviato, cloro): the request decides
@@ -751,12 +736,6 @@ def _marketplace_pricing(
         return 0, 0
     credits = float(cost.get("value") or 0) + added
     settled_credits = float(cost.get("value") or 0) + settled_added
-    if record_count is not None:
-        # Prospeo's bulk routes price the base and optional mobile rider per submitted record.
-        # The request shape selects the count; every credit number remains catalog-declared.
-        return credit_micro(credits + per_result) * record_count, credit_micro(
-            float(cost.get("value") or 0)
-        )
     if endpoint_id in ("aviato.companies.enrich.bulk", "aviato.people.enrich.bulk"):
         lookups = doc.get("lookups") if isinstance(doc.get("lookups"), list) else []
         per_record = credit_micro(credits)
@@ -1163,6 +1142,44 @@ def _enforce_catalog_query(ep: dict, query: QueryValues, has_body: bool) -> None
         )
 
 
+def _enforce_catalog_body(ep: dict, body: bytes) -> None:
+    """Enforce opt-in array cardinality without rewriting a catalog request.
+
+    Most catalog schemas describe the upstream API and deliberately leave BYOK requests as a
+    faithful relay. ``strict_body`` is the narrow exception for a catalog tool whose advertised
+    contract is intentionally smaller than the upstream surface. Array limits are read from the
+    existing input declaration and applied on every credential tier.
+    """
+    if not ep.get("strict_body"):
+        return
+    document = _strict_json_object(body, ep["id"])
+    fields = (ep.get("input") or {}).get("body") or {}
+    for name, spec in fields.items():
+        if not isinstance(spec, dict) or not str(spec.get("type") or "").startswith("array"):
+            continue
+        value = document.get(name)
+        minimum = spec.get("minItems", spec.get("min"))
+        maximum = spec.get("maxItems", spec.get("max"))
+        valid = isinstance(value, list)
+        if valid and isinstance(minimum, int):
+            valid = len(value) >= minimum
+        if valid and isinstance(maximum, int):
+            valid = len(value) <= maximum
+        if not valid:
+            expected = (
+                f"between {minimum} and {maximum}" if minimum != maximum
+                else f"exactly {minimum}"
+            )
+            raise ResolutionFailed(
+                "catalog_parameter_invalid", status_code=400, detail={
+                    "error": "catalog_parameter_invalid",
+                    "endpoint_id": ep["id"],
+                    "parameter": f"body.{name}",
+                    "message": f"{ep['id']} requires {expected} item in body.{name}",
+                },
+            )
+
+
 def _enforce_platform_request(ep: dict, body: bytes) -> None:
     """Check explicit platform constraints and fixed pricing selectors before reserve/relay.
 
@@ -1543,6 +1560,7 @@ async def _resolve_marketplace_call(
 
     upstream, consumed = _marketplace_upstream(ep, provider, query, chosen_method)
     body = await read_body() if has_body else b""
+    _enforce_catalog_body(ep, body)
     phash = _params_hash(ep["id"], query.multi_items(), body)
     # The catalog's estimate travels on EVERY tier - informational on tiers 1/2 (the provider bills
     # the org's own account; Activity shows "estimated") and the reserve amount on tier 4 only

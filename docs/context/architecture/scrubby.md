@@ -1,13 +1,9 @@
 ---
-title: Scrubby — quick and deep email verification
-status: implemented; live authentication, billing and asynchronous behavior verified
+title: Scrubby — single email verification
+status: shipped
 sources:
   - src/treg/catalog/scrubby.yaml
   - src/treg/catalog/examples/scrubby.people.email.verify.json
-  - src/treg/catalog/examples/scrubby.people.email.verify.bulk.json
-  - src/treg/catalog/examples/scrubby.people.email.verify.bulk.results.json
-  - src/treg/catalog/examples/scrubby.people.email.verify.deep.json
-  - src/treg/catalog/examples/scrubby.people.email.verify.deep.results.json
   - src/treg/catalog/adapters.yaml
   - src/treg/catalog/fx.yaml
   - src/treg/config.py
@@ -41,17 +37,14 @@ Python urllib client profile. `TREG_PLATFORM_KEY_SCRUBBY` enables shared-key acc
 
 ## Surface and routing
 
-The catalog exposes the complete five-operation OpenAPI surface: synchronous single verification,
-quick-bulk submit and fetch, and deep-bulk submit and fetch. The single tool adapts to the existing
+The catalog exposes only synchronous single verification. It adapts to the existing
 `people.email.verify` contract and therefore participates in normal routing and Enrich Arena.
 `Valid` maps to `valid=true`; `Invalid`, `Risky`, and `Unknown` are useful negative or uncertain
 answers rather than misses.
 
-Only the single tool can use treg's shared key. The four bulk lifecycle tools are BYOK-only. Scrubby
-publishes no batch-size maximum, so treg cannot bound a shared-key reservation. Its poll identifier
-is also carried in a JSON body, while the existing shared-key ownership guard authorizes declared
-request parameters. The catalog does not invent a limit or weaken task ownership to add bulk
-platform access.
+The four bulk lifecycle operations are omitted from the catalog. Scrubby publishes no batch-size
+maximum, so one agent call can spend an unbounded number of credits; the delayed result lifecycle
+also needs explicit ownership and completion handling.
 
 ## Pricing and settlement
 
@@ -69,7 +62,7 @@ with `credits_used=0`. treg's real upstream timeout is 180 seconds: a fresh rese
 completed successfully after 108.5 seconds and reported one credit. The public OpenAPI statement
 that the server returns a refunded 408 after 15 seconds does not match this observed behavior.
 
-## Async behavior and capacity
+## Excluded async behavior and capacity
 
 Quick bulk returned 202, charged exactly the number of fresh inputs, and exposed an identifier plus
 a 30-second retry interval. Immediate polling returned processing; a later cached batch returned

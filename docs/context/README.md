@@ -17,13 +17,13 @@ covers (frontmatter `sources:`). Regenerate this index with
 | Fragment | Status | Covers |
 |---|---|---|
 | [Google Ads conversion tracking — capture, outbox, upload](architecture/ads-conversions.md) | shipped | adsconv.py, signup.py, adtrack.js, gtag.js |
-| [AI Ark — bounded synchronous enrichment and BYOK async jobs](architecture/aiark.md) | shipped | aiark.yaml, aiark.companies.search.json, aiark.lists.upsert.json, aiark.people.email.find.bulk.submissions.json, … |
+| [AI Ark — bounded synchronous enrichment](architecture/aiark.md) | shipped | aiark.yaml, aiark.companies.search.json, aiark.lists.upsert.json, aiark.people.email.find.json, … |
 | [Archive - versioned history and cache admission](architecture/archive.md) | building | archive.py, hunter.yaml, results.py, 0031_archive_result_admission.py, … |
 | [Auth & secrets — injectors, encryption, OAuth freshness, health](architecture/auth-secrets.md) | shipped | injectors.py, ssrf.py, crypto.py, oauth.py, … |
 | [BounceBan — email verification, billing boundaries and capacity](architecture/bounceban.md) | shipped | bounceban.yaml, bounceban.people.email.verify.json, bounceban.people.email.verify.waterfall.json, bounceban.people.email.verify.status.json, … |
 | [Endpoint catalog — what you can DO with a connected key, and which provider should do it](architecture/catalog.md) | shipped | financialdatasets.yaml, financialdatasets.company.facts.json, financialdatasets.company.facts.ciks.json, financialdatasets.company.facts.tickers.json, … |
 | [Application composition and deployment roles](architecture/composition.md) | shipped | bootstrap.py, bootstrap_handlers.py, bootstrap_http.py, call_surface.py, … |
-| [ContactOut — LinkedIn enrichment, Starter billing and independent credit pools](architecture/contactout.md) | implemented; live connect and core surface verified, informational capacity monitoring | contactout.yaml, adapters.yaml, contactout.people.email.verify.json, test_routing.py, … |
+| [ContactOut — LinkedIn enrichment, Starter billing and independent credit pools](architecture/contactout.md) | implemented; live connect and core surface verified, informational capacity monitoring | contactout.yaml, adapters.yaml, contactout.people.contact.work.json, contactout.people.contact.phone.json, … |
 | [Data model — the registry tables, async DB, audit writer](architecture/data-model.md) | shipped | alembic.ini, env.py, 0001_baseline_current_schema.py, 0002_archive_tables.py, … |
 | [Dropleads — synchronous people and company enrichment](architecture/dropleads.md) | implemented; live upstream behavior verified | dropleads.yaml, dropleads.people.email.find.json, dropleads.people.phone.find.json, dropleads.people.email.verify.json, … |
 | [Feedback - private intake for problems and suggestions](architecture/feedback.md) | shipped | feedback_contract.py, __init__.py, reports.py, reviews.py, … |
@@ -42,7 +42,7 @@ covers (frontmatter `sources:`). Regenerate this index with
 | [Openmart — metered synchronous data and BYOK lifecycle boundaries](architecture/openmart.md) | shipped | openmart.yaml, openmart.businesses.search.json, openmart.businesses.search.ids.json, openmart.businesses.lookup.openmart.json, … |
 | [Prospeo — people and company enrichment](architecture/prospeo.md) | shipped | prospeo.yaml, prospeo.people.email.find.json, prospeo.people.phone.find.json, prospeo.people.enrich.json, … |
 | [The proxy — faithful credential-injecting relay + tool resolution](architecture/proxy-model.md) | shipped | relay.py, ssrf.py, api.py, authorize.py, … |
-| [Scrubby — quick and deep email verification](architecture/scrubby.md) | implemented; live authentication, billing and asynchronous behavior verified | scrubby.yaml, scrubby.people.email.verify.json, scrubby.people.email.verify.bulk.json, scrubby.people.email.verify.bulk.results.json, … |
+| [Scrubby — single email verification](architecture/scrubby.md) | shipped | scrubby.yaml, scrubby.people.email.verify.json, adapters.yaml, fx.yaml, … |
 | [Sumble — account intelligence, subscription credits and BYOK](architecture/sumble.md) | shipped | sumble.yaml, sumble.extended.yaml, sumble.organizations.json, sumble.py, … |
 | [Super-admin — cross-tenant read + control](architecture/super-admin.md) | shipped | api.py, admin.py, access.py, config.py |
 | [Wiza — synchronous search and company enrichment, BYOK async jobs](architecture/wiza.md) | shipped | wiza.yaml, wiza.people.search.json, wiza.companies.search.json, wiza.companies.enrich.json, … |

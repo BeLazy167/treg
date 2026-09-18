@@ -216,6 +216,27 @@ def check_strict_query(ep: dict, where: str, errors: list[str]) -> None:
             fail(errors, where, f"strict query field {name} enum must contain strings")
 
 
+def check_strict_body(ep: dict, where: str, errors: list[str]) -> None:
+    if "strict_body" not in ep:
+        return
+    if ep["strict_body"] is not True:
+        fail(errors, where, "strict_body must be true when present")
+        return
+    fields = (ep.get("input") or {}).get("body")
+    arrays = [
+        spec for spec in (fields or {}).values()
+        if isinstance(spec, dict) and str(spec.get("type") or "").startswith("array")
+    ]
+    if ep.get("method") not in {"POST", "PUT", "PATCH"} or not arrays:
+        fail(errors, where, "strict_body requires a body method with a declared array field")
+        return
+    for spec in arrays:
+        minimum = spec.get("minItems", spec.get("min"))
+        maximum = spec.get("maxItems", spec.get("max"))
+        if not isinstance(minimum, int) or not isinstance(maximum, int) or minimum > maximum:
+            fail(errors, where, "strict_body array fields require valid integer min/max bounds")
+
+
 def check_platform_request(rule: object, input_schema: object, where: str,
                            errors: list[str]) -> None:
     """Platform-only fixed body values; BYOK input remains an upstream contract."""
@@ -921,6 +942,7 @@ def main(argv: list[str]) -> int:
             check_status_marker(ep, where, endpoint_status, errors)
             inp = ep.get("input") or {}
             check_strict_query(ep, where, errors)
+            check_strict_body(ep, where, errors)
             check_platform_auth(ep, where, errors)
             if "platform_request" in ep:
                 check_platform_request(ep["platform_request"], inp, where, errors)

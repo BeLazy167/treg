@@ -10,8 +10,6 @@ pricing_url: https://dropleads.io/pricing
 proposed_capabilities:
   people.count: Count people matching search filters without returning records
   people.enrich.verified: Enrich one person and require verified email data
-  people.enrich.verified.bulk: Synchronously enrich up to ten people with verified email data
-  people.enrich.bulk: Synchronously enrich up to ten people
   companies.search.count: Count companies matching search filters without returning records
 endpoints:
   - id: dropleads.people.email.find
@@ -221,40 +219,6 @@ endpoints:
     docs_url: https://dropleads.readme.io/reference/post_api-v2-prime-db-leads-enrich
     verified: '2026-09-15'
     example_response: examples/dropleads.people.enrich.verified.json
-
-  - id: dropleads.people.enrich.verified.bulk
-    capability: people.enrich.verified.bulk
-    platform: people
-    scope: any_account
-    domain: contacts
-    method: POST
-    path: /api/v2/prime-db/leads/bulk-enrich
-    name: Bulk enrich people with verified emails
-    summary: Synchronously enrich up to 10 people with verified email data.
-    input:
-      bodyType: json
-      body:
-        details:
-          type: array[object]
-          required: true
-          example: [{first_name: Jane, last_name: Doe, domain: example.com}]
-          note: 1-10 person identity objects using the same identity fields as the single endpoint.
-        email_verification_type:
-          type: string
-          required: false
-          default: valid_and_catchall
-          enum: [valid_only, valid_and_catchall]
-    test_request:
-      body: {details: [{id: treg-nonexistent-20260915}], email_verification_type: valid_and_catchall}
-    cost:
-      <<: *person_enrich_cost
-      type: per_result
-      unit: record
-      note: 0.2 credit per returned verified lead, not per submitted item. credits_consumed is authoritative; 1-10 inputs.
-    docs_url: https://dropleads.readme.io/reference/post_api-v2-prime-db-leads-bulk-enrich
-    verified: '2026-09-15'
-    example_response: examples/dropleads.people.enrich.verified.bulk.json
-
   - id: dropleads.people.enrich
     capability: people.enrich
     platform: people
@@ -285,35 +249,6 @@ endpoints:
     docs_url: https://dropleads.readme.io/reference/post_api-v2-prime-db-leads-simple-enrich
     verified: '2026-09-15'
     example_response: examples/dropleads.people.enrich.json
-
-  - id: dropleads.people.enrich.bulk
-    capability: people.enrich.bulk
-    platform: people
-    scope: any_account
-    domain: contacts
-    method: POST
-    path: /api/v2/prime-db/leads/simple-bulk-enrich
-    name: Bulk enrich people
-    summary: Synchronously enrich up to 10 people without requiring verified email results.
-    input:
-      bodyType: json
-      body:
-        details:
-          type: array[object]
-          required: true
-          example: [{first_name: Jane, last_name: Doe, domain: example.com}]
-          note: 1-10 person identity objects using the same fields as the single endpoint.
-    test_request:
-      body: {details: [{id: treg-nonexistent-20260915}]}
-    cost:
-      <<: *person_enrich_cost
-      type: per_result
-      unit: record
-      note: 0.2 credit per returned person, not per submitted item. credits_consumed is authoritative; 1-10 inputs.
-    docs_url: https://dropleads.readme.io/reference/post_api-v2-prime-db-leads-simple-bulk-enrich
-    verified: '2026-09-15'
-    example_response: examples/dropleads.people.enrich.bulk.json
-
   - id: dropleads.companies.search
     capability: companies.search
     platform: companies

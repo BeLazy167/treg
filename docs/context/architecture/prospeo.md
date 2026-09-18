@@ -6,10 +6,8 @@ sources:
   - src/treg/catalog/examples/prospeo.people.email.find.json
   - src/treg/catalog/examples/prospeo.people.phone.find.json
   - src/treg/catalog/examples/prospeo.people.enrich.json
-  - src/treg/catalog/examples/prospeo.people.enrich.bulk.json
   - src/treg/catalog/examples/prospeo.people.search.json
   - src/treg/catalog/examples/prospeo.companies.enrich.json
-  - src/treg/catalog/examples/prospeo.companies.enrich.bulk.json
   - src/treg/catalog/examples/prospeo.companies.search.json
   - src/treg/catalog/examples/prospeo.search.suggestions.json
   - src/treg/catalog/adapters.yaml
@@ -46,15 +44,14 @@ metered by treg.
 
 ## Public surface and routing
 
-The public catalog contains nine tools: email finding, phone finding, person enrichment, 50-person
-bulk enrichment, person search, company enrichment, 50-company bulk enrichment, company search and
-search suggestions. `/account-information` remains internal to connection verification and capacity
+The public catalog contains seven tools: email finding, phone finding, person enrichment, person
+search, company enrichment, company search and search suggestions. `/account-information` remains internal to connection verification and capacity
 collection; callers cannot use the catalog to inspect either their own or treg's account balance.
 
 Six fixture-verified adapters join routed capabilities: `people.email.find`, `people.phone.find`,
-`people.enrich`, `people.search`, `companies.enrich` and `companies.search`. The corresponding
-single-record tasks participate in Enrich Arena where that capability has a task. Bulk endpoints and
-suggestions remain direct tools because their contracts are not scalar enrichment results.
+`people.enrich`, `people.search`, `companies.enrich` and `companies.search`. The corresponding single-record tasks participate in Enrich Arena where that capability has a task.
+Suggestions remain a direct tool because its contract is not a scalar enrichment result. The two
+50-record bulk enrichment operations are omitted from the catalog.
 
 The three single-person tools deliberately share `/enrich-person` with different fixed selectors.
 Email finding requires a verified email and disables mobile enrichment. Phone finding requires a
@@ -66,24 +63,19 @@ still relays the caller's request without treg metering.
 
 The platform conversion in `fx.yaml` is the public Starter list price: $49 / 2,000 credits, or
 $0.0245 per credit before the configured platform margin. Single email, person and company hits cost
-one credit. A non-free phone hit has a fixed ten-credit platform price. Search charges one credit for
-a non-empty page; suggestions are free. Bulk responses report the authoritative `total_cost`.
+one credit. A non-free phone hit has a fixed ten-credit platform price. Search charges one credit for a non-empty page; suggestions are free.
 
 The phone response does not expose whether Prospeo internally charged nine incremental credits after
 a prior email reveal or ten credits for a fresh combined reveal. treg therefore advertises, reserves
 and settles a predictable ten-credit price for every non-free phone hit. `free_enrichment=true`
-still settles zero. Bulk mobile reservation reads the nine-credit rider from
-`cost.modifiers.enrich_mobile.add_credits_per_result`; `resolve._credit_modifiers` owns the generic
-arithmetic, so Python contains no Prospeo credit multiplier.
-
-`settle._prospeo_cost_micro` requires endpoint-specific success evidence. Email finding requires a
+still settles zero. `settle._prospeo_cost_micro` requires endpoint-specific success evidence. Email finding requires a
 non-empty `person.email.email`; person enrichment charges one credit for a non-empty person object
 when `free_enrichment=false`, because email is optional in profile mode; phone finding requires a
 non-empty `person.mobile.mobile_international`; company enrichment requires a company object. A
 recognizable email- or phone-finder field-level miss settles zero even when an envelope contains
 `free_enrichment=false`. A malformed or wrongly typed single-enrichment object returns no
 observation and retains the frozen estimate for reconciliation. Explicit provider errors settle
-zero, searches use `free` plus the result list, and bulk calls use finite, nonnegative `total_cost`.
+zero, and searches use `free` plus the result list.
 
 The non-free person-with-null-email shape was not observed in the live evidence pass. Treating
 `free_enrichment=false` plus a non-empty person as one charged credit is the conservative billing
@@ -129,8 +121,6 @@ operator record.
 | `prospeo.people.enrich` | Public profile with unavailable email | 200 | `B → B` | person object and `free_enrichment=true` |
 | `prospeo.people.enrich` | Three fresh public profiles with unavailable email | 200 each | `B → B` each | non-empty person, null/absent email and `free_enrichment=true` in all three |
 | `prospeo.people.phone.find` | Prior email-reveal profile | 200 | `B → B-9` | mobile present, no numeric charge field; motivates fixed ten-credit platform price |
-| `prospeo.people.enrich.bulk` | One-record repeat | 200 | `B → B` | exact `total_cost=0` |
-| `prospeo.companies.enrich.bulk` | One-record repeat | 200 | `B → B` | exact `total_cost=0` |
 
 A second end-to-end pass went through local treg rather than directly to Prospeo. Suggestions returned
 `X-Treg-Cost-Micro: 0`; a company enrichment reserved and settled 24,500 micro-USD; a deduplicated
