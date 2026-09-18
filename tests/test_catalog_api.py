@@ -2262,3 +2262,56 @@ async def test_catalog_get_openrouter_heygen_avatar_iv_photo_script(
     assert "image_url" in tmpl
     assert "paper boat" not in tmpl
     assert "Welcome to our product tour" in tmpl
+
+
+CRUSTDATA_COMPANIES_SEARCH_ID = "crustdata.companies.search"
+CRUSTDATA_PEOPLE_SEARCH_ID = "crustdata.people.search"
+
+
+def _assert_crustdata_ranked_search(body: dict, *, ranked_drops_cursor: bool) -> None:
+    search = body["search"]
+    assert search["type"] == "object"
+    assert search.get("required") is False
+    note = search["note"]
+    assert "{query, mode?}" in note
+    assert "hybrid" in note and "lexical" in note and "semantic" in note
+    assert "default hybrid" in note
+    sorts_note = body["sorts"]["note"]
+    assert "{field" in sorts_note and "column" not in sorts_note
+    assert "not supported with ranked search" in sorts_note.lower()
+    if ranked_drops_cursor:
+        assert "not supported with ranked search" in body["cursor"]["note"].lower()
+        assert "1000" in body["limit"]["note"] and "100" in body["limit"]["note"]
+        assert "hard constraints" in body["filters"]["note"]
+    else:
+        assert "not supported with ranked search" not in body["cursor"]["note"].lower()
+
+
+def test_crustdata_company_and_person_search_document_ranked_nl_search():
+    """Feedback #631: catalog_get omitted Crustdata's official `search` body field.
+
+    CompanySearchRequest accepts filters or search. `search` is {query, mode?}
+    with mode hybrid|lexical|semantic (default hybrid). Ranked company search
+    does not support cursor/sorts and caps limit at 100. Person search documents
+    the same search object; sorts use {field, order} not {column, order}.
+    """
+    cat = cs.load()
+    companies = cat.by_id[CRUSTDATA_COMPANIES_SEARCH_ID]
+    people = cat.by_id[CRUSTDATA_PEOPLE_SEARCH_ID]
+    assert companies["path"] == "/company/search"
+    assert people["path"] == "/person/search"
+    _assert_crustdata_ranked_search(companies["input"]["body"], ranked_drops_cursor=True)
+    _assert_crustdata_ranked_search(people["input"]["body"], ranked_drops_cursor=False)
+    assert companies["input"]["note"] == "supply at least one of filters or search"
+    assert people["input"]["note"] == "supply at least one of filters or search"
+    assert "search" not in companies["test_request"]["body"]
+    assert companies["cost"]["value"] == 0.03
+    assert people["cost"]["value"] == 0.03
+
+
+async def test_catalog_get_crustdata_companies_search_lists_search_object(
+        clients: AsyncClient):
+    """Feedback #631: catalog_get must list CompanySemanticSearch {query, mode?}."""
+    body = (await clients.get(f"/catalog/endpoints/{CRUSTDATA_COMPANIES_SEARCH_ID}")).json()
+    _assert_crustdata_ranked_search(body["endpoint"]["input"]["body"], ranked_drops_cursor=True)
+    assert body["endpoint"]["input"]["note"] == "supply at least one of filters or search"
