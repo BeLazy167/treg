@@ -1777,6 +1777,19 @@ and example `last-week`. Sibling `date_posted` fields (Google search, LinkedIn p
 their own windows. Enforced by `test_scrapecreators_instagram_reels_search_date_posted_enum`
 and `test_catalog_get_scrapecreators_instagram_reels_search_date_posted`.
 
+### ScrapeCreators LinkedIn search posts `date_posted`
+
+ScrapeCreators' OpenAPI for `GET /v1/linkedin/search/posts` restricts `date_posted` to
+`last-hour | last-day | last-week | last-month | last-year`. Feedback #121:
+`scrapecreators.x.v1-linkedin-search-posts` advertised a free-form string with
+example `last-week` and no enum, so agents sent Google-style `past-week` / `past-day`
+and the provider rejected them. Catalog-only: the field now names that five-value
+enum and warns that `past-*` is not accepted. Example stays `last-week`. Sibling
+`date_posted` fields (Google search, Instagram reels) keep their own windows.
+Settlement is unchanged. Enforced by
+`test_scrapecreators_linkedin_search_posts_date_posted_enum` and
+`test_catalog_get_scrapecreators_linkedin_search_posts_date_posted`.
+
 ### ScrapeCreators YouTube search `sortBy` / `uploadDate` / `type` / `duration`
 
 ScrapeCreators' OpenAPI for `GET /v1/youtube/search` restricts `sortBy` to `relevance`

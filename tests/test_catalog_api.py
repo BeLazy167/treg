@@ -1617,6 +1617,10 @@ async def test_catalog_get_hunter_domain_search_quotes_the_credit(clients: Async
 
 INSTAGRAM_REELS_SEARCH_ID = "scrapecreators.x.v2-instagram-reels-search"
 INSTAGRAM_REELS_DATE_POSTED = ["last-week", "last-month", "last-year"]
+LINKEDIN_SEARCH_POSTS_ID = "scrapecreators.x.v1-linkedin-search-posts"
+LINKEDIN_SEARCH_POSTS_DATE_POSTED = [
+    "last-hour", "last-day", "last-week", "last-month", "last-year",
+]
 
 
 def test_scrapecreators_instagram_reels_search_date_posted_enum():
@@ -1643,8 +1647,9 @@ def test_scrapecreators_instagram_reels_search_date_posted_enum():
     google = cat.by_id["scrapecreators.x.v1-google-search"]["input"]["queryParams"]["date_posted"]
     assert google.get("enum") is None
     assert google["example"] == "last-hour"
-    linkedin = cat.by_id["scrapecreators.x.v1-linkedin-search-posts"]["input"]["queryParams"]["date_posted"]
-    assert linkedin.get("enum") is None
+    linkedin = cat.by_id[LINKEDIN_SEARCH_POSTS_ID]["input"]["queryParams"]["date_posted"]
+    assert linkedin["enum"] == LINKEDIN_SEARCH_POSTS_DATE_POSTED
+    assert linkedin["enum"] != INSTAGRAM_REELS_DATE_POSTED
 
 
 async def test_catalog_get_scrapecreators_instagram_reels_search_date_posted(
@@ -1657,6 +1662,48 @@ async def test_catalog_get_scrapecreators_instagram_reels_search_date_posted(
     note = field["note"].lower()
     assert "hour" in note and "day" in note
     assert "not supported" in note or "unsupported" in note
+
+
+def test_scrapecreators_linkedin_search_posts_date_posted_enum():
+    """Feedback #121: GET /v1/linkedin/search/posts only accepts last-* windows.
+
+    catalog_get used to advertise date_posted as a free string (example last-week)
+    with no enum, so agents sent past-week / past-day (Google-style) and the
+    provider rejected them. Upstream OpenAPI enum is last-hour | last-day |
+    last-week | last-month | last-year. Instagram reels search keeps its own
+    three-value window. Settlement is unchanged.
+
+    Ref: https://docs.scrapecreators.com/openapi.json
+    """
+    cat = cs.load()
+    ep = cat.by_id[LINKEDIN_SEARCH_POSTS_ID]
+    assert ep["path"] == "/v1/linkedin/search/posts"
+    field = ep["input"]["queryParams"]["date_posted"]
+    assert field["enum"] == LINKEDIN_SEARCH_POSTS_DATE_POSTED
+    assert field["example"] == "last-week"
+    note = field["note"].lower()
+    assert "last-hour" in note and "last-day" in note
+    assert "last-week" in note and "last-month" in note and "last-year" in note
+    assert "past-week" in note and "past-day" in note
+    assert "not accepted" in note
+    assert ep["cost"]["value"] == 1
+    assert ep["cost"]["currency"] == "credit"
+
+    reels = cat.by_id[INSTAGRAM_REELS_SEARCH_ID]["input"]["queryParams"]["date_posted"]
+    assert reels["enum"] == INSTAGRAM_REELS_DATE_POSTED
+
+
+async def test_catalog_get_scrapecreators_linkedin_search_posts_date_posted(
+        clients: AsyncClient):
+    """Feedback #121: catalog_get must name last-* and warn against past-*."""
+    body = (await clients.get(f"/catalog/endpoints/{LINKEDIN_SEARCH_POSTS_ID}")).json()
+    field = body["endpoint"]["input"]["queryParams"]["date_posted"]
+    assert field["enum"] == LINKEDIN_SEARCH_POSTS_DATE_POSTED
+    assert field["example"] == "last-week"
+    note = field["note"].lower()
+    assert "last-hour" in note and "last-week" in note
+    assert "past-week" in note and "past-day" in note
+    assert "not accepted" in note
 
 
 LLM_MENTIONS_HISTORICAL_ID = "dataforseo.x.ai-optimization-llm-mentions-historical-live"

@@ -2830,7 +2830,8 @@ endpoints:
       date_posted:
         type: string
         required: false
-        note: Date posted filter based on Google-indexed results
+        enum: [last-hour, last-day, last-week, last-month, last-year]
+        note: "Google-indexed date window. One of: last-hour | last-day | last-week | last-month | last-year. Values like past-week / past-day are NOT accepted (provider rejects them)."
         example: last-week
       cursor:
         type: string
