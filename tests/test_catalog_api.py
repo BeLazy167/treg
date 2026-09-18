@@ -2055,3 +2055,94 @@ async def test_catalog_get_scrapecreators_youtube_search_filter_enums(
     assert tmpl.startswith(f"treg call {YOUTUBE_SEARCH_ID}")
     assert "sortBy=relevance" in tmpl
     assert "view_count" not in tmpl
+
+
+SPEECH_28_IDS = (
+    "minimax.voice-gen.speech-2-8-hd",
+    "minimax.voice-gen.speech-2-8-turbo",
+)
+SPEECH_28_LANGUAGE_BOOST = [
+    "Chinese", "Chinese,Yue", "English", "Arabic", "Russian", "Spanish",
+    "French", "Portuguese", "German", "Turkish", "Dutch", "Ukrainian",
+    "Vietnamese", "Indonesian", "Japanese", "Italian", "Korean", "Thai",
+    "Polish", "Romanian", "Greek", "Czech", "Finnish", "Hindi", "Bulgarian",
+    "Danish", "Hebrew", "Malay", "Persian", "Slovak", "Swedish", "Croatian",
+    "Filipino", "Hungarian", "Norwegian", "Slovenian", "Catalan", "Nynorsk",
+    "Tamil", "Afrikaans", "auto",
+]
+SPEECH_28_EMOTIONS = [
+    "happy", "sad", "angry", "fearful", "disgusted", "surprised", "calm",
+]
+SPEECH_28_BITRATES = [32000, 64000, 128000, 256000]
+SPEECH_28_SAMPLE_RATES = [8000, 16000, 22050, 24000, 32000, 44100]
+
+
+def _assert_speech_28_input_enums(body: dict) -> None:
+    """Feedback #598 / #599 / #602: speech-2.8 catalog fields match MiniMax OpenAPI."""
+    language = body["language_boost"]
+    assert language["enum"] == SPEECH_28_LANGUAGE_BOOST
+    assert language["example"] == "auto"
+    lang_note = language["note"].lower()
+    assert "english(uk)" in lang_note
+    assert "en-gb" in lang_note
+    assert "english" in lang_note
+    assert "2013" in language["note"]
+
+    emotion = body["voice_setting"]["properties"]["emotion"]
+    assert emotion["enum"] == SPEECH_28_EMOTIONS
+    emotion_note = emotion["note"].lower()
+    assert "whisper" in emotion_note
+    assert "fluent" in emotion_note
+    assert "2.6" in emotion_note
+    assert "2013" in emotion["note"]
+    voice_note = body["voice_setting"]["note"].lower()
+    assert "whisper" in voice_note and "fluent" in voice_note
+
+    audio = body["audio_setting"]
+    assert audio["example"]["bitrate"] == 128000
+    bitrate = audio["properties"]["bitrate"]
+    assert bitrate["enum"] == SPEECH_28_BITRATES
+    assert bitrate["example"] == 128000
+    bitrate_note = bitrate["note"].lower()
+    assert "mp3" in bitrate_note
+    assert "192000" in bitrate["note"]
+    assert "2013" in bitrate["note"]
+    sample_rate = audio["properties"]["sample_rate"]
+    assert sample_rate["enum"] == SPEECH_28_SAMPLE_RATES
+    audio_note = audio["note"].lower()
+    assert "192000" in audio["note"]
+    assert "mp3" in audio_note and "wav" in audio_note and "flac" in audio_note
+
+
+def test_minimax_speech_28_language_emotion_audio_enums():
+    """Feedback #598 / #599 / #602: Speech 2.8 HD+Turbo catalog enums.
+
+    catalog_get used to advertise language_boost as a free string (example auto),
+    voice_setting.emotion only as an unnamed optional control, and audio_setting
+    bitrate only via the 128000 example. Live MiniMax returns status 2013 for
+    English(UK), emotion=whisper, and bitrate=192000. Catalog-only: name the
+    OpenAPI enums and the 2.8 emotion subset. Settlement is unchanged.
+    Ref: https://platform.minimax.io/docs/api-reference/speech-t2a-http
+    """
+    cat = cs.load()
+    for endpoint_id in SPEECH_28_IDS:
+        ep = cat.by_id[endpoint_id]
+        assert ep["path"] == "/v1/t2a_v2"
+        _assert_speech_28_input_enums(ep["input"]["body"])
+        audio = (ep.get("test_request") or {}).get("body", {}).get("audio_setting") or {}
+        assert audio.get("bitrate") == 128000
+        assert ep["cost"]["currency"] == "USD"
+
+
+async def test_catalog_get_minimax_speech_28_language_emotion_audio_enums(
+        clients: AsyncClient):
+    """Feedback #598 / #599 / #602: catalog_get must name speech-2.8 enums."""
+    for endpoint_id in SPEECH_28_IDS:
+        body = (await clients.get(f"/catalog/endpoints/{endpoint_id}")).json()
+        _assert_speech_28_input_enums(body["endpoint"]["input"]["body"])
+        tmpl = body["call_template"]
+        assert tmpl.startswith(f"treg call {endpoint_id}")
+        assert "128000" in tmpl
+        assert "192000" not in tmpl
+        assert "English(UK)" not in tmpl
+        assert "whisper" not in tmpl
