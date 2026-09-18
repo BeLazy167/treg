@@ -16,7 +16,7 @@ proposed_capabilities:
   people.audience.resolve: Resolve a person to advertising audience identifiers
   people.audience.email_hash: Resolve a person to hashed email identifiers
   people.email.find.personal: Find a person's personal email address
-  companies.linkedin.find: Find a company's LinkedIn page from its domain
+  linkedin.company.from_domain: Find a company's LinkedIn page from its domain
   people.identity.from_email: Resolve an email address to social profiles
   web.extract: Extract clean page content from URLs
   web.research: Search and synthesize web research for a question
@@ -385,8 +385,8 @@ endpoints:
     example_response: examples/limadata.people.email.find.linkedin.json
 
   - id: limadata.companies.linkedin.find
-    capability: companies.linkedin.find
-    platform: companies
+    capability: linkedin.company.from_domain
+    platform: linkedin
     scope: any_account
     domain: companies
     method: POST

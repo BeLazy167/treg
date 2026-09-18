@@ -322,6 +322,10 @@ satisfy a people-search request without a paid reveal. Domain search retains its
 page; its adapter quotes one credit without a title and up to 20 with a title, independently of
 `limit`. The router discloses unsupported filters, including the domain route's row limit.
 No company-enrichment, email-verification or lookup-utility adapter is added.
+The three paid single-person adapters use fixed synthetic hit fixtures matching the successful
+field shapes recorded in the initial live checks. Catalog loading therefore verifies their output
+paths on a hit; a miss fixture can no longer make those adapters eligible while leaving the hit
+mapping unchecked. The fixtures use reserved example contact values and omit account balances.
 The phone adapter retains `data.country_code` as the provider's reported country context (company
 metadata, not proof of the phone owner's location). `people.phone.verify` accepts optional ISO-2
 `country_code`, and Tomba forwards it for national-number parsing. International numbers need no

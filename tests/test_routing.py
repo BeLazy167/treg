@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+from pathlib import Path
 
 import pytest
 from httpx import AsyncClient
@@ -1759,6 +1760,24 @@ def test_contact_adapters_reject_empty_markers(endpoint, field, value):
     assert ad.is_miss({'success': True, 'data': {field: value}})
     assert ad.is_miss({'success': True, 'data': []})
     assert not ad.is_miss({'success': True, 'data': {field: 'contact-value'}})
+
+
+def test_quickenrich_paid_adapter_fixtures_verify_success_outputs():
+    cat = catalog_store.load()
+    expected = {
+        'quickenrich.people.email.find': ('email', 'person@example.com'),
+        'quickenrich.people.phone.find': ('phone', '+15550101000'),
+        'quickenrich.people.enrich': ('full_name', 'Example Person'),
+    }
+    for endpoint_id, (field, value) in expected.items():
+        adapter = cat.adapters[endpoint_id]
+        assert adapter.verified is True
+        assert adapter.verify_note == ''
+        example = json.loads(
+            (Path('src/treg/catalog/examples') / cat.by_id[endpoint_id]['example_file']).read_text()
+        )
+        assert not adapter.is_miss(example)
+        assert adapter.from_upstream(example)[field] == value
 
 
 def test_search_adapters_preserve_filters_and_fixed_page_quote():
