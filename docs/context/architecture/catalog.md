@@ -205,6 +205,19 @@ Arena discover it from that adapter. Multipart upload, destructive bulk deletion
 funded Check API are not catalog tools. See [BounceBan](bounceban.md) for the endpoint evidence,
 credential shape, capacity policy, and exclusions.
 
+## Datagma single-record enrichment (2026-09-18)
+
+Datagma contributes five read-only, non-bulk catalog tools: verified work-email finding, basic
+person enrichment, company enrichment, mobile finding, and job-change detection. All five support
+both a team's key and the platform key. The account route is internal-only, and `find_people` is
+not implemented. Verified adapters place email, person, and company enrichment in their existing
+routed tools and Enrich Arena tasks. Mobile stays direct-only because its verified 30-credit cost
+is not competitive for automatic routing; job-change detection has no corresponding route.
+
+The credit rate is the assigned prepaid acquisition cost converted at the dated ECB reference
+rate. Responses settle from Datagma's `creditBurn`, including zero-cost cached hits. See
+[Datagma](datagma.md) for the exact surface, exclusions, live evidence, and privacy boundary.
+
 ## ZeroBounce email verification (2026-09-17)
 
 ZeroBounce adds single email validation plus BYOK-only credit and usage reads. Single validation is

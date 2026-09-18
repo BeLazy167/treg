@@ -347,6 +347,20 @@ def _observed_cost_micro(mk: MarketplaceCall, body: bytes, headers=None) -> int 
         if type(credits) is int and credits >= 0:
             return credits * mk.unit_micro
         return None
+    if provider == "datagma":
+        # Datagma returns the exact charge as a numeric string, including zero for cached repeats
+        # and misses. Use the request-time unit so a later catalog price edit cannot change a call
+        # already in flight.
+        raw = doc.get("creditBurn")
+        if isinstance(raw, (int, float, str)) and not isinstance(raw, bool):
+            try:
+                credits = Decimal(str(raw))
+                if credits.is_finite() and credits >= 0:
+                    return int((credits * mk.unit_micro).quantize(
+                        Decimal("1"), rounding=ROUND_HALF_UP))
+            except (InvalidOperation, ValueError, OverflowError):
+                pass
+        return None
     if provider == "quickenrich":
         return _quickenrich_cost_micro(mk, doc)
     if provider == "prospeo":

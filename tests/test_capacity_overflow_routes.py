@@ -264,6 +264,7 @@ _UNRECORDED_SIGNATURE = {
     "millionverifier",  # funded-account exhaustion not observed; trial still has credits
     "bounceban",  # verification credits remain; exhaustion was not forced and no overflow is claimed
     "zerobounce",  # credits remain; exhaustion was not forced and no overflow is claimed
+    "datagma",  # prepaid credits remain; exhaustion was not forced and no overflow is claimed
     "moltsets",  # rolling allowance exhaustion was not forced; no overflow route claimed
     "openmart",  # funded subscription was not exhausted; shared-key exhaustion was not forced
     # Bare 402 is already the generic balance signal; the real empty-Credits body was not forced.
