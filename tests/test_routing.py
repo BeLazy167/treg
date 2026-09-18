@@ -2262,3 +2262,53 @@ async def test_adapter_is_miss_throws_records_error_and_continues(
     assert 'tomba.people.email.find' in tried
     assert tried['tomba.people.email.find']['outcome'] == 'error'
     assert 'adapter.is_miss failed' in tried['tomba.people.email.find']['detail']
+
+
+async def test_prospeo_no_match_400_is_treated_as_miss_not_error(
+    clients: AsyncClient, enrichment_on, monkeypatch,
+):
+    """Prospeo returns 400 with error_code=NO_MATCH for 'no result' — this is a semantic miss,
+    not a caller fault. The waterfall should continue and the parent should not 502."""
+    seen = []
+    # Prospeo returns 400 NO_MATCH (semantic miss), tomba returns 200 hit
+    monkeypatch.setattr(call_service, 'relay', _relay_by_provider({
+        '*': [(200, {'data': None})] * 10,  # Other providers miss
+        'prospeo': [(400, {'error': True, 'error_code': 'NO_MATCH'})],
+        'tomba': [(200, {'data': {'email': 'found@example.test', 'score': 99, 'verification': {'status': 'valid'}}})],
+    }, seen))
+
+    r = await clients.post(f'/call/{ROUTED}', json={'full_name': 'Example Person', 'domain': 'example.com'})
+    assert r.status_code == 200, r.text
+    doc = r.json()
+    # Waterfall continued past Prospeo's NO_MATCH
+    assert doc['_treg']['outcome'] == 'hit'
+    tried = {t['endpoint_id']: t for t in doc['_treg']['tried']}
+    # Prospeo should be recorded as miss, not error
+    prospeo_attempts = [t for t in doc['_treg']['tried'] if t['provider'] == 'prospeo']
+    for attempt in prospeo_attempts:
+        assert attempt['outcome'] == 'miss', f"Prospeo NO_MATCH should be miss, not {attempt['outcome']}"
+
+
+async def test_limadata_404_is_treated_as_miss_not_error(
+    clients: AsyncClient, enrichment_on, monkeypatch,
+):
+    """LimaData returns 404 for 'no email found' — with the miss status declared, this should
+    be treated as a miss and the waterfall should continue."""
+    seen = []
+    # LimaData returns 404 (declared miss), tomba returns 200 hit
+    monkeypatch.setattr(call_service, 'relay', _relay_by_provider({
+        '*': [(200, {'data': None})] * 10,  # Other providers miss
+        'limadata': [(404, {})],
+        'tomba': [(200, {'data': {'email': 'found@example.test', 'score': 99, 'verification': {'status': 'valid'}}})],
+    }, seen))
+
+    r = await clients.post(f'/call/{ROUTED}', json={'full_name': 'Example Person', 'domain': 'example.com'})
+    assert r.status_code == 200, r.text
+    doc = r.json()
+    # Waterfall continued past LimaData's 404
+    assert doc['_treg']['outcome'] == 'hit'
+    tried = {t['endpoint_id']: t for t in doc['_treg']['tried']}
+    # LimaData should be recorded as miss, not error
+    limadata_attempts = [t for t in doc['_treg']['tried'] if t['provider'] == 'limadata']
+    for attempt in limadata_attempts:
+        assert attempt['outcome'] == 'miss', f"LimaData 404 should be miss, not {attempt['outcome']}"

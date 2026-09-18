@@ -116,6 +116,24 @@ def _miss_status(endpoint: dict) -> int | None:
     return None
 
 
+def _is_semantic_miss(provider: str, status: int, raw: bytes) -> bool:
+    """Detect provider-specific 4xx responses that indicate "no match" rather than request error.
+
+    Some providers use non-2xx status codes for valid "no result" outcomes:
+    - Prospeo returns 400 with {"error": true, "error_code": "NO_MATCH"} when a person/company
+      cannot be matched — a normal outcome, not a caller fault (and not charged).
+
+    Returns True if this response should be treated as a miss, not an error."""
+    if provider == "prospeo" and status == 400:
+        try:
+            doc = json.loads(raw)
+            if doc.get("error") is True and doc.get("error_code") == "NO_MATCH":
+                return True
+        except (ValueError, TypeError, KeyError):
+            pass
+    return False
+
+
 DEFAULT_MAX_COST_MICRO = 1_000_000  # $1.00 per routed call unless the caller says otherwise — a runaway guard, not a budget
 
 
@@ -450,10 +468,12 @@ async def run_routed(parent: CallContext, ep: dict, body_bytes: bytes, get_heade
             continue
         charged = int(_header(response, "X-Treg-Cost-Micro") or 0)
         spent += charged
-        if response.status == _miss_status(cand.endpoint):
+        if response.status == _miss_status(cand.endpoint) or _is_semantic_miss(cand.endpoint["provider"], response.status, raw):
             # The provider's declared "asked and answered: no result" status (`miss: {status, means}`
-            # on the endpoint — aviato/hunter/leadmagic/… 404 a person they have no record of). It
-            # is a MISS, not a rejected request: before this the 404 counted as an error, so a
+            # on the endpoint — aviato/hunter/leadmagic/… 404 a person they have no record of), OR
+            # a body-based semantic miss (Prospeo 400 NO_MATCH, live 2026-09: ~13% of email.find
+            # 502s hit both limadata 404 and prospeo NO_MATCH before all children missed).
+            # It is a MISS, not a rejected request: before this the 404 counted as an error, so a
             # waterfall whose other providers all missed ended in a 502 `route_failed` instead of
             # a 200 miss (live 2026-09-03: 768 of 1,824 phone.find 502s in 30 days had no failure
             # but an aviato 404), and a caller could not tell "nobody has it" from "treg broke".

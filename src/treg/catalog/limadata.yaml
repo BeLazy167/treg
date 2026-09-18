@@ -361,6 +361,9 @@ endpoints:
         company_domain: {type: string, required: true, example: example.com}
     test_request: {body: {full_name: Example Person, company_domain: example.com}}
     cost: *one_credit_success
+    miss:
+      status: 404
+      means: "no email found for this person — a normal outcome (and free), not an API failure"
     docs_url: https://api.limadata.com/docs/basic_v2
     verified: '2026-09-17'
     example_response: examples/limadata.people.email.find.name.json
@@ -380,6 +383,9 @@ endpoints:
         linkedin_url: {type: string, required: true, example: 'https://www.linkedin.com/in/example'}
     test_request: {body: {linkedin_url: 'https://www.linkedin.com/in/example'}}
     cost: *three_credit_hit
+    miss:
+      status: 404
+      means: "no email found for this LinkedIn profile — a normal outcome (and free), not an API failure"
     docs_url: https://api.limadata.com/docs/basic_v2
     verified: '2026-09-17'
     example_response: examples/limadata.people.email.find.linkedin.json
