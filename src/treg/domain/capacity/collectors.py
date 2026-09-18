@@ -345,6 +345,25 @@ async def _zerobounce(c, key):
             "note": "PAYG balance; treg treats replenishment as manual"}
 
 
+async def _datagma(c, key):
+    """Read only the spendable balance from Datagma's private account response."""
+    try:
+        d = await _get(c, "https://gateway.datagma.net/api/ingress/v1/mine",
+                       params={"apiId": key})
+    except httpx.HTTPError as exc:
+        # HTTP errors may include the request URL and its private query credential.
+        raise ValueError(f"Datagma balance request failed ({type(exc).__name__})") from None
+    raw = d.get("currentCredit") if isinstance(d, dict) else None
+    try:
+        credits = float(raw)
+    except (TypeError, ValueError):
+        raise ValueError("Datagma returned no valid credit balance") from None
+    if isinstance(raw, bool) or not math.isfinite(credits) or credits < 0:
+        raise ValueError("Datagma returned no valid credit balance")
+    value = int(credits) if credits.is_integer() else credits
+    return {"value": value, "unit": "credits", "note": "Prepaid balance; replenished manually"}
+
+
 async def _leadmagic(c, key):
     r = await c.post("https://api.leadmagic.io/v1/credits", headers={"X-API-Key": key})
     r.raise_for_status()
@@ -641,6 +660,7 @@ BALANCE_ROUTES = {
     "millionverifier": _millionverifier,
     "bounceban": _bounceban,
     "zerobounce": _zerobounce,
+    "datagma": _datagma,
     "leadmagic": _leadmagic,
     "lusha": _lusha,
     "diffbot": _diffbot,

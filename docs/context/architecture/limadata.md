@@ -67,6 +67,12 @@ successful charge is fixed and bounded: company enrichment, database autocomplet
 five contact and identity lookups, email verification, company LinkedIn lookup, phone lookup, AI
 research, and web search.
 
+The company LinkedIn-page finder remains callable by its stable endpoint ID
+`limadata.companies.linkedin.find`, but its catalog home is LinkedIn and its capability is
+`linkedin.company.from_domain`. The returned object is a LinkedIn company-page URL; the company
+domain is only its input. This follows the catalog rule that placement describes the result rather
+than the identifier used to request it.
+
 Seven exposed operations stay BYOK-only:
 
 - Person enrichment varies from one to 15 credits based on the identifier and optional results.

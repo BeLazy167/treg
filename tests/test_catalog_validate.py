@@ -779,6 +779,9 @@ def test_limadata_catalog_covers_basic_v2_and_keeps_unsafe_calls_byok_only():
         "limadata.people.identity.resolve",
         "limadata.web.extract",
     }.isdisjoint(platform)
+    company_page = catalog.by_id["limadata.companies.linkedin.find"]
+    assert company_page["platform"] == "linkedin"
+    assert company_page["capability"] == "linkedin.company.from_domain"
 
 
 def test_zerobounce_catalog_exposes_verified_single_record_tools_only():

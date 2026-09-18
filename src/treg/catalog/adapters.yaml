@@ -2364,6 +2364,42 @@ adapters:
     out: {companies: data, count: "len(data)", next_cursor: meta.next_cursor}
     miss: "coalesce(data, []) == []"
 
+  # Datagma's single-record email/person/company tools are price-competitive routed candidates.
+  # Phone is deliberately absent: its verified 30-credit cost makes it a direct catalog choice.
+  datagma.people.email.find:
+    accepts: [[full_name, domain], [first_name, last_name, domain]]
+    in: {full_name: queryParams.fullName, first_name: queryParams.firstName, last_name: queryParams.lastName, domain: queryParams.company}
+    out: {email: email, verified: "status == 'Valid'"}
+    miss: "email == null"
+  datagma.people.enrich:
+    accepts: [[email], [linkedin_url], [full_name, domain], [first_name, last_name, domain]]
+    in: {}
+    test_identity: {full_name: Raphael Azot, domain: datagma.com}
+    in_expr:
+      queryParams.data: "coalesce(email, linkedin_url, domain)"
+      queryParams.fullName: "coalesce(full_name, join(first_name, last_name))"
+    const: {queryParams.companyPremium: false, queryParams.companyFull: false,
+            queryParams.personFull: false, queryParams.phoneFull: false,
+            queryParams.deepTraffic: false, queryParams.debug: false}
+    out: {full_name: person.basic.name, first_name: person.basic.firstName, last_name: person.basic.lastName,
+          title: person.basic.jobTitle, company: person.basic.company, company_domain: person.basic.companyDomain,
+          linkedin_url: person.basic.linkedInUrl, location: person.basic.location}
+    miss: "person.basic.name == null"
+  datagma.companies.enrich:
+    accepts: [[domain], [website], [name], [linkedin_url], [email]]
+    in: {}
+    test_identity: {domain: algolia.com}
+    in_expr:
+      queryParams.data: "coalesce(domain, website, name, linkedin_url, email)"
+    const: {queryParams.companyPremium: true, queryParams.companyFull: true,
+            queryParams.personFull: false, queryParams.phoneFull: false,
+            queryParams.deepTraffic: false, queryParams.debug: false}
+    out: {name: "coalesce(company.premium.name, company.full.properties.title)", website: company.premium.website,
+          linkedin_url: company.premium.url, description: "coalesce(company.premium.about, company.full.properties.shortDescription)",
+          industry: company.premium.industries, employee_count: company.premium.companySize,
+          founded_year: company.premium.founded, location: company.premium.headquarters}
+    miss: "coalesce(company.premium.name, company.full.properties.title) == null"
+
 
 
   # ContactOut work-email and phone lookups use sanitized structural fixtures above. People

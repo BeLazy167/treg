@@ -193,6 +193,7 @@ class Settings(BaseSettings):
     platform_key_getleadsio: str = ""  # Bearer; 1,000 promotional database credits, capped treg trial
     platform_key_scrubby: str = ""  # x-api-key; prepaid verification credits
     platform_key_zerobounce: str = ""  # api_key query param; PAYG validation credits, Auto-Pay managed upstream
+    platform_key_datagma: str = ""  # apiId query param; prepaid purchased credits, replenished manually
     platform_key_leadmagic: str = ""
     platform_key_lusha: str = ""
     platform_key_pdl: str = ""

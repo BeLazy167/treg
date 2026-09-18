@@ -55,6 +55,14 @@ string, negative, and non-finite values are unknown. Its policy is `credits / ma
 conservative shared-key rate of 25 requests per second. No reset, renewal, or auto-top-up behavior is
 inferred, and no overflow route is claimed. See [BounceBan](../architecture/bounceban.md).
 
+Datagma's collector calls the free internal `GET /api/ingress/v1/mine` route with the query-bound
+API ID and retains only `currentCredit`. Account identity and plan fields are discarded and never
+become catalog output. Finite nonnegative numbers and decimal strings are accepted; malformed,
+negative, and nonfinite values are rejected. HTTP failures are sanitized so the URL cannot expose
+the query credential. Its policy is `credits / manual / api`, with the documented 10 requests per
+second shared-key limit. No empty-account signature was forced and no overflow route is claimed.
+See [Datagma](../architecture/datagma.md).
+
 ZeroBounce's collector calls the free `GET /v2/getcredits` route with the query-bound key and reads
 `Credits`. Nonnegative integers and decimal strings are exact balances. Boolean, missing,
 malformed, and negative values are unknown; this includes the provider's invalid-key `-1` sentinel.
