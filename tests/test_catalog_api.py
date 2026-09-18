@@ -2146,3 +2146,72 @@ async def test_catalog_get_minimax_speech_28_language_emotion_audio_enums(
         assert "192000" not in tmpl
         assert "English(UK)" not in tmpl
         assert "whisper" not in tmpl
+
+
+HEYGEN_AVATAR_IV_ID = "openrouter.x.heygen-avatar-iv"
+HEYGEN_AVATAR_IV_PASSTHROUGH = (
+    "voice_id", "voice_settings", "motion_prompt", "expressiveness",
+    "fit", "remove_background", "background", "caption", "title",
+)
+
+
+def _assert_heygen_avatar_iv_input(body: dict) -> None:
+    """Feedback #594: Avatar IV must expose photo, optional audio, and HeyGen passthrough."""
+    prompt = body["prompt"]
+    assert "paper boat" not in prompt["example"].lower()
+    assert "tts" in prompt["note"].lower() or "script" in prompt["note"].lower()
+
+    audio_flag = body["generate_audio"]
+    assert audio_flag["default"] is False
+    flag_note = audio_flag["note"].lower()
+    assert "generate_audio: false" in audio_flag["note"] or "generate_audio: false" in flag_note
+    assert "input_references" in flag_note
+
+    refs = body["input_references"]
+    assert refs["required"] is True
+    ref_note = refs["note"].lower()
+    assert "frame_images" in ref_note
+    assert "image_url" in ref_note
+    assert "audio_url" in ref_note
+    example = refs["example"]
+    assert example[0]["type"] == "image_url"
+    assert example[0]["image_url"]["url"].startswith("https://")
+
+    provider = body["provider"]
+    assert provider["required"] is False
+    provider_note = provider["note"]
+    assert "provider.options.heygen.parameters" in provider_note
+    for key in HEYGEN_AVATAR_IV_PASSTHROUGH:
+        assert key in provider_note
+    passthrough = provider["properties"]["options"]["properties"]["heygen"]["properties"]["parameters"]["properties"]
+    assert set(passthrough) == set(HEYGEN_AVATAR_IV_PASSTHROUGH)
+    assert passthrough["voice_id"]["note"]
+    example_voice = provider["example"]["options"]["heygen"]["parameters"]["voice_id"]
+    assert example_voice
+
+
+def test_openrouter_heygen_avatar_iv_documents_photo_audio_and_passthrough():
+    """Feedback #594: Avatar IV catalog named only generic video fields.
+
+    The live rate card has supported_frame_images: null and generate_audio: false.
+    Photo and optional audio ride input_references; HeyGen controls ride
+    provider.options.heygen.parameters. Settlement is unchanged.
+    Ref: https://openrouter.ai/heygen/avatar-iv
+    """
+    ep = cs.load().by_id[HEYGEN_AVATAR_IV_ID]
+    assert ep["path"] == "/videos"
+    _assert_heygen_avatar_iv_input(ep["input"]["body"])
+    assert ep["cost"]["table"][0]["value"] == 0.05
+
+
+async def test_catalog_get_openrouter_heygen_avatar_iv_photo_script(
+        clients: AsyncClient):
+    """Feedback #594: catalog_get must show a photo+script call, not a scenic prompt."""
+    body = (await clients.get(f"/catalog/endpoints/{HEYGEN_AVATAR_IV_ID}")).json()
+    _assert_heygen_avatar_iv_input(body["endpoint"]["input"]["body"])
+    tmpl = body["call_template"]
+    assert tmpl.startswith(f"treg call {HEYGEN_AVATAR_IV_ID}")
+    assert "input_references" in tmpl
+    assert "image_url" in tmpl
+    assert "paper boat" not in tmpl
+    assert "Welcome to our product tour" in tmpl
