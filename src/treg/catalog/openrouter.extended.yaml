@@ -1058,7 +1058,8 @@ endpoints:
       prompt:
         type: string
         required: true
-        example: A paper boat crosses a quiet pond at sunrise.
+        example: Welcome to our product tour. Let me show you the three features our customers love most.
+        note: For Avatar IV the prompt is the spoken TTS script when no audio input_references item is supplied.
       duration:
         type: integer
         required: false
@@ -1083,6 +1084,69 @@ endpoints:
         type: boolean
         required: false
         default: false
+        note: 'The live rate card marks generate_audio: false for this model. Speech comes from the prompt script (TTS) or an audio input_references item, not this flag.'
+      input_references:
+        type: array
+        required: true
+        note: 'Avatar IV needs a photo. The live rate card has supported_frame_images: null, so use input_references, not frame_images. Send one OpenRouter image object ({type: image_url, image_url: {url}}) and optionally one audio object ({type: audio_url, audio_url: {url}}) to lip-sync a supplied track.'
+        example:
+        - type: image_url
+          image_url:
+            url: https://picsum.photos/id/64/512/512
+      provider:
+        type: object
+        required: false
+        note: 'HeyGen passthrough at provider.options.heygen.parameters. Live allowed_passthrough_parameters: voice_id (TTS voice), voice_settings, motion_prompt, expressiveness (performance), fit, remove_background, background, caption, title.'
+        example:
+          options:
+            heygen:
+              parameters:
+                voice_id: f38a635bee7a4d1f9b0a654a31d050d2
+        properties:
+          options:
+            type: object
+            required: false
+            properties:
+              heygen:
+                type: object
+                required: false
+                properties:
+                  parameters:
+                    type: object
+                    required: false
+                    note: voice_id, voice_settings, motion_prompt, expressiveness, fit, remove_background, background, caption, title.
+                    properties:
+                      voice_id:
+                        type: string
+                        required: false
+                        note: HeyGen TTS voice when speech comes from the prompt script.
+                      voice_settings:
+                        type: object
+                        required: false
+                      motion_prompt:
+                        type: string
+                        required: false
+                        note: Performance / motion direction.
+                      expressiveness:
+                        type: string
+                        required: false
+                        note: Performance intensity.
+                      fit:
+                        type: string
+                        required: false
+                      remove_background:
+                        type: boolean
+                        required: false
+                      background:
+                        type: string
+                        required: false
+                        note: Background replace.
+                      caption:
+                        type: string
+                        required: false
+                      title:
+                        type: string
+                        required: false
     bodyType: json
   cost:
     type: per_success
@@ -1101,7 +1165,7 @@ endpoints:
       unit: usd
     source: rate_card_api
     source_url: https://openrouter.ai/api/v1/videos/models
-    checked: '2026-09-02'
+    checked: '2026-09-18'
     confidence: documented
     note: Table rows quote the live rate card. Indistinguishable mode-specific SKUs collapse to the highest rate. The matched row is reserved and the terminal usage.cost settles; observed charges can include a minimum or fee absent from pricing_skus, so a settle may exceed its reserve (reconcile lists overruns).
   docs_url: https://openrouter.ai/heygen/avatar-iv
