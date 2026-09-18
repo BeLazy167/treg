@@ -2069,3 +2069,196 @@ def test_contactout_unverified_pii_routes_stay_direct_only():
         assert eid not in cat.by_id['treg.' + cap]['routed_children']
     assert 'contactout.people.contact.personal' not in cat.adapters
     assert cat.by_id['contactout.people.contact.personal']['platform'] == 'people'
+
+
+# ---- regression: adapter exceptions after child success must not crash the parent (2026-09) ----
+
+
+def _make_throwing_adapter(real, throw_on: str):
+    """Create a wrapper adapter that throws on the specified method."""
+    class ThrowingAdapter:
+        def __init__(self, real):
+            self._real = real
+            # Copy ALL attributes from the real Adapter dataclass
+            self.endpoint_id = real.endpoint_id
+            self.accepts = real.accepts
+            self.in_map = real.in_map
+            self.out_map = real.out_map
+            self.miss = real.miss
+            self.const = getattr(real, 'const', {})
+            self.in_expr = getattr(real, 'in_expr', {})
+            self.body_array = getattr(real, 'body_array', False)
+            self.test_identity = getattr(real, 'test_identity', {})
+            self.cost_units = getattr(real, 'cost_units', '')
+            self.additional_capabilities = getattr(real, 'additional_capabilities', ())
+            self.verified_capabilities = getattr(real, 'verified_capabilities', ())
+            self.verified = real.verified
+            self.verify_note = getattr(real, 'verify_note', '')
+            self._filter_keys = getattr(real, '_filter_keys', ())
+
+        def to_upstream(self, identity, variant):
+            if throw_on == 'to_upstream':
+                raise KeyError("simulated to_upstream failure")
+            return self._real.to_upstream(identity, variant)
+
+        def from_upstream(self, provider_body):
+            if throw_on == 'from_upstream':
+                raise ValueError("simulated from_upstream failure")
+            return self._real.from_upstream(provider_body)
+
+        def is_miss(self, provider_body):
+            if throw_on == 'is_miss':
+                raise TypeError("simulated is_miss failure")
+            return self._real.is_miss(provider_body)
+
+    return ThrowingAdapter(real)
+
+
+def _patched_catalog_with_throwing_adapter(original_cat, endpoint_id: str, throw_on: str):
+    """Return a new Catalog with one adapter replaced by a throwing wrapper."""
+    from dataclasses import replace
+    new_adapters = dict(original_cat.adapters)
+    new_adapters[endpoint_id] = _make_throwing_adapter(original_cat.adapters[endpoint_id], throw_on)
+    return replace(original_cat, adapters=new_adapters)
+
+
+def _patched_catalog_all_email_find_throw(original_cat):
+    """Return a new Catalog where all email.find adapters throw on from_upstream."""
+    from dataclasses import replace
+    new_adapters = {}
+    for eid, adapter in original_cat.adapters.items():
+        if 'email.find' in eid:
+            new_adapters[eid] = _make_throwing_adapter(adapter, 'from_upstream')
+        else:
+            new_adapters[eid] = adapter
+    return replace(original_cat, adapters=new_adapters)
+
+
+async def test_adapter_from_upstream_throws_after_child_200_waterfall_continues(
+    clients: AsyncClient, enrichment_on, monkeypatch,
+):
+    """Regression for 2026-09 bug: adapter.from_upstream throwing after a child returned 200 used
+    to crash the parent with a bare 502, leaving children audited OK but parent failed. Now the
+    adapter failure is recorded as an error and the waterfall continues to the next provider."""
+    original_cat = catalog_store.load()
+    # Patch tomba's adapter to throw (tomba is first in price order for this identity)
+    patched_cat = _patched_catalog_with_throwing_adapter(original_cat, "tomba.people.email.find", "from_upstream")
+
+    monkeypatch.setattr(catalog_store, 'load', lambda: patched_cat)
+
+    seen = []
+    # Tomba returns 200 but adapter throws; hunter returns 200 and works fine
+    # '*' catches other providers in waterfall (findymail, etc) returning miss
+    monkeypatch.setattr(call_service, 'relay', _relay_by_provider({
+        '*': [(200, {'data': None})] * 10,  # Other providers return miss-like response
+        'tomba': [(200, {'data': {'email': 'bad@format.test', 'unexpectedField': True}})],
+        'hunter': [(200, {'data': {'email': 'found@example.test', 'score': 80, 'verification': {'status': 'valid'}}})],
+    }, seen))
+
+    r = await clients.post(f'/call/{ROUTED}', json={'full_name': 'Example Person', 'domain': 'example.com'})
+    assert r.status_code == 200, r.text
+    doc = r.json()
+    # Waterfall continued to hunter after tomba's adapter failed
+    assert doc['_treg']['served_by'] == 'hunter.people.email.find'
+    assert doc['_treg']['outcome'] == 'hit'
+    # The tomba error should be recorded in `tried`
+    tried = {t['endpoint_id']: t for t in doc['_treg']['tried']}
+    assert 'tomba.people.email.find' in tried
+    assert tried['tomba.people.email.find']['outcome'] == 'error'
+    assert 'adapter.from_upstream failed' in tried['tomba.people.email.find']['detail']
+    # Hunter succeeded
+    assert tried['hunter.people.email.find']['outcome'] == 'hit'
+
+
+async def test_adapter_throws_on_all_children_returns_structured_502_with_tried(
+    clients: AsyncClient, enrichment_on, monkeypatch,
+):
+    """When ALL adapters throw on 200 responses, the parent must return a structured 502
+    with proper error details and `tried` list - not a bare 500 or empty 502."""
+    original_cat = catalog_store.load()
+    patched_cat = _patched_catalog_all_email_find_throw(original_cat)
+
+    monkeypatch.setattr(catalog_store, 'load', lambda: patched_cat)
+
+    seen = []
+    # All providers return 200 but adapters throw
+    # '*' wildcard catches all providers - return data that adapters will parse
+    monkeypatch.setattr(call_service, 'relay', _relay_by_provider({
+        '*': [(200, {'data': {'email': 'x@test.test'}})] * 15,
+    }, seen))
+
+    r = await clients.post(f'/call/{ROUTED}', json={'full_name': 'Example Person', 'domain': 'example.com'})
+    # Should be 502 route_failed, not 500 or empty body
+    assert r.status_code == 502, r.text
+    doc = r.json()
+    assert doc['detail']['error'] == 'route_failed'
+    # The tried list should have some error outcomes (adapters that threw)
+    tried = doc['detail']['tried']
+    assert len(tried) > 0
+    error_outcomes = [t for t in tried if t['outcome'] == 'error']
+    # At least one adapter should have thrown (those with email.find in name)
+    assert len(error_outcomes) > 0, f"Expected at least one error outcome, got: {tried}"
+    # Check that error details mention adapter failure
+    for t in error_outcomes:
+        if 'detail' in t and t['detail']:
+            assert 'adapter' in t['detail'] or 'failed' in t['detail'], f"Unexpected error detail: {t}"
+
+
+async def test_adapter_to_upstream_throws_records_error_and_continues(
+    clients: AsyncClient, enrichment_on, monkeypatch,
+):
+    """If adapter.to_upstream throws (before the child call), the error is recorded
+    and the waterfall continues to the next candidate."""
+    original_cat = catalog_store.load()
+    # Patch tomba's adapter to throw on to_upstream
+    patched_cat = _patched_catalog_with_throwing_adapter(original_cat, "tomba.people.email.find", "to_upstream")
+
+    monkeypatch.setattr(catalog_store, 'load', lambda: patched_cat)
+
+    seen = []
+    # Tomba's to_upstream will throw before relay is called
+    # '*' catches other providers, returning miss-like response
+    monkeypatch.setattr(call_service, 'relay', _relay_by_provider({
+        '*': [(200, {'data': None})] * 10,  # Other providers return miss-like response
+        'hunter': [(200, {'data': {'email': 'found@example.test', 'score': 80, 'verification': {'status': 'valid'}}})],
+    }, seen))
+
+    r = await clients.post(f'/call/{ROUTED}', json={'full_name': 'Example Person', 'domain': 'example.com'})
+    assert r.status_code == 200, r.text
+    doc = r.json()
+    # Tomba's to_upstream failed, waterfall continued to hunter
+    assert doc['_treg']['served_by'] == 'hunter.people.email.find'
+    tried = {t['endpoint_id']: t for t in doc['_treg']['tried']}
+    assert 'tomba.people.email.find' in tried
+    assert tried['tomba.people.email.find']['outcome'] == 'error'
+    assert 'adapter.to_upstream failed' in tried['tomba.people.email.find']['detail']
+
+
+async def test_adapter_is_miss_throws_records_error_and_continues(
+    clients: AsyncClient, enrichment_on, monkeypatch,
+):
+    """If adapter.is_miss throws after parsing the response, the error is recorded
+    and the waterfall continues."""
+    original_cat = catalog_store.load()
+    # Patch tomba's adapter to throw on is_miss
+    patched_cat = _patched_catalog_with_throwing_adapter(original_cat, "tomba.people.email.find", "is_miss")
+
+    monkeypatch.setattr(catalog_store, 'load', lambda: patched_cat)
+
+    seen = []
+    # '*' catches other providers, returning miss-like response
+    monkeypatch.setattr(call_service, 'relay', _relay_by_provider({
+        '*': [(200, {'data': None})] * 10,  # Other providers return miss-like response
+        'tomba': [(200, {'data': {'email': 'tomba@test.test', 'score': 99}})],
+        'hunter': [(200, {'data': {'email': 'found@example.test', 'score': 80, 'verification': {'status': 'valid'}}})],
+    }, seen))
+
+    r = await clients.post(f'/call/{ROUTED}', json={'full_name': 'Example Person', 'domain': 'example.com'})
+    assert r.status_code == 200, r.text
+    doc = r.json()
+    # Tomba's is_miss failed, waterfall continued to hunter
+    assert doc['_treg']['served_by'] == 'hunter.people.email.find'
+    tried = {t['endpoint_id']: t for t in doc['_treg']['tried']}
+    assert 'tomba.people.email.find' in tried
+    assert tried['tomba.people.email.find']['outcome'] == 'error'
+    assert 'adapter.is_miss failed' in tried['tomba.people.email.find']['detail']

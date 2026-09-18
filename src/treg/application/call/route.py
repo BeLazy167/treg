@@ -406,7 +406,15 @@ async def run_routed(parent: CallContext, ep: dict, body_bytes: bytes, get_heade
                                  "provider already rejected the request" if cand.endpoint["provider"] in rejected_by
                                  else "not retried on a paid provider (> 1¢/call) after a vendor 4xx"))
             continue
-        query, body = cand.adapter.to_upstream(plan.identity, cand.variant)
+        try:
+            query, body = cand.adapter.to_upstream(plan.identity, cand.variant)
+        except Exception as exc:  # noqa: BLE001 — adapter threw; record error and try next candidate
+            errors += 1
+            tried.append(Attempt(cand.endpoint["id"], cand.endpoint["provider"], "error", None, 0,
+                                 f"adapter.to_upstream failed: {exc}"[:120]))
+            if errors > MAX_ERROR_FALLBACKS or not plan.contract.idempotent:
+                break
+            continue
         # A filter the caller sent that this adapter never mentions is silently NOT applied — say so
         # on the attempt (live 2026-08-29: `country: fr` reached icypeas as nothing, rows came from
         # anywhere; the bench had post-filtered in the agent). Computed at planning time, where it
@@ -431,7 +439,15 @@ async def run_routed(parent: CallContext, ep: dict, body_bytes: bytes, get_heade
             if errors > MAX_ERROR_FALLBACKS or not plan.contract.idempotent:
                 break
             continue
-        raw = await _read(response)
+        try:
+            raw = await _read(response)
+        except Exception as exc:  # noqa: BLE001 — failed to read child's response body
+            errors += 1
+            tried.append(Attempt(cand.endpoint["id"], cand.endpoint["provider"], "error", response.status, 0,
+                                 f"failed to read response: {exc}"[:120]))
+            if errors > MAX_ERROR_FALLBACKS or not plan.contract.idempotent:
+                break
+            continue
         charged = int(_header(response, "X-Treg-Cost-Micro") or 0)
         spent += charged
         if response.status == _miss_status(cand.endpoint):
@@ -479,13 +495,35 @@ async def run_routed(parent: CallContext, ep: dict, body_bytes: bytes, get_heade
             doc = json.loads(raw)
         except ValueError:
             doc = None
-        core = cand.adapter.from_upstream(doc) if doc is not None else {}
+        # Adapter transforms may throw on unexpected provider output. A crash here after a child
+        # succeeded (200) used to leave the parent 502 with no winner — the child was audited OK,
+        # the parent not. Catch adapter failures and record them as errors so the waterfall can
+        # try the next candidate and, at worst, return a structured route_failed with `tried`.
+        # Live 2026-09: ~25% of treg.people.email.find calls 502'd while children returned 200.
+        try:
+            core = cand.adapter.from_upstream(doc) if doc is not None else {}
+        except Exception as exc:  # noqa: BLE001 — adapter threw on provider response
+            errors += 1
+            tried.append(Attempt(cand.endpoint["id"], cand.endpoint["provider"], "error", response.status, charged,
+                                 f"adapter.from_upstream failed: {exc}"[:120]))
+            if errors > MAX_ERROR_FALLBACKS or not plan.contract.idempotent:
+                break
+            continue
         # A miss is what the adapter's predicate says — OR a 2xx whose body does not carry the
         # contract's required core (a null `result` under a 200, an error task inside a 20000
         # envelope): the caller asked for the field and did not get it (live 2026-08-28: dataforseo's
         # yahoo task returned `result: null` and was counted a hit).
         empty_core = any(core.get(k) in (None, "", [], {}) for k in plan.contract.required_output)
-        if doc is None or cand.adapter.is_miss(doc) or empty_core:
+        try:
+            is_miss = cand.adapter.is_miss(doc) if doc is not None else True
+        except Exception as exc:  # noqa: BLE001 — adapter threw on provider response
+            errors += 1
+            tried.append(Attempt(cand.endpoint["id"], cand.endpoint["provider"], "error", response.status, charged,
+                                 f"adapter.is_miss failed: {exc}"[:120]))
+            if errors > MAX_ERROR_FALLBACKS or not plan.contract.idempotent:
+                break
+            continue
+        if doc is None or is_miss or empty_core:
             tried.append(Attempt(cand.endpoint["id"], cand.endpoint["provider"], "miss", response.status, charged, ignored=ignored))
             if options.waterfall:
                 continue
