@@ -1745,6 +1745,27 @@ are unchanged. Settlement is unchanged. Enforced by
 `test_llm_mentions_chat_gpt_location_is_us_only` and
 `test_catalog_get_dataforseo_llm_mentions_chat_gpt_location_is_us_only`.
 
+### MiniMax Speech 2.8 `language_boost` / emotion / bitrate
+
+MiniMax T2A (`POST /v1/t2a_v2`) documents `language_boost` as exact language names
+(`Chinese`, `English`, `auto`, … — not `English(UK)` / `en-GB`); `audio_setting.bitrate`
+as `32000 | 64000 | 128000 | 256000` (mp3 only); and `audio_setting.sample_rate` as
+`8000 | 16000 | 22050 | 24000 | 32000 | 44100`. Official OpenAPI
+(https://platform.minimax.io/docs/api-reference/speech-t2a-http) lists
+`voice_setting.emotion` including `whisper` and `fluent`, but those two values are
+2.6-only: `speech-2.8-hd` and `speech-2.8-turbo` reject `whisper` (status `2013`) even
+with a whispering-named `voice_id`. Feedback #598 / #599 / #602:
+`minimax.voice-gen.speech-2-8-hd` (and the turbo sibling) advertised `language_boost`
+as a free string, mentioned emotion only as an unnamed optional control, and showed
+bitrate `128000` with no enum, so agents sent `English(UK)`, `emotion=whisper`, and
+`bitrate=192000`. Catalog-only: `language_boost` carries the official enum;
+`voice_setting.emotion` lists the 2.8 subset
+(`happy | sad | angry | fearful | disgusted | surprised | calm`);
+bitrate and sample_rate name the OpenAPI integers. Example and
+`test_request` bitrate stay `128000`. Non-streaming formats stay mp3/wav/flac.
+Settlement is unchanged. Enforced by `test_minimax_speech_28_language_emotion_audio_enums`
+and `test_catalog_get_minimax_speech_28_language_emotion_audio_enums`.
+
 ### ScrapeCreators Instagram reels search `date_posted`
 
 ScrapeCreators' OpenAPI for `GET /v2/instagram/reels/search` restricts `date_posted` to
