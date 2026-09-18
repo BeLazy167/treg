@@ -1447,6 +1447,65 @@ async def test_catalog_get_dataforseo_related_keywords_omits_order_by(clients: A
     assert "filters" in note
 
 
+RANKED_KEYWORDS_ID = "dataforseo.google.domain.ranked_keywords"
+
+
+def test_dataforseo_ranked_keywords_names_labs_location_language_pairs():
+    """Feedback #300: ranked_keywords location+language must be a Labs pair.
+
+    catalog_get used to say only `2840 = United States` / `one of language_code
+    | language_name` with example `en`, so agents sent `location_code: 2076`
+    (Brazil, often misread as Morocco) with `language_code: fr` and got
+    Invalid Field language_code. Settlement is unchanged.
+    """
+    cat = cs.load()
+    ep = cat.by_id[RANKED_KEYWORDS_ID]
+    assert ep["path"] == "/dataforseo_labs/google/ranked_keywords/live"
+    loc = ep["input"]["body"]["location_code"]
+    lang = ep["input"]["body"]["language_code"]
+    loc_note = loc["note"].lower()
+    lang_note = lang["note"].lower()
+    input_note = ep["input"]["note"].lower()
+    assert "2840" in loc_note and "united states" in loc_note
+    assert "2076" in loc_note and "brazil" in loc_note
+    assert "morocco" in loc_note and "2504" in loc_note
+    assert "locations_and_languages" in loc_note
+    assert loc["example"] == 2840
+    assert "invalid field" in lang_note
+    assert "2076" in lang_note and "fr" in lang_note
+    assert "brazil" in lang_note and "pt" in lang_note
+    assert "2504" in lang_note and "morocco" in lang_note
+    assert "locations_and_languages" in lang_note
+    assert lang["example"] == "en"
+    assert "locations_and_languages" in input_note
+    assert "https://docs.dataforseo.com/v3/dataforseo_labs/locations_and_languages/" in ep["input"]["note"]
+    task = ep["test_request"]["body"][0]
+    assert task["location_code"] == 2840
+    assert task["language_code"] == "en"
+
+
+async def test_catalog_get_dataforseo_ranked_keywords_names_labs_location_language_pairs(
+        clients: AsyncClient):
+    """Feedback #300: catalog_get must name Brazil 2076 vs Morocco 2504 pairs."""
+    body = (await clients.get(f"/catalog/endpoints/{RANKED_KEYWORDS_ID}")).json()
+    loc = body["endpoint"]["input"]["body"]["location_code"]
+    lang = body["endpoint"]["input"]["body"]["language_code"]
+    loc_note = loc["note"].lower()
+    lang_note = lang["note"].lower()
+    input_note = body["endpoint"]["input"]["note"]
+    assert "2840" in loc_note and "united states" in loc_note
+    assert "2076" in loc_note and "brazil" in loc_note
+    assert "2504" in loc_note and "morocco" in loc_note
+    assert "locations_and_languages" in loc_note
+    assert loc["example"] == 2840
+    assert "invalid field" in lang_note
+    assert "2076" in lang_note and "fr" in lang_note
+    assert "2504" in lang_note
+    assert "locations_and_languages" in lang_note
+    assert lang["example"] == "en"
+    assert "https://docs.dataforseo.com/v3/dataforseo_labs/locations_and_languages/" in input_note
+
+
 async def test_catalog_get_dataforseo_maps_live_omits_location_name(clients: AsyncClient):
     body = (await clients.get(
         "/catalog/endpoints/dataforseo.x.serp-google-maps-live-advanced"

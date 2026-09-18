@@ -1635,6 +1635,26 @@ accepts both. Settlement is unchanged. Enforced by
 `test_dataforseo_related_keywords_does_not_advertise_order_by` and
 `test_catalog_get_dataforseo_related_keywords_omits_order_by`.
 
+### DataForSEO Labs ranked_keywords location+language is a pair
+
+DataForSEO Labs Google `ranked_keywords/live` takes `location_code` and
+`language_code` as a supported pair from GET
+`/v3/dataforseo_labs/locations_and_languages` (free; docs:
+https://docs.dataforseo.com/v3/dataforseo_labs/locations_and_languages/).
+An unsupported pair returns HTTP 200 + task status `40501 Invalid Field:
+'language_code'` and `$0`. Feedback #300:
+`dataforseo.google.domain.ranked_keywords` advertised only `2840 = United
+States` and `one of language_code | language_name` with example `en`, so
+agents sent `location_code: 2076` (Brazil; ISO numeric 076, not Morocco)
+with `language_code: fr`. Brazil accepts `pt`; Morocco is `2504` with
+`ar` and `fr`. Catalog-only: `location_code.note` names 2840 / 2076 Brazil
+/ 2504 Morocco; `language_code.note` names the pair list and the
+`2076`+`fr` failure; `input.note` points at the locations_and_languages
+docs. `test_request` stays US+en (`2840`/`en`). Settlement is unchanged.
+Enforced by `test_dataforseo_ranked_keywords_names_labs_location_language_pairs`
+and
+`test_catalog_get_dataforseo_ranked_keywords_names_labs_location_language_pairs`.
+
 ### DataForSEO Maps live/advanced rejects `location_name`
 
 Vendor SERP docs still list `location_name` as an alternative to
