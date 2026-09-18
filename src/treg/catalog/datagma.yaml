@@ -116,7 +116,7 @@ endpoints:
         username: {type: string, required: false, note: Full LinkedIn profile URL.}
         minimumMatch: {type: integer, required: false, min: 1, default: 1}
         whatsapp_check: {type: boolean, required: false, default: false}
-      note: Provide email, username, or both. Geographic and privacy restrictions can return a free 403. This high-cost tool is direct-only and is not an automatic routed fallback or Enrich Arena contender.
+      note: Provide email, username, or both. A successful result costs 30 credits, a $0.6774 base cost before the configured platform margin. Responses reporting creditBurn 0 are not charged; a geographic or privacy restriction was observed returning a free 403. This high-cost tool is direct-only and is not an automatic routed fallback or Enrich Arena contender.
     test_request: {queryParams: {email: dshah@hubspot.com, username: https://www.linkedin.com/in/dharmesh, minimumMatch: 1, whatsapp_check: false}}
     cost:
       type: per_success

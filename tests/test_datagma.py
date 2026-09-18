@@ -16,7 +16,7 @@ from treg.domain.capacity import collectors, policy
 from treg.domain.catalog import store as catalog_store
 
 
-def _mk(unit_micro=22_583):
+def _mk(unit_micro=22_580):
     return MarketplaceCall(
         tool=None, upstream="https://gateway.datagma.net/api/ingress/v8/findEmail",
         consumed=set(), provider="datagma", endpoint_id="datagma.people.email.find",
@@ -51,14 +51,14 @@ def test_datagma_catalog_has_only_the_five_single_record_tools():
         "datagma.people.job-change.detect",
     }
     assert all(ep["scope"] == "any_account" for ep in endpoints.values())
-    assert cat.cost_view(endpoints["datagma.people.email.find"]["cost"], "datagma")["usd"] == 0.022583
-    assert cat.cost_view(endpoints["datagma.people.phone.find"]["cost"], "datagma")["usd"] == 0.67749
+    assert cat.cost_view(endpoints["datagma.people.email.find"]["cost"], "datagma")["usd"] == 0.02258
+    assert cat.cost_view(endpoints["datagma.people.phone.find"]["cost"], "datagma")["usd"] == 0.6774
     assert "datagma.people.phone.find" not in cat.adapters
     assert set(endpoints) & {"datagma.people.find", "datagma.people.search"} == set()
 
 
 @pytest.mark.parametrize("raw,expected", [
-    ("0", 0), ("1", 22_583), (30, 677_490), ("1.5", 33_875),
+    ("0", 0), ("1", 22_580), (30, 677_400), ("1.5", 33_870),
     (-1, None), (True, None), ("bad", None), (None, None),
 ])
 def test_datagma_settles_from_reported_credit_burn(raw, expected):
@@ -144,8 +144,8 @@ async def test_datagma_platform_settles_exact_usage_and_byok_wins(clients, monke
         params={"fullName": "Example Person", "company": "example.com"},
     )
     assert response.status_code == 200, response.text
-    assert response.headers["x-treg-cost-micro"] == "22583"
-    assert await _balance(clients) == before - 22_583
+    assert response.headers["x-treg-cost-micro"] == "22580"
+    assert await _balance(clients) == before - 22_580
 
     await clients.post("/secrets", json={"name": "datagma", "value": "OWN-DATAGMA"})
     before_byok = await _balance(clients)

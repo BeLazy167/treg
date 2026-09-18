@@ -57,9 +57,9 @@ only `currentCredit`; it discards the rest of the account response.
 ## Price and settlement
 
 The platform acquired 3,000 prepaid credits for EUR 59. That is EUR 0.0196667 per credit. Using the
-ECB 2026-09-17 reference rate of EUR 1 = USD 1.1481 gives USD 0.0225827, rounded up to 22,583
+ECB 2026-09-17 reference rate of EUR 1 = USD 1.1481 gives USD 0.0225793, rounded up to 22,580
 micro-USD per credit before the configured platform margin. Email, person, company, and job-change
-calls reserve one credit. Phone reserves 30 credits, or 677,490 micro-USD.
+calls reserve one credit. Phone reserves 30 credits, or 677,400 micro-USD.
 
 Every successful Datagma response can report `creditBurn` as a numeric string. Settlement parses
 that field and multiplies it by the request's frozen credit rate. This matters because a cached
@@ -78,7 +78,7 @@ Verified adapters add Datagma email finding, person enrichment, and company enri
 corresponding `treg.*` routed tools. Enrich Arena discovers the same adapters and fixtures. The
 one-credit rate is competitive with the current provider sets.
 
-Phone has no adapter. At 30 credits, its base cost is USD 0.67749, near the top of the current phone
+Phone has no adapter. At 30 credits, its base cost is USD 0.6774, near the top of the current phone
 provider range, so it stays an explicit direct tool rather than an automatic fallback or Arena
 contender. Job-change detection has no matching routed or Arena contract and also stays direct.
 
