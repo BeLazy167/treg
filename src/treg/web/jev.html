@@ -488,6 +488,58 @@
   .smodal input:focus { border-color: var(--ink); }
   .smodal .err { color: var(--red); font-size: 11.5px; margin-top: 10px; min-height: 14px; }
 
+
+  /* ---- learn: the slide deck ---- */
+  .learn-sec h2 .lg { width: .9em; height: .9em; border-radius: .2em; vertical-align: -.1em; }
+  .deck { position: relative; max-width: 1000px; margin: 0 auto; outline: none; }
+  .dk-view { overflow: hidden; border: 1px solid var(--line); border-radius: 20px; background: #fff; }
+  .dk-track { display: flex; transition: transform .45s cubic-bezier(.2,.8,.2,1); }
+  .slide { flex: 0 0 100%; display: grid; grid-template-columns: minmax(0, .95fr) minmax(0, 1.05fr); gap: 28px; padding: 30px 34px; min-height: 380px; }
+  .sl-n { font-family: var(--mono); font-size: 11px; letter-spacing: .08em; color: var(--muted); }
+  .slide h3 { font-family: var(--display); font-weight: 500; font-size: 24px; letter-spacing: -.02em; line-height: 1.15; margin: 8px 0 12px; }
+  .slide p { margin: 0 0 10px; font-size: 15px; color: #43413E; }
+  .slide p b { color: var(--ink); font-weight: 600; }
+  .slide .sl-note { font-size: 13px; color: var(--muted); }
+  .slide code { font-family: var(--mono); font-size: 12.5px; background: var(--card); padding: 1px 5px; border-radius: 5px; }
+  .sl-r { min-width: 0; display: flex; flex-direction: column; justify-content: center; }
+  .sl-r pre { margin: 0; font-family: var(--mono); font-size: 12px; line-height: 1.55; white-space: pre-wrap; word-break: break-word; background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 16px 18px; color: #2a2926; }
+  .sl-r pre b { color: var(--ink); font-weight: 600; }
+  .sl-tab { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  .sl-tab th { text-align: left; font-family: var(--mono); font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); font-weight: 500; padding: 6px 8px; border-bottom: 1px solid var(--line); }
+  .sl-tab td { padding: 9px 8px; border-bottom: 1px solid var(--line); font-family: var(--mono); font-size: 12.5px; }
+  .sl-tab tr:first-child td { color: var(--green); font-weight: 500; }
+  .gate { display: flex; flex-direction: column; gap: 10px; }
+  .g-row { display: grid; grid-template-columns: 120px minmax(0,1fr) 120px; gap: 10px; align-items: center; font-family: var(--mono); font-size: 12px; color: var(--muted); }
+  .g-row i { display: block; height: 14px; border-radius: 7px; background: var(--green); }
+  .g-row.warn i { background: var(--amber); }
+  .g-row b { color: var(--ink); font-weight: 500; }
+  .loop { display: flex; align-items: center; justify-content: center; gap: 14px; }
+  .loop i { color: var(--muted); font-style: normal; font-size: 22px; }
+  .lp-step { display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; padding: 18px 16px; border: 1px solid var(--line); border-radius: 16px; background: var(--card); min-width: 130px; }
+  .lp-step .lg { width: 34px; height: 34px; border-radius: 9px; }
+  .lp-step .you { width: 34px; height: 34px; border-radius: 9px; background: var(--ink); color: #fff; display: grid; place-items: center; font-family: var(--mono); font-size: 10px; letter-spacing: .08em; text-transform: uppercase; }
+  .lp-step b { font-family: var(--display); font-weight: 600; font-size: 15px; }
+  .lp-step span { font-size: 12px; color: var(--muted); }
+  .dk-arrow { position: absolute; top: 50%; transform: translateY(-50%); width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--line); background: #fff; cursor: pointer; display: grid; place-items: center; box-shadow: 0 6px 20px -10px rgba(20,18,12,.4); z-index: 2; }
+  .dk-arrow svg { width: 18px; height: 18px; fill: none; stroke: var(--ink); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .dk-arrow.prev { left: -20px; } .dk-arrow.next { right: -20px; }
+  .dk-arrow:hover { background: var(--card); }
+  .dk-dots { display: flex; justify-content: center; gap: 7px; margin-top: 16px; }
+  .dk-dots button { width: 8px; height: 8px; border-radius: 50%; border: 0; background: var(--line2); cursor: pointer; padding: 0; transition: transform .2s, background .2s; }
+  .dk-dots button[aria-current="true"] { background: var(--ink); transform: scale(1.3); }
+  @media (max-width: 860px) { .slide { grid-template-columns: 1fr; padding: 22px 20px; min-height: 0; } .dk-arrow.prev { left: 6px; } .dk-arrow.next { right: 6px; } .g-row { grid-template-columns: 90px minmax(0,1fr) 100px; } .loop { flex-wrap: wrap; } }
+
+  /* ---- faq ---- */
+  .faq { max-width: 760px; margin: 0 auto; }
+  .faq details { border-top: 1px solid var(--line); padding: 4px 0; }
+  .faq details:last-child { border-bottom: 1px solid var(--line); }
+  .faq summary { cursor: pointer; list-style: none; display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 14px 4px; font-family: var(--display); font-weight: 500; font-size: 17px; letter-spacing: -.01em; }
+  .faq summary::-webkit-details-marker { display: none; }
+  .faq summary::after { content: "+"; font-family: var(--mono); color: var(--muted); font-size: 18px; transition: transform .2s; }
+  .faq details[open] summary::after { transform: rotate(45deg); }
+  .faq p { margin: 0 4px 16px; color: #43413E; font-size: 15px; line-height: 1.6; }
+  .faq code { font-family: var(--mono); font-size: 12.5px; background: var(--card); padding: 1px 5px; border-radius: 5px; }
+
   /* closing */
   .close-cta { text-align: center; padding: 30px 24px 0; }
   .close-cta h2 { font-family: var(--display); font-weight: 500; letter-spacing: -.03em; font-size: clamp(30px, 4vw, 44px); line-height: 1.08; margin: 0 0 12px; }
@@ -856,7 +908,97 @@
   </div>
 </section>
 
-<section class="section bill-sec rv" id="pricing" style="padding-top:110px">
+<section class="section learn-sec rv" id="learn" style="padding-top:110px;padding-bottom:0">
+  <h2>What is <img class="lg" src="logos/jev.png" alt=""> jev, in eight slides</h2>
+  <p class="lede">A decision model, not a chat model. Every example below is a real request and answer from the TypeSafe docs, run by us.</p>
+  <div class="deck" id="deck" tabindex="0" aria-roledescription="carousel">
+    <button class="dk-arrow prev" id="dk-prev" aria-label="Previous slide"><svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
+    <div class="dk-view"><div class="dk-track" id="dk-track">
+
+      <article class="slide"><div class="sl-l"><span class="sl-n">1 / 8</span><h3>State in, typed answers out</h3><p>You send jev a piece of <b>state</b> (a message, a record, a post with its counts) and one or more <b>questions</b> with the answers you would accept. It never writes prose. Every answer is a probability over <em>your</em> options, so there is nothing to parse and nothing to hallucinate.</p><p class="sl-note">Three questions on one support message, one call, 428 tokens in, $0.000018.</p></div>
+        <div class="sl-r"><pre><b>state</b>  "Our API integration started returning 500 errors on every request about 20 minutes ago, and we can't process any customer orders until this is fixed."
+
+<b>questions</b>
+department   choice   billing · technical · sales
+is_urgent    noul     "conveys urgency or time-sensitivity"
+frustration  score    calm · frustrated but civil · very angry
+
+<b>answers</b>
+department   technical      p = 1.00   confidence 1.00
+is_urgent    0.99
+frustration  0.65 → level 1 "frustrated but civil"</pre></div></article>
+
+      <article class="slide"><div class="sl-l"><span class="sl-n">2 / 8</span><h3>choice: pick one of your options</h3><p>Give the options as keys with a description each. jev returns the <b>choice</b>, a <b>probabilities</b> map that sums to one, and a <b>confidence</b> that says how peaked that map is. A 0.51 / 0.49 split and a 0.98 / 0.02 split both pick the same key; only the map tells you which one to trust.</p><p class="sl-note">Used on the board above for relevance, launch type and distribution.</p></div>
+        <div class="sl-r"><pre>"department": {
+  "type": "choice",
+  "instructions": "Which team should handle this",
+  "criteria": {
+    "billing":   "Payment or subscription issues",
+    "technical": "Bugs or integration problems",
+    "sales":     "Pricing or account questions"
+  }
+}
+
+→ { "choice": "technical",
+    "probabilities": { "billing": 0, "sales": 0, "technical": 1 },
+    "confidence": 1 }</pre></div></article>
+
+      <article class="slide"><div class="sl-l"><span class="sl-n">3 / 8</span><h3>noul: a probability that a statement is true</h3><p>Write the statement; jev returns a number between 0 and 1. <b>You</b> choose the threshold. The buyer-signal workflow keeps a post when "about GTM tooling" is at or above 0.70; the launch radar reads "is this organic" the same way.</p><p class="sl-note">Add <code>criteria</code> with a <code>true</code> and a <code>false</code> definition when the line is subtle.</p></div>
+        <div class="sl-r"><pre>"is_urgent": {
+  "type": "noul",
+  "instructions": "The message conveys urgency or time-sensitivity"
+}
+
+→ { "noul": 0.99 }
+
+if (answer.noul >= 0.70) escalate();   // your rule, your number</pre></div></article>
+
+      <article class="slide"><div class="sl-l"><span class="sl-n">4 / 8</span><h3>score: a position on your rubric</h3><p>Give ordered levels. jev returns the probability on each level and a <b>score</b>, the probability-weighted mean over the level indices. 0.65 here means "mostly level 1, some level 0". The signup workflow scores upsell value from 0 (none) to 3 (enterprise) this way.</p><p class="sl-note">Levels can be objects with a <code>summary</code> and <code>signals</code>; jev echoes them back as a <code>legend</code>.</p></div>
+        <div class="sl-r"><pre>"frustration": {
+  "type": "score",
+  "instructions": "How frustrated the customer appears",
+  "criteria": ["Calm, just stating facts",
+               "Frustrated but civil",
+               "Very angry, strong language"]
+}
+
+→ { "score": 0.65,
+    "probabilities": { "0": 0.35, "1": 0.65, "2": 0 },
+    "confidence": 0.47 }</pre></div></article>
+
+      <article class="slide"><div class="sl-l"><span class="sl-n">5 / 8</span><h3>Fast and cheap because it only reads</h3><p>A chat model spends its time <em>writing</em> the answer, so its latency sits at 2 to 4 seconds whatever you ask. jev's cost and time grow with the input only. Same three questions, same message, one run each:</p><p class="sl-note">Single runs, so treat the seconds as rough. jev reads up to about 30k tokens; above that, split the state.</p></div>
+        <div class="sl-r"><table class="sl-tab"><thead><tr><th>model</th><th>cost</th><th>time</th><th>vs jev</th></tr></thead><tbody>
+          <tr><td>typesafe/jev-1.13</td><td>$0.000018</td><td>0.38 s</td><td>1×</td></tr>
+          <tr><td>openai/gpt-5.6-luna</td><td>$0.000136</td><td>2.47 s</td><td>7.6×</td></tr>
+          <tr><td>anthropic/claude-haiku-4.5</td><td>$0.000513</td><td>1.49 s</td><td>28.5×</td></tr>
+        </tbody></table><p class="sl-note">List price $0.042 per million input tokens, output free. A verdict on a post with its author and 20 replies: about $0.0001.</p></div></article>
+
+      <article class="slide"><div class="sl-l"><span class="sl-n">6 / 8</span><h3>Confidence gating: act when sure, ask a human when not</h3><p>Because every answer carries its distribution, the threshold is a business decision you make explicitly, not a prompt you hope holds. Route automatically above a confidence, queue the rest for a person, and pick the line from a small labelled set.</p><p class="sl-note">200 human-labelled support tickets, four queues: the disagreements cluster in the low-confidence bin, so gating there removes most of the risk for a small share of volume.</p></div>
+        <div class="sl-r"><div class="gate"><div class="g-row"><span>confidence ≥ 0.9</span><i style="width:72%"></i><b>auto-route</b></div><div class="g-row"><span>0.6 – 0.9</span><i style="width:18%"></i><b>auto, spot-check</b></div><div class="g-row warn"><span>&lt; 0.6</span><i style="width:10%"></i><b>to a human</b></div></div><p class="sl-note">The signup workflow does the same with lanes: hold needs hard evidence, watch takes the uncertain middle.</p></div></article>
+
+      <article class="slide"><div class="sl-l"><span class="sl-n">7 / 8</span><h3>Rubrics: say what an option is <em>not</em></h3><p>An option's description can be an object. <code>what</code>, <code>not_for</code> and <code>examples</code> are ordinary keys, and jev reads the key names too, so name them for what they hold. "It doesn't export to Framer" is a bug if Framer export exists and a feature request if it never did; a one-line label cannot know, a rubric can carry the fact.</p><p class="sl-note">Same message, the plain labels say <b>bug</b>; the rubric with the product fact in <code>not_for</code> says <b>feature_request</b>.</p></div>
+        <div class="sl-r"><pre>"feature_request": {
+  "what": "asks for something the product does not do",
+  "not_for": "a promised feature that is broken",
+  "examples": ["can you add a Framer export?"]
+},
+"bug": {
+  "what": "a promised feature does not work",
+  "not_for": "features that were never built:
+             there is no Framer export",
+  "examples": ["the CSV export is empty"]
+}</pre></div></article>
+
+      <article class="slide"><div class="sl-l"><span class="sl-n">8 / 8</span><h3>Where treg comes in</h3><p>jev cannot produce a string and cannot fetch anything. It decides over the state you hand it. treg is the other half: one token for the catalog, so the state is a real X post with its author and replies, a signup with its verification and enrichment, a LinkedIn commenter with their headline. treg fetches, jev decides, your code acts on the numbers.</p><p class="sl-note">Every workflow above is that loop. The prompts in each tab set both up for your agent.</p></div>
+        <div class="sl-r"><div class="loop"><div class="lp-step"><svg class="lg" viewBox="0 0 512 512" aria-hidden="true"><rect width="512" height="512" rx="112" fill="#101010"/><rect x="111" y="111" width="140.5" height="140.5" rx="20" fill="#fff"/><rect x="260.5" y="260.5" width="140.5" height="140.5" rx="20" fill="#fff"/></svg><b>treg</b><span>fetch the facts</span></div><i>→</i><div class="lp-step"><img class="lg" src="logos/jev.png" alt=""><b>jev</b><span>typed verdict</span></div><i>→</i><div class="lp-step"><span class="you">you</span><b>your code</b><span>act on the number</span></div></div></div></article>
+
+    </div></div>
+    <button class="dk-arrow next" id="dk-next" aria-label="Next slide"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></button>
+    <div class="dk-dots" id="dk-dots"></div>
+  </div>
+</section>
+
+<section class="section bill-sec rv" id="pricing" style="padding-top:60px">
   <h2>No subscription. No contract.<br><span class="hl2">Pays for results only.</span></h2>
   <p class="lede">Every call is metered at the provider's own rate from a prepaid balance — 0% markup.</p>
   <div class="bill">
@@ -917,6 +1059,28 @@
       <a class="pill dark" href="/catalog">Browse the catalog →</a>
     </div>
   </div>
+</section>
+
+<section class="section faq-sec rv" id="faq" style="padding-top:20px">
+  <h2>Questions people ask</h2>
+  <div class="faq">
+    <details open><summary>What is jev?</summary><p>jev is a decision model from TypeSafe. You send it a JSON state and typed questions (a choice between options, a yes/no as a probability, a score on a rubric) and it returns probabilities over your options in under a second. It does not generate text.</p></details>
+    <details><summary>How much does a jev verdict cost?</summary><p>jev is priced on input tokens only, $0.042 per million at list price. One verdict on an X post with its author profile and first 20 replies is about $0.0001; a signup with its enrichment is about $0.00005. The treg data calls around it cost more than jev does.</p></details>
+    <details><summary>How is jev different from asking GPT or Claude for a JSON answer?</summary><p>A chat model writes its answer, so it takes 2 to 4 seconds and bills output tokens; on the same three questions it cost 7 to 28 times more in our runs. jev only reads, and every answer carries a full probability distribution and a confidence, so you can set thresholds and route uncertain cases to a person instead of parsing a label.</p></details>
+    <details><summary>Where does treg fit?</summary><p>jev cannot fetch anything. treg is one token for a catalog of live data endpoints: X and LinkedIn posts, email verification, person and company enrichment, and more. treg builds the state, jev decides on it, your code acts on the numbers. Your own provider keys always take precedence over treg's and are never metered.</p></details>
+    <details><summary>How do I call jev?</summary><p>Through the Vercel AI Gateway: POST to its evaluation-model endpoint with your gateway key, the model id <code>typesafe-ai/jev</code> and a body of <code>state</code> and <code>questions</code>. The prompts on this page contain the exact headers. jev is also available on OpenRouter as <code>typesafe/jev-1.13</code>.</p></details>
+    <details><summary>Are the demos on this page real?</summary><p>The viral-posts board is a real daily run over public X posts, and the post you paste is analysed live. The buyer-signal demo replays a real LinkedIn run with every email address replaced. The signup demo is a synthetic sample built to show the four segments; the pipeline and prices are the real ones.</p></details>
+    <details><summary>How long a state can jev read?</summary><p>About 30k tokens. Above that the request fails, so split long inputs or summarise them first with a chat model and let jev verify the summary field by field.</p></details>
+  </div>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[
+    {"@type":"Question","name":"What is jev?","acceptedAnswer":{"@type":"Answer","text":"jev is a decision model from TypeSafe. You send it a JSON state and typed questions (a choice between options, a yes/no as a probability, a score on a rubric) and it returns probabilities over your options in under a second. It does not generate text."}},
+    {"@type":"Question","name":"How much does a jev verdict cost?","acceptedAnswer":{"@type":"Answer","text":"jev is priced on input tokens only, $0.042 per million at list price. One verdict on an X post with its author profile and first 20 replies is about $0.0001; a signup with its enrichment is about $0.00005."}},
+    {"@type":"Question","name":"How is jev different from asking GPT or Claude for a JSON answer?","acceptedAnswer":{"@type":"Answer","text":"A chat model writes its answer, so it takes 2 to 4 seconds and bills output tokens; on the same three questions it cost 7 to 28 times more in our runs. jev only reads, and every answer carries a full probability distribution and a confidence, so you can set thresholds and route uncertain cases to a person."}},
+    {"@type":"Question","name":"Where does treg fit?","acceptedAnswer":{"@type":"Answer","text":"jev cannot fetch anything. treg is one token for a catalog of live data endpoints. treg builds the state, jev decides on it, your code acts on the numbers. Your own provider keys always take precedence over treg's and are never metered."}},
+    {"@type":"Question","name":"How do I call jev?","acceptedAnswer":{"@type":"Answer","text":"Through the Vercel AI Gateway: POST to its evaluation-model endpoint with your gateway key, the model id typesafe-ai/jev and a body of state and questions. jev is also available on OpenRouter as typesafe/jev-1.13."}},
+    {"@type":"Question","name":"Are the demos on this page real?","acceptedAnswer":{"@type":"Answer","text":"The viral-posts board is a real daily run over public X posts, and the post you paste is analysed live. The buyer-signal demo replays a real LinkedIn run with every email address replaced. The signup demo is a synthetic sample built to show the four segments."}},
+    {"@type":"Question","name":"How long a state can jev read?","acceptedAnswer":{"@type":"Answer","text":"About 30k tokens. Above that the request fails, so split long inputs or summarise them first with a chat model and let jev verify the summary field by field."}}
+  ]}</script>
 </section>
 
 <section class="close-cta rv">
@@ -1051,6 +1215,18 @@ $('em-btn1').onclick = emailStart; $('em-input').addEventListener('keyup', e => 
 $('em-btn2').onclick = emailVerify; $('em-code').addEventListener('keyup', e => { if (e.key === 'Enter') emailVerify(); });
 
 document.querySelectorAll('.expand-all[data-wrap]').forEach(b => b.onclick = () => { const w = $(b.dataset.wrap), open = w.classList.toggle('open'); b.textContent = open ? 'Show less' : `Show all ${b.dataset.label}`; if (!open) w.scrollIntoView({block: 'start', behavior: reduced ? 'auto' : 'smooth'}); });
+
+/* the learn deck */
+(() => {
+  const track = $('dk-track'), slides = [...track.children], dots = $('dk-dots'); let i = 0;
+  dots.innerHTML = slides.map((_, k) => `<button type="button" aria-label="Slide ${k + 1}"></button>`).join('');
+  const go = k => { i = (k + slides.length) % slides.length; track.style.transform = `translateX(-${i * 100}%)`; [...dots.children].forEach((d, k2) => d.setAttribute('aria-current', String(k2 === i))); };
+  [...dots.children].forEach((d, k) => d.onclick = () => go(k));
+  $('dk-prev').onclick = () => go(i - 1); $('dk-next').onclick = () => go(i + 1);
+  $('deck').addEventListener('keydown', e => { if (e.key === 'ArrowRight') go(i + 1); if (e.key === 'ArrowLeft') go(i - 1); });
+  let x0 = null; track.addEventListener('touchstart', e => { x0 = e.touches[0].clientX; }, { passive: true }); track.addEventListener('touchend', e => { if (x0 == null) return; const dx = e.changedTouches[0].clientX - x0; if (Math.abs(dx) > 40) go(i + (dx < 0 ? 1 : -1)); x0 = null; });
+  go(0);
+})();
 
 /* copy buttons */
 document.querySelectorAll('[data-copy]').forEach(b => b.onclick = () => {
