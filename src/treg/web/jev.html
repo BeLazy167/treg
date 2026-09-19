@@ -586,6 +586,17 @@
   .ig-col.jev .ig-bars { opacity: 0; transition: opacity .25s; } .ig-col.jev.land .ig-bars { opacity: 1; }
   .ig-col.jev.land .ig-bar .tr i { width: var(--w); transition-duration: .35s; transition-delay: 0s; }
   .ig-col.jev .ig-foot { opacity: 0; transition: opacity .3s .3s; } .ig-col.jev.land .ig-foot { opacity: 1; }
+
+  .ig-time { font-family: var(--display); font-weight: 600; font-size: 34px; letter-spacing: -.03em; line-height: 1; margin-top: 12px; color: var(--ink); font-variant-numeric: tabular-nums; }
+  .ig-time.g { color: var(--green); }
+  .ig-flow { display: grid; grid-template-columns: 1fr auto 1fr; grid-template-rows: auto auto; gap: 10px 14px; align-items: stretch; }
+  .ig-step { min-width: 0; } .ig-step pre { margin: 0; font-size: 11.5px; height: 100%; box-sizing: border-box; }
+  .ig-step:nth-child(1) { grid-column: 1; grid-row: 1; } .ig-step:nth-child(2) { grid-column: 1; grid-row: 2; }
+  .ig-arrow { grid-column: 2; grid-row: 1 / span 2; align-self: center; display: flex; flex-direction: column; align-items: center; gap: 6px; font-family: var(--mono); font-size: 11px; color: var(--muted); white-space: nowrap; }
+  .ig-arrow::after { content: "→"; font-size: 26px; color: var(--ink); }
+  .ig-arrow .lg { width: 28px; height: 28px; border-radius: 8px; }
+  .ig-step.out { grid-column: 3; grid-row: 1 / span 2; } .ig-step.out pre { border-color: rgba(230,60,180,.35); background: #fff; }
+  @media (max-width: 860px) { .ig-flow { grid-template-columns: 1fr; } .ig-step:nth-child(1), .ig-step:nth-child(2), .ig-arrow, .ig-step.out { grid-column: 1; grid-row: auto; } .ig-arrow { flex-direction: row; } .ig-arrow::after { content: "↓"; } }
   /* slide 2 tabs */
   .qt-tabs { display: inline-flex; width: max-content; gap: 4px; padding: 4px; border: 1px solid var(--line); border-radius: 999px; background: var(--card); margin-bottom: 12px; }
   .sl-r:has(.qt-tabs) { justify-content: flex-start; align-items: flex-start; }
@@ -1047,19 +1058,44 @@
 </section>
 
 <section class="section learn-sec rv" id="learn" style="padding-top:110px;padding-bottom:0">
-  <h2>What is <img class="lg" src="logos/jev.png" alt=""> jev, in six slides</h2>
+  <h2>What is <img class="lg" src="logos/jev.png" alt=""> jev, in seven slides</h2>
   <p class="lede">A decision model, not a chat model. The examples are real requests and answers, run by us; the headline speed and cost figures are TypeSafe's, with our own smaller check beside them.</p>
   <div class="deck" id="deck" tabindex="0" aria-roledescription="carousel">
     <button class="dk-arrow prev" id="dk-prev" aria-label="Previous slide"><svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
     <div class="dk-view"><div class="dk-track" id="dk-track">
 
-      <article class="slide"><div class="sl-l"><span class="sl-n">1 / 6</span><h3>jev predicts probabilities, not text</h3><p>Ask a chat model and it <em>writes</em> an answer, one token after another, which your code then has to read. Ask jev and every option you named gets a probability, all at once, summing to one.</p><p class="sl-note">The numbers are the answer. Your code compares them to a threshold; nothing is parsed, nothing can be made up outside your list.</p><button class="pill sm" type="button" id="ig-replay1"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg> Play again</button></div>
+      <article class="slide"><div class="sl-l"><span class="sl-n">1 / 7</span><h3>jev predicts probabilities, not text</h3><p>Ask a chat model and it <em>writes</em> an answer, one token after another, which your code then has to read. Ask jev and every option you named gets a probability, all at once, summing to one.</p><p class="sl-note">The numbers are the answer. Your code compares them to a threshold; nothing is parsed, nothing can be made up outside your list.</p><button class="pill sm" type="button" id="ig-replay1"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg> Play again</button></div>
         <div class="sl-r"><div class="ig-q1"><span class="ig-qlab">question</span>Is this X post a product launch we should study? <span class="ig-opts">inspiring_launch · launch_other · not_a_launch</span></div><div class="ig-vs">
-          <div class="ig-col llm"><div class="ig-lab">chat model</div><div class="ig-bubble" id="ig-llm"><span class="cur"></span></div><div class="ig-foot" id="ig-llm-foot">writing…</div></div>
-          <div class="ig-col jev"><div class="ig-lab"><img class="lg" src="logos/jev.png" alt=""> jev</div><div class="ig-bars"><div class="ig-bar g"><span class="k">inspiring_launch</span><span class="tr"><i style="--w:94%"></i></span><span class="v">0.94</span></div><div class="ig-bar "><span class="k">launch_other</span><span class="tr"><i style="--w:5%"></i></span><span class="v">0.05</span></div><div class="ig-bar "><span class="k">not_a_launch</span><span class="tr"><i style="--w:1%"></i></span><span class="v">0.01</span></div></div><div class="ig-foot" id="ig-jev-foot">0.4 s · 0 output tokens · confidence 0.92</div></div>
+          <div class="ig-col llm"><div class="ig-lab">chat model</div><div class="ig-bubble" id="ig-llm"><span class="cur"></span></div><div class="ig-time" id="ig-llm-time">0.0 s</div><div class="ig-foot" id="ig-llm-foot">writing…</div></div>
+          <div class="ig-col jev"><div class="ig-lab"><img class="lg" src="logos/jev.png" alt=""> jev</div><div class="ig-bars"><div class="ig-bar g"><span class="k">inspiring_launch</span><span class="tr"><i style="--w:94%"></i></span><span class="v">0.94</span></div><div class="ig-bar "><span class="k">launch_other</span><span class="tr"><i style="--w:5%"></i></span><span class="v">0.05</span></div><div class="ig-bar "><span class="k">not_a_launch</span><span class="tr"><i style="--w:1%"></i></span><span class="v">0.01</span></div></div><div class="ig-time g" id="ig-jev-time">0.4 s</div><div class="ig-foot" id="ig-jev-foot">0 output tokens · confidence 0.92</div></div>
         </div></div></article>
 
-      <article class="slide"><div class="sl-l"><span class="sl-n">2 / 6</span><h3>Three kinds of question</h3><p>Every jev question is one of three types, and you can send several in one call. Same support message for all three:</p><p class="sl-note">"Our API integration started returning 500 errors on every request 20 minutes ago, and we can't process any customer orders until this is fixed."</p><p class="sl-note"><b>choice</b> picks from your options. <b>noul</b> is a yes/no as a probability. <b>score</b> is a position on your ordered rubric, returned as the probability on each level plus their weighted mean.</p></div>
+      <article class="slide"><div class="sl-l"><span class="sl-n">2 / 7</span><h3>How a call works</h3><p>One HTTP request. You send a <b>state</b>, any JSON or text you want judged, and a set of <b>questions</b>, each with the answers you would accept. jev sends back one answer per question, keyed by the names you chose.</p><p class="sl-note">That is the whole API. No prompt engineering, no output schema to coerce, no retries for malformed JSON.</p></div>
+        <div class="sl-r"><div class="ig-flow"><div class="ig-step"><div class="ig-lab">1 · state</div><pre>"We just launched Agentsky, the world's
+ 1st Agent Market. Use 40+ agents in
+ your browser or via one API."</pre></div><div class="ig-step"><div class="ig-lab">2 · questions</div><pre>{
+  "is_launch": {
+    "type": "choice",
+    "instructions": "Is this a product launch post?",
+    "criteria": {
+      "inspiring_launch": "a maker announcing their own product",
+      "launch_other":     "a launch by someone else",
+      "not_a_launch":     "commentary, news, memes"
+    }
+  }
+}</pre></div><div class="ig-arrow"><img class="lg" src="logos/jev.png" alt=""> jev, ~0.4 s</div><div class="ig-step out"><div class="ig-lab">3 · answer</div><pre>{
+  "is_launch": {
+    "choice": "inspiring_launch",
+    "probabilities": {
+      "inspiring_launch": 0.94,
+      "launch_other":     0.05,
+      "not_a_launch":     0.01
+    },
+    "confidence": 0.92
+  }
+}</pre></div></div></div></article>
+
+      <article class="slide"><div class="sl-l"><span class="sl-n">3 / 7</span><h3>Three kinds of question</h3><p>Every jev question is one of three types, and you can send several in one call. Same support message for all three:</p><p class="sl-note">"Our API integration started returning 500 errors on every request 20 minutes ago, and we can't process any customer orders until this is fixed."</p><p class="sl-note"><b>choice</b> picks from your options. <b>noul</b> is a yes/no as a probability. <b>score</b> is a position on your ordered rubric, returned as the probability on each level plus their weighted mean.</p></div>
         <div class="sl-r"><div class="qt-tabs" role="tablist"><button role="tab" aria-selected="true" data-qt="choice">choice</button><button role="tab" aria-selected="false" data-qt="noul">noul</button><button role="tab" aria-selected="false" data-qt="score">score</button></div>
           <div class="qt-pane" data-qt="choice"><div class="qt-req"><pre>"department": {
   "type": "choice",
@@ -1086,7 +1122,7 @@
 }</pre></div><div class="qt-ans"><div class="ig-lab">answer</div><div class="ig-bars"><div class="ig-bar "><span class="k">0 calm</span><span class="tr"><i style="--w:35%"></i></span><span class="v">0.35</span></div><div class="ig-bar a"><span class="k">1 frustrated but civil</span><span class="tr"><i style="--w:65%"></i></span><span class="v">0.65</span></div><div class="ig-bar "><span class="k">2 very angry</span><span class="tr"><i style="--w:0%"></i></span><span class="v">0.00</span></div></div><div class="ig-ans">→ score <b>0.65</b> · 0.35×0 + 0.65×1 + 0×2 · legend echoed back</div></div></div>
         </div></article>
 
-      <article class="slide"><div class="sl-l"><span class="sl-n">3 / 6</span><h3>Orders of magnitude faster and cheaper</h3><p>jev never writes tokens, so a call takes as long as reading the input: 70 to 500 ms end to end. TypeSafe's own side-by-side workflow puts it at <b>193.6× faster</b> and <b>444.6× cheaper</b> than an LLM doing the same decisions, and its input price at <b>238× below</b> Claude Fable 5.1.</p><p class="sl-note">Our own single-call check on three support questions was smaller but the same shape: 6.5× faster and 7.6× cheaper than GPT-5.6 Luna, 28.5× cheaper than Claude Haiku 4.5. Single runs, so the seconds are rough.</p></div>
+      <article class="slide"><div class="sl-l"><span class="sl-n">4 / 7</span><h3>Orders of magnitude faster and cheaper</h3><p>jev never writes tokens, so a call takes as long as reading the input: 70 to 500 ms end to end. TypeSafe's own side-by-side workflow puts it at <b>193.6× faster</b> and <b>444.6× cheaper</b> than an LLM doing the same decisions, and its input price at <b>238× below</b> Claude Fable 5.1.</p><p class="sl-note">Our own single-call check on three support questions was smaller but the same shape: 6.5× faster and 7.6× cheaper than GPT-5.6 Luna, 28.5× cheaper than Claude Haiku 4.5. Single runs, so the seconds are rough.</p></div>
         <div class="sl-r"><div class="ig-speed">
           <div class="ig-src">TypeSafe workflow demo <span>typesafe.ai</span></div>
           <div class="ig-row"><span class="k"><img class="lg" src="logos/jev.png" alt=""> jev</span><span class="tr"><i class="g" style="--w:1.3%"></i></span><span class="v">0.114 s · $0.000081</span></div>
@@ -1098,16 +1134,16 @@
           <div class="ig-foot">bars are time · list price $0.042 per million input tokens, output free</div>
         </div></div></article>
 
-      <article class="slide"><div class="sl-l"><span class="sl-n">4 / 6</span><h3>Act when sure, ask a human when not</h3><p>Because every answer carries its distribution, the threshold is a business decision you make explicitly, not a prompt you hope holds. Route automatically above a confidence, queue the rest for a person, and pick the line from a small labelled set.</p><p class="sl-note">200 human-labelled support tickets, four queues: the disagreements cluster in the low-confidence bin, so gating there removes most of the risk for a small share of volume.</p></div>
+      <article class="slide"><div class="sl-l"><span class="sl-n">5 / 7</span><h3>Act when sure, ask a human when not</h3><p>Because every answer carries its distribution, the threshold is a business decision you make explicitly, not a prompt you hope holds. Route automatically above a confidence, queue the rest for a person, and pick the line from a small labelled set.</p><p class="sl-note">200 human-labelled support tickets, four queues: the disagreements cluster in the low-confidence bin, so gating there removes most of the risk for a small share of volume.</p></div>
         <div class="sl-r"><div class="gate"><div class="g-row"><span>confidence ≥ 0.9</span><i style="width:72%"></i><b>auto-route</b></div><div class="g-row"><span>0.6 – 0.9</span><i style="width:18%"></i><b>auto, spot-check</b></div><div class="g-row warn"><span>&lt; 0.6</span><i style="width:10%"></i><b>to a human</b></div></div><p class="sl-note">The signup workflow does the same with lanes: hold needs hard evidence, watch takes the uncertain middle.</p></div></article>
 
-      <article class="slide"><div class="sl-l"><span class="sl-n">5 / 6</span><h3>Rubrics: say what an option is <em>not</em></h3><p>An option's description can be an object. <code>what</code>, <code>not_for</code> and <code>examples</code> are ordinary keys, and jev reads the key names too. "It doesn't export to Framer" is a bug if Framer export exists and a feature request if it never did; a one-line label cannot know, a rubric can carry the fact.</p><p class="sl-note">Same message: plain labels say <b>bug</b>, the rubric with the product fact in <code>not_for</code> says <b>feature_request</b>.</p></div>
+      <article class="slide"><div class="sl-l"><span class="sl-n">6 / 7</span><h3>Rubrics: say what an option is <em>not</em></h3><p>An option's description can be an object. <code>what</code>, <code>not_for</code> and <code>examples</code> are ordinary keys, and jev reads the key names too. "It doesn't export to Framer" is a bug if Framer export exists and a feature request if it never did; a one-line label cannot know, a rubric can carry the fact.</p><p class="sl-note">Same message: plain labels say <b>bug</b>, the rubric with the product fact in <code>not_for</code> says <b>feature_request</b>.</p></div>
         <div class="sl-r"><div class="ig-flip"><div class="ig-col"><div class="ig-lab">plain labels</div><div class="ig-bars"><div class="ig-bar r"><span class="k">bug</span><span class="tr"><i style="--w:78%"></i></span><span class="v">0.78</span></div><div class="ig-bar "><span class="k">feature_request</span><span class="tr"><i style="--w:22%"></i></span><span class="v">0.22</span></div></div></div><div class="ig-col"><div class="ig-lab">rubric with <code>not_for</code></div><div class="ig-bars"><div class="ig-bar g"><span class="k">feature_request</span><span class="tr"><i style="--w:91%"></i></span><span class="v">0.91</span></div><div class="ig-bar "><span class="k">bug</span><span class="tr"><i style="--w:9%"></i></span><span class="v">0.09</span></div></div></div></div><pre>"bug": {
   "what": "a promised feature does not work",
   "not_for": "features never built: there is no Framer export"
 }</pre></div></article>
 
-      <article class="slide"><div class="sl-l"><span class="sl-n">6 / 6</span><h3>Where treg comes in</h3><p>jev cannot produce a string and cannot fetch anything. It decides over the state you hand it. treg is the other half: one token for the catalog, so the state is a real X post with its author and replies, a signup with its verification and enrichment, a LinkedIn commenter with their headline. treg fetches, jev decides, your code acts on the numbers.</p><p class="sl-note">Every workflow above is that loop. The prompts in each tab set both up for your agent.</p></div>
+      <article class="slide"><div class="sl-l"><span class="sl-n">7 / 7</span><h3>Where treg comes in</h3><p>jev cannot produce a string and cannot fetch anything. It decides over the state you hand it. treg is the other half: one token for the catalog, so the state is a real X post with its author and replies, a signup with its verification and enrichment, a LinkedIn commenter with their headline. treg fetches, jev decides, your code acts on the numbers.</p><p class="sl-note">Every workflow above is that loop. The prompts in each tab set both up for your agent.</p></div>
         <div class="sl-r"><div class="loop"><div class="lp-step"><svg class="lg" viewBox="0 0 512 512" aria-hidden="true"><rect width="512" height="512" rx="112" fill="#101010"/><rect x="111" y="111" width="140.5" height="140.5" rx="20" fill="#fff"/><rect x="260.5" y="260.5" width="140.5" height="140.5" rx="20" fill="#fff"/></svg><b>treg</b><span>fetch the facts</span></div><i>→</i><div class="lp-step"><img class="lg" src="logos/jev.png" alt=""><b>jev</b><span>typed verdict</span></div><i>→</i><div class="lp-step"><span class="you">you</span><b>your code</b><span>act on the number</span></div></div></div></article>
 
     </div></div>
@@ -1348,10 +1384,10 @@ document.querySelectorAll('.expand-all[data-wrap]').forEach(b => b.onclick = () 
   const race = () => {
     clearTimeout(raceTimer);
     const bub = $('ig-llm'), jevCol = document.querySelector('.slide .ig-col.jev'), foot = $('ig-llm-foot');
-    bub.classList.remove('done'); bub.innerHTML = '<span class="cur"></span>'; foot.textContent = 'writing…'; jevCol.classList.remove('land');
+    bub.classList.remove('done'); bub.innerHTML = '<span class="cur"></span>'; foot.textContent = 'writing…'; $('ig-llm-time').textContent = '0.0 s'; jevCol.classList.remove('land');
     const words = LLM_TEXT.split(' '); let n = 0; const t0 = performance.now();
     setTimeout(() => jevCol.classList.add('land'), 400);
-    const step = () => { if (n >= words.length) { bub.classList.add('done'); foot.textContent = `${(2.5).toFixed(1)} s · 78 output tokens · then you parse it`; return; } bub.insertBefore(document.createTextNode((n ? ' ' : '') + words[n]), bub.lastChild); n++; foot.textContent = `writing… ${((performance.now() - t0) / 1000).toFixed(1)} s`; raceTimer = setTimeout(step, 55 + Math.random() * 40); };
+    const step = () => { if (n >= words.length) { bub.classList.add('done'); foot.textContent = '78 output tokens · then you parse it'; $('ig-llm-time').textContent = '2.5 s'; return; } bub.insertBefore(document.createTextNode((n ? ' ' : '') + words[n]), bub.lastChild); n++; foot.textContent = 'writing…'; $('ig-llm-time').textContent = `${((performance.now() - t0) / 1000).toFixed(1)} s`; raceTimer = setTimeout(step, 55 + Math.random() * 40); };
     raceTimer = setTimeout(step, 250);
   };
   $('ig-replay1').onclick = race;
