@@ -1056,6 +1056,13 @@ again asks anyone to add funds.
 `GET /referrals` mints the code as well as sweeping, so the page is one call and `link` is never
 empty on a first visit.
 
+**Two programs, forked at the header (`refTab`).** The "Refer a friend" tab is the credit program
+above. The "Affiliate partner" tab is the invite-only cash tier: three short sections and a button
+to an application form, no treg state behind it. It is a fork rather than a card under the referral
+column because a card there read as step four of the referral program. Hand-approval via the form is
+the anti-gaming design (see money), so nothing on that tab is self-serve, and it renders for
+everyone, team or not. The cap card points at the tab instead of a support address.
+
 **Every status renders a reason** (`refStatus`), including `capped` and `rejected`. "I referred
 someone and got nothing" is the ticket this program generates, and the answer belongs on the page
 rather than in an email to us.
