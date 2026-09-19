@@ -232,6 +232,14 @@
   .row:first-of-type { border-top: 0; }
   .row:hover { background: var(--card); } .row[aria-current="true"] { background: var(--card); box-shadow: inset 3px 0 0 var(--ink); border-radius: 6px; }
   .row .stripe { display: none; }
+  .qh { display: grid; grid-template-columns: 26px auto minmax(0,1fr) auto; gap: 4px 10px; align-items: center; padding: 2px 4px 8px; border-bottom: 1px solid var(--line); margin-bottom: 4px; --c: var(--muted); }
+  .qh.enterprise { --c: var(--green); } .qh.smb { --c: var(--blue); } .qh.influencer_affiliate { --c: var(--amber); } .qh.fraud { --c: var(--red); }
+  .qh .ic { width: 26px; height: 26px; border-radius: 8px; background: color-mix(in srgb, var(--c) 14%, #fff); display: grid; place-items: center; }
+  .qh .ic svg { width: 15px; height: 15px; fill: none; stroke: var(--c); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+  .qh .t { font-family: var(--display); font-weight: 600; font-size: 16px; letter-spacing: -.01em; color: var(--c); }
+  .qh .d { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .qh .n { font-family: var(--mono); font-size: 13px; color: var(--c); background: color-mix(in srgb, var(--c) 10%, #fff); border-radius: 8px; padding: 2px 9px; }
+  @media (max-width: 700px) { .qh { grid-template-columns: 26px auto auto; } .qh .d { display: none; } }
   .pav { position: relative; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; font-family: var(--display); font-weight: 600; font-size: 11px; color: #fff; overflow: hidden; flex: 0 0 auto; }
   .pav img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
   .pav.lg { width: 44px; height: 44px; font-size: 16px; border-radius: 10px; }
@@ -750,6 +758,7 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape' && !drawer.hi
     normal: {title:'Individual', desc:'ordinary personal signup · nothing to do', fig:r => [r.usage.calls ? fmt(r.usage.calls) + ' calls' : 'no calls', r.usage.onboarded ? 'onboarded' : 'not onboarded']},
   };
   const lane = r => r.seg;
+  const SEGICON = {enterprise: `<svg viewBox="0 0 24 24"><path d="M3 21h18M5 21V5a1 1 0 0 1 1-1h8a1 1 0 0 1 1 1v16M15 9h3a1 1 0 0 1 1 1v11M8 8h2M8 12h2M8 16h2"/></svg>`, smb: `<svg viewBox="0 0 24 24"><path d="M3 9l1.5-5h15L21 9M3 9a3 3 0 0 0 6 0 3 3 0 0 0 6 0 3 3 0 0 0 6 0M5 12v9h14v-9M10 21v-6h4v6"/></svg>`, influencer_affiliate: `<svg viewBox="0 0 24 24"><path d="M3 11v2a1 1 0 0 0 1 1h3l6 4V6L7 10H4a1 1 0 0 0-1 1zM16 9a4 4 0 0 1 0 6M18.5 6.5a8 8 0 0 1 0 11"/></svg>`, fraud: `<svg viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6l8-3zM12 9v4M12 16.5v.5"/></svg>`, normal: `<svg viewBox="0 0 24 24"><path d="M20 21a8 8 0 0 0-16 0M12 13a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"/></svg>`};
   function reason(r) {
     const u = r.usage, c = r.company || {}, p = r.person || {}, sim = Object.entries(u.similar_signups || {})[0];
     if (r.seg === 'fraud') return `${r.verify.result === 'ok' ? 'Address verifies but' : 'Verify says ' + r.verify.result + ','} ${sim ? sim[1].count + ' signups share the ' + sim[0].replace('_7d','').replace(/_/g,' ').replace('same ','') + ' this week,' : 'nothing behind the address,'} ${u.refused_calls ? fmt(u.refused_calls) + ' refused calls and' : ''} $${u.spend_usd.toFixed(2)} spent. Hold free credits.`;
@@ -794,7 +803,7 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape' && !drawer.hi
     $('tr-queue').innerHTML = order.map(k => {
       const items = rows.filter(r => r.lane === k).sort((a, b) => k === 'fraud' ? b.fraud - a.fraud : k === 'normal' ? b.usage.spend_usd - a.usage.spend_usd : b.upsell - a.upsell);
       const lim = laneFilter ? 1e9 : LIMIT[k];
-      return `<div class="panel"><div class="lbl"><span>${LANES[k].title}</span><span class="n">${items.length}</span></div><div class="list">` +
+      return `<div class="panel"><div class="qh ${k}"><span class="ic">${SEGICON[k]}</span><span class="t">${LANES[k].title}</span><span class="d">${LANES[k].desc}</span><span class="n">${items.length}</span></div><div class="list">` +
         (items.length ? items.slice(0, lim).map(r => { const [a, b] = LANES[k].fig(r); return `<button class="row ${k}" data-i="${r.i}" aria-current="${r.i === current}"><span class="pw">${pav(r, '')}</span><span><div class="e">${esc(r.email)}</div><div class="why">${esc(reason(r))}</div></span><span class="fig"><b>${esc(a)}</b>${esc(b)}</span></button>`; }).join('') : `<div class="empty">nothing here</div>`) +
         (items.length > lim ? `<div class="more">${items.length - lim} more, click the lane above to see all</div>` : '') + `</div></div>`;
     }).join('');
