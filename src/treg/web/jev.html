@@ -142,6 +142,31 @@
   .demo-body { display: grid; grid-template-columns: 250px minmax(0,1fr); gap: 10px; align-items: start; }
   @media (max-width: 1000px) { .demo-body { grid-template-columns: 1fr; } }
   .demo-side { display: flex; flex-direction: column; gap: 10px; }
+  .stage { overflow: hidden; transition: max-height .5s cubic-bezier(.2,.8,.2,1), opacity .35s; max-height: 900px; margin-bottom: 12px; }
+  .stage.collapse { max-height: 0; opacity: 0; margin-bottom: 0; }
+  .stage-in { display: grid; grid-template-columns: minmax(0, 560px) minmax(260px, 1fr); gap: 12px; align-items: start; }
+  @media (max-width: 860px) { .stage-in { grid-template-columns: 1fr; } }
+  .stage-post { position: relative; background: #fff; border: 1px solid var(--line); border-radius: 16px; padding: 10px; min-height: 180px; }
+  .stage-post .embed { min-height: 160px; display: grid; place-items: center; color: var(--muted); font-family: var(--mono); font-size: 12px; }
+  .stage-post .embed .twitter-tweet { margin: 0 auto !important; }
+  .stage-post.scanning::after { content: ""; position: absolute; inset: 0; border-radius: 16px; pointer-events: none; background: linear-gradient(180deg, transparent 0%, rgba(31,79,216,.14) 48%, rgba(31,79,216,.4) 50%, rgba(31,79,216,.14) 52%, transparent 100%); background-size: 100% 220%; animation: scan .9s linear infinite; }
+  .stage-post.scanning::before { content: ""; position: absolute; inset: 0; border-radius: 16px; pointer-events: none; box-shadow: inset 0 0 0 2px var(--blue); }
+  .stage-side { background: #fff; border: 1px solid var(--line); border-radius: 16px; padding: 12px 14px; }
+  .stage-steps { margin-top: 8px; display: flex; flex-direction: column; }
+  .ss { display: grid; grid-template-columns: 44px minmax(0,1fr) 18px; gap: 2px 10px; padding: 9px 0; border-top: 1px dashed var(--line); align-items: start; opacity: .45; transition: opacity .2s; }
+  .ss:first-child { border-top: 0; } .ss.active, .ss.done { opacity: 1; }
+  .ss .who { grid-row: 1 / span 2; font-family: var(--mono); font-size: 9.5px; letter-spacing: .08em; text-transform: uppercase; padding: 3px 0; border-radius: 6px; text-align: center; background: var(--amber-soft); color: var(--amber); margin-top: 1px; }
+  .ss .who.jev { background: var(--blue-soft); color: var(--blue); } .ss .who.you { background: var(--card); color: var(--muted); }
+  .ss .who { grid-column: 1; }
+  .ss .t { grid-column: 2; grid-row: 1; font-size: 13px; color: var(--ink); } .ss .d { grid-column: 2; grid-row: 2; font-family: var(--mono); font-size: 10.5px; color: var(--muted); }
+  .ss .st { grid-column: 3; grid-row: 1 / span 2; align-self: center; width: 16px; height: 16px; border-radius: 50%; border: 1.5px solid var(--line2); }
+  .ss.active .st { border-color: var(--blue); border-top-color: transparent; animation: spin .8s linear infinite; }
+  .ss.done .st { border: 0; background: var(--green); position: relative; } .ss.done .st::after { content: ""; position: absolute; left: 5px; top: 2px; width: 4px; height: 8px; border: solid #fff; border-width: 0 2px 2px 0; transform: rotate(45deg); }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .stage-verdict { border-top: 1px solid var(--line); margin-top: 8px; padding-top: 10px; }
+  .stage-verdict .big { font-family: var(--display); font-weight: 600; font-size: 20px; letter-spacing: -.02em; line-height: 1.2; }
+  .stage-verdict .big.organic { color: var(--green); } .stage-verdict .big.paid { color: var(--amber); } .stage-verdict .big.irrelevant { color: var(--muted); }
+  .stage-verdict .sub { font-family: var(--mono); font-size: 11.5px; color: var(--muted); margin-top: 2px; }
   .board { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 10px; }
   .board.irr-open { grid-template-columns: repeat(3, minmax(0,1fr)); }
   .board.live { grid-template-columns: repeat(3, minmax(0,1fr)); } .board.live.irr-open { grid-template-columns: repeat(4, minmax(0,1fr)); }
@@ -423,6 +448,10 @@
         <div class="receipt" id="xb-tally" hidden></div>
       </div>
       <div class="xb-note" id="xb-note"></div>
+      <div class="stage" id="xb-stage" hidden><div class="stage-in">
+        <div class="stage-post"><div class="embed" id="xb-embed"></div></div>
+        <div class="stage-side"><div class="lbl"><span>analysing</span><span class="n" id="xb-stage-meta"></span></div><div class="stage-steps" id="xb-stage-steps"></div><div class="stage-verdict" id="xb-stage-verdict" hidden></div></div>
+      </div></div>
       <div class="demo-body">
       <aside class="demo-side">
         <div class="panel"><div class="ptitle" id="xb-tallymeta"></div><div class="spend top" id="xb-spend"></div><div class="stack" id="xb-stack"></div><div class="tally" id="xb-tallybox"></div><div class="xsteps" id="xb-steps"></div></div>
@@ -736,24 +765,56 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape' && !drawer.hi
   }
   fetch('/jev/xboost.json').then(r => r.json()).then(run => { RUN = run; render(); }).catch(err => { $('xb-receipt').innerHTML = `<span class="err">could not load the run: ${esc(err.message)}</span>`; });
 
+  // the analyse stage: X's own embed of the pasted post, scanned while the steps tick, then the card flies home
+  let widgets = null;
+  const loadWidgets = () => widgets || (widgets = new Promise(res => { if (window.twttr?.widgets) return res(window.twttr); const sc = document.createElement('script'); sc.src = 'https://platform.twitter.com/widgets.js'; sc.async = true; sc.onload = () => res(window.twttr); sc.onerror = () => res(null); document.head.appendChild(sc); }));
+  const STEPS = [['treg', '', 'Fetch the post', 'text, counts, author · tikhub'], ['treg', '', 'Author profile', 'followers, bio, verified'], ['treg', '', 'First replies', '20 replies · quick, short, generic'], ['you', 'you', 'Forensics', 'each count ÷ views · views ÷ followers'], ['jev', 'jev', 'Five typed questions', 'relevance · type · distribution · organic · authenticity']];
+  function stageSteps(n) { $('xb-stage-steps').innerHTML = STEPS.map(([w, cls, t, d], i) => `<div class="ss ${i < n ? 'done' : i === n ? 'active' : ''}"><span class="who ${cls}">${w}</span><span class="t">${t}</span><span class="d">${d}</span><span class="st"></span></div>`).join(''); }
+  function flyFrom(rect, btn) {
+    if (reduced) return;
+    const last = btn.getBoundingClientRect(), ghost = btn.cloneNode(true);
+    Object.assign(ghost.style, {position:'fixed', left:rect.left+'px', top:rect.top+'px', width:rect.width+'px', height:rect.height+'px', overflow:'hidden', margin:0, zIndex:50, pointerEvents:'none', boxShadow:'0 14px 34px rgba(0,0,0,.28)'});
+    document.body.appendChild(ghost); btn.style.visibility = 'hidden';
+    ghost.animate([{transform:'none', opacity:1}, {transform:`translate(${last.left-rect.left}px,${last.top-rect.top}px) scale(${last.width/rect.width})`, opacity:1}], {duration:520, easing:'cubic-bezier(.2,.8,.2,1)'}).onfinish = () => { ghost.remove(); btn.style.visibility = ''; };
+  }
   $('xb-form').onsubmit = async e => {
     e.preventDefault();
     const url = $('xb-url').value.trim(); if (!url || !RUN) return;
-    $('xb-go').disabled = true; $('xb-go').textContent = 'Reading…'; $('xb-note').textContent = 'treg is fetching the post, its author and the first replies; then jev answers five questions.';
+    const m = url.match(/status\/(\d+)/); if (!m) { $('xb-note').innerHTML = '<span class="err">paste a post link like https://x.com/handle/status/1234567890</span>'; return; }
+    $('xb-go').disabled = true; $('xb-go').textContent = 'Analysing…'; $('xb-note').textContent = '';
+    const stage = $('xb-stage'), post = stage.querySelector('.stage-post');
+    stage.hidden = false; stage.classList.remove('collapse'); $('xb-stage-verdict').hidden = true; $('xb-stage-meta').textContent = '';
+    $('xb-embed').innerHTML = 'loading the post…'; post.classList.add('scanning');
+    let step = 0; stageSteps(0);
+    const ticker = setInterval(() => { if (step < STEPS.length - 1) { step++; stageSteps(step); } }, 900);
+    loadWidgets().then(tw => { if (!tw) { $('xb-embed').textContent = 'embed blocked; the analysis continues'; return; } $('xb-embed').innerHTML = ''; tw.widgets.createTweet(m[1], $('xb-embed'), {conversation: 'none', dnt: true, width: 520}); });
     try {
       const r = await fetch('/jev/xboost/judge', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({url})});
       const d = await r.json();
       if (!r.ok) throw new Error(d.detail || ('HTTP ' + r.status));
-      RUN.manual = [d, ...(RUN.manual || []).filter(m => m.id !== d.id)];
-      const p = {...d, manual: true};
+      clearInterval(ticker); stageSteps(STEPS.length); post.classList.remove('scanning');
+      const p = {...d, manual: true}, laneOf = LANE(p);
+      $('xb-stage-meta').textContent = `treg ${fmt$(p.treg_cost||0)} · jev ${fmt$(p.jev_cost||0)}`;
+      $('xb-stage-verdict').hidden = false;
+      $('xb-stage-verdict').innerHTML = `<div class="big ${laneOf}">${laneOf === 'organic' ? 'Organic launch' : laneOf === 'paid' ? 'Paid launch' : 'Irrelevant'}</div><div class="sub">${REL[p.relevance]} ${(+p.relevance_probs[p.relevance]).toFixed(2)} · ${DIST[p.distribution]} ${(+p.distribution_probs[p.distribution]).toFixed(2)} · authenticity ${(+p.authenticity).toFixed(1)} / 3</div>`;
+      RUN.manual = [d, ...(RUN.manual || []).filter(x => x.id !== d.id)];
       posts = posts.filter(x => x.id !== p.id); posts.unshift(p);
       document.querySelectorAll(`.post[data-id="${CSS.escape(p.id)}"]`).forEach(x => x.remove());
-      const btn = place(p, true); counts();
-      btn.classList.add('scanning'); btn.scrollIntoView({block: 'center', behavior: reduced ? 'auto' : 'smooth'});
-      setTimeout(() => btn.classList.remove('scanning'), 1400);
-      $('xb-note').innerHTML = `Verdict: <b>${LANE(p)}</b> · ${DIST[p.distribution]} ${(+p.distribution_probs[p.distribution]).toFixed(2)} · treg ${fmt$(p.treg_cost||0)} · jev ${fmt$(p.jev_cost||0)}. Click the card for the reasoning.`;
+      if (laneOf === 'irrelevant' && !irrOpen) { irrOpen = true; $('xb-board').classList.add('irr-open'); }
+      setTimeout(() => {
+        const rect = post.getBoundingClientRect();
+        stage.classList.add('collapse');
+        const btn = place(p, true); counts();
+        $('xb-kb-' + laneOf).scrollTo({top: 0});
+        flyFrom(rect, btn);
+        setTimeout(() => { stage.hidden = true; $('xb-embed').innerHTML = ''; }, 550);
+        $('xb-note').innerHTML = `Verdict: <b>${laneOf}</b> · ${DIST[p.distribution]} ${(+p.distribution_probs[p.distribution]).toFixed(2)}. Click the card for the reasoning.`;
+      }, 1600);
       $('xb-url').value = '';
-    } catch (err) { $('xb-note').innerHTML = `<span class="err">${esc(err.message)}</span>`; }
+    } catch (err) {
+      clearInterval(ticker); post.classList.remove('scanning'); stage.classList.add('collapse'); setTimeout(() => { stage.hidden = true; }, 550);
+      $('xb-note').innerHTML = `<span class="err">${esc(err.message)}</span>`;
+    }
     $('xb-go').disabled = !RUN.live; $('xb-go').textContent = 'Analyse post';
   };
 })();
