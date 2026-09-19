@@ -239,7 +239,7 @@
   .spend div { font-family: var(--mono); font-size: 17px; }
   .spend small { display: block; font-family: var(--mono); font-size: 9px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin-bottom: 2px; }
   .spend .jev { color: var(--blue); }
-  .posts { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 10px; margin-top: 8px; max-height: 720px; overflow: auto; padding-right: 4px; }
+  .posts { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 10px; margin-top: 8px; max-height: 720px; overflow: auto; padding-right: 4px; align-items: start; }
   @media (max-width: 640px) { .posts { grid-template-columns: 1fr; } }
   .lp { border: 1px solid var(--line); border-radius: 8px; background: #fff; overflow: hidden; display: flex; flex-direction: column; position: relative; cursor: pointer; transition: opacity .3s; font-family: -apple-system, system-ui, "Segoe UI", Roboto, "Helvetica Neue", sans-serif; box-shadow: 0 0 0 1px rgba(0,0,0,.02), 0 2px 3px rgba(0,0,0,.05); }
   .lp.rejected { opacity: .45; }
@@ -253,8 +253,12 @@
   .lp .nm { font-weight: 600; font-size: 14px; line-height: 1.25; color: #000; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .lp .nm span { font-weight: 400; color: #666; font-size: 12px; }
   .lp .hl { color: #666; font-size: 12px; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .lp .tx { margin: 4px 16px 8px; font-size: 14px; line-height: 1.43; white-space: pre-line; color: #000; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; position: relative; }
-  .lp .tx::after { content: "…more"; position: absolute; right: 0; bottom: 0; color: #666; padding-left: 24px; background: linear-gradient(90deg, transparent, #fff 30%); }
+  .lp .body { position: relative; max-height: 230px; overflow: hidden; }
+  .lp .body::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 70px; background: linear-gradient(180deg, rgba(255,255,255,0), #fff 85%); pointer-events: none; }
+  .lp.open .body { max-height: none; } .lp.open .body::after, .lp.short .body::after { display: none; }
+  .lp .tx { margin: 4px 16px 10px; font-size: 14px; line-height: 1.43; white-space: pre-line; color: #000; }
+  .lp .more { display: block; width: 100%; border: 0; border-top: 1px solid var(--line); background: #fff; color: #666; font-family: inherit; font-size: 12px; font-weight: 600; padding: 7px 0; cursor: pointer; }
+  .lp .more:hover { color: #000; background: var(--card); } .lp.short .more { display: none; }
   .lp .img { width: 100%; height: auto; display: block; background: var(--card); }
   .lp .social { display: flex; justify-content: space-between; align-items: center; padding: 8px 16px; font-size: 12px; color: #666; margin-top: auto; }
   .lp .social .rx { display: flex; align-items: center; gap: 4px; }
@@ -872,14 +876,21 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape' && !drawer.hi
     const n = p.likes, cluster = n ? `<span class="ic"><i class="like">&#x1F44D;</i>${n>20?`<i class="cel">&#x1F44F;</i>`:''}${n>100?`<i class="sup">&#x1F49C;</i>`:''}</span>` : '';
     return `<div class="lp" data-id="${esc(p.id)}" aria-pressed="false"><div class="verdict-tag"></div>
       <div class="hd">${avl(p.author, '', p.avatar)}<div><div class="nm">${esc(p.author)} <span>· 2nd</span></div><div class="hl">${esc(p.author_info||'')}</div><div class="hl">${esc(p.posted_ago||'')} · &#x1F310;</div></div></div>
-      <div class="tx">${esc(p.text.replace(/\n\s*\n/g, '\n'))}</div>
-      ${p.images?.[0] ? `<img class="img" src="${esc(p.images[0])}" alt="" loading="lazy" onerror="this.remove()">` : ''}
+      <div class="body"><div class="tx">${esc(p.text.replace(/\n\s*\n/g, '\n'))}</div>
+      ${p.images?.[0] ? `<img class="img" src="${esc(p.images[0])}" alt="" loading="lazy" onerror="this.remove()">` : ''}</div>
+      <button class="more" type="button">Show more</button>
       <div class="social"><span class="rx">${cluster}${n ? `<span>${n.toLocaleString()}</span>` : ''}</span><span>${p.comments} comments${p.shares ? ' · ' + p.shares + ' reposts' : ''}</span></div>
       <div class="acts"><span>${LI.like}Like</span><span>${LI.comment}Comment</span><span>${LI.repost}Repost</span><span>${LI.send}Send</span></div></div>`;
   }
   function buildPosts() {
     $('sg-posts').innerHTML = posts.map(postCard).join('');
-    $('sg-posts').querySelectorAll('.lp').forEach(w => { const p = posts.find(x => x.id === w.dataset.id); w.onclick = () => { if (!p.kept || isLive()) return; postFilter = postFilter === p.id ? null : p.id; updatePosts(); renderList(); }; });
+    $('sg-posts').querySelectorAll('.lp').forEach(w => {
+      const p = posts.find(x => x.id === w.dataset.id);
+      const fit = () => w.classList.toggle('short', !w.classList.contains('open') && w.querySelector('.body').scrollHeight <= 230);
+      fit(); w.querySelectorAll('img').forEach(i => i.addEventListener('load', fit));
+      w.querySelector('.more').onclick = e => { e.stopPropagation(); w.classList.toggle('open'); e.currentTarget.textContent = w.classList.contains('open') ? 'Show less' : 'Show more'; fit(); };
+      w.onclick = () => { if (!p.kept || isLive()) return; postFilter = postFilter === p.id ? null : p.id; updatePosts(); renderList(); };
+    });
   }
   function updatePosts() {
     const live = isLive();
