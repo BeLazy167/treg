@@ -41,6 +41,8 @@
   .pill.dark { background: var(--ink); color: #fff; border-color: var(--ink); }
   .pill.dark:hover { background: #2b2b2a; }
   .pill.sm { font-size: 12.5px; padding: 7px 14px; }
+  .pill.copied, .pill.dark.copied { background: var(--green); border-color: var(--green); color: #fff; }
+  .pill .ic { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
   a:focus-visible, button:focus-visible, input:focus-visible { outline: 2px solid var(--green); outline-offset: 2px; }
   .wrap { max-width: 1120px; margin: 0 auto; padding: 0 24px; }
   .eyebrow { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 500; color: var(--green); background: var(--green-soft); border: 1px solid rgba(17,132,83,.3); padding: 6px 14px; border-radius: 999px; }
@@ -981,7 +983,7 @@ document.querySelectorAll('.pbtn').forEach(b => b.onclick = e => { e.stopPropaga
 document.querySelectorAll('.pop').forEach(p => p.onclick = e => e.stopPropagation());
 document.querySelectorAll('.pop .xclose').forEach(b => b.onclick = closePops);
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closePops(); });
-$('build-copy').onclick = () => { const b = $('build-copy'), text = $('p-build').innerText; navigator.clipboard.writeText(text).then(() => { b.classList.add('copied'); b.firstChild.textContent = 'Copied · paste into your agent '; setTimeout(() => { b.firstChild.textContent = 'Copy prompt for '; }, 1800); }, () => { const pop = $('pop-build'); closePops(); pop.classList.add('modal'); pop.hidden = false; $('popscrim').hidden = false; }); };
+$('build-copy').onclick = () => { const b = $('build-copy'), text = $('p-build').innerText; navigator.clipboard.writeText(text).then(() => { const html = b.innerHTML; b.classList.add('copied'); b.innerHTML = '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7"/></svg> Copied · paste it into your agent'; setTimeout(() => { b.classList.remove('copied'); b.innerHTML = html; }, 2200); }, () => { const pop = $('pop-build'); closePops(); pop.classList.add('modal'); pop.hidden = false; $('popscrim').hidden = false; }); };
 document.addEventListener('click', closePops);
 document.querySelectorAll('.agent-row[data-open]').forEach(r => r.onclick = e => { e.stopPropagation(); const pop = $(r.dataset.open); closePops(); document.querySelectorAll('.pop').forEach(p => p.classList.remove('modal')); pop.classList.add('modal'); pop.hidden = false; $('popscrim').hidden = false; });
 const _closePops = closePops;
@@ -1027,7 +1029,7 @@ $('em-btn2').onclick = emailVerify; $('em-code').addEventListener('keyup', e => 
 /* copy buttons */
 document.querySelectorAll('[data-copy]').forEach(b => b.onclick = () => {
   const text = $(b.dataset.copy).innerText;
-  navigator.clipboard.writeText(text).then(() => { b.textContent = 'Copied'; setTimeout(() => b.textContent = 'Copy prompt', 1600); }, () => { b.textContent = 'Select and copy'; });
+  navigator.clipboard.writeText(text).then(() => { b.classList.add('copied'); b.innerHTML = '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7"/></svg> Copied'; setTimeout(() => { b.classList.remove('copied'); b.textContent = 'Copy prompt'; }, 1800); }, () => { b.textContent = 'Select and copy'; });
 });
 
 /* drawer */
