@@ -25,7 +25,7 @@ async def test_jev_page_is_a_first_class_landing(clients: AsyncClient):
     assert '<link rel="canonical" href="https://treg.to/jev"/>' in r.text
     for anchor in ("id=\"xboost\"", "id=\"triage\"", "id=\"signals\""):
         assert anchor in r.text
-    assert r.text.count('data-copy="p-') == 3, "one copyable prompt per recipe"
+    assert r.text.count('data-copy="p-') == 4, "one copyable prompt per workflow, plus Build your own"
 
 
 async def test_jev_is_in_the_sitemap(clients: AsyncClient):

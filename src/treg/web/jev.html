@@ -173,6 +173,26 @@
   .stage-verdict .big.organic { color: var(--green); } .stage-verdict .big.paid { color: var(--amber); } .stage-verdict .big.irrelevant { color: var(--muted); }
   .stage-verdict .sub { font-family: var(--mono); font-size: 11.5px; color: var(--muted); margin-top: 2px; }
   .stage-verdict .sv-probs { margin-top: 10px; } .stage-verdict .sv-acts { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+  .setup-strip { display: flex; align-items: center; justify-content: center; gap: 12px; margin-top: 14px; padding: 12px 14px 4px; border-top: 1px solid var(--line); font-size: 14px; font-weight: 500; color: #43413E; flex-wrap: wrap; }
+  .agent-row { display: inline-flex; gap: 6px; cursor: pointer; }
+  .agent-row .agents { display: inline-flex; gap: 6px; }
+  .agent-row img { width: 30px; height: 30px; border-radius: 8px; box-shadow: 0 0 0 1px rgba(0,0,0,.08); transition: transform .15s; background: #fff; }
+  .agent-row img:hover { transform: translateY(-2px); }
+  .pop.modal { position: fixed; top: 50%; left: 50%; right: auto; transform: translate(-50%, -50%); width: min(760px, calc(100vw - 32px)); z-index: 130; }
+  .popscrim { position: fixed; inset: 0; background: rgba(16,16,16,.45); z-index: 125; }
+  .pop .ph .xclose { border: 1px solid var(--line); background: #fff; border-radius: 999px; width: 28px; height: 28px; cursor: pointer; font-size: 13px; margin-left: 6px; display: none; }
+  .pop.modal .ph .xclose { display: inline-block; }
+  .build .catwrap { max-width: none; margin-top: 6px; }
+  .build .pcat { font-family: var(--display); font-weight: 600; font-size: 16px; letter-spacing: -.01em; color: var(--ink); display: flex; align-items: baseline; gap: 14px; margin: 26px 0 10px; }
+  .build .pcat::after { content: ""; height: 1px; background: var(--line); flex: 1; align-self: center; }
+  .build .pcat:first-child { margin-top: 0; }
+  .build .pgrid { grid-template-columns: repeat(4, minmax(0,1fr)); }
+  .build .morewrap { position: relative; margin-top: 10px; pointer-events: auto; -webkit-mask-image: none; mask-image: none; max-height: 520px; overflow: hidden; }
+  .build .morein { pointer-events: none; -webkit-mask-image: linear-gradient(180deg, rgba(0,0,0,.5) 0%, rgba(0,0,0,.12) 45%, transparent 75%); mask-image: linear-gradient(180deg, rgba(0,0,0,.5) 0%, rgba(0,0,0,.12) 45%, transparent 75%); }
+  .build .more-cta { position: absolute; left: 50%; bottom: 70px; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 14px; padding: 22px 34px; background: rgba(253,252,251,.92); backdrop-filter: blur(6px); border: 1px solid var(--line); border-radius: 20px; box-shadow: 0 20px 60px -30px rgba(20,18,12,.35); }
+  .build .more-cta .t { font-family: var(--display); font-weight: 500; font-size: 22px; letter-spacing: -.02em; }
+  .build .more-cta .agent-row img { width: 40px; height: 40px; border-radius: 11px; }
+  @media (max-width: 880px) { .build .pgrid { grid-template-columns: repeat(2, minmax(0,1fr)); } }
   .board { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 10px; }
   .board.irr-open { grid-template-columns: repeat(3, minmax(0,1fr)); }
   .board.live { grid-template-columns: repeat(3, minmax(0,1fr)); } .board.live.irr-open { grid-template-columns: repeat(4, minmax(0,1fr)); }
@@ -457,7 +477,7 @@
 <nav class="nav" id="nav">
   <span class="wordmark"><a href="/" style="display:inline-flex;align-items:center;gap:10px;color:inherit;text-decoration:none" aria-label="treg home"><svg viewBox="0 0 512 512" aria-hidden="true"><rect width="512" height="512" rx="112" fill="#101010"/><rect x="111" y="111" width="140.5" height="140.5" rx="20" fill="#fff"/><rect x="260.5" y="260.5" width="140.5" height="140.5" rx="20" fill="#fff"/></svg> treg</a> <span style="color:var(--muted);font-weight:400">/</span> <span style="font-weight:500">jev</span></span>
   <span style="display:flex;gap:8px">
-    <span class="nav-links"><a href="#xboost">Viral posts</a><a href="#signals">Buyer signal</a><a href="#triage">Signup lead score</a><a href="https://github.com/superdesigndev/treg" target="_blank" rel="noopener"><svg width="15" height="15" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg> Open source</a></span>
+    <span class="nav-links"><a href="#xboost">Viral posts</a><a href="#signals">Buyer signal</a><a href="#triage">Signup lead score</a><a href="#build">Build your own</a><a href="https://github.com/superdesigndev/treg" target="_blank" rel="noopener"><svg width="15" height="15" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg> Open source</a></span>
     <a class="pill dark" href="/app?ref=jev">Set up treg</a>
   </span>
 </nav>
@@ -476,11 +496,12 @@
       <button role="tab" data-tab="xboost" aria-selected="true"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231 5.451-6.231Zm-1.161 17.52h1.833L7.084 4.126H5.117l11.966 15.644Z"/></svg>Viral posts monitor</button>
       <button role="tab" data-tab="signals" aria-selected="false"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="10" cy="10" r="1.6" fill="currentColor" stroke="none"/><path d="M7.2 12.8a4 4 0 0 1 0-5.6M12.8 7.2a4 4 0 0 1 0 5.6M4.7 15.3a7.5 7.5 0 0 1 0-10.6M15.3 4.7a7.5 7.5 0 0 1 0 10.6"/></svg>Buyer signal</button>
       <button role="tab" data-tab="triage" aria-selected="false"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8.5 10.5a3.25 3.25 0 1 0 0-6.5 3.25 3.25 0 0 0 0 6.5z"/><path d="M2.5 17.5a6 6 0 0 1 12 0"/><path d="M15.4 8.2l.85 1.75 1.9.28-1.38 1.35.33 1.9-1.7-.9-1.7.9.33-1.9-1.38-1.35 1.9-.28z" fill="currentColor" stroke="none"/></svg>Signup lead score</button>
+      <button role="tab" data-tab="build" aria-selected="false"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 3v14M3 10h14"/></svg>Build your own</button>
     </div>
 <div class="tab" id="xboost">
     <div class="demo" id="xb-demo">
       <div class="dh"><div><h3 class="flow"><span><svg class="lg" viewBox="0 0 512 512" aria-hidden="true"><rect width="512" height="512" rx="112" fill="#101010"/><rect x="111" y="111" width="140.5" height="140.5" rx="20" fill="#fff"/><rect x="260.5" y="260.5" width="140.5" height="140.5" rx="20" fill="#fff"/></svg> Viral X posts &amp; comments</span><i>→</i><span><img class="lg" src="logos/jev.png" alt=""> Jev classify</span></h3><div class="receipt" id="xb-receipt">loading the latest run…</div></div><div class="acts"><button class="pill sm" id="xb-replay"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg> Replay the run</button><button class="pill sm" id="xb-stop" hidden>Stop</button><div class="pwrap"><button class="pill sm dark pbtn" aria-expanded="false" aria-controls="pop-xboost">Prompt for <span class="agents"><img src="media/people-search/claude-code.png" alt="Claude Code"><img src="media/people-search/codex.png" alt="Codex"><img src="media/people-search/openclaw.png" alt="OpenClaw"><img src="media/people-search/hermes.png" alt="Hermes" class="onwhite"></span> <i>▾</i></button>
-          <div class="pop" id="pop-xboost" hidden><div class="ph"><span>Paste into your agent</span><button class="pill sm dark" data-copy="p-xboost">Copy prompt</button></div><pre id="p-xboost">Build me a daily "launch radar" for X and a page to browse it.
+          <div class="pop" id="pop-xboost" hidden><div class="ph"><span>Paste into your agent</span><span style="display:flex;align-items:center"><button class="pill sm dark" data-copy="p-xboost">Copy prompt</button><button class="xclose" type="button" aria-label="Close">✕</button></span></div><pre id="p-xboost">Build me a daily "launch radar" for X and a page to browse it.
 
 <b>Setup</b>
 1. Install treg and log in: `curl -fsSL https://treg.to/install.sh | sh`, then `treg login`.
@@ -540,14 +561,15 @@
         <div class="kcol paid"><div class="kh"><span><span class="t">Paid launch</span><span class="d">reach bought, engagement thin</span></span><span class="n" id="xb-n-paid">0</span></div><div class="kb" id="xb-kb-paid"></div></div>
         <div class="kcol irrelevant"><div class="kh"><span><span class="t">Irrelevant</span><span class="d">not a launch, or not our space</span></span><span class="n" id="xb-n-irrelevant">0</span></div><div class="kb" id="xb-kb-irrelevant"></div></div>
       </div>
-      </div>
+        <div class="setup-strip"><span class="t">Set up this workflow in</span><div class="agent-row" data-open="pop-xboost"><span class="agents"><img src="media/people-search/claude-code.png" alt="Claude Code"><img src="media/people-search/codex.png" alt="Codex"><img src="media/people-search/hermes.png" alt="Hermes" class="onwhite"><img src="media/people-search/openclaw.png" alt="OpenClaw"></span></div></div>
+    </div>
 </div>
 </div>
 
 <div class="tab" id="signals" hidden>
     <div class="demo" id="sg-demo">
       <div class="dh"><div><h3 class="flow"><span><svg class="lg" viewBox="0 0 512 512" aria-hidden="true"><rect width="512" height="512" rx="112" fill="#101010"/><rect x="111" y="111" width="140.5" height="140.5" rx="20" fill="#fff"/><rect x="260.5" y="260.5" width="140.5" height="140.5" rx="20" fill="#fff"/></svg> Relevant LinkedIn post commenters</span><i>→</i><span><img class="lg" src="logos/jev.png" alt=""> Jev qualify and score</span><i>→</i><span><svg class="lg" viewBox="0 0 512 512" aria-hidden="true"><rect width="512" height="512" rx="112" fill="#101010"/><rect x="111" y="111" width="140.5" height="140.5" rx="20" fill="#fff"/><rect x="260.5" y="260.5" width="140.5" height="140.5" rx="20" fill="#fff"/></svg> Treg enrich</span></h3><div class="receipt" id="sg-receipt"></div></div><div class="acts"><button class="pill sm" id="sg-replay"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg> Replay the run</button><button class="pill sm" id="sg-stop" hidden>Stop</button><div class="pwrap"><button class="pill sm dark pbtn" aria-expanded="false" aria-controls="pop-signals">Prompt for <span class="agents"><img src="media/people-search/claude-code.png" alt="Claude Code"><img src="media/people-search/codex.png" alt="Codex"><img src="media/people-search/openclaw.png" alt="OpenClaw"><img src="media/people-search/hermes.png" alt="Hermes" class="onwhite"></span> <i>▾</i></button>
-          <div class="pop" id="pop-signals" hidden><div class="ph"><span>Paste into your agent</span><button class="pill sm dark" data-copy="p-signals">Copy prompt</button></div><pre id="p-signals">Build a signal-first lead finder for &lt;my product&gt; and a page to browse the run.
+          <div class="pop" id="pop-signals" hidden><div class="ph"><span>Paste into your agent</span><span style="display:flex;align-items:center"><button class="pill sm dark" data-copy="p-signals">Copy prompt</button><button class="xclose" type="button" aria-label="Close">✕</button></span></div><pre id="p-signals">Build a signal-first lead finder for &lt;my product&gt; and a page to browse the run.
 
 <b>Setup</b>
 1. Install treg and log in: `curl -fsSL https://treg.to/install.sh | sh`, then `treg login`.
@@ -582,13 +604,14 @@
         <div class="panel"><div class="lbl"><span>step 1 · posts, jev checks each is on topic</span><span class="n" id="sg-postsmeta"></span></div><div class="posts" id="sg-posts"></div></div>
         <div class="panel"><div class="lbl"><span>steps 2 + 3 · people, ranked by jev</span><span class="n" id="sg-listmeta"></span></div><div class="chips" id="sg-filters"></div><div class="leadlist" id="sg-list"></div></div>
       </div></div>
+      <div class="setup-strip"><span class="t">Set up this workflow in</span><div class="agent-row" data-open="pop-signals"><span class="agents"><img src="media/people-search/claude-code.png" alt="Claude Code"><img src="media/people-search/codex.png" alt="Codex"><img src="media/people-search/hermes.png" alt="Hermes" class="onwhite"><img src="media/people-search/openclaw.png" alt="OpenClaw"></span></div></div>
 </div>
 </div>
 
 <div class="tab" id="triage" hidden>
     <div class="demo" id="tr-demo">
       <div class="dh"><div><h3 class="flow"><span>Signup</span><i>→</i><span><svg class="lg" viewBox="0 0 512 512" aria-hidden="true"><rect width="512" height="512" rx="112" fill="#101010"/><rect x="111" y="111" width="140.5" height="140.5" rx="20" fill="#fff"/><rect x="260.5" y="260.5" width="140.5" height="140.5" rx="20" fill="#fff"/></svg> Treg enrich &amp; verify</span><i>→</i><span><img class="lg" src="logos/jev.png" alt=""> Jev classify</span><em>synthetic sample</em></h3><div class="receipt" id="tr-receipt"></div></div><div class="acts"><button class="pill sm" id="tr-replay"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg> Replay the run</button><button class="pill sm" id="tr-stop" hidden>Stop</button><div class="pwrap"><button class="pill sm dark pbtn" aria-expanded="false" aria-controls="pop-triage">Prompt for <span class="agents"><img src="media/people-search/claude-code.png" alt="Claude Code"><img src="media/people-search/codex.png" alt="Codex"><img src="media/people-search/openclaw.png" alt="OpenClaw"><img src="media/people-search/hermes.png" alt="Hermes" class="onwhite"></span> <i>▾</i></button>
-          <div class="pop" id="pop-triage" hidden><div class="ph"><span>Paste into your agent</span><button class="pill sm dark" data-copy="p-triage">Copy prompt</button></div><pre id="p-triage">Build a signup triage that runs every hour over new signups and posts the interesting ones to Slack.
+          <div class="pop" id="pop-triage" hidden><div class="ph"><span>Paste into your agent</span><span style="display:flex;align-items:center"><button class="pill sm dark" data-copy="p-triage">Copy prompt</button><button class="xclose" type="button" aria-label="Close">✕</button></span></div><pre id="p-triage">Build a signup triage that runs every hour over new signups and posts the interesting ones to Slack.
 
 <b>Setup</b>
 1. Install treg and log in: `curl -fsSL https://treg.to/install.sh | sh`, then `treg login`.
@@ -633,6 +656,166 @@
         </div>
       </div></div>
       </div>
+        <div class="setup-strip"><span class="t">Set up this workflow in</span><div class="agent-row" data-open="pop-triage"><span class="agents"><img src="media/people-search/claude-code.png" alt="Claude Code"><img src="media/people-search/codex.png" alt="Codex"><img src="media/people-search/hermes.png" alt="Hermes" class="onwhite"><img src="media/people-search/openclaw.png" alt="OpenClaw"></span></div></div>
+    </div>
+</div>
+<div class="tab" id="build" hidden>
+    <div class="demo build">
+      <div class="dh"><div><h3>Build your own</h3><div class="receipt"><span>every aisle below is one token away, and jev can read any of it</span></div></div><div class="acts"><div class="pwrap"><button class="pill sm dark pbtn" aria-expanded="false" aria-controls="pop-build">Prompt for <span class="agents"><img src="media/people-search/claude-code.png" alt="Claude Code"><img src="media/people-search/codex.png" alt="Codex"><img src="media/people-search/hermes.png" alt="Hermes" class="onwhite"><img src="media/people-search/openclaw.png" alt="OpenClaw"></span> <i>▾</i></button>
+          <div class="pop" id="pop-build" hidden><div class="ph"><span>Paste into your agent, then describe the workflow</span><span style="display:flex;align-items:center"><button class="pill sm dark" data-copy="p-build">Copy prompt</button><button class="xclose" type="button" aria-label="Close">✕</button></span></div><pre id="p-build">Set up treg and jev for me, then build the workflow I describe at the end.
+
+<b>Setup</b>
+1. Install treg and log in: `curl -fsSL https://treg.to/install.sh | sh`, then `treg login`.
+   treg is one token for 2,600+ data endpoints. Discover with `treg search "&lt;what I want to do&gt;"`,
+   inspect with `treg get &lt;endpoint&gt;` (parameters, price, reliability), call with
+   `treg call &lt;endpoint&gt; --data '{...}'`. Every response reports its exact charge in X-Treg-Cost-Micro.
+2. Get a Vercel AI Gateway key (https://vercel.com/ai-gateway) and put it in .env as AI_GATEWAY_API_KEY.
+   jev is called with POST https://ai-gateway.vercel.sh/v4/ai/evaluation-model, headers
+   Authorization: Bearer $AI_GATEWAY_API_KEY, ai-model-id: typesafe-ai/jev,
+   ai-evaluation-model-specification-version: 4, ai-gateway-protocol-version: 0.0.1,
+   body {"state": {...}, "questions": {...}}. Question types: choice (criteria = named options with
+   what each means and its signals), boolean, score (criteria = ordered rubric levels). Answers come
+   back with probabilities on every option, so use them for thresholds instead of parsing prose.
+
+<b>How to design the workflow</b>
+3. treg fetches; jev decides. Put the raw facts jev needs into one JSON state per item and ask all
+   the questions in one call. Keep states under ~30k tokens.
+4. Prefer routed endpoints (`treg.people.enrich`, `treg.people.email.find`, `treg.x.search.posts`):
+   they try providers cheapest-first and bill only on a hit. Cap spend with X-Treg-Max-Cost-Usd.
+5. Log every item with its jev probabilities and the treg charge, and build a small page to browse
+   the run with the bill at the top.
+
+<b>The workflow I want</b>
+&lt;describe it here: the trigger, the data to pull, the decisions to make, what to do with each outcome&gt;</pre></div></div></div></div>
+      <div class="catwrap build-cat">
+        <div class="pcat">Enrich people &amp; company</div>
+          <div class="pgrid">
+            <div class="pcard"><div class="ph"><img src="https://www.google.com/s2/favicons?domain=hunter.io&sz=64" alt="" loading="lazy"/></div><div class="pt"><b>Find &amp; verify work email</b><s>Hunter · $34/mo</s></div></div>
+            <div class="pcard"><div class="ph"><img src="https://www.google.com/s2/favicons?domain=lusha.com&sz=64" alt="" loading="lazy"/></div><div class="pt"><b>Person enrichment</b><s>Lusha · $49/mo</s></div></div>
+            <div class="pcard"><div class="ph"><img src="https://www.google.com/s2/favicons?domain=peopledatalabs.com&sz=64" alt="" loading="lazy"/></div><div class="pt"><b>Profile &amp; role history</b><s>PDL · credit packs</s></div></div>
+            <div class="pcard"><div class="ph"><img src="https://www.google.com/s2/favicons?domain=apollo.io&sz=64" alt="" loading="lazy"/></div><div class="pt"><b>Contact search</b><s>Apollo · $59/seat</s></div></div>
+            <div class="pcard"><div class="ph"><img src="https://www.google.com/s2/favicons?domain=crunchbase.com&sz=64" alt="" loading="lazy"/></div><div class="pt"><b>Funding &amp; investors</b><s>Crunchbase · $99/mo</s></div></div>
+            <div class="pcard"><div class="ph"><span class="pi" style="background:#4f46e5">TC</span></div><div class="pt"><b>Company firmographics</b><s>per-seat plans</s></div></div>
+            <div class="pcard"><div class="ph"><img src="https://www.google.com/s2/favicons?domain=diffbot.com&sz=64" alt="" loading="lazy"/></div><div class="pt"><b>Knowledge-graph lookup</b><s>Diffbot · $299/mo</s></div></div>
+            <div class="pcard"><div class="ph"><span class="pi" style="background:#0f766e">CS</span></div><div class="pt"><b>Company news &amp; signals</b><s>enterprise-only</s></div></div>
+          </div>
+
+          
+<div class="pcat">Buying signals</div>
+          <div class="pgrid">
+            <div class="pcard"><div class="ph"><img src="https://www.google.com/s2/favicons?domain=linkedin.com&sz=64" alt="" loading="lazy"/></div><div class="pt"><b>Hiring &amp; headcount</b><s>enterprise-only</s></div></div>
+            <div class="pcard"><div class="ph"><img src="https://www.google.com/s2/favicons?domain=leadmagic.io&sz=64" alt="" loading="lazy"/></div><div class="pt"><b>Mobile &amp; social lookup</b><s>LeadMagic · credits</s></div></div>
+            <div class="pcard"><div class="ph"><img src="https://www.google.com/s2/favicons?domain=google.com&sz=64" alt="" loading="lazy"/></div><div class="pt"><b>Local business data</b><s>rate-limited</s></div></div>
+            <div class="pcard"><div class="ph"><img src="https://www.google.com/s2/favicons?domain=hunter.io&sz=64" alt="" loading="lazy"/></div><div class="pt"><b>Deliverability check</b><s>Hunter · $34/mo</s></div></div>
+          </div>
+
+          
+<div class="pcat">Trending &amp; discovery</div>
+          <div class="pgrid">
+            <div class="pcard"><div class="ph"><img src="https://www.google.com/s2/favicons?domain=tiktok.com&sz=64" alt="" loading="lazy"/></div><div class="pt"><b>TikTok trends &amp; sounds</b><s>API: invite-only</s></div></div>
+            <div class="pcard"><div class="ph"><img src="https://www.google.com/s2/favicons?domain=x.com&sz=64" alt="" loading="lazy"/></div><div class="pt"><b>X posts &amp; profiles</b><s>X API · $200/mo</s></div></div>
+            <div class="pcard"><div class="ph"><img src="https://www.google.com/s2/favicons?domain=instagram.com&sz=64" alt="" loading="lazy"/></div><div class="pt"><b>Instagram posts &amp; reels</b><s>API: app review</s></div></div>
+            <div class="pcard"><div class="ph"><img src="https://www.google.com/s2/favicons?domain=youtube.com&sz=64" alt="" loading="lazy"/></div><div class="pt"><b>YouTube videos &amp; stats</b><s>quota-capped</s></div></div>
+            <div class="pcard"><div class="ph"><img src="https://www.google.com/s2/favicons?domain=tiktok.com&sz=64" alt="" loading="lazy"/></div><div class="pt"><b>Creator analytics</b><s>not exposed publicly</s></div></div>
+            <div class="pcard"><div class="ph"><img src="https://www.google.com/s2/favicons?domain=instagram.com&sz=64" alt="" loading="lazy"/></div><div class="pt"><b>Follower &amp; profile graph</b><s>API: app review</s></div></div>
+            <div class="pcard"><div class="ph"><img src="https://www.google.com/s2/favicons?domain=reddit.com&sz=64" alt="" loading="lazy"/></div><div class="pt"><b>Subreddit posts</b><s>rate-limited</s></div></div>
+            <div class="pcard"><div class="ph"><img src="https://www.google.com/s2/favicons?domain=linkedin.com&sz=64" alt="" loading="lazy"/></div><div class="pt"><b>LinkedIn posts &amp; pages</b><s>partner-only</s></div></div>
+          </div>
+
+          
+        <div class="morewrap"><div class="morein"><div class="pcat">Publish on socials</div>
+          <div class="pgrid">
+<div class="pcard"><div class="ph"><img src="https://www.google.com/s2/favicons?domain=x.com&sz=64" alt="" loading="lazy"/></div><div class="pt"><b>Post to X</b><s>Postiz · $29/mo · OAuth</s></div></div>
+<div class="pcard"><div class="ph"><img src="https://www.google.com/s2/favicons?domain=instagram.com&sz=64" alt="" loading="lazy"/></div><div class="pt"><b>Publish Instagram reels</b><s>Postiz · $29/mo · OAuth</s></div></div>
+<div class="pcard"><div class="ph"><img src="https://www.google.com/s2/favicons?domain=linkedin.com&sz=64" alt="" loading="lazy"/></div><div class="pt"><b>Post to LinkedIn</b><s>Postiz · $29/mo · OAuth</s></div></div>
+<div class="pcard"><div class="ph"><img src="https://www.google.com/s2/favicons?domain=youtube.com&sz=64" alt="" loading="lazy"/></div><div class="pt"><b>Upload to YouTube</b><s>Postiz · $29/mo · OAuth</s></div></div>
+          </div>
+
+          
+<div class="pcat">Manage ads campaigns</div>
+          <div class="pgrid">
+            <div class="pcard"><div class="ph"><img src="https://www.gstatic.com/images/branding/product/2x/ads_48dp.png" alt="" loading="lazy"/></div><div class="pt"><b>Google Ads campaigns</b><s>Optmyzr · $249/mo · OAuth</s></div></div>
+            <div class="pcard"><div class="ph"><img src="https://www.google.com/s2/favicons?domain=facebook.com&sz=64" alt="" loading="lazy"/></div><div class="pt"><b>Meta Ads budgets</b><s>Revealbot · $99/mo · OAuth</s></div></div>
+            <div class="pcard"><div class="ph"><img src="https://www.google.com/s2/favicons?domain=tiktok.com&sz=64" alt="" loading="lazy"/></div><div class="pt"><b>TikTok Ads</b><s>Madgicx · $55/mo · OAuth</s></div></div>
+            <div class="pcard"><div class="ph"><img src="https://www.google.com/s2/favicons?domain=bing.com&sz=64" alt="" loading="lazy"/></div><div class="pt"><b>Microsoft Ads</b><s>Adalysis · $99/mo · OAuth</s></div></div>
+          </div>
+
+          
+<div class="pcat">Competitor creative</div>
+          <div class="pgrid">
+            <div class="pcard"><div class="ph"><img src="https://www.google.com/s2/favicons?domain=facebook.com&sz=64" alt="" loading="lazy"/></div><div class="pt"><b>Meta Ad Library</b><s>manual research</s></div></div>
+            <div class="pcard"><div class="ph"><img src="https://www.google.com/s2/favicons?domain=google.com&sz=64" alt="" loading="lazy"/></div><div class="pt"><b>Google Ads Transparency</b><s>SerpApi · $75/mo</s></div></div>
+            <div class="pcard"><div class="ph"><img src="https://www.google.com/s2/favicons?domain=tiktok.com&sz=64" alt="" loading="lazy"/></div><div class="pt"><b>TikTok ad library</b><s>EU-only UI</s></div></div>
+            <div class="pcard"><div class="ph"><img src="https://www.google.com/s2/favicons?domain=linkedin.com&sz=64" alt="" loading="lazy"/></div><div class="pt"><b>LinkedIn ad library</b><s>manual research</s></div></div>
+          </div>
+
+          
+<div class="pcat">Keyword &amp; rank tracking</div>
+          <div class="pgrid">
+            <div class="pcard"><div class="ph"><img src="https://www.google.com/s2/favicons?domain=semrush.com&sz=64" alt="" loading="lazy"/></div><div class="pt"><b>Keyword volume &amp; ideas</b><s>Semrush · $139/mo</s></div></div>
+            <div class="pcard"><div class="ph"><img src="https://www.google.com/s2/favicons?domain=serpstat.com&sz=64" alt="" loading="lazy"/></div><div class="pt"><b>Competitor keywords</b><s>Serpstat · $69/mo</s></div></div>
+            <div class="pcard"><div class="ph"><img src="https://www.google.com/s2/favicons?domain=spyfu.com&sz=64" alt="" loading="lazy"/></div><div class="pt"><b>Domain &amp; ad history</b><s>SpyFu · $39/mo</s></div></div>
+            <div class="pcard"><div class="ph"><img src="https://www.google.com/s2/favicons?domain=dataforseo.com&sz=64" alt="" loading="lazy"/></div><div class="pt"><b>Keyword difficulty</b><s>DataForSEO Labs</s></div></div>
+            <div class="pcard"><div class="ph"><img src="https://www.google.com/s2/favicons?domain=serpapi.com&sz=64" alt="" loading="lazy"/></div><div class="pt"><b>Live SERP results</b><s>SerpApi · $75/mo</s></div></div>
+            <div class="pcard"><div class="ph"><img src="https://www.google.com/s2/favicons?domain=seranking.com&sz=64" alt="" loading="lazy"/></div><div class="pt"><b>Rank tracking</b><s>SE Ranking · $65/mo</s></div></div>
+            <div class="pcard"><div class="ph"><img src="https://www.google.com/s2/favicons?domain=google.com&sz=64" alt="" loading="lazy"/></div><div class="pt"><b>Search Console</b><s>SEOTesting · $40/mo · OAuth</s></div></div>
+            <div class="pcard"><div class="ph"><img src="https://www.google.com/s2/favicons?domain=analytics.google.com&sz=64" alt="" loading="lazy"/></div><div class="pt"><b>GA4 sessions &amp; goals</b><s>Supermetrics · $69/mo · OAuth</s></div></div>
+          </div>
+
+          
+<div class="pcat">AI visibility</div>
+          <div class="pgrid">
+            <div class="pcard"><div class="ph"><img src="https://www.google.com/s2/favicons?domain=google.com&sz=64" alt="" loading="lazy"/></div><div class="pt"><b>AI Overview citations</b><s>SerpApi · $75/mo</s></div></div>
+            <div class="pcard"><div class="ph"><img src="https://www.google.com/s2/favicons?domain=openai.com&sz=64" alt="" loading="lazy"/></div><div class="pt"><b>Brand mentions in answers</b><s>no official API</s></div></div>
+            <div class="pcard"><div class="ph"><img src="https://www.google.com/s2/favicons?domain=perplexity.ai&sz=64" alt="" loading="lazy"/></div><div class="pt"><b>Cited-source tracking</b><s>no official API</s></div></div>
+            <div class="pcard"><div class="ph"><img src="https://www.google.com/s2/favicons?domain=reddit.com&sz=64" alt="" loading="lazy"/></div><div class="pt"><b>Where LLMs source it</b><s>rate-limited</s></div></div>
+          </div>
+
+          
+<div class="pcat">Backlinks &amp; authority</div>
+          <div class="pgrid">
+            <div class="pcard"><div class="ph"><img src="https://www.google.com/s2/favicons?domain=moz.com&sz=64" alt="" loading="lazy"/></div><div class="pt"><b>Backlinks &amp; anchors</b><s>Moz · $99/mo</s></div></div>
+            <div class="pcard"><div class="ph"><img src="https://www.google.com/s2/favicons?domain=majestic.com&sz=64" alt="" loading="lazy"/></div><div class="pt"><b>Trust &amp; citation flow</b><s>Majestic · $50/mo</s></div></div>
+            <div class="pcard"><div class="ph"><img src="https://www.google.com/s2/favicons?domain=dataforseo.com&sz=64" alt="" loading="lazy"/></div><div class="pt"><b>Referring domains</b><s>DataForSEO Backlinks</s></div></div>
+            <div class="pcard"><div class="ph"><img src="https://www.google.com/s2/favicons?domain=ahrefs.com&sz=64" alt="" loading="lazy"/></div><div class="pt"><b>Broken-link audit</b><s>crawl endpoints</s></div></div>
+          </div>
+
+          
+<div class="pcat">Measurement</div>
+          <div class="pgrid">
+            <div class="pcard"><div class="ph"><img src="https://www.google.com/s2/favicons?domain=analytics.google.com&sz=64" alt="" loading="lazy"/></div><div class="pt"><b>GA4 conversions</b><s>Supermetrics · $69/mo · OAuth</s></div></div>
+            <div class="pcard"><div class="ph"><img src="https://www.gstatic.com/images/branding/product/2x/google_my_business_64dp.png" alt="" loading="lazy"/></div><div class="pt"><b>Business Profile</b><s>BrightLocal · $39/mo · OAuth</s></div></div>
+            <div class="pcard"><div class="ph"><img src="https://www.google.com/s2/favicons?domain=pinterest.com&sz=64" alt="" loading="lazy"/></div><div class="pt"><b>Pinterest Ads</b><s>Tailwind · $25/mo · OAuth</s></div></div>
+            <div class="pcard"><div class="ph"><img src="https://www.google.com/s2/favicons?domain=snapchat.com&sz=64" alt="" loading="lazy"/></div><div class="pt"><b>Snapchat Ads</b><s>manual in Ads Manager · OAuth</s></div></div>
+          </div>
+
+          <div class="morewrap" aria-hidden="true">
+            <div class="pgrid">
+<div class="pcard"><div class="ph"><img src="https://www.google.com/s2/favicons?domain=slack.com&sz=64" alt="" loading="lazy"/></div><div class="pt"><b>Slack messages</b><s>workspace app</s></div></div>
+<div class="pcard"><div class="ph"><img src="https://www.google.com/s2/favicons?domain=apify.com&sz=64" alt="" loading="lazy"/></div><div class="pt"><b>Actor runs at scale</b><s>per-seat plans</s></div></div>
+<div class="pcard"><div class="ph"><img src="https://www.google.com/s2/favicons?domain=youtube.com&sz=64" alt="" loading="lazy"/></div><div class="pt"><b>Channel analytics</b><s>quota-capped</s></div></div>
+<div class="pcard"><div class="ph"><img src="https://www.google.com/s2/favicons?domain=trends.google.com&sz=64" alt="" loading="lazy"/></div><div class="pt"><b>Google Trends</b><s>no official API</s></div></div>
+            </div>
+          </div>
+          <div class="moreline rv">+2,500 more expert tools in the catalog<br>
+            <button class="ghostbtn sm" onclick="openSignin()">Browse all 2,630 tools</button></div>
+<div class="pcat">Video &amp; image generation</div>
+          <div class="pgrid">
+            <div class="pcard"><div class="ph"><img src="https://www.google.com/s2/favicons?domain=seed.bytedance.com&sz=64" alt="" loading="lazy"/></div><div class="pt"><b>Seedance 2.5 talking head</b><s>Higgsfield · $49/mo</s></div></div>
+            <div class="pcard"><div class="ph"><img src="https://www.google.com/s2/favicons?domain=seed.bytedance.com&sz=64" alt="" loading="lazy"/></div><div class="pt"><b>Real-face reference clips</b><s>BytePlus approval queue</s></div></div>
+            <div class="pcard"><div class="ph"><img src="https://www.google.com/s2/favicons?domain=gemini.google.com&sz=64" alt="" loading="lazy"/></div><div class="pt"><b>Gemini 3 Pro Image</b><s>Google AI Pro · $20/mo</s></div></div>
+            <div class="pcard"><div class="ph"><img src="https://www.google.com/s2/favicons?domain=openai.com&sz=64" alt="" loading="lazy"/></div><div class="pt"><b>GPT Image 2.5</b><s>ChatGPT Plus · $20/mo</s></div></div>
+            <div class="pcard"><div class="ph"><img src="https://www.google.com/s2/favicons?domain=deepmind.google&sz=64" alt="" loading="lazy"/></div><div class="pt"><b>Veo 3.1 fast</b><s>Google AI Pro · $20/mo</s></div></div>
+            <div class="pcard"><div class="ph"><img src="https://www.google.com/s2/favicons?domain=alibaba.com&sz=64" alt="" loading="lazy"/></div><div class="pt"><b>Wan 3.0 video</b><s>via OpenRouter</s></div></div>
+            <div class="pcard"><div class="ph"><img src="https://www.google.com/s2/favicons?domain=minimax.io&sz=64" alt="" loading="lazy"/></div><div class="pt"><b>MiniMax image &amp; video</b><s>Hailuo app · $10/mo</s></div></div>
+            <div class="pcard"><div class="ph"><img src="https://www.google.com/s2/favicons?domain=replicate.com&sz=64" alt="" loading="lazy"/></div><div class="pt"><b>Flux, Seedream, more</b><s>via Replicate</s></div></div>
+          </div>
+
+          </div>
+          <div class="more-cta"><div class="t">Set up a treg × jev workflow in</div><div class="agent-row" data-open="pop-build"><span class="agents"><img src="media/people-search/claude-code.png" alt="Claude Code"><img src="media/people-search/codex.png" alt="Codex"><img src="media/people-search/hermes.png" alt="Hermes" class="onwhite"><img src="media/people-search/openclaw.png" alt="OpenClaw"></span></div></div>
+        </div>
+      </div>
+    </div>
 </div>
   </div>
 </section>
@@ -722,6 +905,7 @@
 </footer>
 
 <div class="panel drawer" id="drawer" hidden></div>
+<div class="popscrim" id="popscrim" hidden></div>
 
 <script>
 (function () {
@@ -743,7 +927,7 @@ const io = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting
 document.querySelectorAll('.rv').forEach(el => io.observe(el));
 
 /* tabs: one recipe at a time; the hash picks the tab so the nav anchors keep working */
-const TABS = ['xboost', 'signals', 'triage'];
+const TABS = ['xboost', 'signals', 'triage', 'build'];
 function showTab(id, push) {
   if (!TABS.includes(id)) id = 'xboost';
   TABS.forEach(t => { $(t).hidden = t !== id; });
@@ -756,10 +940,14 @@ showTab(location.hash.slice(1));
 document.querySelectorAll('a[href^="#"]').forEach(a => a.addEventListener('click', e => { const id = a.getAttribute('href').slice(1); if (TABS.includes(id)) { e.preventDefault(); showTab(id, true); $('recipes').scrollIntoView({ behavior: reduced ? 'auto' : 'smooth' }); } }));
 
 /* prompt dropdowns */
-const closePops = () => { document.querySelectorAll('.pop').forEach(p => p.hidden = true); document.querySelectorAll('.pbtn').forEach(x => x.setAttribute('aria-expanded', 'false')); };
+const closePops = () => { $('popscrim').hidden = true; document.querySelectorAll('.pop').forEach(p => { p.hidden = true; p.classList.remove('modal'); }); document.querySelectorAll('.pbtn').forEach(x => x.setAttribute('aria-expanded', 'false')); };
 document.querySelectorAll('.pbtn').forEach(b => b.onclick = e => { e.stopPropagation(); const pop = $(b.getAttribute('aria-controls')), open = pop.hidden; closePops(); pop.hidden = !open; b.setAttribute('aria-expanded', String(open)); });
 document.querySelectorAll('.pop').forEach(p => p.onclick = e => e.stopPropagation());
+document.querySelectorAll('.pop .xclose').forEach(b => b.onclick = closePops);
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closePops(); });
 document.addEventListener('click', closePops);
+document.querySelectorAll('.agent-row[data-open]').forEach(r => r.onclick = e => { e.stopPropagation(); const pop = $(r.dataset.open); closePops(); document.querySelectorAll('.pop').forEach(p => p.classList.remove('modal')); pop.classList.add('modal'); pop.hidden = false; $('popscrim').hidden = false; });
+const _closePops = closePops;
 
 const stepRow = (a, w, cls, d, pr) => `<div class="xs"><span class="who ${cls}">${w}</span><span class="t">${a}</span><span class="r">${d}</span>${pr ? `<span class="p">${pr}</span>` : ''}</div>`;
 
