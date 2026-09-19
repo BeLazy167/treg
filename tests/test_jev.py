@@ -57,7 +57,6 @@ def test_the_bundled_demo_data_carries_no_real_email_addresses():
     for lead in signals["leads"]:
         email = (lead.get("contact") or {}).get("email")
         assert email is None or email.split("@")[1] in fake_corp, email
-        assert "picture" not in lead
 
 
 async def test_judge_refuses_when_the_live_demo_is_not_configured(clients: AsyncClient):

@@ -74,6 +74,7 @@
   @media (prefers-reduced-motion: reduce) { .rv { opacity: 1; transform: none; transition: none; } .live::before { animation: none; } }
 
   /* recipe layout: prompt on the left, what it does on the right */
+  #recipes .wrap { max-width: 1440px; }
   .tabs { display: flex; gap: 6px; flex-wrap: wrap; border-bottom: 1px solid var(--line); padding-bottom: 14px; margin-bottom: 34px; }
   .tabs button { font: inherit; font-size: 14px; font-weight: 500; padding: 9px 16px; border-radius: 999px; border: 1px solid transparent; background: transparent; color: #43413E; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; }
   .tabs button:hover { background: var(--card); }
@@ -232,7 +233,7 @@
   .sticky { position: sticky; top: 74px; display: flex; flex-direction: column; gap: 12px; }
 
   /* ---- signals */
-  .sig-grid { display: grid; grid-template-columns: minmax(0,1fr) 360px; gap: 10px; align-items: start; }
+  .sig-grid { display: grid; grid-template-columns: minmax(0,1fr) 400px; gap: 10px; align-items: start; }
   @media (max-width: 1100px) { .sig-grid { grid-template-columns: 1fr; } }
   .spend { margin-top: 10px; border-top: 1px solid var(--line); padding-top: 8px; display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
   .spend div { font-family: var(--mono); font-size: 17px; }
@@ -240,18 +241,30 @@
   .spend .jev { color: var(--blue); }
   .posts { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 10px; margin-top: 8px; max-height: 720px; overflow: auto; padding-right: 4px; }
   @media (max-width: 640px) { .posts { grid-template-columns: 1fr; } }
-  .lp { border: 1px solid var(--line); border-radius: 12px; background: #fff; overflow: hidden; display: flex; flex-direction: column; position: relative; cursor: pointer; transition: opacity .3s; }
+  .lp { border: 1px solid var(--line); border-radius: 8px; background: #fff; overflow: hidden; display: flex; flex-direction: column; position: relative; cursor: pointer; transition: opacity .3s; font-family: -apple-system, system-ui, "Segoe UI", Roboto, "Helvetica Neue", sans-serif; box-shadow: 0 0 0 1px rgba(0,0,0,.02), 0 2px 3px rgba(0,0,0,.05); }
   .lp.rejected { opacity: .45; }
   .lp[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--ink); }
   .lp.scanning::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(180deg, transparent 0%, rgba(31,79,216,.14) 48%, rgba(31,79,216,.4) 50%, rgba(31,79,216,.14) 52%, transparent 100%); background-size: 100% 220%; animation: scan .9s linear infinite; }
   .lp .verdict-tag { font-family: var(--mono); font-size: 10px; padding: 5px 10px; background: var(--card); color: var(--muted); border-bottom: 1px solid var(--line); }
   .lp .verdict-tag.on { background: var(--green-soft); color: var(--green); } .lp .verdict-tag.off { background: var(--red-soft); color: var(--red); } .lp .verdict-tag.reading { background: var(--blue-soft); color: var(--blue); }
-  .lp .hd { display: grid; grid-template-columns: 40px minmax(0,1fr); gap: 8px; padding: 10px 12px 4px; align-items: start; }
-  .lp .avl { width: 40px; height: 40px; border-radius: 50%; background: var(--line); display: grid; place-items: center; font-family: var(--display); font-weight: 600; font-size: 14px; color: #fff; }
-  .lp .nm { font-weight: 600; font-size: 13px; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .lp .hl { color: var(--muted); font-size: 11.5px; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .lp .tx { margin: 4px 12px 8px; font-size: 13px; line-height: 1.43; white-space: pre-line; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
-  .lp .social { display: flex; justify-content: space-between; padding: 7px 12px; font-size: 11.5px; color: var(--muted); border-top: 1px solid var(--line); margin-top: auto; }
+  .lp .hd { display: grid; grid-template-columns: 48px minmax(0,1fr); gap: 8px; padding: 12px 16px 4px; align-items: start; }
+  .lp .avl { width: 48px; height: 48px; border-radius: 50%; background: var(--line); display: grid; place-items: center; font-family: var(--display); font-weight: 600; font-size: 15px; color: #fff; overflow: hidden; }
+  .lp .avl img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .lp .nm { font-weight: 600; font-size: 14px; line-height: 1.25; color: #000; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .lp .nm span { font-weight: 400; color: #666; font-size: 12px; }
+  .lp .hl { color: #666; font-size: 12px; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .lp .tx { margin: 4px 16px 8px; font-size: 14px; line-height: 1.43; white-space: pre-line; color: #000; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; position: relative; }
+  .lp .tx::after { content: "…more"; position: absolute; right: 0; bottom: 0; color: #666; padding-left: 24px; background: linear-gradient(90deg, transparent, #fff 30%); }
+  .lp .img { width: 100%; height: auto; display: block; background: var(--card); }
+  .lp .social { display: flex; justify-content: space-between; align-items: center; padding: 8px 16px; font-size: 12px; color: #666; margin-top: auto; }
+  .lp .social .rx { display: flex; align-items: center; gap: 4px; }
+  .lp .social .rx .ic { display: inline-flex; }
+  .lp .social .rx .ic i { width: 16px; height: 16px; border-radius: 50%; border: 1.5px solid #fff; margin-left: -5px; display: inline-flex; align-items: center; justify-content: center; font-style: normal; font-size: 9px; color: #fff; }
+  .lp .social .rx .ic i:first-child { margin-left: 0; }
+  .lp .social .rx .ic .like { background: #378FE9; } .lp .social .rx .ic .cel { background: #6DAE4F; } .lp .social .rx .ic .sup { background: #DF704D; }
+  .lp .acts { display: grid; grid-template-columns: 1fr 1.15fr 1fr .9fr; border-top: 1px solid var(--line); padding: 2px 4px; }
+  .lp .acts span { display: flex; align-items: center; justify-content: center; gap: 4px; padding: 8px 0; font-size: 12px; font-weight: 600; color: #666; white-space: nowrap; overflow: hidden; }
+  .lp .acts svg { width: 16px; height: 16px; fill: currentColor; flex: 0 0 auto; }
   .chips { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
   .chip { font: inherit; font-size: 11.5px; border: 1px solid var(--line); background: #fff; color: var(--muted); padding: 4px 10px; border-radius: 999px; cursor: pointer; }
   .chip[aria-pressed="true"] { background: var(--ink); color: #fff; border-color: var(--ink); }
@@ -261,7 +274,9 @@
   .lead.pending { background: var(--blue-soft); }
   .lead .fit { font-family: var(--mono); font-size: 12.5px; font-weight: 500; text-align: center; padding: 3px 0; border-radius: 6px; background: var(--card); color: var(--muted); }
   .lead.dm .fit { background: var(--green-soft); color: var(--green); } .lead.user .fit { background: var(--amber-soft); color: var(--amber); }
-  .lead .avl { width: 30px; height: 30px; border-radius: 50%; background: var(--line); display: grid; place-items: center; font-family: var(--display); font-weight: 600; font-size: 11px; color: #fff; }
+  .lead .avl { width: 30px; height: 30px; border-radius: 50%; background: var(--line); display: grid; place-items: center; font-family: var(--display); font-weight: 600; font-size: 11px; color: #fff; overflow: hidden; }
+  .lead .avl img, .verdict .avl img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .verdict .avl { width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; font-family: var(--display); font-weight: 600; color: #fff; overflow: hidden; flex: 0 0 auto; }
   .lead .e { font-weight: 500; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .lead .e .mail { color: var(--green); font-family: var(--mono); font-size: 10.5px; font-weight: 400; margin-left: 6px; }
   .lead .why { color: var(--muted); font-size: 11.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -805,7 +820,7 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape' && !drawer.hi
   function stop() { clearTimeout(timer); timer = null; shown = DATA.length; $('tr-replay').hidden = false; $('tr-stop').hidden = true; renderAll(); }
   $('tr-replay').onclick = replay; $('tr-stop').onclick = stop;
 
-  fetch('media/jev/triage.json').then(r => r.json()).then(rows => {
+  fetch('media/jev/triage.json', {cache: 'no-cache'}).then(r => r.json()).then(rows => {
     DATA = rows; DATA.forEach((r, i) => { r.i = i; r.lane = lane(r); r.hour = new Date(r.usage.signed_up_at + 'Z').getUTCHours(); });
     shown = DATA.length;
     const totalCost = DATA.reduce((a, r) => a + r.cost, 0);
@@ -828,7 +843,13 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape' && !drawer.hi
   const peoplePending = () => byOrder.slice(shown.ranked, shown.people);
   const emailVisible = () => new Set(emailed.slice(0, shown.emails).map(l => l.id));
   const isLive = () => shown.ranked < byOrder.length || shown.scanned < posts.length || shown.emails < emailed.length;
-  const avl = (name, cls='') => `<span class="avl ${cls}" style="background:${hue(name)}">${esc(initials(name))}</span>`;
+  const avl = (name, cls='', pic) => `<span class="avl ${cls}" style="background:${hue(name)}">${pic ? `<img src="${esc(pic)}" alt="" loading="lazy" onerror="this.remove()">` : ''}${esc(initials(name))}</span>`;
+  const LI = {
+    like:`<svg viewBox="0 0 24 24"><path d="M19.46 11l-3.91-3.91a7 7 0 01-1.69-2.74l-.49-1.47A2.76 2.76 0 0010.76 1 2.75 2.75 0 008 3.74v1.12a9.19 9.19 0 00.46 2.85L8.89 9H4.12A2.12 2.12 0 002 11.12a2.16 2.16 0 00.92 1.76A2.11 2.11 0 002 14.62a2.14 2.14 0 001.28 2 2 2 0 00-.28 1 2.12 2.12 0 002 2.12v.14A2.12 2.12 0 007.14 22h7.32a3.3 3.3 0 002.82-1.55l.34-.6a3.4 3.4 0 00.34-2.85L17.31 15h1.35A2.32 2.32 0 0021 12.7a2.3 2.3 0 00-1.54-1.7z"/></svg>`,
+    comment:`<svg viewBox="0 0 24 24"><path d="M7 9h10v1H7zm0 4h7v-1H7zm16-2a6.78 6.78 0 01-2.84 5.61L12 22v-4H8A7 7 0 018 4h8a7 7 0 017 7zm-2 0a5 5 0 00-5-5H8a5 5 0 000 10h6v2.28L19 15a4.79 4.79 0 002-4z"/></svg>`,
+    repost:`<svg viewBox="0 0 24 24"><path d="M13.96 5H6c-.55 0-1 .45-1 1v10H3V6c0-1.66 1.34-3 3-3h7.96L12 0h2.37L17 3.5 14.37 7H12l1.96-2zm5.04 3v10c0 .55-.45 1-1 1h-7.96L12 17H9.63L7 20.5 9.63 24H12l-1.96-2H18c1.66 0 3-1.34 3-3V8h-2z"/></svg>`,
+    send:`<svg viewBox="0 0 24 24"><path d="M21 3L0 10l7.66 4.26L16 8l-6.26 8.34L14 24l7-21z"/></svg>`,
+  };
 
   function funnel() {
     const pv = peopleVisible(), ev = emailVisible(), vis = leads.filter(l => pv.has(l.id));
@@ -848,10 +869,13 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape' && !drawer.hi
     $('sg-spend').innerHTML = `<div class="jev"><small>jev spend</small>${fmt$(j)}</div><div><small>treg spend</small>${fmt$(t)}</div>`;
   }
   function postCard(p) {
+    const n = p.likes, cluster = n ? `<span class="ic"><i class="like">&#x1F44D;</i>${n>20?`<i class="cel">&#x1F44F;</i>`:''}${n>100?`<i class="sup">&#x1F49C;</i>`:''}</span>` : '';
     return `<div class="lp" data-id="${esc(p.id)}" aria-pressed="false"><div class="verdict-tag"></div>
-      <div class="hd">${avl(p.author)}<div><div class="nm">${esc(p.author)}</div><div class="hl">${esc(p.author_info||'')}</div><div class="hl">${esc(p.posted_ago||'')}</div></div></div>
+      <div class="hd">${avl(p.author, '', p.avatar)}<div><div class="nm">${esc(p.author)} <span>· 2nd</span></div><div class="hl">${esc(p.author_info||'')}</div><div class="hl">${esc(p.posted_ago||'')} · &#x1F310;</div></div></div>
       <div class="tx">${esc(p.text.replace(/\n\s*\n/g, '\n'))}</div>
-      <div class="social"><span>👍 ${p.likes.toLocaleString()}</span><span>${p.comments} comments${p.shares ? ' · ' + p.shares + ' reposts' : ''}</span></div></div>`;
+      ${p.images?.[0] ? `<img class="img" src="${esc(p.images[0])}" alt="" loading="lazy" onerror="this.remove()">` : ''}
+      <div class="social"><span class="rx">${cluster}${n ? `<span>${n.toLocaleString()}</span>` : ''}</span><span>${p.comments} comments${p.shares ? ' · ' + p.shares + ' reposts' : ''}</span></div>
+      <div class="acts"><span>${LI.like}Like</span><span>${LI.comment}Comment</span><span>${LI.repost}Repost</span><span>${LI.send}Send</span></div></div>`;
   }
   function buildPosts() {
     $('sg-posts').innerHTML = posts.map(postCard).join('');
@@ -879,7 +903,7 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape' && !drawer.hi
   }
   function rowHtml(l, ev, pending) {
     const t = TIER(l.fit), sig = l.signals.find(s => s.kind === 'commented') || l.signals[0], fnd = finding.has(l.id);
-    return `<button class="lead ${pending ? 'pending' : t} ${fnd ? 'pending' : ''}" data-id="${esc(l.id)}" aria-current="${!pending && sel === l.id}"><div class="fit">${pending ? '' : l.fit.toFixed(2)}</div>${avl(l.name)}
+    return `<button class="lead ${pending ? 'pending' : t} ${fnd ? 'pending' : ''}" data-id="${esc(l.id)}" aria-current="${!pending && sel === l.id}"><div class="fit">${pending ? '' : l.fit.toFixed(2)}</div>${avl(l.name, '', l.picture)}
       <div><div class="e">${esc(l.name)}${!pending && ev.has(l.id) && l.contact?.email ? `<span class="mail">${esc(l.contact.email)}</span>` : ''}</div><div class="why">${esc(l.position || 'no headline')}</div></div>
       <div class="fig">${pending ? `<b class="reading">jev · reading…</b>` : fnd ? `<b class="reading">treg · finding email…</b>` : `<b>${ROLE[l.role]||l.role}</b>`}${sig.kind === 'commented' ? 'commented' : 'reacted'}${l.signals.length > 1 ? ' +' + (l.signals.length - 1) : ''}</div></button>`;
   }
@@ -893,7 +917,7 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape' && !drawer.hi
   function inspect() {
     const l = leads.find(x => x.id === sel); if (!l) return;
     const t = TIER(l.fit), c = emailVisible().has(l.id) ? l.contact : null;
-    openDrawer(`<div class="verdict"><div class="mark ${t}">${l.fit.toFixed(1)}</div>${avl(l.name, 'lg')}<div><div class="e"><a href="${esc(l.url)}" target="_blank" rel="noopener">${esc(l.name)}</a></div><div class="act ${t}">${TIERNAME[t]} · ${ROLE[l.role]||l.role}</div></div></div>
+    openDrawer(`<div class="verdict"><div class="mark ${t}">${l.fit.toFixed(1)}</div>${avl(l.name, 'lg', l.picture)}<div><div class="e"><a href="${esc(l.url)}" target="_blank" rel="noopener">${esc(l.name)}</a></div><div class="act ${t}">${TIERNAME[t]} · ${ROLE[l.role]||l.role}</div></div></div>
       <div class="reason">${esc(l.position || 'no headline on the reaction record')}</div>
       <div class="sec4"><h4><span>Signals</span><span class="w">${l.signals.length}</span></h4>${l.signals.map(s => `<div class="sigrow"><div class="k">${s.kind}${s.reaction ? ' · ' + esc(s.reaction.toLowerCase()) : ''}</div>${s.text ? `<div class="q">“${esc(s.text)}”</div>` : ''}<div class="p">on: ${esc(s.post)}…</div></div>`).join('')}</div>
       <div class="sec4"><h4><span>jev · fit</span><span class="w">score ${l.fit.toFixed(2)} · conf ${(l.fit_conf ?? 0).toFixed(2)} · ${fmt$(l.jev_cost)}</span></h4>${bars(l.fit_probs, {0:'not a lead', 1:'user', 2:'decision maker'}, k => ({0:'', 1:'a', 2:'g'}[k]))}</div>
@@ -921,7 +945,7 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape' && !drawer.hi
   function stop() { clearTimeout(timer); timer = null; finding.clear(); shown = {posts: posts.length, scanned: posts.length, people: byOrder.length, ranked: byOrder.length, emails: emailed.length}; $('sg-replay').hidden = false; $('sg-stop').hidden = true; if (RUN) renderAll(); }
   $('sg-replay').onclick = replay; $('sg-stop').onclick = stop;
 
-  fetch('media/jev/signals.json').then(r => r.json()).then(run => {
+  fetch('media/jev/signals.json', {cache: 'no-cache'}).then(r => r.json()).then(run => {
     RUN = run; posts = run.posts; leads = run.leads.slice().sort((a, b) => b.fit - a.fit);
     byOrder = run.leads.slice().sort((a, b) => (a.order ?? 0) - (b.order ?? 0)); emailed = leads.filter(l => l.contact);
     const c = run.costs, treg = (c.treg_search||0) + (c.treg_engagement||0) + (c.treg_email||0);
