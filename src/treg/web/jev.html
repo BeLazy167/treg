@@ -530,6 +530,49 @@
   .dk-dots button[aria-current="true"] { background: var(--ink); transform: scale(1.3); }
   @media (max-width: 860px) { .slide { grid-template-columns: 1fr; padding: 22px 20px; min-height: 0; } .dk-arrow.prev { left: 6px; } .dk-arrow.next { right: 6px; } .g-row { grid-template-columns: 90px minmax(0,1fr) 100px; } .loop { flex-wrap: wrap; } }
 
+
+  /* ---- deck infographics ---- */
+  .ig-bars { display: flex; flex-direction: column; gap: 7px; }
+  .ig-bar { display: grid; grid-template-columns: minmax(0, 150px) minmax(0,1fr) 40px; gap: 10px; align-items: center; font-family: var(--mono); font-size: 12px; }
+  .ig-bar .k { color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ig-bar .tr { display: block; height: 12px; background: var(--line); border-radius: 6px; overflow: hidden; }
+  .ig-bar .tr i { display: block; height: 100%; width: 0; background: var(--ink); border-radius: 6px; transition: width .7s cubic-bezier(.2,.8,.2,1) .15s; }
+  .slide.on .ig-bar .tr i { width: var(--w); }
+  .ig-bar.g .tr i { background: var(--green); } .ig-bar.a .tr i { background: var(--amber); } .ig-bar.r .tr i { background: var(--red); }
+  .ig-bar .v { text-align: right; color: var(--muted); }
+  .ig-vs, .ig-flip { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .ig-col { border: 1px solid var(--line); border-radius: 14px; padding: 14px; background: var(--card); min-width: 0; }
+  .ig-col.jev { background: #fff; border-color: rgba(230,60,180,.35); }
+  .ig-lab { font-family: var(--mono); font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }
+  .ig-lab .lg { width: 16px; height: 16px; border-radius: 4px; }
+  .ig-lab code { font-size: 10.5px; text-transform: none; letter-spacing: 0; }
+  .ig-bubble { font-size: 12.5px; line-height: 1.5; color: #43413E; background: #fff; border: 1px solid var(--line); border-radius: 12px 12px 12px 4px; padding: 10px 12px; }
+  .ig-foot { font-family: var(--mono); font-size: 10.5px; color: var(--muted); margin-top: 10px; }
+  .ig-three { display: grid; grid-template-columns: 1fr; gap: 8px; }
+  .ig-card { border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; background: var(--card); display: grid; grid-template-columns: 64px minmax(0,1fr); gap: 4px 12px; align-items: start; }
+  .ig-type { font-family: var(--mono); font-size: 11px; color: var(--blue); background: var(--blue-soft); border-radius: 6px; padding: 3px 0; text-align: center; grid-row: 1 / span 3; margin-top: 2px; }
+  .ig-q { font-size: 12.5px; color: var(--ink); }
+  .ig-col .ig-bar { grid-template-columns: minmax(0, 96px) minmax(40px,1fr) 34px; gap: 8px; font-size: 11px; }
+  .ig-card .ig-bars { gap: 4px; } .ig-card .ig-bar { font-size: 11px; grid-template-columns: minmax(0, 140px) minmax(0,1fr) 34px; } .ig-card .ig-bar .tr { height: 9px; }
+  .ig-ans { font-family: var(--mono); font-size: 11px; color: var(--muted); } .ig-ans b { color: var(--ink); font-weight: 500; }
+  .ig-gauge { position: relative; height: 12px; background: var(--line); border-radius: 6px; margin: 8px 0 18px; }
+  .ig-gauge i { display: block; height: 100%; width: 0; background: var(--green); border-radius: 6px; transition: width .7s cubic-bezier(.2,.8,.2,1) .15s; }
+  .slide.on .ig-gauge i { width: var(--w); }
+  .ig-gauge em { position: absolute; top: -5px; left: var(--x); width: 2px; height: 22px; background: var(--ink); border-radius: 1px; }
+  .ig-gauge em b { position: absolute; top: 22px; left: 50%; transform: translateX(-50%); font: 500 9.5px var(--mono); color: var(--muted); white-space: nowrap; }
+  .ig-speed { display: flex; flex-direction: column; gap: 7px; }
+  .ig-src { font-family: var(--mono); font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--ink); margin-top: 6px; display: flex; justify-content: space-between; }
+  .ig-src span { color: var(--muted); text-transform: none; letter-spacing: 0; }
+  .ig-row { display: grid; grid-template-columns: 110px minmax(0,1fr) 150px; gap: 10px; align-items: center; font-family: var(--mono); font-size: 11.5px; }
+  .ig-row .k { display: flex; align-items: center; gap: 6px; color: var(--ink); } .ig-row .k .lg { width: 16px; height: 16px; border-radius: 4px; }
+  .ig-row .tr { display: block; height: 12px; background: var(--line); border-radius: 6px; overflow: hidden; }
+  .ig-row .tr i { display: block; height: 100%; width: 0; background: var(--muted); border-radius: 6px; transition: width .7s cubic-bezier(.2,.8,.2,1) .15s; min-width: 3px; }
+  .ig-row .tr i.g { background: var(--green); }
+  .slide.on .ig-row .tr i { width: var(--w); }
+  .ig-row .v { text-align: right; color: var(--muted); white-space: nowrap; }
+  .ig-flip + pre { margin-top: 10px; }
+  @media (max-width: 640px) { .ig-vs, .ig-flip { grid-template-columns: 1fr; } .ig-row { grid-template-columns: 80px minmax(0,1fr) 120px; font-size: 10px; } .ig-bar { grid-template-columns: minmax(0, 110px) minmax(0,1fr) 36px; } }
+
   /* ---- faq ---- */
   .faq { max-width: 760px; margin: 0 auto; }
   .faq details { border-top: 1px solid var(--line); padding: 4px 0; }
@@ -977,87 +1020,47 @@
 </section>
 
 <section class="section learn-sec rv" id="learn" style="padding-top:110px;padding-bottom:0">
-  <h2>What is <img class="lg" src="logos/jev.png" alt=""> jev, in eight slides</h2>
-  <p class="lede">A decision model, not a chat model. Every example below is a real request and answer from the TypeSafe docs, run by us.</p>
+  <h2>What is <img class="lg" src="logos/jev.png" alt=""> jev, in six slides</h2>
+  <p class="lede">A decision model, not a chat model. The examples are real requests and answers, run by us; the headline speed and cost figures are TypeSafe's, with our own smaller check beside them.</p>
   <div class="deck" id="deck" tabindex="0" aria-roledescription="carousel">
     <button class="dk-arrow prev" id="dk-prev" aria-label="Previous slide"><svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
     <div class="dk-view"><div class="dk-track" id="dk-track">
 
-      <article class="slide"><div class="sl-l"><span class="sl-n">1 / 8</span><h3>State in, typed answers out</h3><p>You send jev a piece of <b>state</b> (a message, a record, a post with its counts) and one or more <b>questions</b> with the answers you would accept. It never writes prose. Every answer is a probability over <em>your</em> options, so there is nothing to parse and nothing to hallucinate.</p><p class="sl-note">Three questions on one support message, one call, 428 tokens in, $0.000018.</p></div>
-        <div class="sl-r"><pre><b>state</b>  "Our API integration started returning 500 errors on every request about 20 minutes ago, and we can't process any customer orders until this is fixed."
+      <article class="slide"><div class="sl-l"><span class="sl-n">1 / 6</span><h3>jev predicts probabilities, not text</h3><p>Ask a chat model "is this a launch post?" and you get a paragraph to parse. Ask jev and you get a number on every option you named, summing to one. Same post, same question:</p><p class="sl-note">The numbers are the answer. Your code compares them to a threshold; nothing is parsed, nothing can be made up outside your list.</p></div>
+        <div class="sl-r"><div class="ig-vs">
+          <div class="ig-col llm"><div class="ig-lab">chat model</div><div class="ig-bubble">"This appears to be a product launch announcement. The author introduces a new agent marketplace and encourages users to try it, which suggests it is likely a launch, though it could also be read as…"</div><div class="ig-foot">2.5 s · 78 output tokens · then you parse it</div></div>
+          <div class="ig-col jev"><div class="ig-lab"><img class="lg" src="logos/jev.png" alt=""> jev</div><div class="ig-bars"><div class="ig-bar g"><span class="k">inspiring_launch</span><span class="tr"><i style="--w:94%"></i></span><span class="v">0.94</span></div><div class="ig-bar "><span class="k">launch_other</span><span class="tr"><i style="--w:5%"></i></span><span class="v">0.05</span></div><div class="ig-bar "><span class="k">not_a_launch</span><span class="tr"><i style="--w:1%"></i></span><span class="v">0.01</span></div></div><div class="ig-foot">0.4 s · 0 output tokens · confidence 0.92</div></div>
+        </div></div></article>
 
-<b>questions</b>
-department   choice   billing · technical · sales
-is_urgent    noul     "conveys urgency or time-sensitivity"
-frustration  score    calm · frustrated but civil · very angry
+      <article class="slide"><div class="sl-l"><span class="sl-n">2 / 6</span><h3>Three kinds of question</h3><p>Every jev question is one of three types, and you can send them together in one call. One support message, three questions, one request:</p><p class="sl-note"><b>choice</b> picks from your options. <b>noul</b> is a yes/no as a probability. <b>score</b> is a position on your ordered rubric, returned as the probability on each level plus their weighted mean.</p><p class="sl-note">"Our API integration started returning 500 errors on every request 20 minutes ago, and we can't process any customer orders until this is fixed."</p></div>
+        <div class="sl-r"><div class="ig-three">
+          <div class="ig-card"><div class="ig-type">choice</div><div class="ig-q">Which team should handle this?</div><div class="ig-bars"><div class="ig-bar g"><span class="k">technical</span><span class="tr"><i style="--w:100%"></i></span><span class="v">1.00</span></div><div class="ig-bar "><span class="k">billing</span><span class="tr"><i style="--w:0%"></i></span><span class="v">0.00</span></div><div class="ig-bar "><span class="k">sales</span><span class="tr"><i style="--w:0%"></i></span><span class="v">0.00</span></div></div><div class="ig-ans">→ <b>technical</b> · confidence 1.00</div></div>
+          <div class="ig-card"><div class="ig-type">noul</div><div class="ig-q">The message conveys urgency</div><div class="ig-gauge"><i style="--w:99%"></i><em style="--x:70%"><b>your threshold</b></em></div><div class="ig-ans">→ <b>0.99</b> · true above 0.70</div></div>
+          <div class="ig-card"><div class="ig-type">score</div><div class="ig-q">How frustrated is the customer?</div><div class="ig-bars"><div class="ig-bar "><span class="k">0 calm</span><span class="tr"><i style="--w:35%"></i></span><span class="v">0.35</span></div><div class="ig-bar a"><span class="k">1 frustrated but civil</span><span class="tr"><i style="--w:65%"></i></span><span class="v">0.65</span></div><div class="ig-bar "><span class="k">2 very angry</span><span class="tr"><i style="--w:0%"></i></span><span class="v">0.00</span></div></div><div class="ig-ans">→ <b>0.65</b> · weighted mean over levels</div></div>
+        </div></div></article>
 
-<b>answers</b>
-department   technical      p = 1.00   confidence 1.00
-is_urgent    0.99
-frustration  0.65 → level 1 "frustrated but civil"</pre></div></article>
+      <article class="slide"><div class="sl-l"><span class="sl-n">3 / 6</span><h3>Orders of magnitude faster and cheaper</h3><p>jev never writes tokens, so a call takes as long as reading the input: 70 to 500 ms end to end. TypeSafe's own side-by-side workflow puts it at <b>193.6× faster</b> and <b>444.6× cheaper</b> than an LLM doing the same decisions, and its input price at <b>238× below</b> Claude Fable 5.1.</p><p class="sl-note">Our own single-call check on three support questions was smaller but the same shape: 6.5× faster and 7.6× cheaper than GPT-5.6 Luna, 28.5× cheaper than Claude Haiku 4.5. Single runs, so the seconds are rough.</p></div>
+        <div class="sl-r"><div class="ig-speed">
+          <div class="ig-src">TypeSafe workflow demo <span>typesafe.ai</span></div>
+          <div class="ig-row"><span class="k"><img class="lg" src="logos/jev.png" alt=""> jev</span><span class="tr"><i class="g" style="--w:1.3%"></i></span><span class="v">0.114 s · $0.000081</span></div>
+          <div class="ig-row"><span class="k">LLM</span><span class="tr"><i style="--w:100%"></i></span><span class="v">8.566 s · $0.013880</span></div>
+          <div class="ig-src">Our run, 3 questions on one message <span>this page's notebook</span></div>
+          <div class="ig-row"><span class="k"><img class="lg" src="logos/jev.png" alt=""> jev</span><span class="tr"><i class="g" style="--w:15%"></i></span><span class="v">0.38 s · $0.000018</span></div>
+          <div class="ig-row"><span class="k">GPT-5.6 Luna</span><span class="tr"><i style="--w:100%"></i></span><span class="v">2.47 s · $0.000136</span></div>
+          <div class="ig-row"><span class="k">Haiku 4.5</span><span class="tr"><i style="--w:60%"></i></span><span class="v">1.49 s · $0.000513</span></div>
+          <div class="ig-foot">bars are time · list price $0.042 per million input tokens, output free</div>
+        </div></div></article>
 
-      <article class="slide"><div class="sl-l"><span class="sl-n">2 / 8</span><h3>choice: pick one of your options</h3><p>Give the options as keys with a description each. jev returns the <b>choice</b>, a <b>probabilities</b> map that sums to one, and a <b>confidence</b> that says how peaked that map is. A 0.51 / 0.49 split and a 0.98 / 0.02 split both pick the same key; only the map tells you which one to trust.</p><p class="sl-note">Used on the board above for relevance, launch type and distribution.</p></div>
-        <div class="sl-r"><pre>"department": {
-  "type": "choice",
-  "instructions": "Which team should handle this",
-  "criteria": {
-    "billing":   "Payment or subscription issues",
-    "technical": "Bugs or integration problems",
-    "sales":     "Pricing or account questions"
-  }
-}
-
-→ { "choice": "technical",
-    "probabilities": { "billing": 0, "sales": 0, "technical": 1 },
-    "confidence": 1 }</pre></div></article>
-
-      <article class="slide"><div class="sl-l"><span class="sl-n">3 / 8</span><h3>noul: a probability that a statement is true</h3><p>Write the statement; jev returns a number between 0 and 1. <b>You</b> choose the threshold. The buyer-signal workflow keeps a post when "about GTM tooling" is at or above 0.70; the launch radar reads "is this organic" the same way.</p><p class="sl-note">Add <code>criteria</code> with a <code>true</code> and a <code>false</code> definition when the line is subtle.</p></div>
-        <div class="sl-r"><pre>"is_urgent": {
-  "type": "noul",
-  "instructions": "The message conveys urgency or time-sensitivity"
-}
-
-→ { "noul": 0.99 }
-
-if (answer.noul >= 0.70) escalate();   // your rule, your number</pre></div></article>
-
-      <article class="slide"><div class="sl-l"><span class="sl-n">4 / 8</span><h3>score: a position on your rubric</h3><p>Give ordered levels. jev returns the probability on each level and a <b>score</b>, the probability-weighted mean over the level indices. 0.65 here means "mostly level 1, some level 0". The signup workflow scores upsell value from 0 (none) to 3 (enterprise) this way.</p><p class="sl-note">Levels can be objects with a <code>summary</code> and <code>signals</code>; jev echoes them back as a <code>legend</code>.</p></div>
-        <div class="sl-r"><pre>"frustration": {
-  "type": "score",
-  "instructions": "How frustrated the customer appears",
-  "criteria": ["Calm, just stating facts",
-               "Frustrated but civil",
-               "Very angry, strong language"]
-}
-
-→ { "score": 0.65,
-    "probabilities": { "0": 0.35, "1": 0.65, "2": 0 },
-    "confidence": 0.47 }</pre></div></article>
-
-      <article class="slide"><div class="sl-l"><span class="sl-n">5 / 8</span><h3>Fast and cheap because it only reads</h3><p>A chat model spends its time <em>writing</em> the answer, so its latency sits at 2 to 4 seconds whatever you ask. jev's cost and time grow with the input only. Same three questions, same message, one run each:</p><p class="sl-note">Single runs, so treat the seconds as rough. jev reads up to about 30k tokens; above that, split the state.</p></div>
-        <div class="sl-r"><table class="sl-tab"><thead><tr><th>model</th><th>cost</th><th>time</th><th>vs jev</th></tr></thead><tbody>
-          <tr><td>typesafe/jev-1.13</td><td>$0.000018</td><td>0.38 s</td><td>1×</td></tr>
-          <tr><td>openai/gpt-5.6-luna</td><td>$0.000136</td><td>2.47 s</td><td>7.6×</td></tr>
-          <tr><td>anthropic/claude-haiku-4.5</td><td>$0.000513</td><td>1.49 s</td><td>28.5×</td></tr>
-        </tbody></table><p class="sl-note">List price $0.042 per million input tokens, output free. A verdict on a post with its author and 20 replies: about $0.0001.</p></div></article>
-
-      <article class="slide"><div class="sl-l"><span class="sl-n">6 / 8</span><h3>Confidence gating: act when sure, ask a human when not</h3><p>Because every answer carries its distribution, the threshold is a business decision you make explicitly, not a prompt you hope holds. Route automatically above a confidence, queue the rest for a person, and pick the line from a small labelled set.</p><p class="sl-note">200 human-labelled support tickets, four queues: the disagreements cluster in the low-confidence bin, so gating there removes most of the risk for a small share of volume.</p></div>
+      <article class="slide"><div class="sl-l"><span class="sl-n">4 / 6</span><h3>Act when sure, ask a human when not</h3><p>Because every answer carries its distribution, the threshold is a business decision you make explicitly, not a prompt you hope holds. Route automatically above a confidence, queue the rest for a person, and pick the line from a small labelled set.</p><p class="sl-note">200 human-labelled support tickets, four queues: the disagreements cluster in the low-confidence bin, so gating there removes most of the risk for a small share of volume.</p></div>
         <div class="sl-r"><div class="gate"><div class="g-row"><span>confidence ≥ 0.9</span><i style="width:72%"></i><b>auto-route</b></div><div class="g-row"><span>0.6 – 0.9</span><i style="width:18%"></i><b>auto, spot-check</b></div><div class="g-row warn"><span>&lt; 0.6</span><i style="width:10%"></i><b>to a human</b></div></div><p class="sl-note">The signup workflow does the same with lanes: hold needs hard evidence, watch takes the uncertain middle.</p></div></article>
 
-      <article class="slide"><div class="sl-l"><span class="sl-n">7 / 8</span><h3>Rubrics: say what an option is <em>not</em></h3><p>An option's description can be an object. <code>what</code>, <code>not_for</code> and <code>examples</code> are ordinary keys, and jev reads the key names too, so name them for what they hold. "It doesn't export to Framer" is a bug if Framer export exists and a feature request if it never did; a one-line label cannot know, a rubric can carry the fact.</p><p class="sl-note">Same message, the plain labels say <b>bug</b>; the rubric with the product fact in <code>not_for</code> says <b>feature_request</b>.</p></div>
-        <div class="sl-r"><pre>"feature_request": {
-  "what": "asks for something the product does not do",
-  "not_for": "a promised feature that is broken",
-  "examples": ["can you add a Framer export?"]
-},
-"bug": {
+      <article class="slide"><div class="sl-l"><span class="sl-n">5 / 6</span><h3>Rubrics: say what an option is <em>not</em></h3><p>An option's description can be an object. <code>what</code>, <code>not_for</code> and <code>examples</code> are ordinary keys, and jev reads the key names too. "It doesn't export to Framer" is a bug if Framer export exists and a feature request if it never did; a one-line label cannot know, a rubric can carry the fact.</p><p class="sl-note">Same message: plain labels say <b>bug</b>, the rubric with the product fact in <code>not_for</code> says <b>feature_request</b>.</p></div>
+        <div class="sl-r"><div class="ig-flip"><div class="ig-col"><div class="ig-lab">plain labels</div><div class="ig-bars"><div class="ig-bar r"><span class="k">bug</span><span class="tr"><i style="--w:78%"></i></span><span class="v">0.78</span></div><div class="ig-bar "><span class="k">feature_request</span><span class="tr"><i style="--w:22%"></i></span><span class="v">0.22</span></div></div></div><div class="ig-col"><div class="ig-lab">rubric with <code>not_for</code></div><div class="ig-bars"><div class="ig-bar g"><span class="k">feature_request</span><span class="tr"><i style="--w:91%"></i></span><span class="v">0.91</span></div><div class="ig-bar "><span class="k">bug</span><span class="tr"><i style="--w:9%"></i></span><span class="v">0.09</span></div></div></div></div><pre>"bug": {
   "what": "a promised feature does not work",
-  "not_for": "features that were never built:
-             there is no Framer export",
-  "examples": ["the CSV export is empty"]
+  "not_for": "features never built: there is no Framer export"
 }</pre></div></article>
 
-      <article class="slide"><div class="sl-l"><span class="sl-n">8 / 8</span><h3>Where treg comes in</h3><p>jev cannot produce a string and cannot fetch anything. It decides over the state you hand it. treg is the other half: one token for the catalog, so the state is a real X post with its author and replies, a signup with its verification and enrichment, a LinkedIn commenter with their headline. treg fetches, jev decides, your code acts on the numbers.</p><p class="sl-note">Every workflow above is that loop. The prompts in each tab set both up for your agent.</p></div>
+      <article class="slide"><div class="sl-l"><span class="sl-n">6 / 6</span><h3>Where treg comes in</h3><p>jev cannot produce a string and cannot fetch anything. It decides over the state you hand it. treg is the other half: one token for the catalog, so the state is a real X post with its author and replies, a signup with its verification and enrichment, a LinkedIn commenter with their headline. treg fetches, jev decides, your code acts on the numbers.</p><p class="sl-note">Every workflow above is that loop. The prompts in each tab set both up for your agent.</p></div>
         <div class="sl-r"><div class="loop"><div class="lp-step"><svg class="lg" viewBox="0 0 512 512" aria-hidden="true"><rect width="512" height="512" rx="112" fill="#101010"/><rect x="111" y="111" width="140.5" height="140.5" rx="20" fill="#fff"/><rect x="260.5" y="260.5" width="140.5" height="140.5" rx="20" fill="#fff"/></svg><b>treg</b><span>fetch the facts</span></div><i>→</i><div class="lp-step"><img class="lg" src="logos/jev.png" alt=""><b>jev</b><span>typed verdict</span></div><i>→</i><div class="lp-step"><span class="you">you</span><b>your code</b><span>act on the number</span></div></div></div></article>
 
     </div></div>
@@ -1287,14 +1290,16 @@ document.querySelectorAll('.expand-all[data-wrap]').forEach(b => b.onclick = () 
 
 /* the learn deck */
 (() => {
-  const track = $('dk-track'), slides = [...track.children], dots = $('dk-dots'); let i = 0;
+  const track = $('dk-track'), slides = [...track.children], dots = $('dk-dots'); let i = 0, seen = false;
   dots.innerHTML = slides.map((_, k) => `<button type="button" aria-label="Slide ${k + 1}"></button>`).join('');
-  const go = k => { i = (k + slides.length) % slides.length; track.style.transform = `translateX(-${i * 100}%)`; [...dots.children].forEach((d, k2) => d.setAttribute('aria-current', String(k2 === i))); };
+  const go = k => { i = (k + slides.length) % slides.length; track.style.transform = `translateX(-${i * 100}%)`; slides.forEach((sl, k2) => sl.classList.toggle('on', k2 === i && (seen || k !== 0))); [...dots.children].forEach((d, k2) => d.setAttribute('aria-current', String(k2 === i))); };
   [...dots.children].forEach((d, k) => d.onclick = () => go(k));
   $('dk-prev').onclick = () => go(i - 1); $('dk-next').onclick = () => go(i + 1);
   $('deck').addEventListener('keydown', e => { if (e.key === 'ArrowRight') go(i + 1); if (e.key === 'ArrowLeft') go(i - 1); });
   let x0 = null; track.addEventListener('touchstart', e => { x0 = e.touches[0].clientX; }, { passive: true }); track.addEventListener('touchend', e => { if (x0 == null) return; const dx = e.changedTouches[0].clientX - x0; if (Math.abs(dx) > 40) go(i + (dx < 0 ? 1 : -1)); x0 = null; });
-  go(0);
+  go(0); slides[0].classList.remove('on');
+  const deckIO = new IntersectionObserver(es => { if (es.some(e => e.isIntersecting)) { seen = true; slides[i].classList.add('on'); deckIO.disconnect(); } }, { threshold: .2 });
+  deckIO.observe($('deck'));
 })();
 
 /* copy buttons */
