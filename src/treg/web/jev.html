@@ -4,10 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="referrer" content="no-referrer">
-<title>Jev workflow for GTM — Typed Decisions on Live Data | treg</title>
+<title>Jev for GTM workflow — Typed Decisions on Live Data | treg</title>
 <meta name="description" content="jev answers typed questions (choice, yes/no, score) with probabilities, in under a second, at $0.042 per million tokens. treg feeds it live data from one key. Three agent recipes with prompts to copy: launch radar on X, signup triage, signal-first leads.">
 <link rel="canonical" href="https://treg.to/jev"/>
-<meta property="og:title" content="Jev workflow for GTM | treg"/>
+<meta property="og:title" content="Jev for GTM workflow | treg"/>
 <meta property="og:description" content="Typed decisions on live data. Three agent recipes: launch radar on X, signup triage, signal-first leads. Prompts to copy, demos underneath."/>
 <meta property="og:url" content="https://treg.to/jev"/>
 <meta property="og:type" content="website"/>
@@ -86,7 +86,9 @@
   .pwrap { position: relative; }
   .pbtn .agents { display: inline-flex; gap: 4px; margin: 0 2px; }
   .pbtn .agents img { width: 18px; height: 18px; border-radius: 5px; box-shadow: 0 0 0 1px rgba(0,0,0,.06); }
-  .pbtn i { font-style: normal; color: var(--muted); font-size: 11px; }
+  .pbtn i { font-style: normal; opacity: .7; font-size: 11px; }
+  .pbtn .agents img { box-shadow: 0 0 0 1px rgba(255,255,255,.25); }
+  .pill svg.ic { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
   .pop { position: absolute; top: calc(100% + 8px); right: 0; z-index: 60; width: min(760px, calc(100vw - 48px)); background: #fff; border: 1px solid var(--line); border-radius: 16px; box-shadow: 0 30px 80px -30px rgba(20,18,12,.45); overflow: hidden; text-align: left; }
   .pop .ph { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px 10px 16px; border-bottom: 1px solid var(--line); background: var(--card); font-family: var(--mono); font-size: 12px; color: var(--muted); }
   .pop pre { margin: 0; padding: 16px 18px; font-family: var(--mono); font-size: 12.5px; line-height: 1.6; white-space: pre-wrap; word-break: break-word; color: #2a2926; max-height: 55vh; overflow: auto; }
@@ -305,7 +307,7 @@
 </nav>
 
 <header class="hero">
-  <h1><img class="jev-mark" src="logos/jev.png" alt="jev"> Jev workflow<br>for GTM</h1>
+  <h1><img class="jev-mark" src="logos/jev.png" alt="jev"> Jev for<br>GTM workflow</h1>
   <div class="powered">Powered by <a href="/" aria-label="treg home"><svg viewBox="0 0 512 512" aria-hidden="true"><rect width="512" height="512" rx="112" fill="#101010"/><rect x="111" y="111" width="140.5" height="140.5" rx="20" fill="#fff"/><rect x="260.5" y="260.5" width="140.5" height="140.5" rx="20" fill="#fff"/></svg> Treg</a></div>
   <p class="sub"><strong>jev</strong> is a decision model: you hand it a JSON state and typed questions (a choice, a yes/no, a score) and it returns probabilities, not prose, in under a second. <strong>treg</strong> hands it the data: X, LinkedIn, email verification, person and company enrichment, one key. Three workflows below, each with a prompt your agent can run and the demo it produces.</p>
   <div class="ctas"><a class="pill dark" href="#recipes">See the workflows</a><a class="pill" href="/app?ref=jev">Set up treg</a></div>
@@ -321,8 +323,8 @@
     </div>
 <div class="tab" id="xboost">
     <div class="demo" id="xb-demo">
-      <div class="dh"><div><h3>Launch posts on X, last 24h</h3><div class="receipt" id="xb-receipt">loading the latest run…</div></div><div class="acts"><button class="pill sm" id="xb-replay">Replay the run</button><button class="pill sm" id="xb-stop" hidden>Stop</button><div class="pwrap"><button class="pill sm pbtn" aria-expanded="false" aria-controls="pop-xboost">Prompt for <span class="agents"><img src="media/people-search/claude-code.png" alt="Claude Code"><img src="media/people-search/codex.png" alt="Codex"><img src="media/people-search/openclaw.png" alt="OpenClaw"><img src="media/people-search/hermes.png" alt="Hermes"></span> <i>▾</i></button>
-          <div class="pop" id="pop-xboost" hidden><div class="ph"><span>Paste into your agent</span><button class="pill sm" data-copy="p-xboost">Copy prompt</button></div><pre id="p-xboost">Build me a daily "launch radar" for X and a page to browse it.
+      <div class="dh"><div><h3>Launch posts on X, last 24h</h3><div class="receipt" id="xb-receipt">loading the latest run…</div></div><div class="acts"><button class="pill sm" id="xb-replay"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg> Replay the run</button><button class="pill sm" id="xb-stop" hidden>Stop</button><div class="pwrap"><button class="pill sm dark pbtn" aria-expanded="false" aria-controls="pop-xboost">Prompt for <span class="agents"><img src="media/people-search/claude-code.png" alt="Claude Code"><img src="media/people-search/codex.png" alt="Codex"><img src="media/people-search/openclaw.png" alt="OpenClaw"><img src="media/people-search/hermes.png" alt="Hermes"></span> <i>▾</i></button>
+          <div class="pop" id="pop-xboost" hidden><div class="ph"><span>Paste into your agent</span><button class="pill sm dark" data-copy="p-xboost">Copy prompt</button></div><pre id="p-xboost">Build me a daily "launch radar" for X and a page to browse it.
 
 <b>Setup</b>
 1. Install treg and log in: `curl -fsSL https://treg.to/install.sh | sh`, then `treg login`.
@@ -384,8 +386,8 @@
 
 <div class="tab" id="signals" hidden>
     <div class="demo" id="sg-demo">
-      <div class="dh"><div><h3>People engaging with GTM-tooling posts this week</h3><div class="receipt" id="sg-receipt"></div></div><div class="acts"><button class="pill sm" id="sg-replay">Replay the run</button><button class="pill sm" id="sg-stop" hidden>Stop</button><div class="pwrap"><button class="pill sm pbtn" aria-expanded="false" aria-controls="pop-signals">Prompt for <span class="agents"><img src="media/people-search/claude-code.png" alt="Claude Code"><img src="media/people-search/codex.png" alt="Codex"><img src="media/people-search/openclaw.png" alt="OpenClaw"><img src="media/people-search/hermes.png" alt="Hermes"></span> <i>▾</i></button>
-          <div class="pop" id="pop-signals" hidden><div class="ph"><span>Paste into your agent</span><button class="pill sm" data-copy="p-signals">Copy prompt</button></div><pre id="p-signals">Build a signal-first lead finder for &lt;my product&gt; and a page to browse the run.
+      <div class="dh"><div><h3>People engaging with GTM-tooling posts this week</h3><div class="receipt" id="sg-receipt"></div></div><div class="acts"><button class="pill sm" id="sg-replay"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg> Replay the run</button><button class="pill sm" id="sg-stop" hidden>Stop</button><div class="pwrap"><button class="pill sm dark pbtn" aria-expanded="false" aria-controls="pop-signals">Prompt for <span class="agents"><img src="media/people-search/claude-code.png" alt="Claude Code"><img src="media/people-search/codex.png" alt="Codex"><img src="media/people-search/openclaw.png" alt="OpenClaw"><img src="media/people-search/hermes.png" alt="Hermes"></span> <i>▾</i></button>
+          <div class="pop" id="pop-signals" hidden><div class="ph"><span>Paste into your agent</span><button class="pill sm dark" data-copy="p-signals">Copy prompt</button></div><pre id="p-signals">Build a signal-first lead finder for &lt;my product&gt; and a page to browse the run.
 
 <b>Setup</b>
 1. Install treg and log in: `curl -fsSL https://treg.to/install.sh | sh`, then `treg login`.
@@ -425,8 +427,8 @@
 
 <div class="tab" id="triage" hidden>
     <div class="demo" id="tr-demo">
-      <div class="dh"><div><h3>Signups, one day</h3><div class="receipt" id="tr-receipt"></div></div><div class="acts"><button class="pill sm" id="tr-replay">Replay the run</button><button class="pill sm" id="tr-stop" hidden>Stop</button><div class="pwrap"><button class="pill sm pbtn" aria-expanded="false" aria-controls="pop-triage">Prompt for <span class="agents"><img src="media/people-search/claude-code.png" alt="Claude Code"><img src="media/people-search/codex.png" alt="Codex"><img src="media/people-search/openclaw.png" alt="OpenClaw"><img src="media/people-search/hermes.png" alt="Hermes"></span> <i>▾</i></button>
-          <div class="pop" id="pop-triage" hidden><div class="ph"><span>Paste into your agent</span><button class="pill sm" data-copy="p-triage">Copy prompt</button></div><pre id="p-triage">Build a signup triage that runs every hour over new signups and posts the interesting ones to Slack.
+      <div class="dh"><div><h3>Signups, one day</h3><div class="receipt" id="tr-receipt"></div></div><div class="acts"><button class="pill sm" id="tr-replay"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg> Replay the run</button><button class="pill sm" id="tr-stop" hidden>Stop</button><div class="pwrap"><button class="pill sm dark pbtn" aria-expanded="false" aria-controls="pop-triage">Prompt for <span class="agents"><img src="media/people-search/claude-code.png" alt="Claude Code"><img src="media/people-search/codex.png" alt="Codex"><img src="media/people-search/openclaw.png" alt="OpenClaw"><img src="media/people-search/hermes.png" alt="Hermes"></span> <i>▾</i></button>
+          <div class="pop" id="pop-triage" hidden><div class="ph"><span>Paste into your agent</span><button class="pill sm dark" data-copy="p-triage">Copy prompt</button></div><pre id="p-triage">Build a signup triage that runs every hour over new signups and posts the interesting ones to Slack.
 
 <b>Setup</b>
 1. Install treg and log in: `curl -fsSL https://treg.to/install.sh | sh`, then `treg login`.
@@ -667,7 +669,7 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape' && !drawer.hi
     posts.forEach(p => place(p, false));
     counts();
     const c = RUN.costs || {};
-    $('xb-receipt').innerHTML = RUN.ran_at ? `<span>ran <b>${esc(String(RUN.ran_at).replace('T',' ').replace('+00:00',' UTC'))}</b></span><span><b>${RUN.posts_found}</b> found, <b>${(RUN.posts||[]).length}</b> judged in <b>${RUN.seconds}s</b></span><span>treg <b>${fmt$(c.treg||0)}</b></span><span>jev <b>${fmt$(c.jev||0)}</b> at list price</span>${RUN.snapshot?'<span>bundled snapshot</span>':''}` : '';
+    $('xb-receipt').innerHTML = RUN.ran_at ? `<span>ran <b>${esc(String(RUN.ran_at).replace('T',' ').replace('+00:00',' UTC'))}</b></span><span><b>${RUN.posts_found}</b> found, <b>${(RUN.posts||[]).length}</b> judged in <b>${RUN.seconds}s</b></span><span>treg <b>${fmt$(c.treg||0)}</b></span><span>jev <b>${fmt$(c.jev||0)}</b> at list price</span>` : '';
     $('xb-note').textContent = RUN.live ? '' : 'The judge input needs the live demo, which this server has not configured. The board shows the last recorded run.';
     $('xb-go').disabled = !RUN.live;
   }
@@ -923,7 +925,7 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape' && !drawer.hi
     RUN = run; posts = run.posts; leads = run.leads.slice().sort((a, b) => b.fit - a.fit);
     byOrder = run.leads.slice().sort((a, b) => (a.order ?? 0) - (b.order ?? 0)); emailed = leads.filter(l => l.contact);
     const c = run.costs, treg = (c.treg_search||0) + (c.treg_engagement||0) + (c.treg_email||0);
-    $('sg-receipt').innerHTML = `<span>topics <b>${run.topics.map(esc).join(' / ')}</b></span><span><b>${run.seconds}s</b> total, jev ranked ${run.people_total} in <b>${run.rank_seconds}s</b></span><span>treg <b>${fmt$(treg)}</b></span><span>jev <b>${fmt$(c.jev||0)}</b></span>`;
+    $('sg-receipt').innerHTML = `<span><b>${run.seconds}s</b> total, jev ranked ${run.people_total} in <b>${run.rank_seconds}s</b></span><span>treg <b>${fmt$(treg)}</b></span><span>jev <b>${fmt$(c.jev||0)}</b></span>`;
     buildPosts(); stop();
   });
 })();
