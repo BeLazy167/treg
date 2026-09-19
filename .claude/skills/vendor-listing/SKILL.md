@@ -168,7 +168,7 @@ uv run --frozen python -m pytest -q
   (#573: 64% of three days of `treg.people.email.find` 502s were exactly this).
   - LimaData answered 404 for "no email"; the cost `note` said "a 404 miss is free" but no
     `miss:` block existed. Prose in `note` is documentation; only the `miss:` block is read.
-  - Prospeo answers 400 for BOTH `NO_MATCH` (a miss) and `INVALID_DATA` (a real error). When
+  - Prospeo answers 400 for BOTH `NO_MATCH` (a miss) and `INVALID_DATAPOINTS` (a real error). When
     status alone cannot separate them the declaration needs a body predicate, not a
     `provider == "x"` branch in `route.py` — provider knowledge lives in YAML and adapters only.
   - The hit-only `example_response` hides the miss shape from every later reader; capture the

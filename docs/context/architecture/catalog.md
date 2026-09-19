@@ -1956,10 +1956,15 @@ Five rules worth keeping:
   same). Endpoints with evidenced miss behaviour carry a `miss: {status, means}` block in their
   YAML, surfaced through `endpoint_view` — so an agent reads "404 = no match, don't retry" instead
   of treating an expected empty answer as a failure. Only annotate what the wire has demonstrated.
-  **The router reads the same block** (`route._declared_miss`): a child answering the declared
-  4xx is a MISS — the waterfall goes on and a fully-missed call ends as a 200 miss, never
-  `route_failed`. Where one status carries both a miss and a fault, `when:` adds a body predicate
-  in the adapter expression language, evaluated only on a JSON-object body: prospeo answers 400
+  **The router and the arena read the same block through one function**
+  (`routing.contracts.declared_miss`, wrapped by `route._declared_miss` and called by
+  `arena.classify`): a child answering the declared 4xx is a MISS — the waterfall goes on and a
+  fully-missed call ends as a 200 miss, never `route_failed`. Where one status carries both a
+  miss and a fault, `when:` adds a body predicate in the adapter expression language, evaluated
+  only on a JSON-object body (`catalog_validate.py` rejects a `when` that is not a comparison or
+  call, since a misspelt path would evaluate False forever and silently revert the endpoint to
+  "every 4xx is an error"; `endpoint_view` shows agents `status` and `means` but not `when`):
+  prospeo answers 400
   for `NO_MATCH` (a miss) and for `INVALID_DATAPOINTS` (a fault), so its three person endpoints
   declare `miss: {status: 400, when: "error_code == 'NO_MATCH'"}`. Provider knowledge lives in
   the YAML; `route.py` never names a provider. Live 2026-09-18: 64% of three days of

@@ -751,7 +751,7 @@ def endpoint_view(ep: dict, provider_display: str, cat: Catalog | None = None) -
         "platform_blocked": ep.get("platform_blocked") or None,
         # "no match" semantics, when the endpoint has them — an agent that reads `miss` stops
         # treating an expected empty answer as a failed call (and stops retrying it).
-        "miss": ep.get("miss"),
+        "miss": ({k: v for k, v in ep["miss"].items() if k != "when"} if isinstance(ep.get("miss"), dict) else ep.get("miss")),
         # Only direct-id lookups can return a marked row; discovery surfaces never include one.
         "status": ep.get("status") or None,
         "status_note": ep.get("status_note") or None,

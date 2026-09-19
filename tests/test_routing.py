@@ -2349,9 +2349,14 @@ def test_declared_miss_honours_when_predicate_and_never_crashes():
 
 def test_prospeo_and_limadata_person_finders_declare_their_miss():
     cat = catalog_store.load()
+    from treg.domain.catalog.routing.contracts import declared_miss
     for eid in ("prospeo.people.email.find", "prospeo.people.phone.find", "prospeo.people.enrich"):
-        m = cat.by_id[eid]["miss"]
-        assert m["status"] == 400 and "NO_MATCH" in m["when"], eid
+        ep = cat.by_id[eid]
+        assert ep["miss"]["status"] == 400, eid
+        # evaluate the predicate, not just its spelling: a misspelt path would silently never match
+        assert declared_miss(ep, 400, {"error": True, "error_code": "NO_MATCH"}), eid
+        assert not declared_miss(ep, 400, {"error": True, "error_code": "INVALID_DATAPOINTS"}), eid
+        assert "when" not in catalog_store.endpoint_view(ep, "Prospeo", cat)["miss"], "internal predicate leaks to agents"
     for eid in ("limadata.people.email.find.name", "limadata.people.email.find.linkedin", "limadata.people.phone.find"):
         assert cat.by_id[eid]["miss"]["status"] == 404, eid
 
@@ -2392,3 +2397,17 @@ def test_linkedin_url_only_trusts_a_linkedin_host():
     # a path that merely mentions linkedin.com is a handle-shaped string, never promoted to that host
     assert P.linkedin_url("evil.example/?linkedin.com/in/x") == "https://www.linkedin.com/in/evil.example/?linkedin.com/in/x"
     assert P.linkedin_url("uk.linkedin.com/in/x") == "https://uk.linkedin.com/in/x"
+
+
+def test_arena_and_router_read_the_miss_block_the_same_way():
+    from treg.domain import arena
+    cat = catalog_store.load()
+    ep = cat.by_id["prospeo.people.email.find"]; ad = cat.adapters[ep["id"]]; contract = cat.contracts["people.email.find"]
+    assert arena.classify(contract, ad, ep, 400, {"error": True, "error_code": "NO_MATCH"})[0] == "miss"
+    assert arena.classify(contract, ad, ep, 400, {"error": True, "error_code": "INVALID_DATAPOINTS"})[0] == "error"
+
+
+def test_linkedin_url_lowercases_the_host_so_the_handle_derives():
+    from treg.domain.catalog.routing import paths as P
+    assert P.linkedin_url("LinkedIn.com/in/Patrick") == "https://linkedin.com/in/Patrick"
+    assert P.linkedin_handle(P.linkedin_url("WWW.LinkedIn.com/in/Patrick")) == "Patrick"

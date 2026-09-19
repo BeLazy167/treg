@@ -56,6 +56,7 @@ from treg.domain.catalog.store import COST_SOURCES as _SOURCES  # noqa: E402
 from treg.domain.catalog.store import COST_UNITS as _UNITS  # noqa: E402
 from treg.domain.catalog.store import CONFIDENCES as _CONFIDENCES  # noqa: E402
 from treg.domain.catalog.store import effective_async_descriptor  # noqa: E402
+from treg.domain.catalog.routing import paths as _paths  # noqa: E402
 
 SCOPES = {"any_account", "own_account"}
 METHODS = {"GET", "POST", "PUT", "PATCH", "DELETE"}
@@ -896,6 +897,16 @@ def main(argv: list[str]) -> int:
             for f in REQUIRED[tier]:
                 if not ep.get(f):
                     fail(errors, where, f"missing required field '{f}'")
+            miss = ep.get("miss")
+            if isinstance(miss, dict) and miss.get("when") is not None:
+                # The router evaluates `when` against the provider body; a misspelt path parses
+                # fine, evaluates False on every body, and silently turns every declared miss back
+                # into an error. Require a comparison or a call the expression language accepts.
+                when = miss["when"]
+                if not isinstance(when, str) or not (_paths._CMP.match(when.strip()) or _paths._CALL.match(when.strip())):
+                    fail(errors, where, f"miss.when must be a comparison or call in the adapter expression language, got {when!r}")
+                elif miss.get("status") is None:
+                    fail(errors, where, "miss.when needs miss.status (the 4xx it narrows)")
             if eid in seen_ids:
                 fail(errors, where, f"duplicate id (also in {seen_ids[eid]})")
             seen_ids[eid] = name

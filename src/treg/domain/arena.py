@@ -6,6 +6,8 @@ import re
 from typing import Any
 from urllib.parse import urlsplit, urlunsplit
 
+from .catalog.routing.contracts import declared_miss
+
 VERSION = "2"
 MAX_RESULT_BYTES = 256_000
 MAX_BATCH_RAW_BYTES = 2_000_000
@@ -209,8 +211,7 @@ def required_credit(attempts: list[dict], mode: str) -> int:
 
 def classify(contract, adapter, endpoint: dict, status: int, doc: Any) -> tuple[str, dict]:
     """Match the routed lookup's structural hit rule; retain verification qualifiers separately."""
-    miss_status = (endpoint.get("miss") or {}).get("status")
-    if status == miss_status and 400 <= status < 500:
+    if declared_miss(endpoint, status, doc):   # the router's reader of the `miss:` block, predicate included
         return "miss", {}
     if not 200 <= status < 300:
         return "error", {}

@@ -34,8 +34,7 @@ from ...domain.capacity.view import view as capacity_view
 from ...domain.capacity.signatures import classify as classify_capacity
 from ...domain.catalog import stats as endpoint_stats
 from ...domain.catalog import store as catalog_store
-from ...domain.catalog.routing import paths as P
-from ...domain.catalog.routing.contracts import canonical_identity
+from ...domain.catalog.routing.contracts import canonical_identity, declared_miss, miss_status
 from ...domain.catalog.routing.plan import (
     MAX_ERROR_FALLBACKS, Candidate, Plan, candidates_for, cost_at, ignored_filters, rank,
 )
@@ -103,44 +102,18 @@ def _free_on_failure(cand: Candidate) -> bool:
 
 
 def _miss_status(endpoint: dict) -> int | None:
-    """The ERROR status this endpoint's YAML declares as "no result" (`miss: {status, means}`),
-    or None when an error status means what it says. Only a 4xx counts: a `status: 200` block
-    (tikhub's "an unknown id still answers 200 with a null body") documents a 2xx the adapter's
-    own `miss` predicate decides, and honouring it here would call every success a miss."""
-    m = endpoint.get("miss")
-    if isinstance(m, dict) and m.get("status") is not None:
-        try:
-            status = int(m["status"])
-        except (TypeError, ValueError):
-            return None
-        return status if 400 <= status < 500 else None
-    return None
+    """See `routing.contracts.miss_status` — kept as the router's name for it (tests pin it)."""
+    return miss_status(endpoint)
 
 
 def _declared_miss(endpoint: dict, status: int, raw: bytes) -> bool:
-    """True when a child's ERROR status is the endpoint's declared "no result" answer.
-
-    `miss: {status}` alone matches on status. `miss: {status, when}` adds a body predicate in the
-    adapter expression language (`when: "error_code == 'NO_MATCH'"`) for providers that answer
-    the SAME status for a miss and a real request error — prospeo 400s both `NO_MATCH` (a miss)
-    and `INVALID_DATAPOINTS` (a fault). The provider knowledge stays in the YAML; nothing here
-    names a provider. A body that is not a JSON object never satisfies a predicate."""
-    if status != _miss_status(endpoint):
+    """See `routing.contracts.declared_miss`: the router and the arena read the `miss:` block
+    through the same function, so a prospeo 400 INVALID_DATAPOINTS is an error in both."""
+    if not declared_miss(endpoint, status, raw):
         return False
-    when = (endpoint.get("miss") or {}).get("when")
-    if not when:
-        return True
-    try:
-        doc = json.loads(raw)
-    except ValueError:
-        return False
-    if not isinstance(doc, dict):
-        return False
-    try:
-        return bool(P.evaluate(str(when), doc))
-    except Exception:  # noqa: BLE001 — a broken predicate must read as "not a miss", never crash the parent
-        log.warning("miss.when predicate failed for %s", endpoint.get("id"), exc_info=True)
-        return False
+    if (endpoint.get("miss") or {}).get("when"):
+        log.debug("declared miss by predicate on %s", endpoint.get("id"))
+    return True
 
 
 DEFAULT_MAX_COST_MICRO = 1_000_000  # $1.00 per routed call unless the caller says otherwise — a runaway guard, not a budget
