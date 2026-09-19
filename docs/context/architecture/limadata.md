@@ -151,3 +151,12 @@ charges shown by response evidence and the account activity page.
 An isolated local server exercised the real `POST /connections/token` path with the free probe. A
 bogus key was rejected with 422 after the upstream 401. The assigned key connected with 200 after
 the upstream authenticated 400. The key and raw upstream bodies were not printed or committed.
+
+## Routed miss declaration
+
+The work-email and phone finders answer HTTP 404 for "nothing found" (free, but slow: the 404
+arrives after the search, median about 10 s in production). All three routed finders
+(`people.email.find.name`, `people.email.find.linkedin`, `people.phone.find`) declare
+`miss: {status: 404, means}` so the router reads the 404 as a miss. The cost note had said "a 404
+miss is free" since listing, but the router reads only the `miss:` block: until 2026-09-18 every
+LimaData miss counted as a routed error and turned an otherwise clean waterfall into a 502.

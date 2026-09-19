@@ -1956,9 +1956,21 @@ Five rules worth keeping:
   same). Endpoints with evidenced miss behaviour carry a `miss: {status, means}` block in their
   YAML, surfaced through `endpoint_view` — so an agent reads "404 = no match, don't retry" instead
   of treating an expected empty answer as a failure. Only annotate what the wire has demonstrated.
-  **The router reads the same block** (`route._miss_status`): a child answering the declared
-  4xx is a MISS — the waterfall goes on and a fully-missed call ends as a 200 miss, never
-  `route_failed`. Before 2026-09-04 only PDL carried the block; the annotated set (aviato, hunter,
+  **The router and the arena read the same block through one function**
+  (`routing.contracts.declared_miss`, wrapped by `route._declared_miss` and called by
+  `arena.classify`): a child answering the declared 4xx is a MISS — the waterfall goes on and a
+  fully-missed call ends as a 200 miss, never `route_failed`. Where one status carries both a
+  miss and a fault, `when:` adds a body predicate in the adapter expression language, evaluated
+  only on a JSON-object body (`catalog_validate.py` rejects a `when` that is not a comparison or
+  call, since a misspelt path would evaluate False forever and silently revert the endpoint to
+  "every 4xx is an error"; `endpoint_view` shows agents `status` and `means` but not `when`):
+  prospeo answers 400
+  for `NO_MATCH` (a miss) and for `INVALID_DATAPOINTS` (a fault), so its three person endpoints
+  declare `miss: {status: 400, when: "error_code == 'NO_MATCH'"}`. Provider knowledge lives in
+  the YAML; `route.py` never names a provider. Live 2026-09-18: 64% of three days of
+  `treg.people.email.find` 502s were a limadata 404 or a prospeo NO_MATCH among otherwise clean
+  misses — the block had never been declared on either (limadata's cost note said "a 404 miss is
+  free"; prose is not read by the router). Before 2026-09-04 only PDL carried the block; the annotated set (aviato, hunter,
   leadmagic, findymail, companyenrich, thecompaniesapi, fiber-ai, scrapecreators linkedin) came
   from 30 days of prod children answering 404 with a "not found" body, and the router treated each
   as a rejected request: 1,824 `phone.find` parents were 502 in that window, 768 of them with no
@@ -2179,8 +2191,12 @@ to choose (`docs/CAPABILITY-ROUTING-PLAN.md`). Everything else in the catalog st
   is a bound on the reported-charge risk, not on the estimate — see money.md)
   — never the same provider again, within the error bound; if every one rejects it, the caller
   gets `route_caller_fault` naming each attempt. A 4xx the endpoint's YAML declares as its
-  "no result" status (`miss: {status: 404}`, see "`miss` semantics ride on the endpoint") is a
-  MISS instead, not a fault. Our 5xx/503/429 or a vendor 5xx/429/402 = error →
+  "no result" status (`miss: {status: 404}` or `miss: {status: 400, when: …}`, see "`miss`
+  semantics ride on the endpoint") is a MISS instead, not a fault. An adapter method
+  (`to_upstream`, `from_upstream`, `is_miss`) that throws is recorded as an error attempt and the
+  waterfall continues; the identity's `linkedin_url` is normalised once at planning time
+  (`canonical_identity`: scheme-less URL or bare handle → public URL) so no adapter forwards an
+  invalid URL. Our 5xx/503/429 or a vendor 5xx/429/402 = error →
   next candidate, at most two extra, only for idempotent contracts. A treg-side
   `tool_access_denied`, `policy_denied`, or `capability_pinned` refusal is local to that child and
   follows the same error fallback. A platform child's vendor 401/403 also falls back because it

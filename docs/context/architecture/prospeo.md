@@ -128,3 +128,12 @@ phone reveal reserved 245,000 micro-USD, observed zero and settled zero. Audit r
 `credential_tier=platform`, proving server-side key selection, and each hold had exactly one matching
 settlement. `tests/test_marketplace_call.py` separately pins the non-free phone charge and explicit
 email/phone field-level misses.
+
+## Routed miss declaration
+
+`prospeo.people.email.find`, `prospeo.people.phone.find` and `prospeo.people.enrich` answer HTTP
+400 both for "nobody matched" (`{"error": true, "error_code": "NO_MATCH"}`, free) and for a bad
+request (`INVALID_DATAPOINTS`). Status alone cannot separate them, so each carries
+`miss: {status: 400, when: "error_code == 'NO_MATCH'", means}`; the router treats the NO_MATCH
+body as a miss and any other 400 as a vendor fault. Before 2026-09-18 the block was absent and
+every Prospeo miss counted as a routed error (live: 7,455 NO_MATCH bodies in three days).
