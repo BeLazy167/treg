@@ -80,7 +80,6 @@
   .tabs button[aria-selected="true"] { background: var(--ink); color: #fff; border-color: var(--ink); }
   .tabs button i { font-style: normal; font-family: var(--mono); font-size: 11px; opacity: .7; }
   .tab[hidden] { display: none; }
-  .demo .dh { position: relative; z-index: 2; display: grid; grid-template-columns: minmax(0,1fr) auto; align-items: start; }
   @media (max-width: 760px) { .demo .dh { grid-template-columns: 1fr; } .pop { right: auto; left: 0; } }
   .demo .dh .receipt { margin-top: 6px; }
   .demo .acts { display: flex; gap: 8px; align-items: center; flex-wrap: nowrap; padding-top: 2px; }
@@ -95,7 +94,7 @@
 
   /* demo frame */
   .demo { margin-top: 0; border: 1px solid var(--line); border-radius: 20px; background: var(--card); padding: 14px; }
-  .demo .dh { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 4px 6px 12px; }
+  .demo .dh { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 12px; align-items: start; padding: 4px 6px 12px; position: relative; z-index: 2; }
   .demo .dh h3 { margin: 0; font-family: var(--display); font-weight: 500; font-size: 18px; letter-spacing: -.01em; }
   .receipt { font-family: var(--mono); font-size: 11.5px; color: var(--muted); display: flex; gap: 16px; flex-wrap: wrap; }
   .receipt b { color: var(--ink); font-weight: 500; }
