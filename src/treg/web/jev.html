@@ -656,6 +656,11 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape' && !drawer.hi
   const tagsFor = p => `${p.manual?'<span class="manual">you asked</span>':''}<span class="${p.distribution}">${DIST[p.distribution]} ${(+p.distribution_probs[p.distribution]).toFixed(2)}</span><span>authenticity ${(+p.authenticity).toFixed(1)} / 3</span>${LTYPE[p.launch_type]&&LANE(p)!=='irrelevant'?`<span>${LTYPE[p.launch_type]}</span>`:''}`;
   // replay: every card starts in the inbox, jev reads one at a time and a ghost flies it into its lane
   function fly(btn, target) {
+    if (!target.offsetParent) {   // the lane is collapsed: nothing to fly to, so the card fades out of the inbox
+      if (reduced) { target.appendChild(btn); return; }
+      btn.animate([{opacity:1, transform:'none'}, {opacity:0, transform:'scale(.96)'}], {duration:260, easing:'ease-out'}).onfinish = () => { target.appendChild(btn); $('xb-n-inbox').textContent = $('xb-kb-inbox').children.length; };
+      return;
+    }
     const first = btn.getBoundingClientRect(); target.appendChild(btn); target.scrollTop = target.scrollHeight;
     if (reduced) return;
     const last = btn.getBoundingClientRect(), ghost = btn.cloneNode(true);
@@ -777,7 +782,7 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape' && !drawer.hi
   let DATA = [], shown = 0, laneFilter = null, current = 0, timer = null, hours, maxH = 1, dots = {};
   const expanded = new Set();
   const laneRank = {enterprise:0, smb:1, influencer_affiliate:2, fraud:3, normal:4};
-  const face = r => r.person && r.person.full_name ? `https://i.pravatar.cc/96?u=${encodeURIComponent(r.email)}` : null;
+  const face = r => r.person && r.person.full_name && r.faceIdx != null ? `https://randomuser.me/api/portraits/${r.faceIdx % 2 ? 'women' : 'men'}/${Math.floor(r.faceIdx / 2) % 100}.jpg` : null;
   const pav = (r, cls) => `<span class="pav ${cls}" style="background:${hue(r.email)}">${face(r) ? `<img src="${face(r)}" alt="" loading="lazy" onerror="this.remove()">` : ''}${esc(r.email[0].toUpperCase())}</span>`;
   const kv = (k, v, cls='') => `<span class="k">${k}</span><span class="v ${cls}">${esc(v)}</span>`;
 
@@ -856,7 +861,7 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape' && !drawer.hi
   $('tr-replay').onclick = replay; $('tr-stop').onclick = stop;
 
   fetch('media/jev/triage.json', {cache: 'no-cache'}).then(r => r.json()).then(doc => { const rows = doc.rows;
-    DATA = rows; DATA.forEach((r, i) => { r.i = i; r.lane = lane(r); r.hour = new Date(r.usage.signed_up_at + 'Z').getUTCHours(); });
+    DATA = rows; let fi = 0; DATA.forEach((r, i) => { r.i = i; r.lane = lane(r); r.hour = new Date(r.usage.signed_up_at + 'Z').getUTCHours(); if (r.person && r.person.full_name) r.faceIdx = fi++; });
     shown = DATA.length;
     const totalCost = DATA.reduce((a, r) => a + r.cost, 0);
     $('tr-receipt').innerHTML = `<span><b>${fmt(DATA.length)}</b> signups</span><span>enrichment + jev <b>$${totalCost.toFixed(2)}</b></span><span><b>$${(totalCost / DATA.length).toFixed(4)}</b> per signup</span>`;
@@ -974,7 +979,7 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape' && !drawer.hi
     const batch = Math.max(1, Math.round(byOrder.length / 40));
     const tick = () => {
       if (shown.posts < posts.length) { shown.posts = Math.min(posts.length, shown.posts + 2); updatePosts(); funnel(); timer = setTimeout(tick, 45); return; }
-      if (shown.scanned < posts.length) { shown.scanned++; updatePosts(); funnel(); timer = setTimeout(tick, 380); return; }
+      if (shown.scanned < posts.length) { shown.scanned++; updatePosts(); funnel(); timer = setTimeout(tick, 140); return; }
       if (shown.ranked < byOrder.length) { shown.ranked = shown.people; shown.people = Math.min(byOrder.length, shown.people + batch); funnel(); renderFilters(); renderList(); timer = setTimeout(tick, 160); return; }
       if (shown.emails < emailed.length) {
         if (!finding.size) { emailed.slice(shown.emails, shown.emails + 8).forEach(l => finding.add(l.id)); renderList(); timer = setTimeout(tick, 900); return; }
