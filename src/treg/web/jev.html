@@ -226,8 +226,9 @@
   .pav { position: relative; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; font-family: var(--display); font-weight: 600; font-size: 11px; color: #fff; overflow: hidden; flex: 0 0 auto; }
   .pav img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
   .pav.lg { width: 44px; height: 44px; font-size: 16px; border-radius: 10px; }
-  .row .pav::after { content: ""; position: absolute; right: -1px; bottom: -1px; width: 9px; height: 9px; border-radius: 50%; border: 2px solid #fff; background: var(--muted); }
-  .row.enterprise .pav::after { background: var(--green); } .row.fraud .pav::after { background: var(--red); } .row.influencer_affiliate .pav::after { background: var(--amber); } .row.smb .pav::after { background: var(--blue); }
+  .row .pw { position: relative; width: 30px; height: 30px; }
+  .row .pw::after { content: ""; position: absolute; right: -2px; bottom: -2px; width: 10px; height: 10px; border-radius: 50%; border: 2px solid #fff; background: var(--muted); box-sizing: border-box; }
+  .row.enterprise .pw::after { background: var(--green); } .row.fraud .pw::after { background: var(--red); } .row.influencer_affiliate .pw::after { background: var(--amber); } .row.smb .pw::after { background: var(--blue); }
   .row.enterprise .stripe { background: var(--green); } .row.fraud .stripe { background: var(--red); } .row.influencer_affiliate .stripe { background: var(--amber); } .row.smb .stripe { background: var(--blue); }
   .row .e { font-weight: 500; font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .row .why { color: var(--muted); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -782,7 +783,7 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape' && !drawer.hi
       const items = rows.filter(r => r.lane === k).sort((a, b) => k === 'fraud' ? b.fraud - a.fraud : k === 'normal' ? b.usage.spend_usd - a.usage.spend_usd : b.upsell - a.upsell);
       const lim = laneFilter ? 1e9 : LIMIT[k];
       return `<div class="panel"><div class="lbl"><span>${LANES[k].title}</span><span class="n">${items.length}</span></div><div class="list">` +
-        (items.length ? items.slice(0, lim).map(r => { const [a, b] = LANES[k].fig(r); return `<button class="row ${k}" data-i="${r.i}" aria-current="${r.i === current}">${pav(r, '')}<span><div class="e">${esc(r.email)}</div><div class="why">${esc(reason(r))}</div></span><span class="fig"><b>${esc(a)}</b>${esc(b)}</span></button>`; }).join('') : `<div class="empty">nothing here</div>`) +
+        (items.length ? items.slice(0, lim).map(r => { const [a, b] = LANES[k].fig(r); return `<button class="row ${k}" data-i="${r.i}" aria-current="${r.i === current}"><span class="pw">${pav(r, '')}</span><span><div class="e">${esc(r.email)}</div><div class="why">${esc(reason(r))}</div></span><span class="fig"><b>${esc(a)}</b>${esc(b)}</span></button>`; }).join('') : `<div class="empty">nothing here</div>`) +
         (items.length > lim ? `<div class="more">${items.length - lim} more, click the lane above to see all</div>` : '') + `</div></div>`;
     }).join('');
     $('tr-queue').querySelectorAll('.row').forEach(b => b.onclick = () => select(+b.dataset.i));
