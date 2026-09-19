@@ -1226,6 +1226,14 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape' && !drawer.hi
       const d = await r.json();
       if (!r.ok) throw new Error(d.detail || ('HTTP ' + r.status));
       clearInterval(ticker); stageSteps(STEPS.length); post.classList.remove('scanning');
+      if (d.cached) {   // already on the board: point at the existing card instead of adding it twice
+        stage.classList.add('collapse'); setTimeout(() => { stage.hidden = true; $('xb-embed').innerHTML = ''; }, 550);
+        const existing = document.querySelector(`.post[data-id="${CSS.escape(d.id)}"]`), laneOf = LANE(d);
+        if (laneOf === 'irrelevant' && !irrOpen) { irrOpen = true; $('xb-board').classList.add('irr-open'); counts(); }
+        $('xb-note').innerHTML = `Already analysed${d.judged_at ? ' on ' + esc(String(d.judged_at).slice(0, 10)) : ' in the daily run'}: <b>${laneOf}</b> · ${DIST[d.distribution]} ${(+d.distribution_probs[d.distribution]).toFixed(2)}. No new charge.`;
+        if (existing) { existing.scrollIntoView({block: 'center', behavior: reduced ? 'auto' : 'smooth'}); existing.classList.add('scanning'); setTimeout(() => existing.classList.remove('scanning'), 1200); inspect(posts.find(x => x.id === d.id) || d, existing); }
+        $('xb-url').value = ''; $('xb-go').disabled = !RUN.live; $('xb-go').textContent = 'Analyse post'; return;
+      }
       const p = {...d, manual: true}, laneOf = LANE(p);
       if (!embedded && !$('xb-embed').querySelector('.twitter-tweet')) { $('xb-embed').innerHTML = card(p); $('xb-embed').querySelector('.post').style.cursor = 'default'; }
       $('xb-stage-meta').textContent = `treg ${fmt$(p.treg_cost||0)} · jev ${fmt$(p.jev_cost||0)}`;

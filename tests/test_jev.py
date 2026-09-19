@@ -124,3 +124,27 @@ def test_tikhub_tweet_detail_becomes_a_search_row():
     assert p["viewCount"] == 2437013 and p["likeCount"] == 1034 and p["authorUsername"] == "quxiaoyin"
     assert p["createdUtc"] == 1789744674 and p["media"][0]["url"].endswith("a.jpg")
     assert p["url"] == "https://x.com/quxiaoyin/status/2100967557314547943"
+
+
+async def test_judge_answers_a_known_post_from_the_store_without_spending(clients: AsyncClient, monkeypatch):
+    """A post already on the board (daily run or an earlier visitor) is not fetched or billed again."""
+    monkeypatch.setattr(get_settings(), "jev_treg_token", "t", raising=False)
+    monkeypatch.setattr(get_settings(), "ai_gateway_api_key", "k", raising=False)
+    calls = []
+
+    async def fake_judge(http, url):
+        calls.append(url)
+        return {"id": "5555", "authorUsername": "treg_ai", "relevance": "inspiring_launch", "distribution": "organic"}
+
+    monkeypatch.setattr(jev_xboost, "judge_url", fake_judge)
+    first = await clients.post("/jev/xboost/judge", json={"url": "https://x.com/treg_ai/status/5555"})
+    again = await clients.post("/jev/xboost/judge", json={"url": "https://twitter.com/treg_ai/status/5555"})
+    assert first.status_code == 200 and again.status_code == 200
+    assert again.json()["cached"] is True and "cached" not in first.json()
+    assert calls == ["https://x.com/treg_ai/status/5555"], "the second request must not judge again"
+    run = (await clients.get("/jev/xboost.json")).json()
+    assert [m["id"] for m in run["manual"]].count("5555") == 1
+    # a post from the daily snapshot is known too
+    seed_id = run["posts"][0]["id"]
+    r = await clients.post("/jev/xboost/judge", json={"url": f"https://x.com/someone/status/{seed_id}"})
+    assert r.status_code == 200 and r.json()["cached"] is True and len(calls) == 1

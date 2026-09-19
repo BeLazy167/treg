@@ -3280,6 +3280,13 @@ async def jev_xboost_judge(request: Request, db: AsyncSession = Depends(get_sess
         jev_xboost.parse_post_url(url or "")
     except jev_xboost.XboostError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from None
+    # A post already on the board (daily run or an earlier visitor) answers from the store: no
+    # second fetch, no second bill, no duplicate card.
+    _, post_id = jev_xboost.parse_post_url(url)
+    run = await _xboost_run(db)
+    for known in [*(run.get("manual") or []), *(run.get("posts") or [])]:
+        if str(known.get("id")) == post_id:
+            return {**known, "cached": True}
     ok = await ratestore.rate_check(db, _JEV_JUDGE_NS, [(f"ip:{_client_ip(request)}", 5), ("all", 60)], window_s=3600)
     await db.commit()
     if not ok:
