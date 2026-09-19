@@ -88,22 +88,20 @@
   @media (prefers-reduced-motion: reduce) { .rv { opacity: 1; transform: none; transition: none; } .live::before { animation: none; } }
 
   /* recipe layout: prompt on the left, what it does on the right */
-  .recipe { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, .85fr); gap: 28px; margin-top: 30px; align-items: start; }
-  @media (max-width: 900px) { .recipe { grid-template-columns: 1fr; } }
+  .tabs { display: flex; gap: 6px; flex-wrap: wrap; border-bottom: 1px solid var(--line); padding-bottom: 14px; margin-bottom: 34px; }
+  .tabs button { font: inherit; font-size: 14px; font-weight: 500; padding: 9px 16px; border-radius: 999px; border: 1px solid transparent; background: transparent; color: #43413E; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; }
+  .tabs button:hover { background: var(--card); }
+  .tabs button[aria-selected="true"] { background: var(--ink); color: #fff; border-color: var(--ink); }
+  .tabs button i { font-style: normal; font-family: var(--mono); font-size: 11px; opacity: .7; }
+  .tab[hidden] { display: none; }
+  .recipe { margin-top: 26px; }
   .prompt { background: #fff; border: 1px solid var(--line); border-radius: 18px; overflow: hidden; }
   .prompt .ph { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 14px 12px 18px; border-bottom: 1px solid var(--line); background: var(--card); }
   .prompt .ph span { font-family: var(--mono); font-size: 12px; color: var(--muted); }
   .prompt .ph .agents { display: inline-flex; gap: 6px; margin-left: 8px; vertical-align: middle; }
   .prompt .ph .agents img { width: 16px; height: 16px; border-radius: 4px; }
-  .prompt pre { margin: 0; padding: 18px 20px; font-family: var(--mono); font-size: 12.5px; line-height: 1.6; white-space: pre-wrap; word-break: break-word; color: #2a2926; max-height: 430px; overflow: auto; }
+  .prompt pre { margin: 0; padding: 18px 20px; font-family: var(--mono); font-size: 12.5px; line-height: 1.6; white-space: pre-wrap; word-break: break-word; color: #2a2926; max-height: 250px; overflow: auto; }
   .prompt pre b { color: var(--ink); font-weight: 500; }
-  .steps { display: flex; flex-direction: column; gap: 10px; }
-  .step { display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 12px; padding: 14px 16px; border: 1px solid var(--line); border-radius: 14px; background: #fff; }
-  .step .who { font-family: var(--mono); font-size: 10px; letter-spacing: .08em; text-transform: uppercase; padding: 3px 0; border-radius: 6px; text-align: center; height: max-content; }
-  .step .who.treg { background: var(--amber-soft); color: var(--amber); } .step .who.jev { background: var(--blue-soft); color: var(--blue); } .step .who.you { background: var(--card); color: var(--muted); }
-  .step b { display: block; font-weight: 500; font-size: 14.5px; }
-  .step span { font-size: 13px; color: var(--muted); }
-  .step .cost { font-family: var(--mono); font-size: 11.5px; color: var(--muted); margin-top: 4px; display: block; }
 
   /* demo frame */
   .demo { margin-top: 26px; border: 1px solid var(--line); border-radius: 20px; background: var(--card); padding: 14px; }
@@ -140,23 +138,26 @@
   .judge button { flex: 0 0 auto; }
   .judge button:disabled { opacity: .5; cursor: wait; }
   .xb-note { font-size: 12.5px; color: var(--muted); margin: -4px 6px 12px; min-height: 18px; }
-  .xb-body { display: grid; grid-template-columns: 250px minmax(0,1fr); gap: 10px; align-items: start; }
-  @media (max-width: 1000px) { .xb-body { grid-template-columns: 1fr; } }
+  .demo-body { display: grid; grid-template-columns: 250px minmax(0,1fr); gap: 10px; align-items: start; }
+  @media (max-width: 1000px) { .demo-body { grid-template-columns: 1fr; } }
+  .demo-side { display: flex; flex-direction: column; gap: 10px; }
   .board { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 10px; }
   .board.irr-open { grid-template-columns: repeat(3, minmax(0,1fr)); }
   .board:not(.irr-open) .kcol.irrelevant { display: none; }
   @media (max-width: 860px) { .board, .board.irr-open { grid-template-columns: 1fr; } }
   .tally { display: grid; gap: 6px; margin-top: 8px; }
   .tv { border: 1px solid var(--line); border-left: 4px solid var(--c); background: var(--card); border-radius: 0 10px 10px 0; padding: 8px 10px; display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 8px; text-align: left; font: inherit; color: inherit; cursor: default; }
-  .tv.organic { --c: var(--green); } .tv.paid { --c: var(--amber); } .tv.irrelevant { --c: var(--muted); cursor: pointer; }
+  .tv.organic, .tv.reach, .tv.dm { --c: var(--green); } .tv.paid, .tv.watch, .tv.user { --c: var(--amber); } .tv.hold { --c: var(--red); } .tv.irrelevant, .tv.none, .tv.skip { --c: var(--muted); }
+  .tv.irrelevant, .tv.filter { cursor: pointer; } .tv.filter[aria-pressed="true"] { background: #fff; box-shadow: 0 0 0 2px var(--ink); }
   .tv .t { font-family: var(--mono); font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--c); font-weight: 500; }
   .tv .d { color: var(--muted); font-size: 11.5px; margin-top: 2px; }
   .tv .n { font-family: var(--display); font-weight: 600; font-size: 24px; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
   .tv .tog { font-family: var(--mono); font-size: 10px; color: var(--muted); text-decoration: underline; text-underline-offset: 3px; }
   .stack { height: 12px; display: flex; border-radius: 6px; overflow: hidden; margin-top: 10px; background: var(--line); }
-  .stack i { display: block; height: 100%; } .stack .organic { background: var(--green); } .stack .paid { background: var(--amber); }
+  .stack i { display: block; height: 100%; } .stack .organic, .stack .reach, .stack .dm { background: var(--green); } .stack .paid, .stack .watch, .stack .user { background: var(--amber); } .stack .hold { background: var(--red); }
   .xsteps { margin-top: 12px; font-family: var(--mono); font-size: 11px; color: var(--muted); display: grid; grid-template-columns: auto auto 1fr; gap: 4px 8px; align-items: baseline; }
   .xsteps b { color: var(--ink); font-weight: 500; text-align: right; }
+  .xsteps .price { grid-column: 1 / -1; color: #B8B5AE; font-size: 10px; margin: -3px 0 2px; }
   .xsteps .who { font-size: 9px; letter-spacing: .08em; text-transform: uppercase; padding: 1px 5px; border-radius: 4px; background: var(--amber-soft); color: var(--amber); justify-self: start; }
   .xsteps .who.jev { background: var(--blue-soft); color: var(--blue); }
   .xtopics { display: grid; grid-template-columns: 1fr auto; gap: 3px 10px; font-size: 12.5px; margin-top: 8px; }
@@ -210,20 +211,12 @@
   .verdict .act.organic, .verdict .act.reach, .verdict .act.dm { color: var(--green); } .verdict .act.paid_promotion, .verdict .act.watch, .verdict .act.user { color: var(--amber); } .verdict .act.artificial_engagement, .verdict .act.hold { color: var(--red); }
 
   /* ---- triage */
-  .lanes { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 10px; margin-bottom: 12px; }
-  @media (max-width: 640px) { .lanes { grid-template-columns: 1fr 1fr; } }
-  .lane { border: 1px solid var(--line); background: #fff; padding: 12px 14px 10px; border-radius: 14px; border-top: 3px solid var(--c); cursor: pointer; text-align: left; font: inherit; color: inherit; }
-  .lane[aria-pressed="true"] { background: var(--soft); }
-  .lane .t { font-family: var(--mono); font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--c); font-weight: 500; }
-  .lane .n { font-family: var(--display); font-weight: 600; font-size: 30px; letter-spacing: -.03em; line-height: 1.1; margin-top: 4px; font-variant-numeric: tabular-nums; }
-  .lane .d { color: var(--muted); font-size: 12px; margin-top: 4px; }
-  .lane.reach { --c: var(--green); --soft: var(--green-soft); } .lane.hold { --c: var(--red); --soft: var(--red-soft); } .lane.watch { --c: var(--amber); --soft: var(--amber-soft); } .lane.none { --c: var(--muted); --soft: var(--card); }
   .tl { display: grid; grid-template-columns: repeat(24, minmax(0,1fr)); gap: 3px; align-items: end; height: 80px; margin-top: 10px; }
   .hour { display: flex; flex-direction: column-reverse; gap: 1px; height: 100%; }
   .dotb { flex: 0 0 auto; border-radius: 1px; background: var(--muted); width: 100%; }
   .dotb.reach { background: var(--green); } .dotb.hold { background: var(--red); } .dotb.watch { background: var(--amber); } .dotb.pending { background: var(--line); }
   .axis { display: grid; grid-template-columns: repeat(24, minmax(0,1fr)); font-family: var(--mono); font-size: 9px; color: #B8B5AE; margin-top: 4px; }
-  .tri-body { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(300px, .85fr); gap: 12px; margin-top: 12px; align-items: start; }
+  .tri-body { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(300px, .85fr); gap: 10px; margin-top: 10px; align-items: start; }
   @media (max-width: 900px) { .tri-body { grid-template-columns: 1fr; } }
   .queue { display: flex; flex-direction: column; gap: 12px; }
   .list { display: flex; flex-direction: column; margin-top: 6px; }
@@ -244,16 +237,8 @@
   .sticky { position: sticky; top: 74px; display: flex; flex-direction: column; gap: 12px; }
 
   /* ---- signals */
-  .sig-grid { display: grid; grid-template-columns: 250px minmax(0,1fr) 360px; gap: 12px; align-items: start; }
+  .sig-grid { display: grid; grid-template-columns: minmax(0,1fr) 360px; gap: 10px; align-items: start; }
   @media (max-width: 1100px) { .sig-grid { grid-template-columns: 1fr; } }
-  .funnel { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 6px; margin-top: 8px; }
-  .fstep { border: 1px solid var(--line); background: var(--card); border-radius: 10px; padding: 8px 10px 7px; }
-  .fstep.live { border-color: var(--ink); }
-  .fstep .t { font-family: var(--mono); font-size: 10px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
-  .fstep .n { font-family: var(--display); font-weight: 600; font-size: 22px; letter-spacing: -.02em; line-height: 1.1; margin-top: 3px; }
-  .fstep .d { color: var(--muted); font-size: 11px; margin-top: 2px; font-family: var(--mono); }
-  .fstep .who { float: right; font-family: var(--mono); font-size: 9px; letter-spacing: .08em; text-transform: uppercase; padding: 2px 5px; border-radius: 4px; background: #fff; color: var(--muted); }
-  .fstep .who.jev { background: var(--blue-soft); color: var(--blue); } .fstep .who.treg { background: var(--amber-soft); color: var(--amber); }
   .spend { margin-top: 10px; border-top: 1px solid var(--line); padding-top: 8px; display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
   .spend div { font-family: var(--mono); font-size: 17px; }
   .spend small { display: block; font-family: var(--mono); font-size: 9px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin-bottom: 2px; }
@@ -321,7 +306,7 @@
 <nav class="nav" id="nav">
   <span class="wordmark"><a href="/" style="display:inline-flex;align-items:center;gap:10px;color:inherit;text-decoration:none" aria-label="treg home"><svg viewBox="0 0 512 512" aria-hidden="true"><rect width="512" height="512" rx="112" fill="#101010"/><rect x="111" y="111" width="140.5" height="140.5" rx="20" fill="#fff"/><rect x="260.5" y="260.5" width="140.5" height="140.5" rx="20" fill="#fff"/></svg> treg</a> <span style="color:var(--muted);font-weight:400">/</span> <span style="font-weight:500">jev</span></span>
   <span style="display:flex;gap:8px">
-    <span class="nav-links"><a href="#xboost">Launch radar</a><a href="#triage">Signup triage</a><a href="#signals">Signal leads</a><a href="https://github.com/superdesigndev/treg" target="_blank" rel="noopener"><svg width="15" height="15" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg> Open source</a></span>
+    <span class="nav-links"><a href="#xboost">Viral posts</a><a href="#signals">Buying signal</a><a href="#triage">Signup qualifications</a><a href="https://github.com/superdesigndev/treg" target="_blank" rel="noopener"><svg width="15" height="15" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg> Open source</a></span>
     <a class="pill dark" href="/app?ref=jev">Set up treg</a>
   </span>
 </nav>
@@ -330,7 +315,7 @@
   <span class="eyebrow"><span class="dot"></span> treg + jev · for GTM engineers</span>
   <h1>Typed decisions on live data, for a fraction of a cent.</h1>
   <p class="sub"><strong>jev</strong> is a decision model: you hand it a JSON state and typed questions (a choice, a yes/no, a score) and it returns probabilities, not prose, in under a second. <strong>treg</strong> hands it the data: X, LinkedIn, email verification, person and company enrichment, one key. Three recipes below, each with a prompt your agent can run and the demo it produces.</p>
-  <div class="ctas"><a class="pill dark" href="#xboost">See the recipes</a><a class="pill" href="/app?ref=jev">Set up treg</a></div>
+  <div class="ctas"><a class="pill dark" href="#recipes">See the recipes</a><a class="pill" href="/app?ref=jev">Set up treg</a></div>
 </header>
 
 <section class="prims rv">
@@ -342,14 +327,20 @@
   </div>
 </section>
 
-<!-- ============================================================= 1. launch radar on X -->
-<section class="sec rv" id="xboost">
+<!-- ============================================================= the three recipes, as tabs -->
+<section class="sec" id="recipes">
   <div class="wrap">
-    <span class="num"><i>1</i> Launch radar on X<span class="live">live · judged daily</span></span>
+    <div class="tabs" role="tablist" id="tabs">
+      <button role="tab" data-tab="xboost" aria-selected="true">Viral posts monitor <i>live</i></button>
+      <button role="tab" data-tab="signals" aria-selected="false">Buying signal</button>
+      <button role="tab" data-tab="triage" aria-selected="false">Signup qualifications</button>
+    </div>
+<div class="tab" id="xboost">
+
+    <span class="num"><i>1</i> Viral posts monitor<span class="live">live · judged daily</span></span>
     <h2>Which launches earned their reach, and which bought it?</h2>
     <p class="lede">Every day treg searches X for launch posts from the last 24 hours, pulls each author's profile and first replies, computes per-view engagement rates, and jev sorts the lot: a relevant launch or not, organic or paid or pumped. Paste any post link and the same pipeline judges it in front of you.</p>
-    <div class="recipe">
-      <div class="prompt">
+    <div class="recipe"><div class="prompt">
         <div class="ph"><span>Prompt for your agent · Claude Code, Codex, Cursor</span><button class="pill sm" data-copy="p-xboost">Copy prompt</button></div>
 <pre id="p-xboost">Build me a daily "launch radar" for X and a page to browse it.
 
@@ -392,12 +383,6 @@
 9. Add an input that takes a post link, finds the post via `treg.x.user.posts` (handle, limit 50),
    runs steps 4–7 on it and drops the card into its lane.</pre>
       </div>
-      <div class="steps">
-        <div class="step"><span class="who treg">treg</span><div><b>Search 13 launch phrases</b><span>`treg.x.search.posts`, posts under 24h with 150+ likes, top 60 by views.</span><span class="cost">~$0.001 per search</span></div></div>
-        <div class="step"><span class="who treg">treg</span><div><b>Profile + first replies per post</b><span>`treg.x.user.profile` and `treg.x.post.comments`. Followers, bio, and how fast and how generic the replies are.</span><span class="cost">~$0.0006 per post</span></div></div>
-        <div class="step"><span class="who you">you</span><div><b>Forensics</b><span>Each count divided by views; views per follower; quick, short and generic reply shares. Pure arithmetic, no model.</span></div></div>
-        <div class="step"><span class="who jev">jev</span><div><b>Five typed questions, one call</b><span>Relevance, launch type, distribution, is it organic, authenticity score. Probabilities on every answer, so the page can show why.</span><span class="cost">~$0.0001 per post</span></div></div>
-      </div>
     </div>
 
     <div class="demo" id="xb-demo">
@@ -407,8 +392,8 @@
         <div class="receipt" id="xb-tally" hidden></div>
       </div>
       <div class="xb-note" id="xb-note"></div>
-      <div class="xb-body">
-      <aside style="display:flex;flex-direction:column;gap:10px">
+      <div class="demo-body">
+      <aside class="demo-side">
         <div class="panel"><div class="lbl"><span>verdicts</span><span class="n" id="xb-tallymeta"></span></div><div class="stack" id="xb-stack"></div><div class="tally" id="xb-tallybox"></div><div class="xsteps" id="xb-steps"></div><div class="spend" id="xb-spend"></div></div>
         <div class="panel"><div class="lbl"><span>search phrases</span></div><div class="xtopics" id="xb-topics"></div></div>
       </aside>
@@ -418,18 +403,65 @@
         <div class="kcol irrelevant"><div class="kh"><span><span class="t">Irrelevant</span><span class="d">not a launch, or not our space</span></span><span class="n" id="xb-n-irrelevant">0</span></div><div class="kb" id="xb-kb-irrelevant"></div></div>
       </div>
       </div>
-    </div>
-  </div>
-</section>
+</div>
+</div>
 
-<!-- ============================================================= 2. signup triage -->
-<section class="sec rv" id="triage">
-  <div class="wrap">
-    <span class="num"><i>2</i> Signup triage<span class="replay-tag">recorded run · emails replaced</span></span>
+<div class="tab" id="signals" hidden>
+
+    <span class="num"><i>2</i> Buying signal<span class="replay-tag">recorded run · emails replaced</span></span>
+    <h2>The people reacting to your category's posts this week, ranked</h2>
+    <p class="lede">Search LinkedIn for hot posts on your topics, let jev confirm each is on topic, pull everyone who reacted or commented, have jev score each person's fit and role from their headline and what they did, then find emails only for the ones worth it. Buying signals first, contact data last.</p>
+    <div class="recipe"><div class="prompt">
+        <div class="ph"><span>Prompt for your agent</span><button class="pill sm" data-copy="p-signals">Copy prompt</button></div>
+<pre id="p-signals">Build a signal-first lead finder for &lt;my product&gt; and a page to browse the run.
+
+<b>Setup</b>
+1. Install treg and log in: `curl -fsSL https://treg.to/install.sh | sh`, then `treg login`.
+2. Vercel AI Gateway key in .env as AI_GATEWAY_API_KEY. jev: POST
+   https://ai-gateway.vercel.sh/v4/ai/evaluation-model with headers Authorization: Bearer $KEY,
+   ai-model-id: typesafe-ai/jev, ai-evaluation-model-specification-version: 4,
+   ai-gateway-protocol-version: 0.0.1; body {"state", "questions"}. Types: choice, boolean, score.
+
+<b>Pipeline</b>
+3. Topics: &lt;4 phrases buyers post about, e.g. "enrichment waterfall", "RevOps tooling"&gt;.
+   `treg call harvestapi.linkedin.post.search --query search=&lt;topic&gt; --query postedLimit=week
+   --query sortBy=relevance`. Rank candidates by likes, take the top 20.
+4. jev per post: about_topic: boolean, "is this post about &lt;category&gt;?" over {author, post}.
+   Keep the first 3 with probability ≥ 0.70.
+5. For each kept post: `harvestapi.linkedin.post.reactions` and `harvestapi.linkedin.post.comments`
+   (post=&lt;url&gt;). Merge people by id; record each signal (reacted with what / commented what).
+6. jev per person over {position (headline), signals, product description}:
+   fit: score over not a lead / user / decision maker, with signals for each level (students,
+   recruiters and agencies are not leads; ICs in growth, RevOps, data or engineering are users;
+   heads, directors, VPs, founders are decision makers);
+   role: choice gtm_ops / engineer / founder_exec / agency_freelancer / vendor / other.
+7. For everyone with fit ≥ 1.5: `treg call treg.people.email.find --data '{"full_name": "...",
+   "company_name": "..."}'`. Routed; misses are free; cap with X-Treg-Max-Cost-Usd.
+
+<b>Page</b>
+8. Funnel (posts → on topic → people → decision makers → emails), the posts as LinkedIn-style
+   cards with the on-topic score, the people ranked by fit with role and tier filters, and an
+   inspector with the signals, both jev distributions and the contact with which provider hit.
+   Show treg and jev spend separately.</pre>
+      </div>
+    </div>
+
+    <div class="demo" id="sg-demo">
+      <div class="dh"><h3>People engaging with GTM-tooling posts this week</h3><div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><div class="receipt" id="sg-receipt"></div><button class="pill sm" id="sg-replay">Replay the run</button><button class="pill sm" id="sg-stop" hidden>Stop</button></div></div>
+      <div class="demo-body"><aside class="demo-side"><div class="panel"><div class="lbl"><span>people · click to filter</span><span class="n" id="sg-tallymeta"></span></div><div class="stack" id="sg-stack"></div><div class="tally" id="sg-tallybox"></div><div class="xsteps" id="sg-steps"></div><div class="spend" id="sg-spend"></div></div></aside>
+      <div class="sig-grid">
+        <div class="panel"><div class="lbl"><span>step 1 · posts, jev checks each is on topic</span><span class="n" id="sg-postsmeta"></span></div><div class="posts" id="sg-posts"></div></div>
+        <div class="panel"><div class="lbl"><span>steps 2 + 3 · people, ranked by jev</span><span class="n" id="sg-listmeta"></span></div><div class="chips" id="sg-filters"></div><div class="leadlist" id="sg-list"></div></div>
+      </div></div>
+</div>
+</div>
+
+<div class="tab" id="triage" hidden>
+
+    <span class="num"><i>3</i> Signup qualifications<span class="replay-tag">recorded run · emails replaced</span></span>
     <h2>Who signed up last night, and what to do about each one</h2>
     <p class="lede">An email and a day of product usage go in. treg verifies the address and enriches the person and company, cheapest provider first. jev returns a segment, a fraud probability and an upsell score. Four lanes come out: reach out, hold credits, watch, or nothing. About a cent per signup, and jev is under 1% of it.</p>
-    <div class="recipe">
-      <div class="prompt">
+    <div class="recipe"><div class="prompt">
         <div class="ph"><span>Prompt for your agent</span><button class="pill sm" data-copy="p-triage">Copy prompt</button></div>
 <pre id="p-triage">Build a signup triage that runs every hour over new signups and posts the interesting ones to Slack.
 
@@ -466,18 +498,12 @@
 10. A review page: four lane counters, signups by hour, the queue per lane, an inspector with
     verify + enrichment + usage and the jev bars.</pre>
       </div>
-      <div class="steps">
-        <div class="step"><span class="who treg">treg</span><div><b>Verify the address</b><span>`millionverifier.people.email.verify`. Disposable or invalid stops the spend right there.</span><span class="cost">$0.0018</span></div></div>
-        <div class="step"><span class="who treg">treg</span><div><b>Enrich the person, then the company</b><span>`treg.people.enrich` routed cheapest-first with a 3¢ cap, `thecompaniesapi.companies.enrich` on corporate domains.</span><span class="cost">$0.002–0.015, only on a hit</span></div></div>
-        <div class="step"><span class="who jev">jev</span><div><b>Segment, fraud, upsell</b><span>A choice, a boolean and a score in one call over the whole state, usage included.</span><span class="cost">~$0.00005</span></div></div>
-        <div class="step"><span class="who you">you</span><div><b>Lane rules</b><span>jev's segment plus two rules the real run taught: a paying user with a failing domain is not fraud; refused calls with no spend is credit farming.</span></div></div>
-      </div>
     </div>
 
     <div class="demo" id="tr-demo">
       <div class="dh"><h3>Signups, one day</h3><div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><div class="receipt" id="tr-receipt"></div><button class="pill sm" id="tr-replay">Replay the run</button><button class="pill sm" id="tr-stop" hidden>Stop</button></div></div>
-      <div class="lanes" id="tr-lanes"></div>
-      <div class="panel"><div class="lbl"><span>signups by hour, UTC</span><span class="n" id="tr-tlcount"></span></div><div class="tl" id="tr-tl"></div><div class="axis" id="tr-axis"></div></div>
+      <div class="demo-body"><aside class="demo-side"><div class="panel"><div class="lbl"><span>lanes · click to filter</span><span class="n" id="tr-tallymeta"></span></div><div class="stack" id="tr-stack"></div><div class="tally" id="tr-tallybox"></div><div class="xsteps" id="tr-steps"></div><div class="spend" id="tr-spend"></div></div></aside>
+      <div><div class="panel"><div class="lbl"><span>signups by hour, UTC</span><span class="n" id="tr-tlcount"></span></div><div class="tl" id="tr-tl"></div><div class="axis" id="tr-axis"></div></div>
       <div class="tri-body">
         <div class="queue" id="tr-queue"></div>
         <div class="sticky">
@@ -485,68 +511,9 @@
           <div class="panel"><div class="ev"><div><h4>identity</h4><div class="kv" id="tr-identity"></div></div><div><h4>behaviour, day one</h4><div class="kv" id="tr-behaviour"></div></div></div>
             <div class="sec4"><h4><span>jev verdict</span><span class="w" id="tr-jevcost"></span></h4><div id="tr-probs"></div></div></div>
         </div>
+      </div></div>
       </div>
-    </div>
-  </div>
-</section>
-
-<!-- ============================================================= 3. signal-first leads -->
-<section class="sec rv" id="signals">
-  <div class="wrap">
-    <span class="num"><i>3</i> Signal-first leads<span class="replay-tag">recorded run · emails replaced</span></span>
-    <h2>The people reacting to your category's posts this week, ranked</h2>
-    <p class="lede">Search LinkedIn for hot posts on your topics, let jev confirm each is on topic, pull everyone who reacted or commented, have jev score each person's fit and role from their headline and what they did, then find emails only for the ones worth it. Buying signals first, contact data last.</p>
-    <div class="recipe">
-      <div class="prompt">
-        <div class="ph"><span>Prompt for your agent</span><button class="pill sm" data-copy="p-signals">Copy prompt</button></div>
-<pre id="p-signals">Build a signal-first lead finder for &lt;my product&gt; and a page to browse the run.
-
-<b>Setup</b>
-1. Install treg and log in: `curl -fsSL https://treg.to/install.sh | sh`, then `treg login`.
-2. Vercel AI Gateway key in .env as AI_GATEWAY_API_KEY. jev: POST
-   https://ai-gateway.vercel.sh/v4/ai/evaluation-model with headers Authorization: Bearer $KEY,
-   ai-model-id: typesafe-ai/jev, ai-evaluation-model-specification-version: 4,
-   ai-gateway-protocol-version: 0.0.1; body {"state", "questions"}. Types: choice, boolean, score.
-
-<b>Pipeline</b>
-3. Topics: &lt;4 phrases buyers post about, e.g. "enrichment waterfall", "RevOps tooling"&gt;.
-   `treg call harvestapi.linkedin.post.search --query search=&lt;topic&gt; --query postedLimit=week
-   --query sortBy=relevance`. Rank candidates by likes, take the top 20.
-4. jev per post: about_topic: boolean, "is this post about &lt;category&gt;?" over {author, post}.
-   Keep the first 3 with probability ≥ 0.70.
-5. For each kept post: `harvestapi.linkedin.post.reactions` and `harvestapi.linkedin.post.comments`
-   (post=&lt;url&gt;). Merge people by id; record each signal (reacted with what / commented what).
-6. jev per person over {position (headline), signals, product description}:
-   fit: score over not a lead / user / decision maker, with signals for each level (students,
-   recruiters and agencies are not leads; ICs in growth, RevOps, data or engineering are users;
-   heads, directors, VPs, founders are decision makers);
-   role: choice gtm_ops / engineer / founder_exec / agency_freelancer / vendor / other.
-7. For everyone with fit ≥ 1.5: `treg call treg.people.email.find --data '{"full_name": "...",
-   "company_name": "..."}'`. Routed; misses are free; cap with X-Treg-Max-Cost-Usd.
-
-<b>Page</b>
-8. Funnel (posts → on topic → people → decision makers → emails), the posts as LinkedIn-style
-   cards with the on-topic score, the people ranked by fit with role and tier filters, and an
-   inspector with the signals, both jev distributions and the contact with which provider hit.
-   Show treg and jev spend separately.</pre>
-      </div>
-      <div class="steps">
-        <div class="step"><span class="who treg">treg</span><div><b>Hot posts on the topics</b><span>`harvestapi.linkedin.post.search`, past week, by relevance.</span><span class="cost">~$0.004 per topic</span></div></div>
-        <div class="step"><span class="who jev">jev</span><div><b>On topic?</b><span>One boolean per post. Below 0.70 the post is shown but not pulled.</span><span class="cost">~$0.00003 per post</span></div></div>
-        <div class="step"><span class="who treg">treg</span><div><b>Reactors and commenters</b><span>`post.reactions` and `post.comments` on the kept posts, merged by person.</span><span class="cost">~$0.008 per post</span></div></div>
-        <div class="step"><span class="who jev">jev</span><div><b>Fit score and role per person</b><span>From the headline and what they did. Decision makers at fit ≥ 1.5.</span><span class="cost">~$0.00003 per person</span></div></div>
-        <div class="step"><span class="who treg">treg</span><div><b>Emails for the top</b><span>`treg.people.email.find`, routed across providers, billed only on a hit.</span><span class="cost">~$0.02 per hit</span></div></div>
-      </div>
-    </div>
-
-    <div class="demo" id="sg-demo">
-      <div class="dh"><h3>People engaging with GTM-tooling posts this week</h3><div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><div class="receipt" id="sg-receipt"></div><button class="pill sm" id="sg-replay">Replay the run</button><button class="pill sm" id="sg-stop" hidden>Stop</button></div></div>
-      <div class="sig-grid">
-        <div class="panel"><div class="lbl"><span>the funnel</span></div><div class="funnel" id="sg-funnel"></div><div class="spend" id="sg-spend"></div></div>
-        <div class="panel"><div class="lbl"><span>step 1 · posts, jev checks each is on topic</span><span class="n" id="sg-postsmeta"></span></div><div class="posts" id="sg-posts"></div></div>
-        <div class="panel"><div class="lbl"><span>steps 2 + 3 · people, ranked by jev</span><span class="n" id="sg-listmeta"></span></div><div class="chips" id="sg-filters"></div><div class="leadlist" id="sg-list"></div></div>
-      </div>
-    </div>
+</div>
   </div>
 </section>
 
@@ -591,6 +558,19 @@ const nav = $('nav');
 addEventListener('scroll', () => nav.classList.toggle('scrolled', scrollY > 10), { passive: true });
 const io = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } }), { rootMargin: '0px 0px -8% 0px' });
 document.querySelectorAll('.rv').forEach(el => io.observe(el));
+
+/* tabs: one recipe at a time; the hash picks the tab so the nav anchors keep working */
+const TABS = ['xboost', 'signals', 'triage'];
+function showTab(id, push) {
+  if (!TABS.includes(id)) id = 'xboost';
+  TABS.forEach(t => { $(t).hidden = t !== id; });
+  document.querySelectorAll('#tabs [data-tab]').forEach(b => b.setAttribute('aria-selected', String(b.dataset.tab === id)));
+  if (push) history.replaceState(null, '', '#' + id);
+}
+document.querySelectorAll('#tabs [data-tab]').forEach(b => b.onclick = () => { showTab(b.dataset.tab, true); $('recipes').scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'start' }); });
+addEventListener('hashchange', () => { const id = location.hash.slice(1); if (TABS.includes(id)) { showTab(id); $('recipes').scrollIntoView(); } });
+showTab(location.hash.slice(1));
+document.querySelectorAll('a[href^="#"]').forEach(a => a.addEventListener('click', e => { const id = a.getAttribute('href').slice(1); if (TABS.includes(id)) { e.preventDefault(); showTab(id, true); $('recipes').scrollIntoView({ behavior: reduced ? 'auto' : 'smooth' }); } }));
 
 /* copy buttons */
 document.querySelectorAll('[data-copy]').forEach(b => b.onclick = () => {
@@ -748,9 +728,17 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape' && !drawer.hi
   const kv = (k, v, cls='') => `<span class="k">${k}</span><span class="v ${cls}">${esc(v)}</span>`;
 
   function renderLanes() {
-    const rows = DATA.slice(0, shown);
-    $('tr-lanes').innerHTML = Object.keys(LANES).map(k => `<button class="lane ${k}" data-lane="${k}" aria-pressed="${laneFilter===k}"><div class="t">${LANES[k].title}</div><div class="n">${fmt(rows.filter(r => r.lane === k).length)}</div><div class="d">${LANES[k].desc}</div></button>`).join('');
-    $('tr-lanes').querySelectorAll('.lane').forEach(b => b.onclick = () => { laneFilter = laneFilter === b.dataset.lane ? null : b.dataset.lane; renderLanes(); renderQueue(); renderTL(); });
+    const rows = DATA.slice(0, shown), n = {};
+    Object.keys(LANES).forEach(k => n[k] = rows.filter(r => r.lane === k).length);
+    $('tr-tallymeta').textContent = `${fmt(rows.length)} signups`;
+    $('tr-stack').innerHTML = ['reach','watch','hold'].map(k => `<i class="${k}" style="width:${100*n[k]/Math.max(1,DATA.length)}%"></i>`).join('');
+    $('tr-tallybox').innerHTML = Object.keys(LANES).map(k => `<button class="tv filter ${k}" data-lane="${k}" aria-pressed="${laneFilter===k}"><div><div class="t">${LANES[k].title}</div><div class="d">${LANES[k].desc}</div></div><div class="n">${fmt(n[k])}</div></button>`).join('');
+    $('tr-tallybox').querySelectorAll('.tv').forEach(b => b.onclick = () => { laneFilter = laneFilter === b.dataset.lane ? null : b.dataset.lane; renderLanes(); renderQueue(); renderTL(); });
+    const person = rows.filter(r => r.person).length, company = rows.filter(r => r.company).length;
+    const jev = rows.reduce((a, r) => a + r.tokens * 0.042e-6, 0), total = rows.reduce((a, r) => a + r.cost, 0);
+    $('tr-steps').innerHTML = [[`verify × ${fmt(rows.length)}`, 'treg', '', 'ok / catch-all / burner', '$0.0018 each'], [`person enrich × ${fmt(person)}`, 'treg', '', 'name, title, company', 'routed, ≤ $0.03, hits only'], [`company enrich × ${fmt(company)}`, 'treg', '', 'staff, revenue', '$0.0019 each'], [`judge × ${fmt(rows.length)}`, 'jev', 'jev', '3 questions per signup', '~$0.00005 each']]
+      .map(([a, w, cls, d, pr]) => `<span>${a}</span><span class="who ${cls}">${w}</span><b>${d}</b><span class="price">${pr}</span>`).join('');
+    $('tr-spend').innerHTML = `<div class="jev"><small>jev spend</small>${fmt$(jev)}</div><div><small>treg spend</small>${fmt$(Math.max(0, total - jev))}</div>`;
   }
   function buildTL() {
     hours = Array.from({length: 24}, () => []); DATA.forEach(r => hours[r.hour].push(r));
@@ -839,11 +827,17 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape' && !drawer.hi
 
   function funnel() {
     const pv = peopleVisible(), ev = emailVisible(), vis = leads.filter(l => pv.has(l.id));
-    const kept = posts.slice(0, shown.scanned).filter(p => p.kept).length, dm = vis.filter(l => TIER(l.fit) === 'dm').length;
+    const kept = posts.slice(0, shown.scanned).filter(p => p.kept).length, n = {dm:0, user:0, skip:0};
+    vis.forEach(l => n[TIER(l.fit)]++);
     const tried = emailed.filter(l => ev.has(l.id)).length, found = emailed.filter(l => ev.has(l.id) && l.contact.email).length;
-    const phase = shown.scanned < posts.length ? 0 : shown.ranked < byOrder.length ? 2 : shown.emails < emailed.length ? 4 : -1;
-    const steps = [['posts', shown.posts, 'relevance search, past week', 'treg'], ['on topic', kept, 'probability ≥ 0.70', 'jev'], ['people', vis.length + peoplePending().length + (isLive() ? 0 : RUN.people_total - byOrder.length), 'reactors + commenters', 'treg'], ['qualified', dm, 'decision makers, fit ≥ 1.5', 'jev'], ['lookups', tried, 'everyone at fit ≥ 1.5', 'treg'], ['emails', found, tried ? Math.round(100*found/tried) + '% hit rate' : 'none yet', 'treg']];
-    $('sg-funnel').innerHTML = steps.map(([t, n, d, w], i) => `<div class="fstep ${phase===i||phase===i-1?'live':''}"><span class="who ${w}">${w}</span><div class="t">${t}</div><div class="n">${n}</div><div class="d">${d}</div></div>`).join('');
+    const total = isLive() ? vis.length + peoplePending().length : RUN.people_total;
+    $('sg-tallymeta').textContent = `${total} people`;
+    $('sg-stack').innerHTML = ['dm','user'].map(k => `<i class="${k}" style="width:${100*n[k]/Math.max(1,total)}%"></i>`).join('');
+    const desc = {dm: 'fit ≥ 1.5 · heads, VPs, founders', user: 'fit ≥ 0.8 · ICs in growth, ops, data', skip: 'students, recruiters, agencies, vendors'};
+    $('sg-tallybox').innerHTML = Object.keys(n).map(k => `<button class="tv filter ${k}" data-tier="${k}" aria-pressed="${tierFilter===k}"><div><div class="t">${TIERNAME[k]}</div><div class="d">${desc[k]}</div></div><div class="n">${n[k]}</div></button>`).join('');
+    $('sg-tallybox').querySelectorAll('.tv').forEach(b => b.onclick = () => { if (isLive()) return; tierFilter = tierFilter === b.dataset.tier ? null : b.dataset.tier; funnel(); renderFilters(); renderList(); });
+    $('sg-steps').innerHTML = [[`search × ${RUN.topics.length}`, 'treg', '', `${shown.posts} posts, past week`, '~$0.004 each'], [`on topic × ${shown.scanned}`, 'jev', 'jev', `${kept} kept at ≥ 0.70`, '~$0.00003 each'], [`engagement × ${kept}`, 'treg', '', `${total} reactors + commenters`, '~$0.008 per post'], [`rank × ${isLive() ? shown.ranked : RUN.people_total}`, 'jev', 'jev', `${n.dm} decision makers`, '~$0.00003 each'], [`email find × ${tried}`, 'treg', '', `${found} found${tried ? ' · ' + Math.round(100*found/tried) + '%' : ''}`, '~$0.02 per hit, misses free']]
+      .map(([a, w, cls, d, pr]) => `<span>${a}</span><span class="who ${cls}">${w}</span><b>${d}</b><span class="price">${pr}</span>`).join('');
     const t = RUN.topics.length * SEARCH_COST * (shown.posts ? 1 : 0) + kept * ENGAGE_COST + emailed.slice(0, shown.emails).reduce((a, l) => a + (l.contact.cost || 0), 0);
     const j = posts.slice(0, shown.scanned).reduce((a, p) => a + (p.jev_cost || 0), 0) + byOrder.slice(0, shown.ranked).reduce((a, l) => a + (l.jev_cost || 0), 0);
     $('sg-spend').innerHTML = `<div class="jev"><small>jev spend</small>${fmt$(j)}</div><div><small>treg spend</small>${fmt$(t)}</div>`;
@@ -875,8 +869,7 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape' && !drawer.hi
   function renderFilters() {
     const pv = peopleVisible(), vis = leads.filter(l => pv.has(l.id)), counts = {}, tiers = {dm:0, user:0, skip:0};
     vis.forEach(l => { counts[l.role] = (counts[l.role] || 0) + 1; tiers[TIER(l.fit)]++; });
-    $('sg-filters').innerHTML = Object.entries(tiers).map(([k, n]) => `<button class="chip" data-tier="${k}" aria-pressed="${tierFilter===k}">${TIERNAME[k]} ${n}</button>`).join('') + Object.entries(counts).sort((a, b) => b[1] - a[1]).map(([k, n]) => `<button class="chip" data-role="${k}" aria-pressed="${roleFilter===k}">${ROLE[k]||k} ${n}</button>`).join('');
-    $('sg-filters').querySelectorAll('[data-tier]').forEach(b => b.onclick = () => { tierFilter = tierFilter === b.dataset.tier ? null : b.dataset.tier; renderFilters(); renderList(); });
+    $('sg-filters').innerHTML = Object.entries(counts).sort((a, b) => b[1] - a[1]).map(([k, n]) => `<button class="chip" data-role="${k}" aria-pressed="${roleFilter===k}">${ROLE[k]||k} ${n}</button>`).join('');
     $('sg-filters').querySelectorAll('[data-role]').forEach(b => b.onclick = () => { roleFilter = roleFilter === b.dataset.role ? null : b.dataset.role; renderFilters(); renderList(); });
   }
   function rowHtml(l, ev, pending) {
