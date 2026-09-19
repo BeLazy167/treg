@@ -617,15 +617,23 @@
   @media (max-width: 640px) { .ig-charts { grid-template-columns: 1fr; } .sl-tab.cmp td, .sl-tab.cmp th { padding: 4px 5px; font-size: 10px; } }
   /* slide 2 tabs */
   .qt-tabs { display: inline-flex; width: max-content; gap: 4px; padding: 4px; border: 1px solid var(--line); border-radius: 999px; background: var(--card); margin-bottom: 12px; }
-  .sl-r:has(.qt-tabs) { justify-content: flex-start; align-items: flex-start; }
+  .sl-r:has(.qt-tabs) { justify-content: flex-start; align-items: stretch; }
+  .sl-r:has(.qt-tabs) .qt-tabs { align-self: flex-start; }
   .sl-r:has(.qt-tabs) .qt-pane { width: 100%; }
   .qt-tabs button { font: 500 12.5px var(--mono); padding: 6px 14px; border-radius: 999px; border: 0; background: transparent; color: var(--muted); cursor: pointer; }
   .qt-tabs button[aria-selected="true"] { background: var(--ink); color: #fff; }
-  .qt-pane { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, .95fr); gap: 12px; align-items: stretch; }
+  .qt-pane { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, .9fr); gap: 12px; align-items: stretch; flex: 1; min-height: 0; }
+  .qt-req { display: flex; flex-direction: column; gap: 6px; min-height: 0; overflow: auto; }
+  .qt-req .ig-lab { margin: 0; } .qt-req pre { font-size: 10.5px; line-height: 1.45; padding: 12px 14px; }
+  .qt-req pre.st { flex: 0 0 auto; background: #fff; }
+  .qt-req pre:not(.st) { flex: 1; }
+  .qt-why { font-size: 12.5px; color: #43413E; line-height: 1.5; margin: 0; border-top: 1px solid var(--line); padding-top: 10px; }
+  .qt-why code { font-size: 11px; }
   .qt-pane[hidden] { display: none; }
-  .qt-req pre { height: 100%; box-sizing: border-box; margin: 0; }
+  .qt-req pre { box-sizing: border-box; margin: 0; }
   .qt-ans { border: 1px solid var(--line); border-radius: 14px; padding: 14px; background: #fff; display: flex; flex-direction: column; gap: 10px; justify-content: center; }
-  .qt-ans .ig-bar { grid-template-columns: minmax(0, 150px) minmax(40px,1fr) 36px; }
+  .qt-ans .ig-bar { grid-template-columns: minmax(0, 160px) minmax(40px,1fr) 36px; }
+  .qt-ans { justify-content: flex-start; }
   .qt-ans .ig-gauge { margin: 14px 0 26px; }
   @media (max-width: 860px) { .qt-pane { grid-template-columns: 1fr; } }
 
@@ -1117,31 +1125,53 @@
 
 usage: 428 tokens in · $0.000018</pre></div></div></div></article>
 
-      <article class="slide"><div class="sl-l"><span class="sl-n">3 / 7</span><h3>Three kinds of question</h3><p>Every jev question is one of three types, and you can send several in one call. Same support message for all three:</p><p class="sl-note">"Our API integration started returning 500 errors on every request 20 minutes ago, and we can't process any customer orders until this is fixed."</p><p class="sl-note"><b>choice</b> picks from your options. <b>noul</b> is a yes/no as a probability. <b>score</b> is a position on your ordered rubric, returned as the probability on each level plus their weighted mean.</p></div>
+      <article class="slide"><div class="sl-l"><span class="sl-n">3 / 7</span><h3>Three kinds of question</h3><p>Every jev question is one of three types, and you can send several in one call. Each returns a full distribution, not just a label, so a close call looks different from a sure one.</p><p class="sl-note"><b>choice</b> picks one of your options and tells you how close it was. <b>noul</b> is a yes/no as a probability, with a playbook for each side when the line is subtle. <b>score</b> is a position on your ordered rubric: the probability on every level plus their weighted mean.</p><p class="sl-note">All three are real answers from our runs.</p></div>
         <div class="sl-r"><div class="qt-tabs" role="tablist"><button role="tab" aria-selected="true" data-qt="choice">choice</button><button role="tab" aria-selected="false" data-qt="noul">noul</button><button role="tab" aria-selected="false" data-qt="score">score</button></div>
-          <div class="qt-pane" data-qt="choice"><div class="qt-req"><pre>"department": {
+          <div class="qt-pane" data-qt="choice"><div class="qt-req"><div class="ig-lab">state</div><pre class="st">"I ordered the standing desk two weeks ago and tracking still says label created. Was I even charged?"</pre><div class="ig-lab">question</div><pre>"department": {
   "type": "choice",
-  "instructions": "Which team should handle this?",
+  "instructions": {
+    "question": "Which team should handle this message?",
+    "focus": "Classify the primary request, not every topic mentioned."
+  },
   "criteria": {
-    "billing":   "Payment or subscription issues",
-    "technical": "Bugs or integration problems",
-    "sales":     "Pricing or account questions"
+    "billing": { "what": "Charges, invoices, refunds",
+                 "not_for": "Order tracking or account access",
+                 "examples": ["I was charged twice"] },
+    "orders":  { "what": "Order status, delivery, returns",
+                 "not_for": "Charges or account access",
+                 "examples": ["Where is my package?"] },
+    "account": { "what": "Login, password, profile" }
   }
-}</pre></div><div class="qt-ans"><div class="ig-lab">answer</div><div class="ig-bars"><div class="ig-bar g"><span class="k">technical</span><span class="tr"><i style="--w:100%"></i></span><span class="v">1.00</span></div><div class="ig-bar "><span class="k">billing</span><span class="tr"><i style="--w:0%"></i></span><span class="v">0.00</span></div><div class="ig-bar "><span class="k">sales</span><span class="tr"><i style="--w:0%"></i></span><span class="v">0.00</span></div></div><div class="ig-ans">→ choice <b>technical</b> · confidence 1.00 · probabilities sum to 1</div></div></div>
-          <div class="qt-pane" data-qt="noul" hidden><div class="qt-req"><pre>"is_urgent": {
+}</pre></div><div class="qt-ans"><div class="ig-lab">answer</div><div class="ig-bars"><div class="ig-bar g"><span class="k">orders</span><span class="tr"><i style="--w:51%"></i></span><span class="v">0.51</span></div><div class="ig-bar a"><span class="k">billing</span><span class="tr"><i style="--w:49%"></i></span><span class="v">0.49</span></div><div class="ig-bar "><span class="k">account</span><span class="tr"><i style="--w:0%"></i></span><span class="v">0.00</span></div></div><div class="ig-ans">→ choice <b>orders</b> · confidence <b>0.26</b></div><p class="qt-why">One key is chosen, but the split says it was a coin toss between two real topics. The confidence of 0.26 is what you gate on: a 0.51 / 0.49 and a 0.98 / 0.02 pick the same key and mean different things.</p></div></div>
+          <div class="qt-pane" data-qt="noul" hidden><div class="qt-req"><div class="ig-lab">state · a JSON object</div><pre class="st">{ "sender":  { "display_name": "Beaver Dam Builders Ltd.",
+              "email": "donotreply@payroll.example" },
+  "message": "Your Q3 bonus is ready. Reply with your login
+              password so we can verify your identity." }</pre><div class="ig-lab">question</div><pre>"requests_credentials": {
   "type": "noul",
-  "instructions": "The message conveys urgency or time-sensitivity"
-}
-
-// optional, when the line is subtle:
-"criteria": { "true": "…", "false": "…" }</pre></div><div class="qt-ans"><div class="ig-lab">answer</div><div class="ig-gauge"><i style="--w:99%"></i><em style="--x:70%"><b>your threshold 0.70</b></em></div><div class="ig-ans">→ noul <b>0.99</b> · you decide where true starts</div></div></div>
-          <div class="qt-pane" data-qt="score" hidden><div class="qt-req"><pre>"frustration": {
+  "instructions": {
+    "question": "Does the message ask for a sensitive credential?",
+    "inspect": "message",
+    "focus": "Sending the credential itself, not resetting it."
+  },
+  "criteria": {
+    "true":  { "what": "asks to reply with a password, PIN or one-time code",
+               "examples": ["Reply with your password", "Send the 6-digit code"] },
+    "false": { "what": "no credential is requested",
+               "examples": ["Reset your password in settings", "Your statement is ready"] }
+  }
+}</pre></div><div class="qt-ans"><div class="ig-lab">answer</div><div class="ig-gauge"><i style="--w:99%"></i><em style="--x:70%"><b>your threshold 0.70</b></em></div><div class="ig-ans">→ noul <b>0.99</b> · 491 tokens · $0.00002</div><p class="qt-why">The state is a whole object; <code>inspect</code> points at the field to judge. <code>true</code> and <code>false</code> each carry a playbook with examples, so the model knows a reset link is not a credential request. You pick where "yes" starts.</p></div></div>
+          <div class="qt-pane" data-qt="score" hidden><div class="qt-req"><div class="ig-lab">state · a post with its engagement rates</div><pre class="st">{ "post": { "text": "Claude Code开放中国大陆啦 …", "counts": { "views": 399814, "likes": 414, … } },
+  "rates": { "likes_per_view": 0.0010, "replies_per_view": 0.0002, … },
+  "views_per_follower": 41.2, "author": { "followers": 9700, … } }</pre><div class="ig-lab">question</div><pre>"authenticity": {
   "type": "score",
-  "instructions": "How frustrated the customer appears",
-  "criteria": ["Calm, just stating facts",
-               "Frustrated but civil",
-               "Very angry, strong language"]
-}</pre></div><div class="qt-ans"><div class="ig-lab">answer</div><div class="ig-bars"><div class="ig-bar "><span class="k">0 calm</span><span class="tr"><i style="--w:35%"></i></span><span class="v">0.35</span></div><div class="ig-bar a"><span class="k">1 frustrated but civil</span><span class="tr"><i style="--w:65%"></i></span><span class="v">0.65</span></div><div class="ig-bar "><span class="k">2 very angry</span><span class="tr"><i style="--w:0%"></i></span><span class="v">0.00</span></div></div><div class="ig-ans">→ score <b>0.65</b> · 0.35×0 + 0.65×1 + 0×2 · legend echoed back</div></div></div>
+  "instructions": "How authentic does this post's engagement look?",
+  "criteria": [
+    { "summary": "clearly manipulated", "signals": ["several rates far off", "bot-like replies"] },
+    { "summary": "suspicious",          "signals": ["one rate well outside range"] },
+    { "summary": "probably organic",    "signals": ["rates mostly ordinary"] },
+    { "summary": "clearly organic",     "signals": ["ordinary rates", "real replies"] }
+  ]
+}</pre></div><div class="qt-ans"><div class="ig-lab">answer</div><div class="ig-bars"><div class="ig-bar r"><span class="k">0 clearly manipulated</span><span class="tr"><i style="--w:28%"></i></span><span class="v">0.28</span></div><div class="ig-bar a"><span class="k">1 suspicious</span><span class="tr"><i style="--w:29%"></i></span><span class="v">0.29</span></div><div class="ig-bar "><span class="k">2 probably organic</span><span class="tr"><i style="--w:25%"></i></span><span class="v">0.25</span></div><div class="ig-bar g"><span class="k">3 clearly organic</span><span class="tr"><i style="--w:18%"></i></span><span class="v">0.18</span></div></div><div class="ig-ans">→ score <b>1.33</b> · 0.28×0 + 0.29×1 + 0.25×2 + 0.18×3</div><p class="qt-why">Four levels, mass spread across all of them: the model is genuinely unsure, and the score of 1.33 says "between suspicious and probably organic". A peaked answer would put 0.9 on one level. From the launch radar above, a post with 41× more views than followers.</p></div></div>
         </div></article>
 
       <article class="slide"><div class="sl-l"><span class="sl-n">4 / 7</span><h3>Much faster and cheaper than the cheapest LLM</h3><p>We sent the same three support questions to jev and to GPT-5.6 Luna, the cheapest chat model we could find, with real support tickets padding the input from 2k to 200k tokens. Where both run, jev is <b>5 to 6× cheaper</b> and <b>5 to 7× faster</b>, and its time barely moves with input because it never writes.</p><p class="sl-note">jev stops at about 30k of its own tokens; above that you split the state. Luna's time is dominated by writing ~80 output tokens, so it sits at 2 to 4 s whatever you send. TypeSafe's own workflow demo claims far more (193.6× faster, 444.6× cheaper); these are our numbers.</p></div>
