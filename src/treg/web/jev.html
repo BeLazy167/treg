@@ -153,10 +153,11 @@
   .stage-post.scanning::before { content: ""; position: absolute; inset: 0; border-radius: 16px; pointer-events: none; box-shadow: inset 0 0 0 2px var(--blue); }
   .stage-side { background: #fff; border: 1px solid var(--line); border-radius: 16px; padding: 12px 14px; }
   .stage-steps { margin-top: 8px; display: flex; flex-direction: column; }
-  .ss { display: grid; grid-template-columns: 44px minmax(0,1fr) 18px; gap: 2px 10px; padding: 9px 0; border-top: 1px dashed var(--line); align-items: start; opacity: .45; transition: opacity .2s; }
+  .ss { display: grid; grid-template-columns: 62px minmax(0,1fr) 18px; gap: 2px 10px; padding: 9px 0; border-top: 1px dashed var(--line); align-items: start; opacity: .45; transition: opacity .2s; }
   .ss:first-child { border-top: 0; } .ss.active, .ss.done { opacity: 1; }
-  .ss .who { grid-row: 1 / span 2; font-family: var(--mono); font-size: 9.5px; letter-spacing: .08em; text-transform: uppercase; padding: 3px 0; border-radius: 6px; text-align: center; background: var(--amber-soft); color: var(--amber); margin-top: 1px; }
-  .ss .who.jev { background: var(--blue-soft); color: var(--blue); } .ss .who.you { background: var(--card); color: var(--muted); }
+  .ss .who { grid-row: 1 / span 2; display: inline-flex; align-items: center; justify-content: center; gap: 5px; font-family: var(--display); font-weight: 600; font-size: 12px; padding: 4px 6px; border-radius: 8px; background: var(--card); color: var(--ink); margin-top: 1px; }
+  .ss .who svg, .ss .who img { width: 16px; height: 16px; border-radius: 4px; }
+  .ss .who.jev { background: rgba(230,60,180,.08); } .ss .who.you { font-family: var(--mono); font-size: 9.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
   .ss .who { grid-column: 1; }
   .ss .t { grid-column: 2; grid-row: 1; font-size: 13px; color: var(--ink); } .ss .d { grid-column: 2; grid-row: 2; font-family: var(--mono); font-size: 10.5px; color: var(--muted); }
   .ss .st { grid-column: 3; grid-row: 1 / span 2; align-self: center; width: 16px; height: 16px; border-radius: 50%; border: 1.5px solid var(--line2); }
@@ -167,6 +168,7 @@
   .stage-verdict .big { font-family: var(--display); font-weight: 600; font-size: 20px; letter-spacing: -.02em; line-height: 1.2; }
   .stage-verdict .big.organic { color: var(--green); } .stage-verdict .big.paid { color: var(--amber); } .stage-verdict .big.irrelevant { color: var(--muted); }
   .stage-verdict .sub { font-family: var(--mono); font-size: 11.5px; color: var(--muted); margin-top: 2px; }
+  .stage-verdict .sv-probs { margin-top: 10px; } .stage-verdict .sv-acts { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
   .board { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 10px; }
   .board.irr-open { grid-template-columns: repeat(3, minmax(0,1fr)); }
   .board.live { grid-template-columns: repeat(3, minmax(0,1fr)); } .board.live.irr-open { grid-template-columns: repeat(4, minmax(0,1fr)); }
@@ -356,8 +358,78 @@
   .contact .none { font-family: var(--mono); font-size: 12px; color: #B8B5AE; }
   .contact .via { font-family: var(--mono); font-size: 10.5px; color: var(--muted); margin-top: 3px; }
 
+
+  /* ---- pricing + catalog (shared with /people-search) ---- */
+  .section { padding: 110px 24px; }
+  .section h2, .bench-stage h2, .cta-final h2 {
+    font-family: var(--display); font-weight: 500; letter-spacing: -.025em; line-height: 1.12;
+    font-size: clamp(30px, 4.6vw, 46px); text-align: center; margin: 0 0 14px; text-wrap: balance;
+  }
+  .section .lede, .bench-stage .lede { text-align: center; color: var(--muted); max-width: 56ch; margin: 0 auto 48px; font-size: 17px; text-wrap: balance; }
+  .hl2 { color: var(--green); font-weight: 600; }
+  .fineprint { text-align: center; color: var(--muted); font-size: 12.5px; margin-top: 34px; }
+  .fineprint a { color: inherit; }
+
+  /* ---- the bill ---- */
+  .bill { max-width: 900px; margin: 0 auto; display: flex; gap: 44px; align-items: center; justify-content: center; }
+  .bill-left { display: flex; flex-direction: column; gap: 7px; min-width: 330px; }
+  .b-row { display: flex; align-items: center; gap: 12px; font-size: 15px; }
+  .b-row img { width: 30px; height: 30px; border-radius: 8px; object-fit: contain; flex: none; background: #FBFAF7; border: 1px solid rgba(0,0,0,.06); }
+  .b-row b { font-weight: 600; }
+  .b-row s { margin-left: auto; text-decoration: none; color: var(--muted); position: relative; font-variant-numeric: tabular-nums; }
+  .b-row .strike {
+    position: absolute; left: -5px; right: -5px; top: 50%; margin-top: -2px; height: 4px;
+    background: var(--red); border-radius: 2px; transform: scaleX(0); transform-origin: left center;
+    transition: transform .35s cubic-bezier(.3,.7,.3,1);
+  }
+  .seen .b-row .strike { transform: scaleX(1); }
+  .seen .b-row:nth-child(1) .strike { transition-delay: .15s; } .seen .b-row:nth-child(2) .strike { transition-delay: .27s; }
+  .seen .b-row:nth-child(3) .strike { transition-delay: .39s; } .seen .b-row:nth-child(4) .strike { transition-delay: .51s; }
+  .seen .b-row:nth-child(5) .strike { transition-delay: .63s; } .seen .b-row:nth-child(6) .strike { transition-delay: .75s; }
+  .seen .b-row:nth-child(7) .strike { transition-delay: .87s; } .seen .b-row:nth-child(8) .strike { transition-delay: .99s; }
+  .seen .b-row:nth-child(9) .strike { transition-delay: 1.11s; }
+  .bill-divider { width: 1px; align-self: stretch; background: var(--line); }
+  .bill-right { display: flex; flex-direction: column; gap: 12px; }
+  .bill-right .bk { display: flex; align-items: center; gap: 8px; font-family: var(--mono); font-size: 15px; color: var(--muted); }
+  .bill-right .bk svg { width: 22px; height: 22px; border-radius: 6px; }
+  .bill-right .bb {
+    font-family: var(--display); font-weight: 600; font-size: clamp(52px, 7vw, 84px); line-height: 1.02;
+    letter-spacing: -.03em; color: var(--green); opacity: 0; transform: translateY(12px);
+    transition: opacity .6s ease 1.25s, transform .65s cubic-bezier(.3,.7,.3,1) 1.25s;
+    font-variant-numeric: tabular-nums;
+  }
+  .seen .bill-right .bb { opacity: 1; transform: none; }
+  .bill-right .bb small { display: block; font-family: var(--text); font-weight: 500; font-size: 16px; letter-spacing: 0; color: var(--ink); margin-top: 8px; }
+  .bill-right .bnote { font-family: var(--mono); font-size: 12.5px; color: var(--muted); }
+  .catwrap { max-width: 1000px; margin: 0 auto; }
+  .pgrid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+  .pcard {
+    border-radius: 14px; padding: 13px 14px; background: #fff;
+    box-shadow: 0 1px 2px rgba(20,18,12,.05), 0 4px 14px -6px rgba(20,18,12,.08);
+    display: flex; align-items: center; gap: 12px; transition: box-shadow .24s ease;
+  }
+  .pcard:hover { box-shadow: 0 2px 4px rgba(20,18,12,.06), 0 14px 30px -10px rgba(20,18,12,.16); }
+  .pcard .ph {
+    display: grid; place-items: center; width: 38px; height: 38px; flex: none; border-radius: 11px;
+    background: #FBFAF7; border: 1px solid rgba(0,0,0,.07);
+  }
+  .pcard .ph img { width: 23px; height: 23px; border-radius: 5px; object-fit: contain; }
+  .pcard .pt { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+  .pcard .pt b { font-weight: 600; font-size: 13.5px; line-height: 1.25; letter-spacing: -.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .pcard .pt s { font-family: var(--mono); font-size: 10.5px; color: var(--muted); text-decoration: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .pcard .pt s.was { text-decoration: line-through; text-decoration-color: rgba(192,54,47,.55); text-decoration-thickness: 1.5px; }
+  .morewrap {
+    margin-top: 10px; pointer-events: none;
+    -webkit-mask-image: linear-gradient(180deg, rgba(0,0,0,.55) 0%, transparent 92%);
+    mask-image: linear-gradient(180deg, rgba(0,0,0,.55) 0%, transparent 92%);
+  }
+  .moreline { text-align: center; margin-top: -8px; font-family: var(--mono); font-size: 13px; color: var(--muted); }
+  @media (max-width: 880px) { .pgrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (max-width: 880px) { .bill { flex-direction: column; gap: 30px; } .bill-divider { display: none; } .bill-left { min-width: 0; width: 100%; max-width: 360px; } .bill-right { align-items: center; text-align: center; } }
+  @media (max-width: 640px) { .section { padding: 70px 18px; } }
+
   /* closing */
-  .close-cta { text-align: center; padding: 100px 24px 0; }
+  .close-cta { text-align: center; padding: 30px 24px 0; }
   .close-cta h2 { font-family: var(--display); font-weight: 500; letter-spacing: -.03em; font-size: clamp(30px, 4vw, 44px); line-height: 1.08; margin: 0 0 12px; }
   .close-cta p { color: var(--muted); max-width: 56ch; margin: 0 auto 24px; }
 
@@ -560,6 +632,69 @@
   </div>
 </section>
 
+<section class="section bill-sec rv" id="pricing" style="padding-top:110px">
+  <h2>No subscription. No contract.<br><span class="hl2">Pays for results only.</span></h2>
+  <p class="lede">Every call is metered at the provider's own rate from a prepaid balance — 0% markup.</p>
+  <div class="bill">
+    <div class="bill-left">
+      <div class="b-row"><img src="media/people-search/apollo.png" alt=""><b>Apollo</b><s>$59/mo<i class="strike"></i></s></div>
+      <div class="b-row"><img src="media/people-search/hunter.png" alt=""><b>Hunter</b><s>$34/mo<i class="strike"></i></s></div>
+      <div class="b-row"><img src="media/people-search/lusha.png" alt=""><b>Lusha</b><s>$49/mo<i class="strike"></i></s></div>
+      <div class="b-row"><img src="media/people-search/companyenrich.png" alt=""><b>CompanyEnrich</b><s>$49/mo<i class="strike"></i></s></div>
+      <div class="b-row"><img src="media/people-search/crunchbase.png" alt=""><b>Crunchbase</b><s>$99/mo<i class="strike"></i></s></div>
+      <div class="b-row"><img src="media/people-search/pdl.png" alt=""><b>People Data Labs</b><s>$98/mo<i class="strike"></i></s></div>
+      <div class="b-row"><img src="media/people-search/clay.png" alt=""><b>Clay</b><s>$149/mo<i class="strike"></i></s></div>
+      <div class="b-row"><img src="media/people-search/tomba.png" alt=""><b>Tomba</b><s>$89/mo<i class="strike"></i></s></div>
+      <div class="b-row"><img src="media/people-search/findymail.png" alt=""><b>Findymail</b><s>$99/mo<i class="strike"></i></s></div>
+    </div>
+    <div class="bill-divider" aria-hidden="true"></div>
+    <div class="bill-right">
+      <div class="bk">with <svg viewBox="0 0 512 512" aria-hidden="true"><rect width="512" height="512" rx="112" fill="#101010"/><rect x="111" y="111" width="140.5" height="140.5" rx="20" fill="#fff"/><rect x="260.5" y="260.5" width="140.5" height="140.5" rx="20" fill="#fff"/></svg> treg</div>
+      <div class="bb">$0.0017<small>per X post analysed</small></div>
+      <div class="bnote">fetch the post, its author and 20 replies on treg, five jev answers · the daily run of 60 posts: $0.12</div>
+    </div>
+  </div>
+  <p class="fineprint">Current catalog rates. New teams start with $1.00 free.</p>
+</section>
+
+
+<section class="section tools-sec rv" id="tools" style="padding-top:20px">
+  <h2>One token. 2,896 data &amp; tools.</h2>
+  <p class="lede">The three workflows above use a handful of aisles. The same token reaches enrichment, social, SEO, ads, scraping — and jev can read any of it.</p>
+  <div class="catwrap">
+    <div class="pgrid">
+      <div class="pcard"><span class="ph"><img src="media/people-search/exa.png" alt=""></span><span class="pt"><b>Find person by role</b><s>Exa · $0.010 / query</s></span></div>
+      <div class="pcard"><span class="ph"><img src="media/people-search/apollo.png" alt=""></span><span class="pt"><b>Match + work email</b><s>Apollo · $0.026 / contact</s></span></div>
+      <div class="pcard"><span class="ph"><img src="media/people-search/tomba.png" alt=""></span><span class="pt"><b>Email finder</b><s>Tomba · $0.0089 / find</s></span></div>
+      <div class="pcard"><span class="ph"><img src="media/people-search/hunter.png" alt=""></span><span class="pt"><b>Email verify</b><s>Hunter · $0.003 / check</s></span></div>
+      <div class="pcard"><span class="ph"><img src="media/people-search/pdl.png" alt=""></span><span class="pt"><b>Person enrich</b><s>People Data Labs · $0.028</s></span></div>
+      <div class="pcard"><span class="ph"><img src="media/people-search/crustdata.png" alt=""></span><span class="pt"><b>Company &amp; headcount</b><s>Crustdata · $0.010 / co</s></span></div>
+      <div class="pcard"><span class="ph"><img src="logos/icypeas.svg" alt=""></span><span class="pt"><b>Email from LinkedIn</b><s>Icypeas · $0.019</s></span></div>
+      <div class="pcard"><span class="ph"><img src="media/people-search/leadmagic.png" alt=""></span><span class="pt"><b>People at a company</b><s>LeadMagic · $0.025</s></span></div>
+      <div class="pcard"><span class="ph"><img src="logos/linkedin.svg" alt=""></span><span class="pt"><b>LinkedIn profiles</b><s>no official API</s></span></div>
+      <div class="pcard"><span class="ph"><img src="media/people-search/crunchbase.png" alt=""></span><span class="pt"><b>Funding rounds</b><s class="was">Crunchbase · $99/mo</s></span></div>
+      <div class="pcard"><span class="ph"><img src="logos/x.svg" alt=""></span><span class="pt"><b>X posts &amp; profiles</b><s class="was">X API · $200/mo</s></span></div>
+      <div class="pcard"><span class="ph"><img src="media/people-search/coresignal.png" alt=""></span><span class="pt"><b>Job postings</b><s>Coresignal · $0.020</s></span></div>
+    </div>
+    <div class="morewrap" aria-hidden="true">
+      <div class="pgrid">
+        <div class="pcard"><span class="ph"><img src="logos/tiktok.svg" alt=""></span><span class="pt"><b>TikTok trends</b><s>API: invite-only</s></span></div>
+        <div class="pcard"><span class="ph"><img src="logos/instagram.svg" alt=""></span><span class="pt"><b>Instagram reels</b><s>API: app review</s></span></div>
+        <div class="pcard"><span class="ph"><img src="media/people-search/dataforseo.png" alt=""></span><span class="pt"><b>Keyword volume</b><s>DataForSEO</s></span></div>
+        <div class="pcard"><span class="ph"><img src="media/people-search/majestic.png" alt=""></span><span class="pt"><b>Backlinks</b><s class="was">Majestic · $50/mo</s></span></div>
+        <div class="pcard"><span class="ph"><img src="media/people-search/apify.png" alt=""></span><span class="pt"><b>Web scraping</b><s>Apify actors</s></span></div>
+        <div class="pcard"><span class="ph"><img src="media/people-search/brightdata.png" alt=""></span><span class="pt"><b>Proxy scraping</b><s>Bright Data</s></span></div>
+        <div class="pcard"><span class="ph"><img src="logos/youtube.svg" alt=""></span><span class="pt"><b>YouTube stats</b><s>quota-capped</s></span></div>
+        <div class="pcard"><span class="ph"><img src="media/people-search/serpstat.png" alt=""></span><span class="pt"><b>Rank tracking</b><s>Serpstat</s></span></div>
+      </div>
+    </div>
+    <div class="moreline">+ 2,870 more across 60 providers</div>
+    <div class="ctas" style="display:flex;justify-content:center;margin-top:20px">
+      <a class="pill dark" href="/catalog">Browse the catalog →</a>
+    </div>
+  </div>
+</section>
+
 <section class="close-cta rv">
   <h2>Your data, one key. Your decisions, typed.</h2>
   <p>Every recipe above is a prompt away. treg gives your agent the catalog and the bill; jev gives it answers it can act on without parsing prose.</p>
@@ -622,6 +757,9 @@ document.querySelectorAll('.pop').forEach(p => p.onclick = e => e.stopPropagatio
 document.addEventListener('click', closePops);
 
 const stepRow = (a, w, cls, d, pr) => `<div class="xs"><span class="who ${cls}">${w}</span><span class="t">${a}</span><span class="r">${d}</span>${pr ? `<span class="p">${pr}</span>` : ''}</div>`;
+
+const billIO = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { e.target.classList.add('seen'); billIO.unobserve(e.target); } }), { threshold: 0.25 });
+document.querySelectorAll('.bill-sec').forEach(el => billIO.observe(el));
 
 /* copy buttons */
 document.querySelectorAll('[data-copy]').forEach(b => b.onclick = () => {
@@ -769,7 +907,8 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape' && !drawer.hi
   let widgets = null;
   const loadWidgets = () => widgets || (widgets = new Promise(res => { if (window.twttr?.widgets) return res(window.twttr); const sc = document.createElement('script'); sc.src = 'https://platform.twitter.com/widgets.js'; sc.async = true; sc.onload = () => res(window.twttr); sc.onerror = () => res(null); document.head.appendChild(sc); }));
   const STEPS = [['treg', '', 'Fetch the post', 'text, counts, author · tikhub'], ['treg', '', 'Author profile', 'followers, bio, verified'], ['treg', '', 'First replies', '20 replies · quick, short, generic'], ['you', 'you', 'Forensics', 'each count ÷ views · views ÷ followers'], ['jev', 'jev', 'Five typed questions', 'relevance · type · distribution · organic · authenticity']];
-  function stageSteps(n) { $('xb-stage-steps').innerHTML = STEPS.map(([w, cls, t, d], i) => `<div class="ss ${i < n ? 'done' : i === n ? 'active' : ''}"><span class="who ${cls}">${w}</span><span class="t">${t}</span><span class="d">${d}</span><span class="st"></span></div>`).join(''); }
+  const WHO = {treg: `<span class="who"><svg viewBox="0 0 512 512" aria-hidden="true"><rect width="512" height="512" rx="112" fill="#101010"/><rect x="111" y="111" width="140.5" height="140.5" rx="20" fill="#fff"/><rect x="260.5" y="260.5" width="140.5" height="140.5" rx="20" fill="#fff"/></svg> treg</span>`, jev: `<span class="who jev"><img src="logos/jev.png" alt=""> jev</span>`, you: `<span class="who you">you</span>`};
+  function stageSteps(n) { $('xb-stage-steps').innerHTML = STEPS.map(([w, cls, t, d], i) => `<div class="ss ${i < n ? 'done' : i === n ? 'active' : ''}">${WHO[w]}<span class="t">${t}</span><span class="d">${d}</span><span class="st"></span></div>`).join(''); }
   function flyFrom(rect, btn) {
     if (reduced) return;
     const last = btn.getBoundingClientRect(), ghost = btn.cloneNode(true);
@@ -787,21 +926,25 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape' && !drawer.hi
     $('xb-embed').innerHTML = 'loading the post…'; post.classList.add('scanning');
     let step = 0; stageSteps(0);
     const ticker = setInterval(() => { if (step < STEPS.length - 1) { step++; stageSteps(step); } }, 900);
-    loadWidgets().then(tw => { if (!tw) { $('xb-embed').textContent = 'embed blocked; the analysis continues'; return; } $('xb-embed').innerHTML = ''; tw.widgets.createTweet(m[1], $('xb-embed'), {conversation: 'none', dnt: true, width: 520}); });
+    let embedded = false;
+    loadWidgets().then(tw => { if (!tw) return; $('xb-embed').innerHTML = ''; return tw.widgets.createTweet(m[1], $('xb-embed'), {conversation: 'none', dnt: true, width: 520}); }).then(el => { embedded = !!el; if (!el && !$('xb-embed').querySelector('.post')) $('xb-embed').textContent = 'X would not embed this post; showing treg\'s copy once it arrives'; });
     try {
       const r = await fetch('/jev/xboost/judge', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({url})});
       const d = await r.json();
       if (!r.ok) throw new Error(d.detail || ('HTTP ' + r.status));
       clearInterval(ticker); stageSteps(STEPS.length); post.classList.remove('scanning');
       const p = {...d, manual: true}, laneOf = LANE(p);
+      if (!embedded && !$('xb-embed').querySelector('.twitter-tweet')) { $('xb-embed').innerHTML = card(p); $('xb-embed').querySelector('.post').style.cursor = 'default'; }
       $('xb-stage-meta').textContent = `treg ${fmt$(p.treg_cost||0)} · jev ${fmt$(p.jev_cost||0)}`;
       $('xb-stage-verdict').hidden = false;
-      $('xb-stage-verdict').innerHTML = `<div class="big ${laneOf}">${laneOf === 'organic' ? 'Organic launch' : laneOf === 'paid' ? 'Paid launch' : 'Irrelevant'}</div><div class="sub">${REL[p.relevance]} ${(+p.relevance_probs[p.relevance]).toFixed(2)} · ${DIST[p.distribution]} ${(+p.distribution_probs[p.distribution]).toFixed(2)} · authenticity ${(+p.authenticity).toFixed(1)} / 3</div>`;
+      $('xb-stage-verdict').innerHTML = `<div class="big ${laneOf}">${laneOf === 'organic' ? 'Organic launch' : laneOf === 'paid' ? 'Paid launch' : 'Irrelevant'}</div><div class="sub">${REL[p.relevance]} ${(+p.relevance_probs[p.relevance]).toFixed(2)} · ${DIST[p.distribution]} ${(+p.distribution_probs[p.distribution]).toFixed(2)} · authenticity ${(+p.authenticity).toFixed(1)} / 3</div>
+        <div class="sv-probs">${bars(p.distribution_probs, DIST, k => ({organic:'g',paid_promotion:'a',artificial_engagement:'r'}[k]))}</div>
+        <div class="sv-acts"><button class="pill sm dark" id="xb-stage-done" type="button">Add to the board</button><button class="pill sm" id="xb-stage-why" type="button">Full reasoning</button></div>`;
       RUN.manual = [d, ...(RUN.manual || []).filter(x => x.id !== d.id)];
       posts = posts.filter(x => x.id !== p.id); posts.unshift(p);
       document.querySelectorAll(`.post[data-id="${CSS.escape(p.id)}"]`).forEach(x => x.remove());
-      if (laneOf === 'irrelevant' && !irrOpen) { irrOpen = true; $('xb-board').classList.add('irr-open'); }
-      setTimeout(() => {
+      const dismiss = () => {
+        if (laneOf === 'irrelevant' && !irrOpen) { irrOpen = true; $('xb-board').classList.add('irr-open'); }
         const rect = post.getBoundingClientRect();
         stage.classList.add('collapse');
         const btn = place(p, true); counts();
@@ -809,7 +952,9 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape' && !drawer.hi
         flyFrom(rect, btn);
         setTimeout(() => { stage.hidden = true; $('xb-embed').innerHTML = ''; }, 550);
         $('xb-note').innerHTML = `Verdict: <b>${laneOf}</b> · ${DIST[p.distribution]} ${(+p.distribution_probs[p.distribution]).toFixed(2)}. Click the card for the reasoning.`;
-      }, 1600);
+      };
+      $('xb-stage-done').onclick = dismiss;
+      $('xb-stage-why').onclick = () => { const tmp = document.createElement('button'); inspect(p, tmp); };
       $('xb-url').value = '';
     } catch (err) {
       clearInterval(ticker); post.classList.remove('scanning'); stage.classList.add('collapse'); setTimeout(() => { stage.hidden = true; }, 550);
