@@ -653,14 +653,23 @@
   .qt-req .ig-lab { margin: 0; } .qt-req pre { font-size: 10.5px; line-height: 1.45; padding: 12px 14px; }
   .qt-req pre.st { flex: 0 0 auto; background: #fff; }
   .qt-req pre:not(.st) { flex: 1; }
-  .st-msg { font-size: 13.5px; color: var(--ink); background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; margin-bottom: 12px; }
+  .st-msg { font-size: 13px; color: var(--ink); background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 8px 14px; margin-bottom: 8px; }
+  .st-msg .ig-opts { font-size: 12px; margin-top: 3px; }
+  .st-pane[hidden] { display: none; }
+  .sl-r:has(.st-tabs) { justify-content: flex-start; align-items: stretch; } .sl-r:has(.st-tabs) .st-tabs { align-self: flex-start; }
+  .sh-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .sh-card { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; min-width: 0; }
+  .sh-card.wide { grid-column: 1 / -1; }
+  .sh-card pre { margin: 0; font-family: var(--mono); font-size: 10.5px; line-height: 1.45; white-space: pre-wrap; word-break: break-word; color: #2a2926; background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 7px 10px; }
+  .sh-card .st-why code { font-size: 10.5px; }
+  @media (max-width: 860px) { .sh-grid { grid-template-columns: 1fr; } }
   .st-table { display: flex; flex-direction: column; gap: 6px; }
-  .st-row { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, .85fr); gap: 12px; align-items: center; background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 8px 12px; }
+  .st-row { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, .85fr); gap: 12px; align-items: center; background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 6px 12px; }
   .st-name { font-family: var(--mono); font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; }
-  .st-l pre { margin: 0; font-family: var(--mono); font-size: 11px; line-height: 1.45; white-space: pre-wrap; word-break: break-word; color: #2a2926; background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 7px 10px; }
-  .st-bars { display: flex; flex-direction: column; gap: 4px; }
-  .st-bars .ig-bar { grid-template-columns: 70px minmax(0,1fr) 34px; font-size: 11px; } .st-bars .ig-bar .tr { height: 9px; }
-  .st-why { font-size: 11.5px; color: var(--muted); margin-top: 5px; }
+  .st-l pre { margin: 0; font-family: var(--mono); font-size: 10.5px; line-height: 1.4; white-space: pre-wrap; word-break: break-word; color: #2a2926; background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 7px 10px; }
+  .st-bars { display: flex; flex-direction: column; gap: 3px; }
+  .st-bars .ig-bar { grid-template-columns: 70px minmax(0,1fr) 34px; font-size: 11px; } .st-bars .ig-bar .tr { height: 8px; }
+  .st-why { font-size: 11.5px; color: var(--muted); margin-top: 4px; }
   .sl-r:has(.st-table) { justify-content: flex-start; }
   @media (max-width: 860px) { .st-row { grid-template-columns: 1fr; } }
   .qt-why { font-size: 12.5px; color: #43413E; line-height: 1.5; margin: 0; border-top: 1px solid var(--line); padding-top: 10px; }
@@ -1227,12 +1236,38 @@ action = { jailbreak: block, harmful: block,
 </svg>
         <div class="ig-foot" id="rt-foot"></div></div></article>
 
-      <article class="slide"><div class="sl-l"><span class="sl-n">6 / 7</span><h3>Tips for steering jev</h3><p>There is no system prompt. Everything you would normally say in one goes into the question itself: <code>instructions</code>, the options and rubric levels all accept a string or an object, and jev reads the keys as well as the values.</p><p class="sl-note">So your routing policy is data you can diff. Same message, same two options, only the instructions change: watch the answer move.</p><p class="sl-note">Name keys for what they hold and put the steering in the value. When two labels overlap in plain language, give each option a <code>what</code>, a <code>not_for</code> and <code>examples</code>. Measured in our notebook, single runs.</p></div>
-        <div class="sl-r"><div class="st-msg"><span class="ig-qlab">state</span>"The export button double-charged my credits, so my invoice is wrong this month." <span class="ig-qlab" style="margin-left:12px">options</span>billing · technical</div>
-<div class="st-table"><div class="st-row"><div class="st-l"><div class="st-name">plain string</div><pre>"instructions": "Which team should handle this?"</pre></div><div class="st-r"><div class="st-bars"><div class="ig-bar g"><span class="k">billing</span><span class="tr"><i style="--w:91%"></i></span><span class="v">0.91</span></div><div class="ig-bar "><span class="k">technical</span><span class="tr"><i style="--w:9%"></i></span><span class="v">0.09</span></div></div><div class="st-why">the invoice is the customer's problem</div></div></div><div class="st-row"><div class="st-l"><div class="st-name">+ focus on the root cause</div><pre>{ "question": "Which team should handle this?",
-  "focus": "Route to whoever must fix the root cause." }</pre></div><div class="st-r"><div class="st-bars"><div class="ig-bar "><span class="k">billing</span><span class="tr"><i style="--w:27%"></i></span><span class="v">0.27</span></div><div class="ig-bar g"><span class="k">technical</span><span class="tr"><i style="--w:73%"></i></span><span class="v">0.73</span></div></div><div class="st-why">one line, and the same message flips</div></div></div><div class="st-row"><div class="st-l"><div class="st-name">+ focus on the customer's need</div><pre>{ "question": "Which team should handle this?",
-  "focus": "Route to whoever resolves what the customer needs today." }</pre></div><div class="st-r"><div class="st-bars"><div class="ig-bar g"><span class="k">billing</span><span class="tr"><i style="--w:98%"></i></span><span class="v">0.98</span></div><div class="ig-bar "><span class="k">technical</span><span class="tr"><i style="--w:2%"></i></span><span class="v">0.02</span></div></div><div class="st-why">swings back, harder than the plain string</div></div></div><div class="st-row"><div class="st-l"><div class="st-name">same sentence, junk key</div><pre>{ "question": "Which team should handle this?",
-  "zzq": "Route to whoever must fix the root cause." }</pre></div><div class="st-r"><div class="st-bars"><div class="ig-bar g"><span class="k">billing</span><span class="tr"><i style="--w:56%"></i></span><span class="v">0.56</span></div><div class="ig-bar "><span class="k">technical</span><span class="tr"><i style="--w:44%"></i></span><span class="v">0.44</span></div></div><div class="st-why">moves less: the key name is read too</div></div></div></div>
+      <article class="slide"><div class="sl-l"><span class="sl-n">6 / 7</span><h3>Tips for steering jev</h3><p>There is no system prompt. Everything you would say in one goes into the question itself, and every field that takes text also takes structure: <code>instructions</code>, each option under <code>criteria</code>, each level of a score. jev reads the keys as well as the values.</p><p class="sl-note"><b>Shapes</b> shows the same question written three ways. <b>Effect</b> keeps one message and changes only the instructions; the numbers are from our notebook, single runs.</p><p class="sl-note">Name keys for what they hold and put the steering in the value. When two labels overlap in plain language, give each option a <code>what</code>, a <code>not_for</code> and <code>examples</code>.</p></div>
+        <div class="sl-r"><div class="qt-tabs st-tabs" role="tablist"><button role="tab" aria-selected="true" data-st="shapes">shapes</button><button role="tab" aria-selected="false" data-st="effect">effect</button></div>
+          <div class="st-pane" data-st="shapes"><div class="sh-grid">
+            <div class="sh-card"><div class="st-name">1 · a string</div><pre>"department": {
+  "type": "choice",
+  "instructions": "Which team should handle this?",
+  "criteria": {
+    "billing":   "Charges, invoices, credits",
+    "technical": "Bugs, errors, integrations"
+  }
+}</pre><div class="st-why">The minimum. One sentence per field.</div></div>
+            <div class="sh-card"><div class="st-name">2 · instructions as an object</div><pre>"department": {
+  "type": "choice",
+  "instructions": {
+    "question": "Which team should handle this?",
+    "focus":    "Route to whoever must fix the root cause."
+  },
+  "criteria": { … same as 1 … }
+}</pre><div class="st-why">Keys are yours to name: <code>question</code>, <code>focus</code>, <code>context</code>, <code>read</code>. None is reserved; the model sees the names with the values.</div></div>
+            <div class="sh-card wide"><div class="st-name">3 · options as rubrics</div><pre>"criteria": {
+  "billing":   { "what":     "charges, invoices, credits, refunds",
+                 "not_for":  "a bug that caused a wrong charge",
+                 "examples": ["I was charged twice", "Where is my refund?"] },
+  "technical": { "what":     "bugs, errors, integrations",
+                 "not_for":  "a correct charge the customer disputes",
+                 "examples": ["The export is empty", "API returns 500"] }
+}</pre><div class="st-why">Each option says what it covers, what it does not, and what it looks like. Score levels take the same shape with <code>summary</code> and <code>signals</code>.</div></div>
+          </div></div>
+          <div class="st-pane" data-st="effect" hidden><div class="st-msg"><span class="ig-qlab">state</span>"The export button double-charged my credits, so my invoice is wrong this month." <span class="ig-qlab" style="margin-left:12px">options</span>billing · technical<span class="ig-opts"><span class="ig-qlab">question</span>"Which team should handle this?" · only the instructions change below</span></div><div class="st-table"><div class="st-row"><div class="st-l"><div class="st-name">plain string</div><pre>"instructions": "Which team should handle this?"</pre></div><div class="st-r"><div class="st-bars"><div class="ig-bar g"><span class="k">billing</span><span class="tr"><i style="--w:91%"></i></span><span class="v">0.91</span></div><div class="ig-bar "><span class="k">technical</span><span class="tr"><i style="--w:9%"></i></span><span class="v">0.09</span></div></div><div class="st-why">the invoice is the customer's problem</div></div></div><div class="st-row"><div class="st-l"><div class="st-name">object · focus on the root cause</div><pre>"instructions": { "question": …,
+  "focus": "Route to whoever must fix the root cause." }</pre></div><div class="st-r"><div class="st-bars"><div class="ig-bar "><span class="k">billing</span><span class="tr"><i style="--w:27%"></i></span><span class="v">0.27</span></div><div class="ig-bar g"><span class="k">technical</span><span class="tr"><i style="--w:73%"></i></span><span class="v">0.73</span></div></div><div class="st-why">one extra key, and the same message flips</div></div></div><div class="st-row"><div class="st-l"><div class="st-name">object · focus on the customer's need</div><pre>"instructions": { "question": …,
+  "focus": "Route to whoever resolves what the customer needs today." }</pre></div><div class="st-r"><div class="st-bars"><div class="ig-bar g"><span class="k">billing</span><span class="tr"><i style="--w:98%"></i></span><span class="v">0.98</span></div><div class="ig-bar "><span class="k">technical</span><span class="tr"><i style="--w:2%"></i></span><span class="v">0.02</span></div></div><div class="st-why">swings back, harder than the plain string</div></div></div><div class="st-row"><div class="st-l"><div class="st-name">object · same sentence, junk key</div><pre>"instructions": { "question": …,
+  "zzq": "Route to whoever must fix the root cause." }</pre></div><div class="st-r"><div class="st-bars"><div class="ig-bar g"><span class="k">billing</span><span class="tr"><i style="--w:56%"></i></span><span class="v">0.56</span></div><div class="ig-bar "><span class="k">technical</span><span class="tr"><i style="--w:44%"></i></span><span class="v">0.44</span></div></div><div class="st-why">moves less: the key name is read too</div></div></div></div></div>
         </div></article>
 
       <article class="slide"><div class="sl-l"><span class="sl-n">7 / 7</span><h3>Where treg comes in</h3><p>jev cannot produce a string and cannot fetch anything. It decides over the state you hand it. treg is the other half: one token for the catalog, so the state is a real X post with its author and replies, a signup with its verification and enrichment, a LinkedIn commenter with their headline. treg fetches, jev decides, your code acts on the numbers.</p><p class="sl-note">Every workflow above is that loop. The prompts in each tab set both up for your agent.</p></div>
@@ -1506,6 +1541,8 @@ document.querySelectorAll('.expand-all[data-wrap]').forEach(b => b.onclick = () 
   $('rt-pick').innerHTML = RT.map((m, i) => `<button type="button" aria-pressed="${i === 1}">${m.name}</button>`).join('');
   [...$('rt-pick').children].forEach((b, i) => b.onclick = () => rtShow(i));
   rtShow(1);
+  // slide 6: shapes vs effect
+  document.querySelectorAll('.st-tabs [data-st]').forEach(b => b.onclick = () => { document.querySelectorAll('.st-tabs [data-st]').forEach(x => x.setAttribute('aria-selected', String(x === b))); document.querySelectorAll('.st-pane').forEach(p => p.hidden = p.dataset.st !== b.dataset.st); });
   // slide 2: one question type at a time
   document.querySelectorAll('.qt-tabs [data-qt]').forEach(b => b.onclick = () => { document.querySelectorAll('.qt-tabs [data-qt]').forEach(x => x.setAttribute('aria-selected', String(x === b))); document.querySelectorAll('.qt-pane').forEach(p => p.hidden = p.dataset.qt !== b.dataset.qt); });
   $('dk-prev').onclick = () => go(i - 1); $('dk-next').onclick = () => go(i + 1);
