@@ -68,11 +68,6 @@
   .sec { padding: 96px 24px 0; }
   .sec h2 { font-family: var(--display); font-weight: 500; letter-spacing: -.03em; font-size: clamp(30px, 4vw, 44px); line-height: 1.08; margin: 14px 0 12px; text-wrap: balance; }
   .sec .lede { color: var(--muted); font-size: 17px; max-width: 62ch; margin: 0; }
-  .num { font-family: var(--mono); font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); display: inline-flex; align-items: center; gap: 10px; }
-  .num i { display: inline-block; width: 26px; height: 26px; border-radius: 50%; background: var(--ink); color: #fff; font-style: normal; font-size: 12px; display: inline-grid; place-items: center; }
-  .live { font-family: var(--mono); font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--green); display: inline-flex; align-items: center; gap: 6px; margin-left: 10px; }
-  .live::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--green); box-shadow: 0 0 0 0 rgba(17,132,83,.5); animation: ping 1.8s infinite; }
-  .replay-tag { font-family: var(--mono); font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin-left: 10px; }
   @keyframes ping { 0% { box-shadow: 0 0 0 0 rgba(17,132,83,.5); } 70% { box-shadow: 0 0 0 7px rgba(17,132,83,0); } 100% { box-shadow: 0 0 0 0 rgba(17,132,83,0); } }
   .rv { opacity: 0; transform: translateY(22px); transition: opacity .7s ease, transform .7s cubic-bezier(.2,.8,.2,1); }
   .rv.in { opacity: 1; transform: none; }
@@ -85,17 +80,21 @@
   .tabs button[aria-selected="true"] { background: var(--ink); color: #fff; border-color: var(--ink); }
   .tabs button i { font-style: normal; font-family: var(--mono); font-size: 11px; opacity: .7; }
   .tab[hidden] { display: none; }
-  .recipe { margin-top: 26px; }
-  .prompt { background: #fff; border: 1px solid var(--line); border-radius: 18px; overflow: hidden; }
-  .prompt .ph { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 14px 12px 18px; border-bottom: 1px solid var(--line); background: var(--card); }
-  .prompt .ph span { font-family: var(--mono); font-size: 12px; color: var(--muted); }
-  .prompt .ph .agents { display: inline-flex; gap: 6px; margin-left: 8px; vertical-align: middle; }
-  .prompt .ph .agents img { width: 16px; height: 16px; border-radius: 4px; }
-  .prompt pre { margin: 0; padding: 18px 20px; font-family: var(--mono); font-size: 12.5px; line-height: 1.6; white-space: pre-wrap; word-break: break-word; color: #2a2926; max-height: 250px; overflow: auto; }
-  .prompt pre b { color: var(--ink); font-weight: 500; }
+  .demo .dh { position: relative; z-index: 2; display: grid; grid-template-columns: minmax(0,1fr) auto; align-items: start; }
+  @media (max-width: 760px) { .demo .dh { grid-template-columns: 1fr; } .pop { right: auto; left: 0; } }
+  .demo .dh .receipt { margin-top: 6px; }
+  .demo .acts { display: flex; gap: 8px; align-items: center; flex-wrap: nowrap; padding-top: 2px; }
+  .pwrap { position: relative; }
+  .pbtn .agents { display: inline-flex; gap: 4px; margin: 0 2px; }
+  .pbtn .agents img { width: 18px; height: 18px; border-radius: 5px; box-shadow: 0 0 0 1px rgba(0,0,0,.06); }
+  .pbtn i { font-style: normal; color: var(--muted); font-size: 11px; }
+  .pop { position: absolute; top: calc(100% + 8px); right: 0; z-index: 60; width: min(760px, calc(100vw - 48px)); background: #fff; border: 1px solid var(--line); border-radius: 16px; box-shadow: 0 30px 80px -30px rgba(20,18,12,.45); overflow: hidden; text-align: left; }
+  .pop .ph { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px 10px 16px; border-bottom: 1px solid var(--line); background: var(--card); font-family: var(--mono); font-size: 12px; color: var(--muted); }
+  .pop pre { margin: 0; padding: 16px 18px; font-family: var(--mono); font-size: 12.5px; line-height: 1.6; white-space: pre-wrap; word-break: break-word; color: #2a2926; max-height: 55vh; overflow: auto; }
+  .pop pre b { color: var(--ink); font-weight: 500; }
 
   /* demo frame */
-  .demo { margin-top: 26px; border: 1px solid var(--line); border-radius: 20px; background: var(--card); padding: 14px; }
+  .demo { margin-top: 0; border: 1px solid var(--line); border-radius: 20px; background: var(--card); padding: 14px; }
   .demo .dh { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 4px 6px 12px; }
   .demo .dh h3 { margin: 0; font-family: var(--display); font-weight: 500; font-size: 18px; letter-spacing: -.01em; }
   .receipt { font-family: var(--mono); font-size: 11.5px; color: var(--muted); display: flex; gap: 16px; flex-wrap: wrap; }
@@ -318,13 +317,9 @@
       <button role="tab" data-tab="triage" aria-selected="false">Signup qualifications</button>
     </div>
 <div class="tab" id="xboost">
-
-    <span class="num"><i>1</i> Viral posts monitor<span class="live">live · judged daily</span></span>
-    <h2>Which launches earned their reach, and which bought it?</h2>
-    <p class="lede">Every day treg searches X for launch posts from the last 24 hours, pulls each author's profile and first replies, computes per-view engagement rates, and jev sorts the lot: a relevant launch or not, organic or paid or pumped. Paste any post link and the same pipeline judges it in front of you.</p>
-    <div class="recipe"><div class="prompt">
-        <div class="ph"><span>Prompt for your agent · Claude Code, Codex, Cursor</span><button class="pill sm" data-copy="p-xboost">Copy prompt</button></div>
-<pre id="p-xboost">Build me a daily "launch radar" for X and a page to browse it.
+    <div class="demo" id="xb-demo">
+      <div class="dh"><div><h3>Launch posts on X, last 24h</h3><div class="receipt" id="xb-receipt">loading the latest run…</div></div><div class="acts"><div class="pwrap"><button class="pill sm pbtn" aria-expanded="false" aria-controls="pop-xboost">Prompt for <span class="agents"><img src="media/people-search/claude-code.png" alt="Claude Code"><img src="media/people-search/codex.png" alt="Codex"><img src="media/people-search/openclaw.png" alt="OpenClaw"><img src="media/people-search/hermes.png" alt="Hermes"></span> <i>▾</i></button>
+          <div class="pop" id="pop-xboost" hidden><div class="ph"><span>Paste into your agent</span><button class="pill sm" data-copy="p-xboost">Copy prompt</button></div><pre id="p-xboost">Build me a daily "launch radar" for X and a page to browse it.
 
 <b>Setup</b>
 1. Install treg and log in: `curl -fsSL https://treg.to/install.sh | sh`, then `treg login`.
@@ -363,12 +358,7 @@
    distribution. Show the bill: treg spend from the X-Treg-Cost-Micro header, jev at
    $0.042 per 1M input tokens.
 9. Add an input that takes a post link, finds the post via `treg.x.user.posts` (handle, limit 50),
-   runs steps 4–7 on it and drops the card into its lane.</pre>
-      </div>
-    </div>
-
-    <div class="demo" id="xb-demo">
-      <div class="dh"><h3>Launch posts on X, last 24h</h3><div class="receipt" id="xb-receipt">loading the latest run…</div></div>
+   runs steps 4–7 on it and drops the card into its lane.</pre></div></div></div></div>
       <div class="xb-top">
         <form class="judge" id="xb-form"><input id="xb-url" type="url" placeholder="Paste a post link, e.g. https://x.com/handle/status/…" aria-label="Post link" required><button class="pill dark sm" id="xb-go" type="submit">Judge it</button></form>
         <div class="receipt" id="xb-tally" hidden></div>
@@ -389,13 +379,9 @@
 </div>
 
 <div class="tab" id="signals" hidden>
-
-    <span class="num"><i>2</i> Buying signal<span class="replay-tag">recorded run · emails replaced</span></span>
-    <h2>The people reacting to your category's posts this week, ranked</h2>
-    <p class="lede">Search LinkedIn for hot posts on your topics, let jev confirm each is on topic, pull everyone who reacted or commented, have jev score each person's fit and role from their headline and what they did, then find emails only for the ones worth it. Buying signals first, contact data last.</p>
-    <div class="recipe"><div class="prompt">
-        <div class="ph"><span>Prompt for your agent</span><button class="pill sm" data-copy="p-signals">Copy prompt</button></div>
-<pre id="p-signals">Build a signal-first lead finder for &lt;my product&gt; and a page to browse the run.
+    <div class="demo" id="sg-demo">
+      <div class="dh"><div><h3>People engaging with GTM-tooling posts this week</h3><div class="receipt" id="sg-receipt"></div></div><div class="acts"><button class="pill sm" id="sg-replay">Replay the run</button><button class="pill sm" id="sg-stop" hidden>Stop</button><div class="pwrap"><button class="pill sm pbtn" aria-expanded="false" aria-controls="pop-signals">Prompt for <span class="agents"><img src="media/people-search/claude-code.png" alt="Claude Code"><img src="media/people-search/codex.png" alt="Codex"><img src="media/people-search/openclaw.png" alt="OpenClaw"><img src="media/people-search/hermes.png" alt="Hermes"></span> <i>▾</i></button>
+          <div class="pop" id="pop-signals" hidden><div class="ph"><span>Paste into your agent</span><button class="pill sm" data-copy="p-signals">Copy prompt</button></div><pre id="p-signals">Build a signal-first lead finder for &lt;my product&gt; and a page to browse the run.
 
 <b>Setup</b>
 1. Install treg and log in: `curl -fsSL https://treg.to/install.sh | sh`, then `treg login`.
@@ -424,12 +410,7 @@
 8. Funnel (posts → on topic → people → decision makers → emails), the posts as LinkedIn-style
    cards with the on-topic score, the people ranked by fit with role and tier filters, and an
    inspector with the signals, both jev distributions and the contact with which provider hit.
-   Show treg and jev spend separately.</pre>
-      </div>
-    </div>
-
-    <div class="demo" id="sg-demo">
-      <div class="dh"><h3>People engaging with GTM-tooling posts this week</h3><div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><div class="receipt" id="sg-receipt"></div><button class="pill sm" id="sg-replay">Replay the run</button><button class="pill sm" id="sg-stop" hidden>Stop</button></div></div>
+   Show treg and jev spend separately.</pre></div></div></div></div>
       <div class="demo-body"><aside class="demo-side"><div class="panel"><div class="lbl"><span>people · click to filter</span><span class="n" id="sg-tallymeta"></span></div><div class="stack" id="sg-stack"></div><div class="tally" id="sg-tallybox"></div><div class="xsteps" id="sg-steps"></div><div class="spend" id="sg-spend"></div></div></aside>
       <div class="sig-grid">
         <div class="panel"><div class="lbl"><span>step 1 · posts, jev checks each is on topic</span><span class="n" id="sg-postsmeta"></span></div><div class="posts" id="sg-posts"></div></div>
@@ -439,13 +420,9 @@
 </div>
 
 <div class="tab" id="triage" hidden>
-
-    <span class="num"><i>3</i> Signup qualifications<span class="replay-tag">recorded run · emails replaced</span></span>
-    <h2>Who signed up last night, and what to do about each one</h2>
-    <p class="lede">An email and a day of product usage go in. treg verifies the address and enriches the person and company, cheapest provider first. jev returns a segment, a fraud probability and an upsell score. Four lanes come out: reach out, hold credits, watch, or nothing. About a cent per signup, and jev is under 1% of it.</p>
-    <div class="recipe"><div class="prompt">
-        <div class="ph"><span>Prompt for your agent</span><button class="pill sm" data-copy="p-triage">Copy prompt</button></div>
-<pre id="p-triage">Build a signup triage that runs every hour over new signups and posts the interesting ones to Slack.
+    <div class="demo" id="tr-demo">
+      <div class="dh"><div><h3>Signups, one day</h3><div class="receipt" id="tr-receipt"></div></div><div class="acts"><button class="pill sm" id="tr-replay">Replay the run</button><button class="pill sm" id="tr-stop" hidden>Stop</button><div class="pwrap"><button class="pill sm pbtn" aria-expanded="false" aria-controls="pop-triage">Prompt for <span class="agents"><img src="media/people-search/claude-code.png" alt="Claude Code"><img src="media/people-search/codex.png" alt="Codex"><img src="media/people-search/openclaw.png" alt="OpenClaw"><img src="media/people-search/hermes.png" alt="Hermes"></span> <i>▾</i></button>
+          <div class="pop" id="pop-triage" hidden><div class="ph"><span>Paste into your agent</span><button class="pill sm" data-copy="p-triage">Copy prompt</button></div><pre id="p-triage">Build a signup triage that runs every hour over new signups and posts the interesting ones to Slack.
 
 <b>Setup</b>
 1. Install treg and log in: `curl -fsSL https://treg.to/install.sh | sh`, then `treg login`.
@@ -478,12 +455,7 @@
 8. Append every result to results.jsonl (segment, probabilities, fraud, upsell, lane, costs).
 9. Post reach / hold / watch to Slack with the one-line reason; post nothing on an empty hour.
 10. A review page: four lane counters, signups by hour, the queue per lane, an inspector with
-    verify + enrichment + usage and the jev bars.</pre>
-      </div>
-    </div>
-
-    <div class="demo" id="tr-demo">
-      <div class="dh"><h3>Signups, one day</h3><div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><div class="receipt" id="tr-receipt"></div><button class="pill sm" id="tr-replay">Replay the run</button><button class="pill sm" id="tr-stop" hidden>Stop</button></div></div>
+    verify + enrichment + usage and the jev bars.</pre></div></div></div></div>
       <div class="demo-body"><aside class="demo-side"><div class="panel"><div class="lbl"><span>lanes · click to filter</span><span class="n" id="tr-tallymeta"></span></div><div class="stack" id="tr-stack"></div><div class="tally" id="tr-tallybox"></div><div class="xsteps" id="tr-steps"></div><div class="spend" id="tr-spend"></div></div></aside>
       <div><div class="panel"><div class="lbl"><span>signups by hour, UTC</span><span class="n" id="tr-tlcount"></span></div><div class="tl" id="tr-tl"></div><div class="axis" id="tr-axis"></div></div>
       <div class="tri-body">
@@ -553,6 +525,12 @@ document.querySelectorAll('#tabs [data-tab]').forEach(b => b.onclick = () => { s
 addEventListener('hashchange', () => { const id = location.hash.slice(1); if (TABS.includes(id)) { showTab(id); $('recipes').scrollIntoView(); } });
 showTab(location.hash.slice(1));
 document.querySelectorAll('a[href^="#"]').forEach(a => a.addEventListener('click', e => { const id = a.getAttribute('href').slice(1); if (TABS.includes(id)) { e.preventDefault(); showTab(id, true); $('recipes').scrollIntoView({ behavior: reduced ? 'auto' : 'smooth' }); } }));
+
+/* prompt dropdowns */
+const closePops = () => { document.querySelectorAll('.pop').forEach(p => p.hidden = true); document.querySelectorAll('.pbtn').forEach(x => x.setAttribute('aria-expanded', 'false')); };
+document.querySelectorAll('.pbtn').forEach(b => b.onclick = e => { e.stopPropagation(); const pop = $(b.getAttribute('aria-controls')), open = pop.hidden; closePops(); pop.hidden = !open; b.setAttribute('aria-expanded', String(open)); });
+document.querySelectorAll('.pop').forEach(p => p.onclick = e => e.stopPropagation());
+document.addEventListener('click', closePops);
 
 /* copy buttons */
 document.querySelectorAll('[data-copy]').forEach(b => b.onclick = () => {
