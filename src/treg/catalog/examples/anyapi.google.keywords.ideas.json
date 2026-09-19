@@ -1,21 +1,28 @@
 {
- "output": {
-  "found": true,
-  "data": {
-   "query": "best coff",
-   "suggestions": [
-    {
-     "value": "best coffee near me"
-    },
-    {
-     "value": "best coffee maker"
+  "output": {
+    "found": true,
+    "data": {
+      "query": "best coff",
+      "suggestions": [
+        {
+          "value": "best coffee nashville"
+        },
+        {
+          "value": "best coffee shops nashville"
+        },
+        "… 8 more item(s) truncated"
+      ]
     }
-   ]
-  }
- },
- "provider": "AnyAPI",
- "costUsd": 0.00099,
- "items": 10,
- "replayed": false,
- "resultId": "6c469d02-28ca-47cb-8a29-0cfa7de06d8e"
+  },
+  "provider": "AnyAPI",
+  "costUsd": 0.00099,
+  "items": 10,
+  "replayed": false,
+  "source": {
+    "id": "anonymous-meerkat",
+    "name": "Meerkat",
+    "kind": "anonymous",
+    "artworkKey": "meerkat"
+  },
+  "resultId": "6802f7a0-55cf-42d9-8f8d-7cabdc256c16"
 }

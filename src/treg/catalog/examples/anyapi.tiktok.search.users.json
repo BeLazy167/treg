@@ -1,29 +1,36 @@
 {
- "output": {
-  "data": {
-   "nextCursor": "fJAYV9O6AFuv8q5_WZK26hSlDs6u8WCXOeAkpEDO0SahNyjecXwquN_7KCGFDEk3OA0Vmf0HCV8ohiRLlcmWmGy-01IpOjQ2wswjHeBQHPGQPPxtXvhTvCzM2wCn9pBslga3Oqy5W6Or7jtmIfdgmymyljrOj8gOMQ",
-   "users": [
-    {
-     "followers": 88,
-     "following": 3,
-     "handle": ".chef.official",
-     "nickname": "Chef Official",
-     "userId": "7674230330799080470"
+  "output": {
+    "data": {
+      "nextCursor": "Gh7ZBDciBL2HhYHDfhLoBB73slTKZPO0XY56mH_OpNJb56MqVvEBh-xW3E8VmzEsNOwH4xRb9dPg3qirprxud9TAFJEB-guB4qqhTCWXvK5BYDOIEiEeCOHjApImb-iQxBVy-929tEBevd01xqs",
+      "users": [
+        {
+          "followers": 3137071,
+          "following": 128,
+          "handle": "chefrush",
+          "nickname": "ChefRush",
+          "userId": "6659823863894097926"
+        },
+        {
+          "followers": 5436719,
+          "following": 89,
+          "handle": "chefpierce",
+          "nickname": "ChefPierce 👨🏾‍🍳",
+          "userId": "6798328481962279941"
+        },
+        "… 8 more item(s) truncated"
+      ]
     },
-    {
-     "followers": 924,
-     "following": 732,
-     "handle": "chef290494",
-     "nickname": "Chef 🧑🏿‍🍳 🇨🇲",
-     "userId": "7396708309141013537"
-    }
-   ]
+    "found": true
   },
-  "found": true
- },
- "provider": "AnyAPI",
- "costUsd": 0.0012,
- "items": 10,
- "replayed": false,
- "resultId": "c2d9e39b-8e86-495f-9508-14d17ae40dfd"
+  "provider": "AnyAPI",
+  "costUsd": 0.0007,
+  "items": 10,
+  "replayed": false,
+  "source": {
+    "id": "anonymous-bison-cb2f8f3c",
+    "name": "Bison",
+    "kind": "anonymous",
+    "artworkKey": "bison"
+  },
+  "resultId": "6835bbf7-a9ec-4613-9d78-f720502f2496"
 }
