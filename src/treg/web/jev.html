@@ -492,10 +492,10 @@
 
   /* ---- learn: the slide deck ---- */
   .learn-sec h2 .lg { width: .9em; height: .9em; border-radius: .2em; vertical-align: -.1em; }
-  .deck { position: relative; max-width: 1000px; margin: 0 auto; outline: none; }
+  .deck { position: relative; max-width: 1240px; margin: 0 auto; outline: none; }
   .dk-view { overflow: hidden; border: 1px solid var(--line); border-radius: 20px; background: #fff; }
   .dk-track { display: flex; transition: transform .45s cubic-bezier(.2,.8,.2,1); }
-  .slide { flex: 0 0 100%; display: grid; grid-template-columns: minmax(0, .95fr) minmax(0, 1.05fr); gap: 28px; padding: 30px 34px; min-height: 380px; }
+  .slide { flex: 0 0 100%; display: grid; grid-template-columns: minmax(0, 340px) minmax(0, 1fr); gap: 32px; padding: 30px 34px; min-height: 420px; }
   .sl-n { font-family: var(--mono); font-size: 11px; letter-spacing: .08em; color: var(--muted); }
   .slide h3 { font-family: var(--display); font-weight: 500; font-size: 24px; letter-spacing: -.02em; line-height: 1.15; margin: 8px 0 12px; }
   .slide p { margin: 0 0 10px; font-size: 15px; color: #43413E; }
@@ -552,7 +552,7 @@
   .ig-card { border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; background: var(--card); display: grid; grid-template-columns: 64px minmax(0,1fr); gap: 4px 12px; align-items: start; }
   .ig-type { font-family: var(--mono); font-size: 11px; color: var(--blue); background: var(--blue-soft); border-radius: 6px; padding: 3px 0; text-align: center; grid-row: 1 / span 3; margin-top: 2px; }
   .ig-q { font-size: 12.5px; color: var(--ink); }
-  .ig-col .ig-bar { grid-template-columns: minmax(0, 96px) minmax(40px,1fr) 34px; gap: 8px; font-size: 11px; }
+  .ig-col .ig-bar { grid-template-columns: minmax(0, 130px) minmax(40px,1fr) 34px; gap: 8px; font-size: 11.5px; }
   .ig-card .ig-bars { gap: 4px; } .ig-card .ig-bar { font-size: 11px; grid-template-columns: minmax(0, 140px) minmax(0,1fr) 34px; } .ig-card .ig-bar .tr { height: 9px; }
   .ig-ans { font-family: var(--mono); font-size: 11px; color: var(--muted); } .ig-ans b { color: var(--ink); font-weight: 500; }
   .ig-gauge { position: relative; height: 12px; background: var(--line); border-radius: 6px; margin: 8px 0 18px; }
@@ -572,6 +572,33 @@
   .ig-row .v { text-align: right; color: var(--muted); white-space: nowrap; }
   .ig-flip + pre { margin-top: 10px; }
   @media (max-width: 640px) { .ig-vs, .ig-flip { grid-template-columns: 1fr; } .ig-row { grid-template-columns: 80px minmax(0,1fr) 120px; font-size: 10px; } .ig-bar { grid-template-columns: minmax(0, 110px) minmax(0,1fr) 36px; } }
+
+
+  /* slide 1 race */
+  .ig-q1 { font-size: 14px; color: var(--ink); background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; margin-bottom: 12px; }
+  .ig-qlab { font-family: var(--mono); font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin-right: 10px; }
+  .ig-opts { display: block; font-family: var(--mono); font-size: 11px; color: var(--muted); margin-top: 4px; }
+  .ig-bubble { min-height: 150px; }
+  .ig-bubble .cur { display: inline-block; width: 2px; height: 1em; background: var(--ink); vertical-align: -2px; margin-left: 1px; animation: blink 1s steps(2) infinite; }
+  .ig-bubble.done .cur { display: none; }
+  @keyframes blink { to { opacity: 0; } }
+  .slide .pill.sm { margin-top: 10px; }
+  .ig-col.jev .ig-bars { opacity: 0; transition: opacity .25s; } .ig-col.jev.land .ig-bars { opacity: 1; }
+  .ig-col.jev.land .ig-bar .tr i { width: var(--w); transition-duration: .35s; transition-delay: 0s; }
+  .ig-col.jev .ig-foot { opacity: 0; transition: opacity .3s .3s; } .ig-col.jev.land .ig-foot { opacity: 1; }
+  /* slide 2 tabs */
+  .qt-tabs { display: inline-flex; width: max-content; gap: 4px; padding: 4px; border: 1px solid var(--line); border-radius: 999px; background: var(--card); margin-bottom: 12px; }
+  .sl-r:has(.qt-tabs) { justify-content: flex-start; align-items: flex-start; }
+  .sl-r:has(.qt-tabs) .qt-pane { width: 100%; }
+  .qt-tabs button { font: 500 12.5px var(--mono); padding: 6px 14px; border-radius: 999px; border: 0; background: transparent; color: var(--muted); cursor: pointer; }
+  .qt-tabs button[aria-selected="true"] { background: var(--ink); color: #fff; }
+  .qt-pane { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, .95fr); gap: 12px; align-items: stretch; }
+  .qt-pane[hidden] { display: none; }
+  .qt-req pre { height: 100%; box-sizing: border-box; margin: 0; }
+  .qt-ans { border: 1px solid var(--line); border-radius: 14px; padding: 14px; background: #fff; display: flex; flex-direction: column; gap: 10px; justify-content: center; }
+  .qt-ans .ig-bar { grid-template-columns: minmax(0, 150px) minmax(40px,1fr) 36px; }
+  .qt-ans .ig-gauge { margin: 14px 0 26px; }
+  @media (max-width: 860px) { .qt-pane { grid-template-columns: 1fr; } }
 
   /* ---- faq ---- */
   .faq { max-width: 760px; margin: 0 auto; }
@@ -1026,18 +1053,38 @@
     <button class="dk-arrow prev" id="dk-prev" aria-label="Previous slide"><svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
     <div class="dk-view"><div class="dk-track" id="dk-track">
 
-      <article class="slide"><div class="sl-l"><span class="sl-n">1 / 6</span><h3>jev predicts probabilities, not text</h3><p>Ask a chat model "is this a launch post?" and you get a paragraph to parse. Ask jev and you get a number on every option you named, summing to one. Same post, same question:</p><p class="sl-note">The numbers are the answer. Your code compares them to a threshold; nothing is parsed, nothing can be made up outside your list.</p></div>
-        <div class="sl-r"><div class="ig-vs">
-          <div class="ig-col llm"><div class="ig-lab">chat model</div><div class="ig-bubble">"This appears to be a product launch announcement. The author introduces a new agent marketplace and encourages users to try it, which suggests it is likely a launch, though it could also be read as…"</div><div class="ig-foot">2.5 s · 78 output tokens · then you parse it</div></div>
-          <div class="ig-col jev"><div class="ig-lab"><img class="lg" src="logos/jev.png" alt=""> jev</div><div class="ig-bars"><div class="ig-bar g"><span class="k">inspiring_launch</span><span class="tr"><i style="--w:94%"></i></span><span class="v">0.94</span></div><div class="ig-bar "><span class="k">launch_other</span><span class="tr"><i style="--w:5%"></i></span><span class="v">0.05</span></div><div class="ig-bar "><span class="k">not_a_launch</span><span class="tr"><i style="--w:1%"></i></span><span class="v">0.01</span></div></div><div class="ig-foot">0.4 s · 0 output tokens · confidence 0.92</div></div>
+      <article class="slide"><div class="sl-l"><span class="sl-n">1 / 6</span><h3>jev predicts probabilities, not text</h3><p>Ask a chat model and it <em>writes</em> an answer, one token after another, which your code then has to read. Ask jev and every option you named gets a probability, all at once, summing to one.</p><p class="sl-note">The numbers are the answer. Your code compares them to a threshold; nothing is parsed, nothing can be made up outside your list.</p><button class="pill sm" type="button" id="ig-replay1"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg> Play again</button></div>
+        <div class="sl-r"><div class="ig-q1"><span class="ig-qlab">question</span>Is this X post a product launch we should study? <span class="ig-opts">inspiring_launch · launch_other · not_a_launch</span></div><div class="ig-vs">
+          <div class="ig-col llm"><div class="ig-lab">chat model</div><div class="ig-bubble" id="ig-llm"><span class="cur"></span></div><div class="ig-foot" id="ig-llm-foot">writing…</div></div>
+          <div class="ig-col jev"><div class="ig-lab"><img class="lg" src="logos/jev.png" alt=""> jev</div><div class="ig-bars"><div class="ig-bar g"><span class="k">inspiring_launch</span><span class="tr"><i style="--w:94%"></i></span><span class="v">0.94</span></div><div class="ig-bar "><span class="k">launch_other</span><span class="tr"><i style="--w:5%"></i></span><span class="v">0.05</span></div><div class="ig-bar "><span class="k">not_a_launch</span><span class="tr"><i style="--w:1%"></i></span><span class="v">0.01</span></div></div><div class="ig-foot" id="ig-jev-foot">0.4 s · 0 output tokens · confidence 0.92</div></div>
         </div></div></article>
 
-      <article class="slide"><div class="sl-l"><span class="sl-n">2 / 6</span><h3>Three kinds of question</h3><p>Every jev question is one of three types, and you can send them together in one call. One support message, three questions, one request:</p><p class="sl-note"><b>choice</b> picks from your options. <b>noul</b> is a yes/no as a probability. <b>score</b> is a position on your ordered rubric, returned as the probability on each level plus their weighted mean.</p><p class="sl-note">"Our API integration started returning 500 errors on every request 20 minutes ago, and we can't process any customer orders until this is fixed."</p></div>
-        <div class="sl-r"><div class="ig-three">
-          <div class="ig-card"><div class="ig-type">choice</div><div class="ig-q">Which team should handle this?</div><div class="ig-bars"><div class="ig-bar g"><span class="k">technical</span><span class="tr"><i style="--w:100%"></i></span><span class="v">1.00</span></div><div class="ig-bar "><span class="k">billing</span><span class="tr"><i style="--w:0%"></i></span><span class="v">0.00</span></div><div class="ig-bar "><span class="k">sales</span><span class="tr"><i style="--w:0%"></i></span><span class="v">0.00</span></div></div><div class="ig-ans">→ <b>technical</b> · confidence 1.00</div></div>
-          <div class="ig-card"><div class="ig-type">noul</div><div class="ig-q">The message conveys urgency</div><div class="ig-gauge"><i style="--w:99%"></i><em style="--x:70%"><b>your threshold</b></em></div><div class="ig-ans">→ <b>0.99</b> · true above 0.70</div></div>
-          <div class="ig-card"><div class="ig-type">score</div><div class="ig-q">How frustrated is the customer?</div><div class="ig-bars"><div class="ig-bar "><span class="k">0 calm</span><span class="tr"><i style="--w:35%"></i></span><span class="v">0.35</span></div><div class="ig-bar a"><span class="k">1 frustrated but civil</span><span class="tr"><i style="--w:65%"></i></span><span class="v">0.65</span></div><div class="ig-bar "><span class="k">2 very angry</span><span class="tr"><i style="--w:0%"></i></span><span class="v">0.00</span></div></div><div class="ig-ans">→ <b>0.65</b> · weighted mean over levels</div></div>
-        </div></div></article>
+      <article class="slide"><div class="sl-l"><span class="sl-n">2 / 6</span><h3>Three kinds of question</h3><p>Every jev question is one of three types, and you can send several in one call. Same support message for all three:</p><p class="sl-note">"Our API integration started returning 500 errors on every request 20 minutes ago, and we can't process any customer orders until this is fixed."</p><p class="sl-note"><b>choice</b> picks from your options. <b>noul</b> is a yes/no as a probability. <b>score</b> is a position on your ordered rubric, returned as the probability on each level plus their weighted mean.</p></div>
+        <div class="sl-r"><div class="qt-tabs" role="tablist"><button role="tab" aria-selected="true" data-qt="choice">choice</button><button role="tab" aria-selected="false" data-qt="noul">noul</button><button role="tab" aria-selected="false" data-qt="score">score</button></div>
+          <div class="qt-pane" data-qt="choice"><div class="qt-req"><pre>"department": {
+  "type": "choice",
+  "instructions": "Which team should handle this?",
+  "criteria": {
+    "billing":   "Payment or subscription issues",
+    "technical": "Bugs or integration problems",
+    "sales":     "Pricing or account questions"
+  }
+}</pre></div><div class="qt-ans"><div class="ig-lab">answer</div><div class="ig-bars"><div class="ig-bar g"><span class="k">technical</span><span class="tr"><i style="--w:100%"></i></span><span class="v">1.00</span></div><div class="ig-bar "><span class="k">billing</span><span class="tr"><i style="--w:0%"></i></span><span class="v">0.00</span></div><div class="ig-bar "><span class="k">sales</span><span class="tr"><i style="--w:0%"></i></span><span class="v">0.00</span></div></div><div class="ig-ans">→ choice <b>technical</b> · confidence 1.00 · probabilities sum to 1</div></div></div>
+          <div class="qt-pane" data-qt="noul" hidden><div class="qt-req"><pre>"is_urgent": {
+  "type": "noul",
+  "instructions": "The message conveys urgency or time-sensitivity"
+}
+
+// optional, when the line is subtle:
+"criteria": { "true": "…", "false": "…" }</pre></div><div class="qt-ans"><div class="ig-lab">answer</div><div class="ig-gauge"><i style="--w:99%"></i><em style="--x:70%"><b>your threshold 0.70</b></em></div><div class="ig-ans">→ noul <b>0.99</b> · you decide where true starts</div></div></div>
+          <div class="qt-pane" data-qt="score" hidden><div class="qt-req"><pre>"frustration": {
+  "type": "score",
+  "instructions": "How frustrated the customer appears",
+  "criteria": ["Calm, just stating facts",
+               "Frustrated but civil",
+               "Very angry, strong language"]
+}</pre></div><div class="qt-ans"><div class="ig-lab">answer</div><div class="ig-bars"><div class="ig-bar "><span class="k">0 calm</span><span class="tr"><i style="--w:35%"></i></span><span class="v">0.35</span></div><div class="ig-bar a"><span class="k">1 frustrated but civil</span><span class="tr"><i style="--w:65%"></i></span><span class="v">0.65</span></div><div class="ig-bar "><span class="k">2 very angry</span><span class="tr"><i style="--w:0%"></i></span><span class="v">0.00</span></div></div><div class="ig-ans">→ score <b>0.65</b> · 0.35×0 + 0.65×1 + 0×2 · legend echoed back</div></div></div>
+        </div></article>
 
       <article class="slide"><div class="sl-l"><span class="sl-n">3 / 6</span><h3>Orders of magnitude faster and cheaper</h3><p>jev never writes tokens, so a call takes as long as reading the input: 70 to 500 ms end to end. TypeSafe's own side-by-side workflow puts it at <b>193.6× faster</b> and <b>444.6× cheaper</b> than an LLM doing the same decisions, and its input price at <b>238× below</b> Claude Fable 5.1.</p><p class="sl-note">Our own single-call check on three support questions was smaller but the same shape: 6.5× faster and 7.6× cheaper than GPT-5.6 Luna, 28.5× cheaper than Claude Haiku 4.5. Single runs, so the seconds are rough.</p></div>
         <div class="sl-r"><div class="ig-speed">
@@ -1292,13 +1339,29 @@ document.querySelectorAll('.expand-all[data-wrap]').forEach(b => b.onclick = () 
 (() => {
   const track = $('dk-track'), slides = [...track.children], dots = $('dk-dots'); let i = 0, seen = false;
   dots.innerHTML = slides.map((_, k) => `<button type="button" aria-label="Slide ${k + 1}"></button>`).join('');
-  const go = k => { i = (k + slides.length) % slides.length; track.style.transform = `translateX(-${i * 100}%)`; slides.forEach((sl, k2) => sl.classList.toggle('on', k2 === i && (seen || k !== 0))); [...dots.children].forEach((d, k2) => d.setAttribute('aria-current', String(k2 === i))); };
+  const go = k => { i = (k + slides.length) % slides.length; track.style.transform = `translateX(-${i * 100}%)`; slides.forEach((sl, k2) => sl.classList.toggle('on', k2 === i && (seen || k !== 0))); if (i === 0 && (seen || k !== 0)) race(); [...dots.children].forEach((d, k2) => d.setAttribute('aria-current', String(k2 === i))); };
   [...dots.children].forEach((d, k) => d.onclick = () => go(k));
+
+  // slide 1: the chat model types, jev lands at once
+  const LLM_TEXT = 'This appears to be a product launch announcement. The author introduces a new agent marketplace and encourages users to try it, which suggests it is likely a launch, though it could also be read as a general product update…';
+  let raceTimer = null;
+  const race = () => {
+    clearTimeout(raceTimer);
+    const bub = $('ig-llm'), jevCol = document.querySelector('.slide .ig-col.jev'), foot = $('ig-llm-foot');
+    bub.classList.remove('done'); bub.innerHTML = '<span class="cur"></span>'; foot.textContent = 'writing…'; jevCol.classList.remove('land');
+    const words = LLM_TEXT.split(' '); let n = 0; const t0 = performance.now();
+    setTimeout(() => jevCol.classList.add('land'), 400);
+    const step = () => { if (n >= words.length) { bub.classList.add('done'); foot.textContent = `${(2.5).toFixed(1)} s · 78 output tokens · then you parse it`; return; } bub.insertBefore(document.createTextNode((n ? ' ' : '') + words[n]), bub.lastChild); n++; foot.textContent = `writing… ${((performance.now() - t0) / 1000).toFixed(1)} s`; raceTimer = setTimeout(step, 55 + Math.random() * 40); };
+    raceTimer = setTimeout(step, 250);
+  };
+  $('ig-replay1').onclick = race;
+  // slide 2: one question type at a time
+  document.querySelectorAll('.qt-tabs [data-qt]').forEach(b => b.onclick = () => { document.querySelectorAll('.qt-tabs [data-qt]').forEach(x => x.setAttribute('aria-selected', String(x === b))); document.querySelectorAll('.qt-pane').forEach(p => p.hidden = p.dataset.qt !== b.dataset.qt); });
   $('dk-prev').onclick = () => go(i - 1); $('dk-next').onclick = () => go(i + 1);
   $('deck').addEventListener('keydown', e => { if (e.key === 'ArrowRight') go(i + 1); if (e.key === 'ArrowLeft') go(i - 1); });
   let x0 = null; track.addEventListener('touchstart', e => { x0 = e.touches[0].clientX; }, { passive: true }); track.addEventListener('touchend', e => { if (x0 == null) return; const dx = e.changedTouches[0].clientX - x0; if (Math.abs(dx) > 40) go(i + (dx < 0 ? 1 : -1)); x0 = null; });
   go(0); slides[0].classList.remove('on');
-  const deckIO = new IntersectionObserver(es => { if (es.some(e => e.isIntersecting)) { seen = true; slides[i].classList.add('on'); deckIO.disconnect(); } }, { threshold: .2 });
+  const deckIO = new IntersectionObserver(es => { if (es.some(e => e.isIntersecting)) { seen = true; slides[i].classList.add('on'); if (i === 0) race(); deckIO.disconnect(); } }, { threshold: .2 });
   deckIO.observe($('deck'));
 })();
 
