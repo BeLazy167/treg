@@ -2195,6 +2195,41 @@ async def test_catalog_get_minimax_speech_28_language_emotion_audio_enums(
         assert "whisper" not in tmpl
 
 
+IMAGE_01_ID = "minimax.image-gen.from_text"
+
+
+def test_minimax_image_01_platform_request_pins_model():
+    """Feedback #634: image-01 must declare platform_request like Speech 2.8.
+
+    body.model was optional with default image-01 and only pinned via cost.table
+    when: {body.model: image-01}. _enforce_platform_request treats a singleton-enum
+    table selector as a required exact match, so omitting the documented default
+    returned catalog_parameter_invalid for body.model. Catalog-only: required
+    singleton enum + platform_request body.model: image-01.
+    """
+    ep = cs.load().by_id[IMAGE_01_ID]
+    assert ep["platform_request"] == {"body.model": "image-01"}
+    model = ep["input"]["body"]["model"]
+    assert model["required"] is True
+    assert model["enum"] == ["image-01"]
+    assert model["example"] == "image-01"
+    assert "default" not in model
+    assert (ep.get("test_request") or {}).get("body", {}).get("model") == "image-01"
+
+
+async def test_catalog_get_minimax_image_01_platform_request(clients: AsyncClient):
+    """Feedback #634: catalog_get must require model image-01 on the documented call."""
+    body = (await clients.get(f"/catalog/endpoints/{IMAGE_01_ID}")).json()
+    model = body["endpoint"]["input"]["body"]["model"]
+    assert model["required"] is True
+    assert model["enum"] == ["image-01"]
+    assert model["example"] == "image-01"
+    assert (body["endpoint"].get("test_request") or {}).get("body", {}).get("model") == "image-01"
+    tmpl = body["call_template"]
+    assert tmpl.startswith(f"treg call {IMAGE_01_ID}")
+    assert "image-01" in tmpl
+
+
 HEYGEN_AVATAR_IV_ID = "openrouter.x.heygen-avatar-iv"
 HEYGEN_AVATAR_IV_PASSTHROUGH = (
     "voice_id", "voice_settings", "motion_prompt", "expressiveness",
