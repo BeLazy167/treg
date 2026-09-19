@@ -386,7 +386,7 @@
 9. Add an input that takes a post link, finds the post via `treg.x.user.posts` (handle, limit 50),
    runs steps 4–7 on it and drops the card into its lane.</pre></div></div></div></div>
       <div class="xb-top">
-        <form class="judge" id="xb-form"><input id="xb-url" type="url" placeholder="Paste a post link, e.g. https://x.com/handle/status/…" aria-label="Post link" required><button class="pill dark sm" id="xb-go" type="submit">Judge it</button></form>
+        <form class="judge" id="xb-form"><input id="xb-url" type="url" placeholder="Paste a post link, e.g. https://x.com/handle/status/…" aria-label="Post link" required><button class="pill dark sm" id="xb-go" type="submit">Analyse post</button></form>
         <div class="receipt" id="xb-tally" hidden></div>
       </div>
       <div class="xb-note" id="xb-note"></div>
@@ -714,7 +714,7 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape' && !drawer.hi
       $('xb-note').innerHTML = `Verdict: <b>${LANE(p)}</b> · ${DIST[p.distribution]} ${(+p.distribution_probs[p.distribution]).toFixed(2)} · treg ${fmt$(p.treg_cost||0)} · jev ${fmt$(p.jev_cost||0)}. Click the card for the reasoning.`;
       $('xb-url').value = '';
     } catch (err) { $('xb-note').innerHTML = `<span class="err">${esc(err.message)}</span>`; }
-    $('xb-go').disabled = !RUN.live; $('xb-go').textContent = 'Judge it';
+    $('xb-go').disabled = !RUN.live; $('xb-go').textContent = 'Analyse post';
   };
 })();
 
