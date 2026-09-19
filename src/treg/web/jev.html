@@ -4,10 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="referrer" content="no-referrer">
-<title>jev for GTM Engineers — Typed Decisions on Live Data | treg</title>
+<title>Jev workflow for GTM — Typed Decisions on Live Data | treg</title>
 <meta name="description" content="jev answers typed questions (choice, yes/no, score) with probabilities, in under a second, at $0.042 per million tokens. treg feeds it live data from one key. Three agent recipes with prompts to copy: launch radar on X, signup triage, signal-first leads.">
 <link rel="canonical" href="https://treg.to/jev"/>
-<meta property="og:title" content="jev for GTM Engineers | treg"/>
+<meta property="og:title" content="Jev workflow for GTM | treg"/>
 <meta property="og:description" content="Typed decisions on live data. Three agent recipes: launch radar on X, signup triage, signal-first leads. Prompts to copy, demos underneath."/>
 <meta property="og:url" content="https://treg.to/jev"/>
 <meta property="og:type" content="website"/>
@@ -55,23 +55,14 @@
 
   /* hero */
   .hero { padding: 150px 24px 40px; text-align: center; }
-  .hero h1 { font-family: var(--display); font-weight: 500; letter-spacing: -.03em; font-size: clamp(38px, 5.4vw, 64px); line-height: 1.06; margin: 22px auto 18px; max-width: 16ch; text-wrap: balance; }
+  .hero h1 { font-family: var(--display); font-weight: 500; letter-spacing: -.03em; font-size: clamp(38px, 5.4vw, 64px); line-height: 1.06; margin: 0 auto 14px; max-width: 16ch; text-wrap: balance; }
+  .jev-mark { width: .95em; height: .95em; border-radius: .22em; vertical-align: -.12em; margin-right: .1em; box-shadow: 0 1px 0 rgba(0,0,0,.06); }
+  .powered { display: inline-flex; align-items: center; gap: 6px; font-family: var(--mono); font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin-bottom: 26px; }
+  .powered a { display: inline-flex; align-items: center; gap: 6px; color: var(--ink); text-decoration: none; font-family: var(--display); font-weight: 600; font-size: 14px; letter-spacing: 0; text-transform: none; }
+  .powered svg { width: 18px; height: 18px; border-radius: 5px; }
   .hero p.sub { max-width: 60ch; color: var(--muted); font-size: 18px; margin: 0 auto 28px; text-wrap: pretty; }
   .hero p.sub strong { color: var(--ink); font-weight: 500; }
   .ctas { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
-
-  /* the three-primitive strip */
-  .prims { max-width: 1120px; margin: 44px auto 0; padding: 0 24px; }
-  .prims-in { border: 1px solid var(--line); border-radius: 20px; background: #fff; display: grid; grid-template-columns: 1.1fr 1fr 1fr 1fr; overflow: hidden; }
-  .prims-in > div { padding: 22px 24px; border-right: 1px solid var(--line); }
-  .prims-in > div:last-child { border-right: 0; }
-  .prims .k { font-family: var(--mono); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }
-  .prims .v { font-family: var(--display); font-weight: 600; font-size: 28px; letter-spacing: -.03em; line-height: 1.05; }
-  .prims .v.g { color: var(--green); }
-  .prims .d { font-size: 13px; color: var(--muted); margin-top: 8px; }
-  .prims code { font-family: var(--mono); font-size: 12.5px; background: var(--card); padding: 2px 6px; border-radius: 6px; }
-  @media (max-width: 860px) { .prims-in { grid-template-columns: 1fr 1fr; } .prims-in > div:nth-child(2) { border-right: 0; } .prims-in > div:nth-child(-n+2) { border-bottom: 1px solid var(--line); } }
-  @media (max-width: 520px) { .prims-in { grid-template-columns: 1fr; } .prims-in > div { border-right: 0; border-bottom: 1px solid var(--line); } }
 
   /* sections */
   .sec { padding: 96px 24px 0; }
@@ -312,20 +303,11 @@
 </nav>
 
 <header class="hero">
-  <span class="eyebrow"><span class="dot"></span> treg + jev · for GTM engineers</span>
-  <h1>Typed decisions on live data, for a fraction of a cent.</h1>
-  <p class="sub"><strong>jev</strong> is a decision model: you hand it a JSON state and typed questions (a choice, a yes/no, a score) and it returns probabilities, not prose, in under a second. <strong>treg</strong> hands it the data: X, LinkedIn, email verification, person and company enrichment, one key. Three recipes below, each with a prompt your agent can run and the demo it produces.</p>
-  <div class="ctas"><a class="pill dark" href="#recipes">See the recipes</a><a class="pill" href="/app?ref=jev">Set up treg</a></div>
+  <h1><img class="jev-mark" src="logos/jev.png" alt="jev"> Jev workflow<br>for GTM</h1>
+  <div class="powered">Powered by <a href="/" aria-label="treg home"><svg viewBox="0 0 512 512" aria-hidden="true"><rect width="512" height="512" rx="112" fill="#101010"/><rect x="111" y="111" width="140.5" height="140.5" rx="20" fill="#fff"/><rect x="260.5" y="260.5" width="140.5" height="140.5" rx="20" fill="#fff"/></svg> Treg</a></div>
+  <p class="sub"><strong>jev</strong> is a decision model: you hand it a JSON state and typed questions (a choice, a yes/no, a score) and it returns probabilities, not prose, in under a second. <strong>treg</strong> hands it the data: X, LinkedIn, email verification, person and company enrichment, one key. Three workflows below, each with a prompt your agent can run and the demo it produces.</p>
+  <div class="ctas"><a class="pill dark" href="#recipes">See the workflows</a><a class="pill" href="/app?ref=jev">Set up treg</a></div>
 </header>
-
-<section class="prims rv">
-  <div class="prims-in">
-    <div><div class="k">One call, three primitives</div><div class="v"><code>choice</code> <code>noul</code> <code>score</code></div><div class="d">A pick from named options, a yes/no as a probability, a number on a rubric. Every answer carries its full distribution.</div></div>
-    <div><div class="k">jev price</div><div class="v g">$0.042</div><div class="d">per million input tokens, output free. One verdict on a post with its author and reply sample: about $0.0001.</div></div>
-    <div><div class="k">Latency</div><div class="v">0.3–0.7s</div><div class="d">Input-bound. A small chat model doing the same three questions took 2–4s and cost 5–7× more in our runs.</div></div>
-    <div><div class="k">Where it runs</div><div class="v">Vercel AI Gateway</div><div class="d">The recipes below call jev through the gateway with one key; treg calls use your treg token.</div></div>
-  </div>
-</section>
 
 <!-- ============================================================= the three recipes, as tabs -->
 <section class="sec" id="recipes">
