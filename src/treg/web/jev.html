@@ -175,7 +175,9 @@
   .stage-verdict .big.organic { color: var(--green); } .stage-verdict .big.paid { color: var(--amber); } .stage-verdict .big.irrelevant { color: var(--muted); }
   .stage-verdict .sub { font-family: var(--mono); font-size: 11.5px; color: var(--muted); margin-top: 2px; }
   .stage-verdict .sv-probs { margin-top: 10px; } .stage-verdict .sv-acts { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
-  .setup-strip { display: flex; align-items: center; justify-content: center; gap: 12px; margin-top: 14px; padding: 12px 14px 4px; border-top: 1px solid var(--line); font-size: 14px; font-weight: 500; color: #43413E; flex-wrap: wrap; }
+  .setup-strip { display: flex; align-items: center; justify-content: center; gap: 14px; margin-top: 14px; padding: 14px 14px 4px; border-top: 1px solid var(--line); font-size: 15px; font-weight: 500; color: #43413E; flex-wrap: wrap; }
+  .setup-strip .pbtn.big { font-size: 15px; padding: 11px 20px; }
+  .setup-strip .pbtn.big .agents img { width: 22px; height: 22px; border-radius: 6px; }
   .agent-row { display: inline-flex; gap: 6px; cursor: pointer; }
   .agent-row .agents { display: inline-flex; gap: 6px; }
   .agent-row img { width: 30px; height: 30px; border-radius: 8px; box-shadow: 0 0 0 1px rgba(0,0,0,.08); transition: transform .15s; background: #fff; }
@@ -284,6 +286,11 @@
   .dotb { flex: 0 0 auto; border-radius: 1px; background: var(--muted); width: 100%; }
   .dotb.enterprise { background: var(--green); } .dotb.fraud { background: var(--red); } .dotb.influencer_affiliate { background: var(--amber); } .dotb.smb { background: var(--blue); } .dotb.pending { background: var(--line); }
   .axis { display: grid; grid-template-columns: repeat(24, minmax(0,1fr)); font-family: var(--mono); font-size: 9px; color: #B8B5AE; margin-top: 4px; }
+  .tri-wrap { position: relative; }
+  .tri-wrap:not(.open) .tri-body { max-height: 820px; overflow: hidden; }
+  .tri-wrap:not(.open)::after { content: ""; position: absolute; left: 0; right: 0; bottom: 42px; height: 120px; background: linear-gradient(180deg, rgba(245,244,241,0), var(--card) 85%); pointer-events: none; }
+  .tri-wrap .expand-all { display: block; margin: 10px auto 0; font: 500 13px var(--text); color: var(--ink); background: #fff; border: 1px solid var(--line); border-radius: 999px; padding: 9px 18px; cursor: pointer; position: relative; z-index: 1; }
+  .tri-wrap .expand-all:hover { background: var(--card); }
   .tri-body { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(300px, .85fr); gap: 10px; margin-top: 10px; align-items: start; }
   @media (max-width: 900px) { .tri-body { grid-template-columns: 1fr; } }
   .queue { display: flex; flex-direction: column; gap: 12px; }
@@ -580,7 +587,7 @@
         <div class="kcol paid"><div class="kh"><span><span class="t">Paid launch</span><span class="d">reach bought, engagement thin</span></span><span class="n" id="xb-n-paid">0</span></div><div class="kb" id="xb-kb-paid"></div></div>
         <div class="kcol irrelevant"><div class="kh"><span><span class="t">Irrelevant</span><span class="d">not a launch, or not our space</span></span><span class="n" id="xb-n-irrelevant">0</span></div><div class="kb" id="xb-kb-irrelevant"></div></div>
       </div>
-        <div class="setup-strip"><span class="t">Set up this workflow in</span><div class="agent-row" data-open="pop-xboost"><span class="agents"><img src="media/people-search/claude-code.png" alt="Claude Code"><img src="media/people-search/codex.png" alt="Codex"><img src="media/people-search/hermes.png" alt="Hermes" class="onwhite"><img src="media/people-search/openclaw.png" alt="OpenClaw"></span></div></div>
+        <div class="setup-strip"><span class="t">Set up this workflow</span><button class="pill dark pbtn big copy-for" type="button" data-src="p-xboost">Copy prompt for <span class="agents"><img src="media/people-search/claude-code.png" alt="Claude Code"><img src="media/people-search/codex.png" alt="Codex"><img src="media/people-search/openclaw.png" alt="OpenClaw"><img src="media/people-search/hermes.png" alt="Hermes" class="onwhite"></span></button></div>
     </div>
 </div>
 </div>
@@ -623,7 +630,7 @@
         <div class="panel"><div class="lbl"><span>step 1 · posts, jev checks each is on topic</span><span class="n" id="sg-postsmeta"></span></div><div class="posts" id="sg-posts"></div></div>
         <div class="panel"><div class="lbl"><span>steps 2 + 3 · people, ranked by jev</span><span class="n" id="sg-listmeta"></span></div><div class="chips" id="sg-filters"></div><div class="leadlist" id="sg-list"></div></div>
       </div></div>
-      <div class="setup-strip"><span class="t">Set up this workflow in</span><div class="agent-row" data-open="pop-signals"><span class="agents"><img src="media/people-search/claude-code.png" alt="Claude Code"><img src="media/people-search/codex.png" alt="Codex"><img src="media/people-search/hermes.png" alt="Hermes" class="onwhite"><img src="media/people-search/openclaw.png" alt="OpenClaw"></span></div></div>
+      <div class="setup-strip"><span class="t">Set up this workflow</span><button class="pill dark pbtn big copy-for" type="button" data-src="p-signals">Copy prompt for <span class="agents"><img src="media/people-search/claude-code.png" alt="Claude Code"><img src="media/people-search/codex.png" alt="Codex"><img src="media/people-search/openclaw.png" alt="OpenClaw"><img src="media/people-search/hermes.png" alt="Hermes" class="onwhite"></span></button></div>
 </div>
 </div>
 
@@ -666,16 +673,16 @@
     verify + enrichment + usage and the jev bars.</pre></div></div></div></div>
       <div class="demo-body"><aside class="demo-side"><div class="panel"><div class="ptitle" id="tr-tallymeta"></div><div class="spend top" id="tr-spend"></div><div class="stack" id="tr-stack"></div><div class="tally" id="tr-tallybox"></div><div class="xsteps" id="tr-steps"></div></div></aside>
       <div><div class="panel"><div class="lbl"><span>signups by hour, UTC</span><span class="n" id="tr-tlcount"></span></div><div class="tl" id="tr-tl"></div><div class="axis" id="tr-axis"></div></div>
-      <div class="tri-body">
+      <div class="tri-wrap" id="tr-wrap"><div class="tri-body">
         <div class="queue" id="tr-queue"></div>
         <div class="sticky">
           <div class="panel"><div class="verdict"><div class="mark" id="tr-mark"></div><div><div class="e" id="tr-email"></div><div class="act" id="tr-act"></div></div></div><div class="reason" id="tr-reason"></div></div>
           <div class="panel"><div class="ev"><div><h4>identity</h4><div class="kv" id="tr-identity"></div></div><div><h4>behaviour, day one</h4><div class="kv" id="tr-behaviour"></div></div></div>
             <div class="sec4"><h4><span>jev verdict</span><span class="w" id="tr-jevcost"></span></h4><div id="tr-probs"></div></div></div>
         </div>
-      </div></div>
+      </div><button class="expand-all" type="button" id="tr-expand">Show all signups</button></div></div>
       </div>
-        <div class="setup-strip"><span class="t">Set up this workflow in</span><div class="agent-row" data-open="pop-triage"><span class="agents"><img src="media/people-search/claude-code.png" alt="Claude Code"><img src="media/people-search/codex.png" alt="Codex"><img src="media/people-search/hermes.png" alt="Hermes" class="onwhite"><img src="media/people-search/openclaw.png" alt="OpenClaw"></span></div></div>
+        <div class="setup-strip"><span class="t">Set up this workflow</span><button class="pill dark pbtn big copy-for" type="button" data-src="p-triage">Copy prompt for <span class="agents"><img src="media/people-search/claude-code.png" alt="Claude Code"><img src="media/people-search/codex.png" alt="Codex"><img src="media/people-search/openclaw.png" alt="OpenClaw"><img src="media/people-search/hermes.png" alt="Hermes" class="onwhite"></span></button></div>
     </div>
 </div>
 <div class="tab" id="build" hidden>
@@ -984,6 +991,8 @@ document.querySelectorAll('.pbtn').forEach(b => b.onclick = e => { e.stopPropaga
 document.querySelectorAll('.pop').forEach(p => p.onclick = e => e.stopPropagation());
 document.querySelectorAll('.pop .xclose').forEach(b => b.onclick = closePops);
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closePops(); });
+const copyFor = (b, src) => { const text = $(src).innerText; navigator.clipboard.writeText(text).then(() => { const html = b.innerHTML; b.classList.add('copied'); b.innerHTML = '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7"/></svg> Copied · paste it into your agent'; setTimeout(() => { b.classList.remove('copied'); b.innerHTML = html; }, 2200); }, () => { const pop = $(src.replace('p-', 'pop-')); closePops(); pop.classList.add('modal'); pop.hidden = false; $('popscrim').hidden = false; }); };
+document.querySelectorAll('.copy-for').forEach(b => b.onclick = () => copyFor(b, b.dataset.src));
 $('build-copy').onclick = () => { const b = $('build-copy'), text = $('p-build').innerText; navigator.clipboard.writeText(text).then(() => { const html = b.innerHTML; b.classList.add('copied'); b.innerHTML = '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7"/></svg> Copied · paste it into your agent'; setTimeout(() => { b.classList.remove('copied'); b.innerHTML = html; }, 2200); }, () => { const pop = $('pop-build'); closePops(); pop.classList.add('modal'); pop.hidden = false; $('popscrim').hidden = false; }); };
 document.addEventListener('click', closePops);
 document.querySelectorAll('.agent-row[data-open]').forEach(r => r.onclick = e => { e.stopPropagation(); const pop = $(r.dataset.open); closePops(); document.querySelectorAll('.pop').forEach(p => p.classList.remove('modal')); pop.classList.add('modal'); pop.hidden = false; $('popscrim').hidden = false; });
@@ -1256,6 +1265,7 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape' && !drawer.hi
   }
   let DATA = [], shown = 0, laneFilter = null, current = 0, timer = null, hours, maxH = 1, dots = {};
   const expanded = new Set();
+  $('tr-expand').onclick = () => { const w = $('tr-wrap'), open = w.classList.toggle('open'); $('tr-expand').textContent = open ? 'Show less' : 'Show all signups'; if (!open) w.scrollIntoView({block: 'start', behavior: reduced ? 'auto' : 'smooth'}); };
   const laneRank = {enterprise:0, smb:1, influencer_affiliate:2, fraud:3, normal:4};
   const face = r => r.person && r.person.full_name && r.faceIdx != null ? `https://randomuser.me/api/portraits/${r.faceIdx % 2 ? 'women' : 'men'}/${Math.floor(r.faceIdx / 2) % 100}.jpg` : null;
   const pav = (r, cls) => `<span class="pav ${cls}" style="background:${hue(r.email)}">${face(r) ? `<img src="${face(r)}" alt="" loading="lazy" onerror="this.remove()">` : ''}${esc(r.email[0].toUpperCase())}</span>`;
