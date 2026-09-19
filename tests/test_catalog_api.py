@@ -703,6 +703,78 @@ def test_serpstat_jsonrpc_id_is_required_in_call_template():
     assert data["method"] == "SerpstatBacklinksProcedure.getSummaryV2"
 
 
+def test_serpstat_call_template_nests_jsonrpc_params():
+    """Dotted body keys (`params.domain`) must become a nested JSON-RPC params object
+    in the paste-ready command. A flat payload is invalid JSON-RPC 2.0 and Serpstat
+    rejects it (feedback #644 / #55)."""
+    cat = cs.load()
+    nested = []
+    for ep in cat.endpoints:
+        if ep["provider"] != "serpstat":
+            continue
+        body = (ep.get("input") or {}).get("body") or {}
+        dotted = {
+            k: v for k, v in body.items()
+            if isinstance(k, str) and k.startswith("params.")
+            and isinstance(v, dict) and v.get("required")
+        }
+        if dotted:
+            nested.append((ep, dotted))
+    assert nested, "Serpstat JSON-RPC endpoints declare params.* fields"
+    assert any(ep["id"] == "serpstat.google.domain.competitors" for ep, _ in nested)
+
+    for ep, dotted in nested:
+        tmpl = cs.call_template(ep)
+        argv = shlex.split(tmpl)
+        data = json.loads(argv[argv.index("--data") + 1])
+        assert "id" in data, ep["id"]
+        assert "method" in data, ep["id"]
+        assert isinstance(data.get("params"), dict), ep["id"]
+        assert data["params"] != "<object>", ep["id"]
+        assert all("." not in k for k in data), ep["id"]
+        for dotted_key, spec in dotted.items():
+            example = spec.get("example")
+            if example in (None, ""):
+                continue
+            cursor = data
+            for part in dotted_key.split("."):
+                assert isinstance(cursor, dict), (ep["id"], dotted_key)
+                assert part in cursor, (ep["id"], dotted_key)
+                cursor = cursor[part]
+            assert cursor == example, (ep["id"], dotted_key)
+
+    competitors_argv = shlex.split(
+        cs.call_template(cat.by_id["serpstat.google.domain.competitors"]))
+    competitors = json.loads(competitors_argv[competitors_argv.index("--data") + 1])
+    assert competitors == {
+        "method": "SerpstatDomainProcedure.getOrganicCompetitorsPage",
+        "id": "1",
+        "params": {"domain": "serpstat.com", "se": "g_us"},
+    }
+
+
+def test_call_template_unflattens_dotted_body_keys_and_drops_parent_placeholder():
+    """A synthetic JSON-RPC schema: parent `params` plus `params.*` children. The
+    placeholder must not survive next to the nested object."""
+    ep = {
+        "id": "demo.web.rpc", "method": "POST",
+        "input": {"body": {
+            "method": {"type": "string", "required": True, "example": "Do.Thing"},
+            "params": {"type": "object", "required": True},
+            "id": {"type": "string", "required": True, "example": "1"},
+            "params.domain": {"type": "string", "required": True, "example": "example.com"},
+            "params.se": {"type": "string", "required": True, "example": "g_us"},
+        }},
+    }
+    argv = shlex.split(cs.call_template(ep))
+    data = json.loads(argv[argv.index("--data") + 1])
+    assert data == {
+        "method": "Do.Thing",
+        "id": "1",
+        "params": {"domain": "example.com", "se": "g_us"},
+    }
+
+
 def test_call_template_falls_back_to_documented_examples(tmp_path):
     """No test_request (an unverified endpoint) still yields a usable line: required params only,
     valued by their documented example, or a typed placeholder when even that is missing."""

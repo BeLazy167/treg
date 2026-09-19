@@ -397,6 +397,8 @@ validated before resolving the shared HTTP client. `/auth/logout` remains an HTT
 
   Domain grouping is server-side (`domain_rows`), so CLI and dashboard share ordering and
   comparison semantics. `call_template` uses the verified test request, then documented examples.
+  Dotted body keys (`params.domain`) are expanded into nested JSON by `unflatten_dotted()` so
+  the paste-ready `--data` matches the wire body.
 
   Search uses token matching, aliases and BM25 weighting, followed by reliability/core/price
   reranking within the score band. Routed parents accompany matching children; capped groups

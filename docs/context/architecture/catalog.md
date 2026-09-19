@@ -902,6 +902,12 @@ Rules:
   Library's array parameters all use JSON; undeclared endpoints retain repeated keys. Pinterest's
   mixed convention remains a documented catalog gap until a live connection can verify a separate
   per-parameter extension.
+- Nested JSON bodies keep the dotted-key schema convention (`params.domain` beside a parent
+  `params` object). `call_template()` runs `unflatten_dotted()` on the assembled `--data` object so
+  the paste-ready command emits `{"params":{"domain":…}}` rather than a flat `"params.domain"` key
+  plus a `"params":"<object>"` placeholder. MCP request assembly does not share this helper:
+  callers already send a nested JSON `body`. Query parameter names that literally contain a dot
+  (`user.fields`, `searchVolume.min`) are not bodies and stay unexpanded.
 - `verified` + `example_response` mean a live call was made and passed, and carry exactly the same
   weight as in core — the validator applies one rule to both tiers: verified ⇒ a `test_request` to
   re-verify with and an `example_response` file that exists.

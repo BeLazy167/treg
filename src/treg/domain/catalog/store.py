@@ -1270,6 +1270,37 @@ def _required_examples(params, authorization_method: str = "") -> dict:
                  or authorization_method in v["authorization_methods"])}
 
 
+def unflatten_dotted(flat: dict) -> dict:
+    """Expand dotted catalog keys into nested JSON objects.
+
+    Schema fields like `params.domain` describe a nested wire body. When both a parent
+    key (`params`, typically an object placeholder) and dotted children exist, the
+    children win — the parent placeholder is not emitted. Query parameters keep their
+    literal dotted names; only JSON bodies go through this helper.
+    """
+    if not isinstance(flat, dict):
+        return flat
+    dotted = [(k, v) for k, v in flat.items() if isinstance(k, str) and "." in k]
+    if not dotted:
+        return flat
+    parents = {k.split(".", 1)[0] for k, _ in dotted}
+    nested = {
+        k: v for k, v in flat.items()
+        if k not in parents and not (isinstance(k, str) and "." in k)
+    }
+    for key, value in dotted:
+        cursor = nested
+        *heads, tail = key.split(".")
+        for part in heads:
+            nxt = cursor.get(part)
+            if not isinstance(nxt, dict):
+                nxt = {}
+                cursor[part] = nxt
+            cursor = nxt
+        cursor[tail] = value
+    return nested
+
+
 def call_template(ep: dict) -> str:
     """A paste-ready `treg call …` line for this endpoint.
 
@@ -1316,6 +1347,12 @@ def call_template(ep: dict) -> str:
     # one: too many clients/proxies silently discard it. The stored test request can still preserve
     # the provider's unusual verification contract without printing a misleading paste-ready line.
     if body is not None and ep["method"] != "GET":
+        # Catalog schemas flatten nested JSON as dotted keys (`params.domain`). MCP callers
+        # nest the object themselves; the paste-ready command must do the same expansion so
+        # `--data` is a valid wire body rather than a flat object Serpstat (and JSON-RPC)
+        # reject.
+        if isinstance(body, dict):
+            body = unflatten_dotted(body)
         parts += ["--data", shlex.quote(json.dumps(
             body, separators=(",", ":"), ensure_ascii=False))]
     return " ".join(parts)
