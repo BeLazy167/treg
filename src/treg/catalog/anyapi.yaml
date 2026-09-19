@@ -34,7 +34,9 @@
 #      that call. `cost.reported_charge` makes treg settle on that number instead of the estimate,
 #      so a rescued request bills what it really cost and a cheap request can bill LESS than the
 #      catalogued price.
-# A request that no source could serve returns a non-2xx and is not charged.
+# A request that no source could serve returns a non-2xx and is not charged. A source that answers
+# not-found is a 2xx with `output.found: false` and IS charged at the row's price: linkedin.email
+# billed $0.011 for a profile that does not exist (probed 2026-09-19), so a miss is not free here.
 provider: anyapi
 source:
   docs: https://getanyapi.com/docs
@@ -118,7 +120,7 @@ endpoints:
     not a list price; roughly one call in ten settles above it. 4 sources can serve it; the cheapest serves
     first and a failed attempt is retried on the next, up to a $0.0154 ceiling per request. Every response
     reports its exact charge as `costUsd`, so `reported_charge` settles the real number rather than this
-    estimate. A request no source could serve is not charged. Send the `max_cost_usd` query parameter
+    estimate. A request no source could serve answers non-2xx and is not charged; a source that answers not-found is a 2xx whose `found` is false and IS charged (probed 2026-09-19). Send the `max_cost_usd` query parameter
     to refuse any source dearer than a price you name.
 - id: anyapi.x.user.profile
   capability: x.user.profile
@@ -154,6 +156,9 @@ endpoints:
     confidence: verified
   example_response: examples/anyapi.x.user.profile.json
   verified: '2026-09-19'
+  miss:
+    status: 200
+    means: 'handle not found: 200 with output.found false, BILLED $0.00022 (observed 2026-09-19)'
   docs_url: https://getanyapi.com/api/twitter/profile
   note: AnyAPI slug `twitter.profile`. Price is the cheapest source's advertised price, because the sources
     that serve this endpoint charge very different amounts for the same number of results; a rescue on
@@ -319,7 +324,7 @@ endpoints:
     it measured has since been withdrawn, so no call can settle at the p90 any more. 1 source can serve
     it; the cheapest serves first and a failed attempt is retried on the next, up to a $0.0009 ceiling
     per request. Every response reports its exact charge as `costUsd`, so `reported_charge` settles the
-    real number rather than this estimate. A request no source could serve is not charged. Send the `max_cost_usd`
+    real number rather than this estimate. A request no source could serve answers non-2xx and is not charged; a source that answers not-found is a 2xx whose `found` is false and IS charged (probed 2026-09-19). Send the `max_cost_usd`
     query parameter to refuse any source dearer than a price you name.'
 - id: anyapi.linkedin.search.posts
   capability: linkedin.search.posts
@@ -378,7 +383,7 @@ endpoints:
     a list price; roughly one call in ten settles above it. 2 sources can serve it; the cheapest serves
     first and a failed attempt is retried on the next, up to a $0.018 ceiling per request. Every response
     reports its exact charge as `costUsd`, so `reported_charge` settles the real number rather than this
-    estimate. A request no source could serve is not charged. Send the `max_cost_usd` query parameter
+    estimate. A request no source could serve answers non-2xx and is not charged; a source that answers not-found is a 2xx whose `found` is false and IS charged (probed 2026-09-19). Send the `max_cost_usd` query parameter
     to refuse any source dearer than a price you name.
 - id: anyapi.x.user.posts
   capability: x.user.posts
@@ -542,7 +547,7 @@ endpoints:
     price; roughly one call in ten settles above it. 2 sources can serve it; the cheapest serves first
     and a failed attempt is retried on the next, up to a $0.00066 ceiling per request. Every response
     reports its exact charge as `costUsd`, so `reported_charge` settles the real number rather than this
-    estimate. A request no source could serve is not charged. Send the `max_cost_usd` query parameter
+    estimate. A request no source could serve answers non-2xx and is not charged; a source that answers not-found is a 2xx whose `found` is false and IS charged (probed 2026-09-19). Send the `max_cost_usd` query parameter
     to refuse any source dearer than a price you name.'
 - id: anyapi.tiktok.user.profile
   capability: tiktok.user.profile
@@ -578,6 +583,9 @@ endpoints:
     confidence: verified
   example_response: examples/anyapi.tiktok.user.profile.json
   verified: '2026-09-19'
+  miss:
+    status: 200
+    means: 'handle not found: 200 with output.found false, BILLED $0.00045 (observed 2026-09-19)'
   docs_url: https://getanyapi.com/api/tiktok/profile
   note: AnyAPI slug `tiktok.profile`. The p90 of what AnyAPI really charged over the 60 days to 2026-09-09
     was $0.001 (2526 charged calls), but a $0.001 source has since been withdrawn and $0.0012 is now the
@@ -623,6 +631,9 @@ endpoints:
     confidence: verified
   example_response: examples/anyapi.linkedin.user.profile.json
   verified: '2026-09-19'
+  miss:
+    status: 200
+    means: 'profile not found: 200 with output.found false, BILLED $0.0012 (observed 2026-09-19, 11 s)'
   docs_url: https://getanyapi.com/api/linkedin/profile-thin
   note: 'The cheap tier of the LinkedIn profile read: core profile fields only. `linkedin.profile` ($0.004)
     returns the full record. AnyAPI slug `linkedin.profile_thin`. Price is the p90 of what AnyAPI really
@@ -632,7 +643,7 @@ endpoints:
     so no call can settle at the p90 any more. 2 sources can serve it; the cheapest serves first and a
     failed attempt is retried on the next, up to a $0.0012 ceiling per request. Every response reports
     its exact charge as `costUsd`, so `reported_charge` settles the real number rather than this estimate.
-    A request no source could serve is not charged. Send the `max_cost_usd` query parameter to refuse
+    A request no source could serve answers non-2xx and is not charged; a source that answers not-found is a 2xx whose `found` is false and IS charged (probed 2026-09-19). Send the `max_cost_usd` query parameter to refuse
     any source dearer than a price you name.'
 - id: anyapi.google.serp.maps
   capability: google.serp.maps
@@ -729,7 +740,7 @@ endpoints:
     a rescue on a dearer source settles above it. 3 sources can serve it; the cheapest serves first and
     a failed attempt is retried on the next, up to a $0.116 ceiling per request. Every response reports
     its exact charge as `costUsd`, so `reported_charge` settles the real number rather than this estimate.
-    A request no source could serve is not charged. Send the `max_cost_usd` query parameter to refuse
+    A request no source could serve answers non-2xx and is not charged; a source that answers not-found is a 2xx whose `found` is false and IS charged (probed 2026-09-19). Send the `max_cost_usd` query parameter to refuse
     any source dearer than a price you name.'
 - id: anyapi.linkedin.search.posts.full
   capability: linkedin.search.posts
@@ -845,7 +856,7 @@ endpoints:
     price; roughly one call in ten settles above it. 3 sources can serve it; the cheapest serves first
     and a failed attempt is retried on the next, up to a $0.194 ceiling per request. Every response reports
     its exact charge as `costUsd`, so `reported_charge` settles the real number rather than this estimate.
-    A request no source could serve is not charged. Send the `max_cost_usd` query parameter to refuse
+    A request no source could serve answers non-2xx and is not charged; a source that answers not-found is a 2xx whose `found` is false and IS charged (probed 2026-09-19). Send the `max_cost_usd` query parameter to refuse
     any source dearer than a price you name.'
 - id: anyapi.instagram.post.detail
   capability: instagram.post.detail
@@ -890,6 +901,9 @@ endpoints:
     confidence: verified
   example_response: examples/anyapi.instagram.post.detail.json
   verified: '2026-09-19'
+  miss:
+    status: 200
+    means: 'post not found: 200 with output.found false, BILLED $0.0005 (observed 2026-09-19, 16 s)'
   docs_url: https://getanyapi.com/api/instagram/post
   note: 'AnyAPI slug `instagram.post`. Price is the p90 of what AnyAPI really charged for this endpoint
     over the 60 days to 2026-09-09 (14584 charged calls, $0.0015 median), not a list price; roughly one
@@ -1035,6 +1049,9 @@ endpoints:
     confidence: verified
   example_response: examples/anyapi.linkedin.user.profile.full.json
   verified: '2026-09-19'
+  miss:
+    status: 200
+    means: 'profile not found: 200 with output.found false, BILLED $0.004 (observed 2026-09-19, 1 s)'
   docs_url: https://getanyapi.com/api/linkedin/profile
   note: 'The FULL tier of the LinkedIn profile read, on the same capability as `linkedin.profile_thin`:
     experience, education, skills and recommendations rather than core fields only. AnyAPI slug `linkedin.profile`.
@@ -1044,7 +1061,7 @@ endpoints:
     source it measured has since been withdrawn, so no call can settle at the p90 any more. 2 sources
     can serve it; the cheapest serves first and a failed attempt is retried on the next, up to a $0.0042
     ceiling per request. Every response reports its exact charge as `costUsd`, so `reported_charge` settles
-    the real number rather than this estimate. A request no source could serve is not charged. Send the
+    the real number rather than this estimate. A request no source could serve answers non-2xx and is not charged; a source that answers not-found is a 2xx whose `found` is false and IS charged (probed 2026-09-19). Send the
     `max_cost_usd` query parameter to refuse any source dearer than a price you name.'
 - id: anyapi.x.user.posts.timeline
   capability: x.user.posts
@@ -1094,7 +1111,7 @@ endpoints:
     a list price; roughly one call in ten settles above it. 3 sources can serve it; the cheapest serves
     first and a failed attempt is retried on the next, up to a $0.0021 ceiling per request. Every response
     reports its exact charge as `costUsd`, so `reported_charge` settles the real number rather than this
-    estimate. A request no source could serve is not charged. Send the `max_cost_usd` query parameter
+    estimate. A request no source could serve answers non-2xx and is not charged; a source that answers not-found is a 2xx whose `found` is false and IS charged (probed 2026-09-19). Send the `max_cost_usd` query parameter
     to refuse any source dearer than a price you name.
 - id: anyapi.instagram.hashtag.posts
   capability: instagram.hashtag.posts
@@ -1167,7 +1184,7 @@ endpoints:
     a list price; roughly one call in ten settles above it. 2 sources can serve it; the cheapest serves
     first and a failed attempt is retried on the next, up to a $0.00312 ceiling per request. Every response
     reports its exact charge as `costUsd`, so `reported_charge` settles the real number rather than this
-    estimate. A request no source could serve is not charged. Send the `max_cost_usd` query parameter
+    estimate. A request no source could serve answers non-2xx and is not charged; a source that answers not-found is a 2xx whose `found` is false and IS charged (probed 2026-09-19). Send the `max_cost_usd` query parameter
     to refuse any source dearer than a price you name.
 - id: anyapi.tiktok.user.videos
   capability: tiktok.user.videos
@@ -1811,6 +1828,9 @@ endpoints:
     confidence: verified
   example_response: examples/anyapi.linkedin.company.people.json
   verified: '2026-09-19'
+  miss:
+    status: 200
+    means: 'company not found: 200 with output.found false and costUsd 0, free (observed 2026-09-19)'
   docs_url: https://getanyapi.com/api/linkedin/company-employees
   note: 'Priced per employee returned, so the charge tracks how many you ask for: the committed test_request
     asks for 3 and metered $0.033 on 2026-09-08, and `costUsd` reports the exact charge. The input maximum
@@ -1819,7 +1839,7 @@ endpoints:
     not a list price; roughly one call in ten settles above it. 1 source can serve it; the cheapest serves
     first and a failed attempt is retried on the next, up to a $0.11 ceiling per request. Every response
     reports its exact charge as `costUsd`, so `reported_charge` settles the real number rather than this
-    estimate. A request no source could serve is not charged. Send the `max_cost_usd` query parameter
+    estimate. A request no source could serve answers non-2xx and is not charged; a source that answers not-found is a 2xx whose `found` is false and IS charged (probed 2026-09-19). Send the `max_cost_usd` query parameter
     to refuse any source dearer than a price you name.'
 - id: anyapi.linkedin.email.work.find
   capability: people.email.find
@@ -1853,6 +1873,9 @@ endpoints:
     source_url: https://api.getanyapi.com/v1/apis/linkedin.email
     checked: '2026-09-11'
     confidence: verified
+  miss:
+    status: 200
+    means: 'no work email for this profile: 200 with output.found false, BILLED at the full $0.011 (observed 2026-09-19, 6.7 s); not an API failure'
   docs_url: https://getanyapi.com/api/linkedin/email
   untestable: Returns a named individual's work email; no automated verification request or stored
     example under the catalog PII rule. Price observed once on 2026-09-19 (costUsd 0.011, exact).
@@ -1910,7 +1933,7 @@ endpoints:
     charged calls, $0.0018 median), not a list price; roughly one call in ten settles above it. 2 sources
     can serve it; the cheapest serves first and a failed attempt is retried on the next, up to a $0.00336
     ceiling per request. Every response reports its exact charge as `costUsd`, so `reported_charge` settles
-    the real number rather than this estimate. A request no source could serve is not charged. Send the
+    the real number rather than this estimate. A request no source could serve answers non-2xx and is not charged; a source that answers not-found is a 2xx whose `found` is false and IS charged (probed 2026-09-19). Send the
     `max_cost_usd` query parameter to refuse any source dearer than a price you name.'
 - id: anyapi.linkedin.search.jobs.full
   capability: linkedin.search.jobs
@@ -2044,7 +2067,7 @@ endpoints:
     price; roughly one call in ten settles above it. 1 source can serve it; the cheapest serves first
     and a failed attempt is retried on the next, up to a $0.0286 ceiling per request. Every response reports
     its exact charge as `costUsd`, so `reported_charge` settles the real number rather than this estimate.
-    A request no source could serve is not charged. Send the `max_cost_usd` query parameter to refuse
+    A request no source could serve answers non-2xx and is not charged; a source that answers not-found is a 2xx whose `found` is false and IS charged (probed 2026-09-19). Send the `max_cost_usd` query parameter to refuse
     any source dearer than a price you name.'
 - id: anyapi.tiktok.search.users
   capability: tiktok.search.users
@@ -2174,7 +2197,7 @@ endpoints:
     very different amounts for the same number of results; a rescue on a dearer source settles above it.
     3 sources can serve it; the cheapest serves first and a failed attempt is retried on the next, up
     to a $0.0441 ceiling per request. Every response reports its exact charge as `costUsd`, so `reported_charge`
-    settles the real number rather than this estimate. A request no source could serve is not charged.
+    settles the real number rather than this estimate. A request no source could serve answers non-2xx and is not charged; a source that answers not-found is a 2xx whose `found` is false and IS charged (probed 2026-09-19).
     Send the `max_cost_usd` query parameter to refuse any source dearer than a price you name.'
 - id: anyapi.google.serp.maps.place
   capability: google.serp.maps
@@ -2316,5 +2339,5 @@ endpoints:
     calls, $0.00099 median), not a list price; roughly one call in ten settles above it. 1 source can
     serve it; the cheapest serves first and a failed attempt is retried on the next, up to a $0.00099
     ceiling per request. Every response reports its exact charge as `costUsd`, so `reported_charge` settles
-    the real number rather than this estimate. A request no source could serve is not charged. Send the
+    the real number rather than this estimate. A request no source could serve answers non-2xx and is not charged; a source that answers not-found is a 2xx whose `found` is false and IS charged (probed 2026-09-19). Send the
     `max_cost_usd` query parameter to refuse any source dearer than a price you name.'

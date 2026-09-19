@@ -36,6 +36,11 @@ re-ingest only re-reads the rate card until the vendor re-exports it.
 
 ## Traps
 
+- **Misses are billed.** A source answering not-found is a 2xx `output.found: false` with the
+  full `costUsd` (linkedin.email $0.011, profiles, instagram.post); only `company_employees`
+  answered a miss at $0. `reported_charge` settles it faithfully, so the caller pays for the miss.
+  Each probed row carries a `miss:` block saying so. Probed 2026-09-19 with impossible targets.
+
 - `google.ai_overview` takes ~90-110 s; `catalog_verify.py`'s 60 s client timeout fails it. AnyAPI
   charges the timed-out request once and serves the identical retry as `replayed: true` with the
   same `costUsd` and no second charge.
