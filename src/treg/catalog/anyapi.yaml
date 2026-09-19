@@ -1756,7 +1756,7 @@ endpoints:
     bodyType: json
   test_request:
     body:
-      url: https://x.com/jack/status/20
+      url: https://x.com/i/status/20
   cost:
     type: per_success
     value: 0.0005

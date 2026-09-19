@@ -9,6 +9,7 @@ sources:
   - src/treg/oauth_providers.py
   - src/treg/config.py
   - tests/test_anyapi.py
+  - src/treg/catalog/adapters.yaml
 ---
 
 # AnyAPI
@@ -33,6 +34,19 @@ re-ingest only re-reads the rate card until the vendor re-exports it.
 `X-API-Key`, probe `GET /v1/balance` (free; bogus key answers `401 invalid credential`).
 `platform_key_anyapi` reads `TREG_PLATFORM_KEY_ANYAPI`; USD-priced, so no `fx.yaml` row.
 `tests/test_anyapi.py` pins every row platform-eligible and settling on `costUsd`.
+
+## Routing
+
+22 core rows carry adapters in `src/treg/catalog/adapters.yaml` and are children of their
+`treg.<capability>` parents (X search, posts, profile and replies; TikTok, Instagram, Facebook
+and LinkedIn reads; Google organic, news, place lookup and autocomplete). The envelope is one
+shape everywhere: `output.found` plus `output.data`. A profile miss is `found: false, data: null`;
+a search miss is `found: true` with an empty list, so list rows test `coalesce(list, []) == []`.
+Verified through a local server on 2026-09-19: hit and miss on `treg.x.search.posts` and
+`treg.x.user.profile`, hit on `treg.x.post.comments`, each settling the reported `costUsd`
+(a billed miss settles its charge, the reported-charge rule runs ahead of the miss rule).
+Deliberately not adapted: `linkedin.email` (a $0.011 billed miss inside a waterfall of free
+misses) and `tiktok.profile_videos` (the contract identity is `sec_uid`; the row takes a handle).
 
 ## Traps
 
