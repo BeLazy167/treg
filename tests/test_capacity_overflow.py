@@ -575,6 +575,23 @@ async def test_aggregator_relaying_the_vendors_own_out_of_credits_dialect_is_the
     assert r2.status_code == 422 and again == [] and "X-Treg-Served-Via" not in r2.headers
 
 
+async def test_a_malformed_relay_marks_the_aggregator_for_that_vendor_only(
+        clients: AsyncClient, overflow_on, monkeypatch):
+    """2026-09-17: Orthogonal's Apollo relay timed out ("timeout of 30000ms exceeded", a 5xx with no
+    vendor status) and the `malformed` strike took overflow:orthogonal offline for EVERY provider
+    for 15 minutes. Only the aggregator's own key or account is out for everyone."""
+    await _route(endpoint_id=APOLLO_SEARCH, provider="apollo", method="POST", path=APOLLO_SEARCH_PATH, price_micro=10_000, ratio=0.38)
+    monkeypatch.setattr(call_service, "relay", _fake_relay(422, APOLLO_OUT_OF_CREDITS))
+    monkeypatch.setattr(O, "_send", _orthogonal([(500, {"success": False, "error": "timeout of 30000ms exceeded"})], []))
+    before = await _balance(clients)
+    r = await clients.post(f"/call/{APOLLO_SEARCH}", json={"q_organization_name": "x"})
+    assert r.status_code == 503 and await _balance(clients) == before and await _holds() == []
+    async with session_maker() as db:
+        whole = await ratestore.kv_get(db, LOCK_NS, "overflow:orthogonal")
+        mine = Lock.from_json(await ratestore.kv_get(db, LOCK_NS, "overflow:orthogonal:apollo"))
+    assert whole is None and mine.is_active(), "one vendor's broken relay is not the aggregator's outage"
+
+
 async def test_a_vendors_period_quota_through_the_aggregator_is_that_vendors_answer_not_an_aggregator_outage(
         clients: AsyncClient, overflow_on, monkeypatch):
     """Apollo's daily cap on Orthogonal's Apollo account: the aggregator is dry for APOLLO. The
@@ -803,7 +820,10 @@ def test_contactout_only_verified_compatible_candidates_enable():
         if row['provider']!='contactout': continue
         ep=cat.by_id[row['endpoint_id']];cv=cat.cost_view(ep['cost'],'contactout')
         route=OverflowRoute(**{k:row[k] for k in ('endpoint_id','aggregator','provider','method','path','agg_slug','agg_path','agg_unit')},agg_price_micro=round(row['agg_price_usd']*1e6),ratio=R.price_ratio(row['agg_price_usd'],R.our_event_usd(cv)),last_verified_at=datetime.fromisoformat(row['verified_at']) if row['verified_at'] else None)
-        verdict=R.eligible(route,our_cost=ep['cost'],platform_eligible=True,policy=None,our_usd=cv['usd'])
+        verdict=R.eligible(
+            route, our_cost=ep['cost'], platform_eligible=True, policy=None,
+            our_usd=cv['usd'], now=route.last_verified_at,
+        )
         if verdict.enabled:
             enabled.append((row['endpoint_id'],row['aggregator']))
             assert row['verified_at']
@@ -948,14 +968,16 @@ async def test_orthogonals_own_422_on_the_skip_direct_ladder_is_a_typed_503_nami
     assert len(seen) == 1
 
 
-async def test_orthogonal_5xx_still_marks_the_aggregator_unhealthy(clients: AsyncClient, overflow_on, monkeypatch):
+async def test_orthogonal_5xx_still_marks_the_aggregator_unhealthy_for_that_vendor(clients: AsyncClient, overflow_on, monkeypatch):
     await _route(price_micro=3_000)
     monkeypatch.setattr(call_service, "relay", _fake_relay(402, b'{"detail":"nope"}'))
     monkeypatch.setattr(O, "_send", _orthogonal([(503, {"success": False, "error": "upstream gateway timeout"})], []))
     r = await clients.get(f"/call/{EP}?aweme_id=7")
     assert r.status_code == 503 and r.json()["detail"]["error"] == "provider_capacity_unavailable"
-    lock = await _orthogonal_lock()
-    assert lock is not None and lock.is_active()
+    assert await _orthogonal_lock() is None, "a 5xx on one vendor's relay is not the aggregator's outage (2026-09-17)"
+    async with session_maker() as db:
+        mine = Lock.from_json(await ratestore.kv_get(db, LOCK_NS, "overflow:orthogonal:tikhub"))
+    assert mine.is_active()
     assert await _holds() == []
 
 

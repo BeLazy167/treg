@@ -28,7 +28,7 @@ from dataclasses import dataclass, field
 # `auth` is the provider's DEFAULT shape; a per-variable form (CLIENT_ID/SECRET → oauth2) can override
 # it. Served at GET /providers.json so the CLI can refresh centrally (bundled copy = offline fallback);
 # bump CATALOG_VERSION whenever entries change so a cache can tell it's stale.
-CATALOG_VERSION = 12  # v12 2026-08-27: Exa (x-api-key)
+CATALOG_VERSION = 16  # v16 2026-09-18: MoltSets required User-Agent
 # `skills` (optional) matches a SKILL FOLDER name for file-credential skills that have no env var to
 # key on (OAuth token files etc.) — see `match_skill`. Such providers carry `tokens: []` so the env
 # scanner never mis-detects them as a simple bearer key (their real auth is OAuth + extra headers).
@@ -136,6 +136,16 @@ CATALOG: list[dict] = [
     {"provider": "ScrapeCreators", "tokens": ["SCRAPECREATORS"],   "base_url": "https://api.scrapecreators.com",                  "auth": {"shape": "api_key_header", "header": "x-api-key"}},
     {"provider": "Sumble", "tokens": ["SUMBLE"], "base_url": "https://api.sumble.com/v9",
      "auth": {"shape": "bearer"}},
+    {"provider": "MoltSets", "tokens": ["MOLTSETS"],
+     "base_url": "https://api.moltsets.com/api/v1/tools", "auth": {"shape": "bearer"},
+     "required_headers": {"User-Agent": "treg/1.0 (+https://treg.to)"}},
+    {"provider": "Openmart", "tokens": ["OPENMART"],
+     "base_url": "https://api.openmart.ai", "auth": {"shape": "bearer"},
+     "probe": "api/v2/credit-balance"},
+    {"provider": "LimaData", "tokens": ["LIMADATA"], "base_url": "https://api.limadata.com",
+     "auth": {"shape": "api_key_header", "header": "x-api-key"}},
+    {"provider": "Datagma", "tokens": ["DATAGMA"], "base_url": "https://gateway.datagma.net",
+     "auth": {"shape": "query", "param": "apiId"}, "probe": "api/ingress/v1/mine"},
     {"provider": "Crustdata", "tokens": ["CRUSTDATA"], "base_url": "https://api.crustdata.com",
      "auth": {"shape": "bearer"}, "probe": "account/credits",
      "required_headers": {"x-api-version": "2025-11-01"}},
@@ -161,6 +171,7 @@ CATALOG: list[dict] = [
     {"provider": "Tavily",      "tokens": ["TAVILY"],              "base_url": "https://api.tavily.com",                          "auth": {"shape": "bearer"}},
     {"provider": "Firecrawl",   "tokens": ["FIRECRAWL"],           "base_url": "https://api.firecrawl.dev/v1",                    "auth": {"shape": "bearer"}},
     {"provider": "Exa",         "tokens": ["EXA"],                 "base_url": "https://api.exa.ai",                              "auth": {"shape": "api_key_header", "header": "x-api-key"}},
+    {"provider": "cloro",       "tokens": ["CLORO"],               "base_url": "https://api.cloro.dev",                           "auth": {"shape": "bearer"}, "probe": "v1/credits"},
     {"provider": "Serper",      "tokens": ["SERPER"],              "base_url": "https://google.serper.dev",                       "auth": {"shape": "api_key_header", "header": "X-API-KEY"}},
     {"provider": "SerpAPI",     "tokens": ["SERPAPI"],             "base_url": "https://serpapi.com",                             "auth": {"shape": "query", "param": "api_key"}},
     {"provider": "Brave Search","tokens": ["BRAVE"],               "base_url": "https://api.search.brave.com/res/v1",             "auth": {"shape": "api_key_header", "header": "X-Subscription-Token"}},
@@ -176,6 +187,7 @@ CATALOG: list[dict] = [
     {"provider": "EODHD",       "tokens": ["EODHD"],               "base_url": "https://eodhd.com/api",                           "auth": {"shape": "query", "param": "api_token"}},
     {"provider": "Marketstack", "tokens": ["MARKETSTACK"],         "base_url": "https://api.marketstack.com/v1",                  "auth": {"shape": "query", "param": "access_key"}},
     {"provider": "Tiingo",      "tokens": ["TIINGO"],              "base_url": "https://api.tiingo.com",                          "auth": {"shape": "api_key_header", "header": "Authorization", "format": "Token {secret}"}},
+    {"provider": "Financial Datasets", "tokens": ["FINANCIALDATASETS"], "base_url": "https://api.financialdatasets.ai",             "auth": {"shape": "api_key_header", "header": "X-API-KEY"}},
     # --- dev / infra / cloud ---
     {"provider": "DigitalOcean","tokens": ["DIGITALOCEAN"],        "base_url": "https://api.digitalocean.com/v2",                 "auth": {"shape": "bearer"},
      "skills": ["doctl", "digitalocean"],

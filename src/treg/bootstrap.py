@@ -20,7 +20,7 @@ from starlette.routing import BaseRoute, Mount
 
 from . import adsconv, analytics, archive, audit
 from .application.call import route as routed_call
-from .application import arena, arena_insights
+from .application import arena
 from . import bootstrap_handlers
 from .bootstrap_http import (
     _BodyDecodeMiddleware,
@@ -93,6 +93,8 @@ _CONTROL_ROUTE_KEYS: frozenset[RouteKey] = frozenset({
     ('/reviews', ('POST',), 'submit_review'),
     ('/admin/reviews', ('GET',), 'admin_reviews'),
     ('/feedback/{feedback_id}', ('GET',), 'get_feedback'),
+    ('/media', ('POST',), 'host_media'),
+    ('/m/{token}', ('GET',), 'serve_media'),
     ('/admin/feedback', ('GET',), 'admin_feedback'),
     ('/auth/github', ('GET',), 'auth_github'),
     ('/auth/github/callback', ('GET',), 'auth_github_callback'),
@@ -128,6 +130,7 @@ _CONTROL_ROUTE_KEYS: frozenset[RouteKey] = frozenset({
     ('/vendor-listing', ('GET',), 'vendor_listing_md'),
     ('/integrate.md', ('GET',), 'integrate_md'),
     ('/skill.md', ('GET',), 'skill_md'),
+    ('/skills/ugc/SKILL.md', ('GET',), 'make_ugc_skill_md'),
     ('/feedback.md', ('GET',), 'feedback_md'),
     ('/favicon.ico', ('GET',), 'favicon'),
     ('/favicon.svg', ('GET',), 'favicon'),
@@ -140,10 +143,13 @@ _CONTROL_ROUTE_KEYS: frozenset[RouteKey] = frozenset({
     ('/agent-setup.js', ('GET',), 'agent_setup_js'),
     ('/gtag.js', ('GET',), 'gtag_js'),
     ('/resources', ('GET',), 'resources_page'),
+    ('/blog', ('GET',), 'blog_index'),
+    ('/blog/people-search-bench', ('GET',), 'blog_people_search_bench'),
     ('/grokbot', ('GET',), 'grokbot_page'),
     ('/fable', ('GET',), 'fable_page'),
     ('/astra', ('GET',), 'astra_page'),
     ('/gpt6', ('GET',), 'gpt6_page'),
+    ('/ugc', ('GET',), 'ugc_page'),
     ('/people-search', ('GET',), 'people_search_page'),
     ('/usecase.css', ('GET',), 'usecase_css'),
     ('/oauth/register', ('POST',), 'oauth_register'),
@@ -156,6 +162,7 @@ _CONTROL_ROUTE_KEYS: frozenset[RouteKey] = frozenset({
     ('/.well-known/openai-apps-challenge', ('GET',), 'openai_apps_challenge'),
     ('/.well-known/skills/index.json', ('GET',), 'well_known_skills_index'),
     ('/.well-known/skills/treg/SKILL.md', ('GET',), 'well_known_skill_md'),
+    ('/.well-known/skills/make-ugc/SKILL.md', ('GET',), 'well_known_make_ugc_md'),
     ('/connect-demo', ('GET',), 'connect_demo_page'),
     ('/connect-demo/callback', ('GET',), 'connect_demo_callback'),
     ('/help', ('GET',), 'support_page'),
@@ -213,6 +220,7 @@ _CONTROL_ROUTE_KEYS: frozenset[RouteKey] = frozenset({
     ('/orgs/{org_id}/members/{user_id}', ('PATCH',), 'set_member_role'),
     ('/orgs/{org_id}/leave', ('POST',), 'leave_org'),
     ('/orgs/{org_id}', ('DELETE',), 'delete_org'),
+    ('/orgs/{org_id}', ('PATCH',), 'rename_org'),
     ('/orgs/{org_id}/public-token', ('POST',), 'create_public_token'),
     ('/orgs/{org_id}/public-token', ('DELETE',), 'delete_public_token'),
     ('/orgs/{org_id}/agents', ('POST',), 'create_agent'),
@@ -220,6 +228,15 @@ _CONTROL_ROUTE_KEYS: frozenset[RouteKey] = frozenset({
     ('/agents/checkin', ('POST',), 'agent_checkin'),
     ('/orgs/{org_id}/agents/observed', ('GET',), 'list_observed_agents'),
     ('/orgs/{org_id}/agents/{user_id}', ('DELETE',), 'revoke_agent'),
+    ('/orgs/{org_id}/api-keys', ('GET',), 'list_api_keys'),
+    ('/orgs/{org_id}/api-keys', ('POST',), 'create_api_key'),
+    ('/orgs/{org_id}/api-keys/{key_id}', ('PATCH',), 'rename_api_key'),
+    ('/orgs/{org_id}/api-keys/{key_id}/disable', ('POST',), 'disable_api_key'),
+    ('/orgs/{org_id}/api-keys/{key_id}/enable', ('POST',), 'enable_api_key'),
+    ('/orgs/{org_id}/api-keys/{key_id}/revoke', ('POST',), 'revoke_api_key'),
+    ('/orgs/{org_id}/api-keys/{key_id}/rotate', ('POST',), 'rotate_api_key'),
+    ('/orgs/{org_id}/api-keys/{key_id}/hide', ('POST',), 'hide_api_key'),
+    ('/orgs/{org_id}/api-keys/{key_id}/events', ('GET',), 'list_api_key_events'),
     ('/orgs/{org_id}/projects', ('POST',), 'create_project'),
     ('/orgs/{org_id}/projects', ('GET',), 'list_projects'),
     ('/orgs/{org_id}/projects/{project_id}', ('DELETE',), 'delete_project'),
@@ -304,9 +321,13 @@ _DATAPLANE_ROUTE_KEYS: frozenset[RouteKey] = frozenset({
 })
 
 ROLE_BACKGROUND_TASKS: dict[AppRole, tuple[str, ...]] = {
-    "all": ("treg.adsconv.worker", "treg.application.arena_insights.worker"),
+    # Arena statistics moved out of the web processes: `treg-worker arena insights` (a cron)
+    # walks `callrecord` on its own schedule, so web processes no longer compete for the cursor
+    # row and a deploy no longer multiplies that scan. Only `/arena/insights` (a
+    # snapshot read) stays here.
+    "all": ("treg.adsconv.worker",),
     "dataplane": (),
-    "control": ("treg.adsconv.worker", "treg.application.arena_insights.worker"),
+    "control": ("treg.adsconv.worker",),
 }
 ROLE_STARTUP_CHECKS: dict[AppRole, tuple[str, ...]] = {
     "all": (
@@ -542,13 +563,13 @@ def _lifespan(role: AppRole):
                 if ROLE_BACKGROUND_TASKS[role] and archive.prune_enabled()
                 else None
             )
-            insights_task = asyncio.create_task(arena_insights.worker()) if role != "dataplane" else None
             endpoint_observations = app.state.endpoint_observation_reader
             routed_call.configure_endpoint_observation_reader(endpoint_observations)
             mcp_reader_bound = role != "control" and _mcp is not None
             if mcp_reader_bound:
                 _mcp.configure_endpoint_observation_reader(endpoint_observations)
             fault_handler = analytics.install_fault_handler()
+            analytics.capture_service_started(role)
             try:
                 if role == "control" or _mcp is None:
                     yield
@@ -561,7 +582,7 @@ def _lifespan(role: AppRole):
             finally:
                 try:
                     workers = [task for task in (
-                        gauge_task, ads_task, archive_task, prune_task, insights_task,
+                        gauge_task, ads_task, archive_task, prune_task,
                     ) if task is not None]
                     for task in workers:
                         task.cancel()

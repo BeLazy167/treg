@@ -35,6 +35,104 @@ async def plan(c, mode="compare", providers=None, **extra):
     return r.json()
 
 
+async def test_bounceban_enters_email_verification_arena_via_verified_adapter(
+    clients, monkeypatch,
+):
+    from treg.config import get_settings
+    monkeypatch.setenv("TREG_PLATFORM_KEY_BOUNCEBAN", "PLATFORM-BOUNCEBAN")
+    monkeypatch.setenv("TREG_PLATFORM_PROVIDERS", "bounceban")
+    get_settings.cache_clear()
+    response = await clients.post("/arena/plans", json={
+        "capability": "people.email.verify",
+        "identity": {"email": "dev@bounceban.com"},
+        "mode": "compare",
+        "providers": ["bounceban"],
+        "max_cost_micro": 10_000,
+    })
+    assert response.status_code == 200, response.text
+    quote = response.json()
+    assert len(quote["providers"]) == 1
+    assert quote["providers"][0]["provider"] == "bounceban"
+    assert quote["providers"][0]["endpoint_id"] == "bounceban.people.email.verify"
+    assert quote["estimate_micro"] == 4_000
+    get_settings.cache_clear()
+
+
+async def test_aiark_email_finder_enters_the_enrichment_arena(clients, monkeypatch):
+    from treg.config import get_settings
+
+    monkeypatch.setenv("TREG_PLATFORM_KEY_AIARK", "PLATFORM-AIARK")
+    monkeypatch.setenv("TREG_PLATFORM_PROVIDERS", "aiark")
+    get_settings.cache_clear()
+    response = await clients.post("/arena/plans", json={
+        "capability": "people.email.find",
+        "identity": {"linkedin_url": "https://www.linkedin.com/in/example"},
+        "mode": "compare",
+        "providers": ["aiark"],
+        "max_cost_micro": 100_000,
+    })
+    assert response.status_code == 200, response.text
+    quote = response.json()
+    assert quote["providers"][0]["endpoint_id"] == "aiark.people.email.find"
+    assert quote["estimate_micro"] == 5267
+    get_settings.cache_clear()
+
+
+def test_limadata_verified_adapters_enter_the_enrichment_arena():
+    seen = {}
+    for task in arena.public_tasks():
+        endpoints = {
+            preview["endpoint_id"]
+            for previews in task["provider_previews"]
+            for preview in previews
+            if preview["provider"] == "limadata"
+        }
+        if endpoints:
+            seen[task["id"]] = endpoints
+    assert seen == {
+        "people.email.find": {
+            "limadata.people.email.find.name",
+            "limadata.people.email.find.linkedin",
+        },
+        "people.email.verify": {"limadata.people.email.verify"},
+        "people.phone.find": {"limadata.people.phone.find"},
+        "companies.enrich": {"limadata.companies.enrich"},
+    }
+
+
+async def test_zerobounce_verifier_enters_arena_but_expensive_finder_does_not(
+    clients, monkeypatch,
+):
+    from treg.config import get_settings
+    monkeypatch.setenv("TREG_PLATFORM_KEY_ZEROBOUNCE", "PLATFORM-ZEROBOUNCE")
+    monkeypatch.setenv("TREG_PLATFORM_PROVIDERS", "zerobounce")
+    get_settings.cache_clear()
+    response = await clients.post("/arena/plans", json={
+        "capability": "people.email.verify",
+        "identity": {"email": "valid@example.com"},
+        "mode": "compare",
+        "providers": ["zerobounce"],
+        "max_cost_micro": 20_000,
+    })
+    assert response.status_code == 200, response.text
+    quote = response.json()
+    assert len(quote["providers"]) == 1
+    assert quote["providers"][0]["provider"] == "zerobounce"
+    assert quote["providers"][0]["endpoint_id"] == "zerobounce.people.email.verify"
+    assert quote["estimate_micro"] == 13_800
+
+    finder_response = await clients.post("/arena/plans", json={
+        "capability": "people.email.find",
+        "identity": {"full_name": "Ada Lovelace", "domain": "example.com"},
+        "mode": "compare",
+        "providers": ["zerobounce"],
+        "max_cost_micro": 300_000,
+    })
+    assert finder_response.status_code == 422
+    assert "cannot use this input" in finder_response.text
+    get_settings.cache_clear()
+
+
 async def finish(c, quote):
     r = await c.post(f"/arena/runs/{quote['id']}/start")
     assert r.status_code == 200, r.text
@@ -200,7 +298,7 @@ async def test_public_page_and_tasks_but_no_anonymous_spending(clients):
     assert 'href="/enrich-arena/people-search-bench"' in benchmark.text
     assert (await clients.get("/enrich-arena/bench.js")).status_code == 200
     tasks = (await clients.get("/arena/tasks")).json()
-    assert len(tasks) == 10
+    assert len(tasks) == 9
     work = next(t for t in tasks if t["id"] == "people.email.find")
     names, linkedin = work["provider_previews"]
     assert "hunter" in {p["provider"] for p in names}
@@ -918,25 +1016,36 @@ async def test_arena_and_dashboard_share_setup_components(clients):
 def test_discovery_public_cohorts_keep_all_requested_constraints():
     tasks = {t['id']: t for t in arena.public_tasks()}
     assert tasks['people.search']['discovery']
-    role_country = tasks['people.search']['provider_previews'][1]
-    assert role_country and 'lusha' not in {p['provider'] for p in role_country}
-    company_role = tasks['people.company.search']['provider_previews'][1]
+    assert list(tasks['people.search']['variants'][0]) == ['title', 'company_domain']
+    company_role, company, _q, role_country = tasks['people.search']['provider_previews']
     assert company_role and not {'hunter','lusha','leadsforge'} & {p['provider'] for p in company_role}
+    assert company and {'hunter','leadsforge'} <= {p['provider'] for p in company}
+    assert role_country and 'lusha' not in {p['provider'] for p in role_country}
+    assert 'people.company.search' not in tasks and rules.catalog_capability('people.company.search') == 'people.search'
     similar = tasks['companies.similar']['provider_previews'][0]
     assert {'tomba','companyenrich'} <= {p['provider'] for p in similar}
     assert tasks['companies.similar']['max_entries'] == 10
     assert next(p for p in similar if p['provider']=='companyenrich')['estimate_micro'] > next(p for p in similar if p['provider']=='tomba')['estimate_micro']
 
 
+def test_openmart_is_not_offered_in_enrich_arena():
+    assert all(
+        preview["provider"] != "openmart"
+        for task in arena.public_tasks()
+        for cohort in task["provider_previews"]
+        for preview in cohort
+    )
+
+
 def test_search_outputs_are_bounded_sanitized_and_survive_presentation():
     output = rules.safe_output({'people':[{'name':'Example Person','linkedin_url':'javascript:bad','email':True,'title':False}]*30,'count':99999}, capability='people.search')
     assert output['count']==10 and len(output['people'])==10
     assert output['people'][0]=={'name':'Example Person'}
-    assert rules.safe_output(output, capability='people.company.search') == output
+    assert rules.safe_output(output, capability='people.company.search') == output  # legacy runs
     assert rules.safe_output({'companies':[{'name':False,'domain':'javascript:bad'}]},capability='companies.similar') == {'companies':[],'count':0}
     with pytest.raises(rules.ArenaError, match='10 entries'):
-        rules.validate_entries('people.company.search',None,[{'company_domain':f'example{i}.test'} for i in range(11)])
-    assert rules.validate_identity('people.company.search',{'company_domain':'https://Example.test/path'}) == {'company_domain':'example.test'}
+        rules.validate_entries('people.search',None,[{'company_domain':f'example{i}.test'} for i in range(11)])
+    assert rules.validate_identity('people.search',{'company_domain':'https://Example.test/path'}) == {'company_domain':'example.test'}
 
 
 async def test_people_search_executes_a_bounded_direct_query(clients, enrichment_on, monkeypatch):
@@ -956,7 +1065,7 @@ async def test_company_people_batch_preserves_each_list_and_settles_once(clients
     seen=[]
     answer={'data':{'emails':[{'first_name':'Example','last_name':'Person','value':'example@example.test','position':'Engineer'}]}}
     monkeypatch.setattr(service,'relay',_relay_by_provider({'hunter':[(200,answer),(200,answer)]},seen))
-    response=await clients.post('/arena/plans',json={'capability':'people.company.search','identities':[{'company_domain':'one.test'},{'company_domain':'two.test'}],'providers':['hunter'],'mode':'compare','max_cost_micro':1_000_000})
+    response=await clients.post('/arena/plans',json={'capability':'people.search','identities':[{'company_domain':'one.test'},{'company_domain':'two.test'}],'providers':['hunter'],'mode':'compare','max_cost_micro':1_000_000})
     assert response.status_code==200,response.text
     before=await _balance(clients)
     result=await finish(clients,response.json())
@@ -1477,3 +1586,38 @@ async def test_run_finishes_while_cancel_poll_is_reading(clients, enrichment_on,
         await database.reset_db()
     finally:
         release.set()
+
+
+@pytest.mark.parametrize('change', ['disable', 'rotate', 'detach'])
+async def test_fresh_caller_keeps_key_attribution_and_rechecks_key_controls(clients, change):
+    from treg.domain.identity.access import Caller
+    from treg.domain.identity import session as sess
+    from treg.application.call.types import CallerSnapshot
+    from treg.models import ApiKey, Membership, Org, User
+
+    claims = sess.read_identity_claims(clients.headers['X-Treg-Token'])
+    async with session_maker() as db:
+        user = await db.get(User, claims['uid'])
+        org = (await db.execute(select(Org).where(Org.slug == claims['org']))).scalar_one()
+        member = (await db.execute(select(Membership).where(
+            Membership.org_id == org.id, Membership.user_id == user.id))).scalar_one()
+        key = (await db.execute(select(ApiKey).where(
+            ApiKey.membership_id == member.id, ApiKey.kind == 'default_human'))).scalar_one()
+        snapshot = CallerSnapshot.capture(Caller(member, user, org, key))
+        browser = CallerSnapshot.capture(Caller(member, user, org, None))
+    current = await arena._fresh_caller(snapshot)
+    assert current.api_key_id == snapshot.api_key_id
+    assert current.api_key_generation == snapshot.api_key_generation
+    async with session_maker() as db:
+        key = await db.get(ApiKey, snapshot.api_key_id)
+        if change == 'disable':
+            key.state = 'disabled'
+        elif change == 'rotate':
+            key.default_generation += 1
+        else:
+            key.membership_id = None
+        await db.commit()
+    with pytest.raises(rules.ArenaError, match='API key is no longer active'):
+        await arena._fresh_caller(snapshot)
+    # Browser sessions do not inherit the Default key's lifecycle.
+    assert (await arena._fresh_caller(browser)).api_key_id is None

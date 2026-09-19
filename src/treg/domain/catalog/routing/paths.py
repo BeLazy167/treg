@@ -127,10 +127,18 @@ def linkedin_handle(v: Any) -> str | None:
 
 
 def linkedin_url(v: Any) -> str | None:
-    """A handle → the public profile URL; a URL passes through."""
+    """A handle → the public profile URL; a URL passes through; a scheme-less URL
+    (`linkedin.com/in/x`, `www.linkedin.com/in/x`) gets `https://` — quickenrich 422'd 311 routed
+    calls in two days with "linkedin url must be a valid URL" on exactly that shape (2026-09-18)."""
     if not isinstance(v, str) or not v:
         return None
-    return v if v.startswith("http") else f"https://www.linkedin.com/in/{v.strip('/')}"
+    v = v.strip()
+    if v.startswith("http"):
+        return v
+    m = re.match(r"^((?:[a-z]{2,3}\.)?(?:www\.)?linkedin\.com)(/.*)$", v, re.I)  # anchored: the HOST is linkedin, not a path that mentions it
+    if m:
+        return f"https://{m.group(1).lower()}{m.group(2)}"   # lower-cased host so linkedin_handle() can derive from it
+    return f"https://www.linkedin.com/in/{v.strip('/')}"
 
 
 def email_domain(v: Any) -> str | None:

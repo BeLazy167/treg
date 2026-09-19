@@ -83,10 +83,11 @@ class Catalog:
     # this is. The rate itself still lives in `credit_rates` like any other — pricing machinery
     # neither knows nor cares that the rate is ours.
     shared_plans: dict[str, dict] = field(default_factory=dict)
-    # service -> calls/team/day for rates treg set to ZERO (fx.yaml `kind: treg_trial`): a capped
-    # free taste served on treg's own free-tier key. The allowance lives beside the zero because at
-    # $0 the price gives no brake — the cap is the only congestion control, so an entry without one
-    # is invalid (check_fx). api._enforce_trial_allowance reads this.
+    # service -> paid calls/team/day for rates treg set to ZERO (fx.yaml `kind: treg_trial`): a
+    # capped free taste served on treg's own free-tier key. Endpoints whose catalog cost is `free`
+    # do not consume it. The allowance lives beside the zero because at $0 the price gives no brake
+    # — the cap is the only per-team congestion control, so an entry without one is invalid
+    # (check_fx). application.call.reserve._enforce_trial_allowance reads this.
     trial_pools: dict[str, int] = field(default_factory=dict)
     # provider service -> meter name -> USD per one unit of that meter (fx.yaml `unit_rates_usd`).
     # Providers that bill in a proprietary meter (Semrush API units, Majestic's three pools, Moz's
@@ -106,7 +107,10 @@ class Catalog:
     adapters: dict = field(default_factory=dict)    # endpoint id -> routing.Adapter (verified flag set)
 
     def for_capability(self, capability: str) -> list[dict]:
-        return [e for e in self.endpoints if capability and e["capability"] == capability]
+        return [e for e in self.endpoints if capability and (
+            e["capability"] == capability or
+            (e["id"] in self.adapters and capability in self.adapters[e["id"]].verified_capabilities)
+        )]
 
     def for_platform(self, slug: str) -> list[dict]:
         return [e for e in self.endpoints if e["platform"] == slug]
@@ -165,11 +169,36 @@ class Catalog:
         floor = cost.get("table_min")
         if isinstance(floor, (int, float)) and rate is not None and per > 0 and usd is not None:
             out["usd_min"] = min(usd, round(floor * rate / per, 9))
+        # A duration-priced table is ADVERTISED as a per-second rate (`rate_usd_min`-`rate_usd`
+        # per `rate_unit`), the way every video model is quoted; `usd`/`usd_min` stay the
+        # reserve ceiling and floor for a whole call.
+        span = cost.get("table_rate")
+        if isinstance(span, list) and len(span) == 2 and rate is not None and per > 0 \
+                and usd is not None:
+            out["rate_usd_min"] = round(float(span[0]) * rate / per, 9)
+            out["rate_usd"] = round(float(span[1]) * rate / per, 9)
+            out["rate_unit"] = "s"
         # A $0 trial price travels with its allowance, so every surface showing the price can also
         # say how much of it a team gets — a bare $0.00 would read as unlimited.
         if provider in self.trial_pools and usd == 0:
             out["trial_calls_per_team_day"] = self.trial_pools[provider]
         return out
+
+    def advertised_usd(self, cost: dict | None) -> float | None:
+        """Dollar figure catalog_search / catalog_get should quote for one typical paid call.
+
+        `usd` is the reserve unit: for `per` > 1 it is the linear slice (Hunter Domain Search
+        → $0.00245/email). When `display.grouped` is set, `display_usd` is the chargeable
+        event — one search credit, one started block — which is what a live successful call
+        actually bills and what `usd_per_call` must say. Settlement still reads `usd`.
+        """
+        if not cost:
+            return None
+        shown = cost.get("display_usd")
+        if isinstance(shown, (int, float)) and not isinstance(shown, bool):
+            return shown
+        usd = cost.get("usd")
+        return usd if isinstance(usd, (int, float)) and not isinstance(usd, bool) else None
 
     def platform_eligible(self, endpoint: dict) -> bool:
         """May treg serve this endpoint with a PLATFORM key, billed to the caller's balance?
@@ -281,6 +310,25 @@ def _table_floor(cost: object, input_schema: object) -> float | None:
     return min(floors) if floors else None
 
 
+def _table_rate(cost: object) -> tuple[float, float] | None:
+    """The per-second rate span of a duration-priced table: (cheapest row, dearest row) in the
+    table's own currency, when EVERY row multiplies its value by a `duration` field. A video
+    model is quoted per second of output everywhere else, so a $0.47-$13.9 total range (minimum
+    clip at the cheapest resolution up to the longest clip at the dearest) reads as a mistake;
+    the rate is what a reader compares. Display only - reserve and settle read the rows."""
+    if not isinstance(cost, dict) or not isinstance(cost.get("table"), list) or not cost["table"]:
+        return None
+    values = []
+    for row in cost["table"]:
+        if not isinstance(row, dict) or not isinstance(row.get("value"), (int, float)):
+            return None
+        times = row.get("times")
+        if not isinstance(times, str) or times.rsplit(".", 1)[-1] != "duration":
+            return None
+        values.append(float(row["value"]))
+    return (min(values), max(values))
+
+
 def _parse(directory: Path) -> Catalog:
     if not directory.is_dir():
         return Catalog()
@@ -320,7 +368,7 @@ def _parse(directory: Path) -> Catalog:
         # The provider's cache policy (docs/context/architecture/archive.md): one licence judgment
         # at the file header covers every endpoint below it; an endpoint's own `cache:` overrides.
         # Kept as the dict/provenance form, not stringified — archive.policy reads `mode` from it.
-        _validate_cache(doc.get("cache"))
+        _validate_cache(doc.get("cache"), header=True)
         if doc.get("cache") and not meta.get("cache"):
             meta["cache"] = doc["cache"]
         for raw in doc.get("endpoints") or []:
@@ -343,6 +391,9 @@ def _parse(directory: Path) -> Catalog:
             floor = _table_floor(raw.get("cost"), raw.get("input"))
             if floor is not None:
                 raw = {**raw, "cost": {**raw["cost"], "table_min": floor}}
+            span = _table_rate(raw.get("cost"))
+            if span is not None:
+                raw = {**raw, "cost": {**raw["cost"], "table_rate": list(span)}}
             ep = _normalize(raw, provider, directory)
             if ep["id"] in by_id:  # first file wins; ids are unique by validator contract
                 continue
@@ -523,8 +574,21 @@ def _effective_cost(raw: dict):
 _IGNORE_PATH = re.compile(r"(?:[A-Za-z0-9_][A-Za-z0-9_-]*|\[\*\])(?:\[\*\])*(?:\.[A-Za-z0-9_][A-Za-z0-9_-]*(?:\[\*\])*)*")
 
 
-def _validate_cache(cache) -> None:
-    if not isinstance(cache, dict) or "ignore_paths" not in cache:
+def _validate_cache(cache, *, header: bool = False, scope: str = "") -> None:
+    if not isinstance(cache, dict):
+        return
+    if "sharing" in cache:
+        # Whose question an answer is (docs/context/architecture/archive.md, "Sharing") is an
+        # ENDPOINT judgment: a provider's licence permitting storage says nothing about whether
+        # the answer depends on who asked, so a header may not declare it for every endpoint
+        # below, and an `own_account` answer is about the credential's account by definition.
+        if header:
+            raise ValueError("cache.sharing is declared per endpoint, never on a provider header")
+        if cache["sharing"] != "public":
+            raise ValueError("cache.sharing accepts only 'public' (org and connection are the defaults)")
+        if scope == "own_account":
+            raise ValueError("cache.sharing: public is impossible on an own_account endpoint")
+    if "ignore_paths" not in cache:
         return
     paths = cache["ignore_paths"]
     if (not isinstance(paths, list) or
@@ -533,7 +597,7 @@ def _validate_cache(cache) -> None:
 
 
 def _normalize(raw: dict, provider: str, directory: Path) -> dict:
-    _validate_cache(raw.get("cache"))
+    _validate_cache(raw.get("cache"), scope=str(raw.get("scope") or ""))
     capability = raw.get("capability") or ""
     platform = raw.get("platform") or (capability.split(".")[0] if capability else "other")
     verified = raw.get("verified")
@@ -549,6 +613,9 @@ def _normalize(raw: dict, provider: str, directory: Path) -> dict:
         "kind": str(raw.get("kind") or DEFAULT_KIND).strip().lower() or DEFAULT_KIND,
         "method": (raw.get("method") or "GET").upper(),
         "path": raw.get("path") or "",
+        # Optional alternate provider host. Resolution accepts it only when the provider registry
+        # maps this exact hostname to an approved HTTPS base URL and credential profile.
+        "host": str(raw.get("host") or "").strip().lower(),
         # optional short display title; `summary` stays the provider's own description, verbatim
         "name": str(raw.get("name") or "").strip(),
         "summary": raw.get("summary") or "",
@@ -576,6 +643,16 @@ def _normalize(raw: dict, provider: str, directory: Path) -> dict:
         # enforces `requires`; the buffered successful response persists every `produces` path.
         "resource_ownership": raw.get("resource_ownership") or None,
         "platform_request": raw.get("platform_request") or None,
+        # How treg serves the catalog fallback after the team's own tool/credential ladder misses.
+        # Absent means the provider credential is required. `anonymous` means the verified public
+        # upstream route is called with no injected credential; catalog validation limits that
+        # mode to free, read-only endpoints.
+        "platform_auth": (
+            str(raw["platform_auth"]).strip().lower()
+            if raw.get("platform_auth") is not None else None
+        ),
+        "strict_query": raw.get("strict_query") is True,
+        "strict_body": raw.get("strict_body") is True,
         "cost": _effective_cost(raw),
         # Absent `tier` means core: the curated first wave predates the split, and treating an
         # unmarked endpoint as extended would hide it from the platform view entirely.
@@ -584,7 +661,7 @@ def _normalize(raw: dict, provider: str, directory: Path) -> dict:
         # inherited from the file header unless the endpoint declares its own.
         # Generated media and its task/result utilities must never replay shared-account ids.
         # Enforce this for core and generated extended rows without changing their public kind.
-        "cache": "forbidden" if platform in {"image-gen", "video-gen"} else raw.get("cache"),
+        "cache": "forbidden" if platform in {"image-gen", "video-gen", "voice-gen"} else raw.get("cache"),
         "verified": str(verified) if verified else None,
         # {status, means} — a status the provider uses for "asked and answered: no result" (PDL
         # 404s a person it has no record of). Only endpoints with evidenced miss semantics carry
@@ -666,12 +743,15 @@ def endpoint_view(ep: dict, provider_display: str, cat: Catalog | None = None) -
         # a fact about the row that decides whether the caller needs a credential at all, so it
         # rides on the row rather than being re-derived per client (see `Catalog.platform_eligible`)
         "platform_eligible": cat.platform_eligible(ep) if cat else None,
+        # A public upstream route can be served without treg's provider key. This is declarative
+        # endpoint metadata, not provider logic in the relay.
+        **({"platform_auth": "anonymous"} if ep.get("platform_auth") == "anonymous" else {}),
         # WHY the platform can't serve an otherwise-working route (plan/tier gap on treg's own
         # subscription) — so "bring your own key" is said up front instead of discovered via a 403.
         "platform_blocked": ep.get("platform_blocked") or None,
         # "no match" semantics, when the endpoint has them — an agent that reads `miss` stops
         # treating an expected empty answer as a failed call (and stops retrying it).
-        "miss": ep.get("miss"),
+        "miss": ({k: v for k, v in ep["miss"].items() if k != "when"} if isinstance(ep.get("miss"), dict) else ep.get("miss")),
         # Only direct-id lookups can return a marked row; discovery surfaces never include one.
         "status": ep.get("status") or None,
         "status_note": ep.get("status_note") or None,
@@ -682,6 +762,8 @@ def endpoint_view(ep: dict, provider_display: str, cat: Catalog | None = None) -
         # the request schema, split by location (pathParams/queryParams/body + notes) — without it
         # the dashboard can show what comes BACK (example_response) but not what to SEND
         "input": ep.get("input") or None,
+        **({"strict_query": True} if ep.get("strict_query") else {}),
+        **({"strict_body": True} if ep.get("strict_body") else {}),
         # the exact request that live-verified this endpoint — the Try-it drawer prefills from it
         # verbatim (it also carries the ground truth the input spec can't express: whether the
         # body is a bare object or an ARRAY of tasks, which dataforseo requires)
@@ -1188,6 +1270,37 @@ def _required_examples(params, authorization_method: str = "") -> dict:
                  or authorization_method in v["authorization_methods"])}
 
 
+def unflatten_dotted(flat: dict) -> dict:
+    """Expand dotted catalog keys into nested JSON objects.
+
+    Schema fields like `params.domain` describe a nested wire body. When both a parent
+    key (`params`, typically an object placeholder) and dotted children exist, the
+    children win — the parent placeholder is not emitted. Query parameters keep their
+    literal dotted names; only JSON bodies go through this helper.
+    """
+    if not isinstance(flat, dict):
+        return flat
+    dotted = [(k, v) for k, v in flat.items() if isinstance(k, str) and "." in k]
+    if not dotted:
+        return flat
+    parents = {k.split(".", 1)[0] for k, _ in dotted}
+    nested = {
+        k: v for k, v in flat.items()
+        if k not in parents and not (isinstance(k, str) and "." in k)
+    }
+    for key, value in dotted:
+        cursor = nested
+        *heads, tail = key.split(".")
+        for part in heads:
+            nxt = cursor.get(part)
+            if not isinstance(nxt, dict):
+                nxt = {}
+                cursor[part] = nxt
+            cursor = nxt
+        cursor[tail] = value
+    return nested
+
+
 def call_template(ep: dict) -> str:
     """A paste-ready `treg call …` line for this endpoint.
 
@@ -1230,7 +1343,16 @@ def call_template(ep: dict) -> str:
     # arguments but still requires a JSON body — and dropping `--data '{}'` from the line hands the
     # reader a command that differs from the one that was tested, on handlers that reject an empty
     # body outright.
-    if body is not None and (body or ep["method"] != "GET"):
+    # treg can faithfully relay a caller-supplied GET body, but generated shell commands never add
+    # one: too many clients/proxies silently discard it. The stored test request can still preserve
+    # the provider's unusual verification contract without printing a misleading paste-ready line.
+    if body is not None and ep["method"] != "GET":
+        # Catalog schemas flatten nested JSON as dotted keys (`params.domain`). MCP callers
+        # nest the object themselves; the paste-ready command must do the same expansion so
+        # `--data` is a valid wire body rather than a flat object Serpstat (and JSON-RPC)
+        # reject.
+        if isinstance(body, dict):
+            body = unflatten_dotted(body)
         parts += ["--data", shlex.quote(json.dumps(
             body, separators=(",", ":"), ensure_ascii=False))]
     return " ".join(parts)

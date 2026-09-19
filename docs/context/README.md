@@ -17,31 +17,45 @@ covers (frontmatter `sources:`). Regenerate this index with
 | Fragment | Status | Covers |
 |---|---|---|
 | [Google Ads conversion tracking — capture, outbox, upload](architecture/ads-conversions.md) | shipped | adsconv.py, signup.py, adtrack.js, gtag.js |
+| [AI Ark — bounded synchronous enrichment](architecture/aiark.md) | shipped | aiark.yaml, aiark.companies.search.json, aiark.lists.upsert.json, aiark.people.email.find.json, … |
 | [Archive - versioned history and cache admission](architecture/archive.md) | building | archive.py, hunter.yaml, results.py, 0031_archive_result_admission.py, … |
 | [Auth & secrets — injectors, encryption, OAuth freshness, health](architecture/auth-secrets.md) | shipped | injectors.py, ssrf.py, crypto.py, oauth.py, … |
-| [Endpoint catalog — what you can DO with a connected key, and which provider should do it](architecture/catalog.md) | shipped | quickenrich.yaml, quickenrich.extended.yaml, quickenrich.companies.search.json, quickenrich.people.email.find.json, … |
+| [BounceBan — email verification, billing boundaries and capacity](architecture/bounceban.md) | shipped | bounceban.yaml, bounceban.people.email.verify.json, bounceban.people.email.verify.waterfall.json, bounceban.people.email.verify.status.json, … |
+| [Endpoint catalog — what you can DO with a connected key, and which provider should do it](architecture/catalog.md) | shipped | financialdatasets.yaml, financialdatasets.company.facts.json, financialdatasets.company.facts.ciks.json, financialdatasets.company.facts.tickers.json, … |
 | [Application composition and deployment roles](architecture/composition.md) | shipped | bootstrap.py, bootstrap_handlers.py, bootstrap_http.py, call_surface.py, … |
-| [ContactOut — LinkedIn enrichment, Starter billing and independent credit pools](architecture/contactout.md) | implemented; live connect and core surface verified, informational capacity monitoring | contactout.yaml, adapters.yaml, contactout.people.email.verify.json, test_routing.py, … |
+| [ContactOut — LinkedIn enrichment, Starter billing and independent credit pools](architecture/contactout.md) | implemented; live connect and core surface verified, informational capacity monitoring | contactout.yaml, adapters.yaml, contactout.people.contact.work.json, contactout.people.contact.phone.json, … |
 | [Data model — the registry tables, async DB, audit writer](architecture/data-model.md) | shipped | alembic.ini, env.py, 0001_baseline_current_schema.py, 0002_archive_tables.py, … |
+| [Datagma — single-record enrichment and internal account capacity](architecture/datagma.md) | implemented; live authentication, prices, charges, and response shapes verified | datagma.yaml, datagma.people.email.find.json, datagma.people.enrich.json, datagma.companies.enrich.json, … |
+| [Dropleads — synchronous people and company enrichment](architecture/dropleads.md) | implemented; live upstream behavior verified | dropleads.yaml, dropleads.people.email.find.json, dropleads.people.phone.find.json, dropleads.people.email.verify.json, … |
 | [Feedback - private intake for problems and suggestions](architecture/feedback.md) | shipped | feedback_contract.py, __init__.py, reports.py, reviews.py, … |
+| [GetLeads.io — contact data with a shared treg trial](architecture/getleadsio.md) | shipped | getleadsio.yaml, getleadsio.people.enrich.from_email.json, getleadsio.people.enrich.from_linkedin.json, getleadsio.people.enrich.from_person.json, … |
+| [HarvestAPI — API-key-only LinkedIn reads and reported USD charges](architecture/harvestapi.md) | implemented; upstream and local platform/BYOK integration verified | contracts.py, harvestapi.yaml, harvestapi.svg, oauth_providers.py, … |
 | [Enforced import boundaries](architecture/import-boundaries.md) | shipped | pyproject.toml, ci.yml, __init__.py, __init__.py, … |
 | [Instagram OAuth — direct Login and optional Facebook Page tools](architecture/instagram-oauth.md) | built; Meta configuration and live verification pending | catalog_ingest.py, access.py, resolve.py, service.py, … |
+| [LimaData — Basic v2 enrichment, research, and bounded shared-key calls](architecture/limadata.md) | shipped | limadata.yaml, limadata.people.enrich.json, limadata.companies.enrich.json, limadata.database.autocomplete.json, … |
 | [Local proxy — catch a program's own outgoing calls (`treg <command>`)](architecture/local-proxy.md) | shipped | localproxy.py, server.js |
 | [Local CLI runs — run a vendor CLI as a dedicated user with a server-held credential (`treg run`)](architecture/local-run.md) | shipped | localrun.py, egress.py, fsjail.py |
 | [MCP — the front door for assistants, and treg as an OAuth authorization server](architecture/mcp-oauth.md) | shipped | auth.py, mcp.py, health.py, mcp_oauth.py, … |
+| [Media hosting - reference files a vendor can fetch (`treg host`)](architecture/media.md) | shipped | media.py, media.py, models.py, 0037_media_hosting.py, … |
+| [MoltSets — enrichment records, shared-plan pricing and BYOK](architecture/moltsets.md) | shipped | moltsets.yaml, moltsets.people.search.json, moltsets.companies.search.json, moltsets.linkedin.profile.search.json, … |
 | [Money — prepaid balance, the ledger, Stripe, and the reports that check it](architecture/money.md) | shipped | __init__.py, settlement.py, __init__.py, models.py, … |
 | [Multi-tenancy — orgs, memberships, invites, per-org scoping](architecture/multi-tenancy.md) | shipped | models.py, api.py, caller_metadata.py, auth.py, … |
+| [Openmart — metered synchronous data and BYOK lifecycle boundaries](architecture/openmart.md) | shipped | openmart.yaml, openmart.businesses.search.json, openmart.businesses.search.ids.json, openmart.businesses.lookup.openmart.json, … |
+| [Prospeo — people and company enrichment](architecture/prospeo.md) | shipped | prospeo.yaml, prospeo.people.email.find.json, prospeo.people.phone.find.json, prospeo.people.enrich.json, … |
 | [The proxy — faithful credential-injecting relay + tool resolution](architecture/proxy-model.md) | shipped | relay.py, ssrf.py, api.py, authorize.py, … |
+| [Scrubby — single email verification](architecture/scrubby.md) | shipped | scrubby.yaml, scrubby.people.email.verify.json, adapters.yaml, fx.yaml, … |
 | [Sumble — account intelligence, subscription credits and BYOK](architecture/sumble.md) | shipped | sumble.yaml, sumble.extended.yaml, sumble.organizations.json, sumble.py, … |
 | [Super-admin — cross-tenant read + control](architecture/super-admin.md) | shipped | api.py, admin.py, access.py, config.py |
+| [Wiza — synchronous search and company enrichment, BYOK async jobs](architecture/wiza.md) | shipped | wiza.yaml, wiza.people.search.json, wiza.companies.search.json, wiza.companies.enrich.json, … |
+| [ZeroBounce — email validation, finding, patterns, and account capacity](architecture/zerobounce.md) | implemented; live authentication and response shapes verified | zerobounce.yaml, zerobounce.people.email.verify.json, zerobounce.people.email.find.json, zerobounce.companies.email_pattern.json, … |
 
 ## Interfaces (API · CLI · skill)
 
 | Fragment | Status | Covers |
 |---|---|---|
-| [The API — the only brain (FastAPI)](interface/api.md) | shipped | sitetrack.js, api.py, bootstrap_handlers.py, bootstrap_http.py, … |
+| [The API — the only brain (FastAPI)](interface/api.md) | shipped | media.py, sitetrack.js, api.py, bootstrap_handlers.py, … |
 | [Catalog browse review — categories, platform placement, and domain sections](interface/catalog-review-proposal.md) | reference | store.py, capabilities.yaml |
-| [The CLI (treg) + skill scaffolding](interface/cli.md) | shipped | cli.py, cli_analytics.py, convert.py, agents.py |
+| [The CLI (treg) + skill scaffolding](interface/cli.md) | shipped | cli.py, test_released_cli_compat.py, test_cli_key_compatibility.py, auth_helpers.py, … |
 | [The web dashboard (Ledger, served from FastAPI)](interface/dashboard.md) | shipped | sitetrack.js, index.html, agent-setup.js, README.md, … |
 | [Enrich Arena — paid comparisons, one-click feedback, and visible waterfalls](interface/enrich-arena.md) | shipped | arena.py, arena.py, arena.py, models.py, … |
 | [Import — scan a .env AND/OR a skills dir, auto-register as tools + bundles](interface/env-import.md) | in-progress | providers.py, skills.py |
@@ -49,13 +63,13 @@ covers (frontmatter `sources:`). Regenerate this index with
 | [Onboarding — the first-run demo team (dashboard + CLI)](interface/onboarding.md) | shipped | auth.py, __init__.py, demo.py, cli.py, … |
 | [Search surfaces — robots, sitemap, the crawlable catalog, and the social card](interface/seo.md) | shipped | api.py, web.py, agent_pages.py, robots.txt, … |
 | [Shell mode (treg shell) — transparent CLI interception](interface/shell.md) | shipped | shell.py, cli.py |
-| [The shippable tools-registry skill (3 personas)](interface/skill.md) | shipped | skill.md, web.py, mcp_install.py, build_plugin.py, … |
+| [The shippable tools-registry skill (3 personas)](interface/skill.md) | shipped | skill.md, SKILL.md, web.py, mcp_install.py, … |
 
 ## Ops (deploy, scale)
 
 | Fragment | Status | Covers |
 |---|---|---|
-| [Provider capacity — knowing what treg's own vendor accounts have left](ops/capacity.md) | shipped (steps B–F built; production rollout = the shadow week, then TREG_OVERFLOW_MODE=on) | __init__.py, collectors.py, policy.py, sweep.py, … |
+| [Provider capacity — knowing what treg's own vendor accounts have left](ops/capacity.md) | shipped | __init__.py, collectors.py, policy.py, sweep.py, … |
 | [Running & deploying the server](ops/deploy.md) | shipped | pyproject.toml, __main__.py, maintenance.py, env.py, … |
 
 ## Reference

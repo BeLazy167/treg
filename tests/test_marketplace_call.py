@@ -52,6 +52,22 @@ PLATFORM_KEYS = {  # never a real key: a test that leaked one into an assertion 
 }
 
 
+class _DropleadsJSONStream(httpx.AsyncByteStream):
+    def __init__(self, doc):
+        self.body = json.dumps(doc).encode()
+
+    async def __aiter__(self):
+        yield self.body
+
+
+def _dropleads_response(status: int, doc: dict) -> httpx.Response:
+    return httpx.Response(
+        status,
+        headers={"content-type": "application/json"},
+        stream=_DropleadsJSONStream(doc),
+    )
+
+
 @pytest.fixture
 def platform_on(monkeypatch):
     """Turn tier 4 on the way a deploy does: keys in the environment AND the provider allow-listed."""
@@ -68,6 +84,70 @@ def minimax_platform_on(monkeypatch):
     """Enable only MiniMax tier 4 for its provider-envelope billing regressions."""
     monkeypatch.setenv("TREG_PLATFORM_KEY_MINIMAX", "PLATFORM-MINIMAX-KEY")
     monkeypatch.setenv("TREG_PLATFORM_PROVIDERS", "minimax")
+    get_settings.cache_clear()
+    yield
+    get_settings.cache_clear()
+
+
+@pytest.fixture
+def dropleads_platform_on(monkeypatch):
+    monkeypatch.setenv("TREG_PLATFORM_KEY_DROPLEADS", "PLATFORM-DROPLEADS")
+    monkeypatch.setenv("TREG_PLATFORM_PROVIDERS", "dropleads")
+    get_settings.cache_clear()
+    yield
+    get_settings.cache_clear()
+
+
+@pytest.fixture
+def prospeo_platform_on(monkeypatch):
+    monkeypatch.setenv("TREG_PLATFORM_KEY_PROSPEO", "PLATFORM-PROSPEO")
+    monkeypatch.setenv("TREG_PLATFORM_PROVIDERS", "prospeo")
+    get_settings.cache_clear()
+    yield
+    get_settings.cache_clear()
+
+
+@pytest.fixture
+def bounceban_platform_on(monkeypatch):
+    monkeypatch.setenv("TREG_PLATFORM_KEY_BOUNCEBAN", "PLATFORM-BOUNCEBAN")
+    monkeypatch.setenv("TREG_PLATFORM_PROVIDERS", "bounceban")
+    get_settings.cache_clear()
+    yield
+    get_settings.cache_clear()
+
+
+@pytest.fixture
+def zerobounce_platform_on(monkeypatch):
+    monkeypatch.setenv("TREG_PLATFORM_KEY_ZEROBOUNCE", "PLATFORM-ZEROBOUNCE")
+    monkeypatch.setenv("TREG_PLATFORM_PROVIDERS", "zerobounce")
+    get_settings.cache_clear()
+    yield
+    get_settings.cache_clear()
+
+
+@pytest.fixture
+def diffbot_platform_on(monkeypatch):
+    """Enable Diffbot tier 4 without exposing or calling a real provider credential."""
+    monkeypatch.setenv("TREG_PLATFORM_KEY_DIFFBOT", "PLATFORM-DIFFBOT-KEY")
+    monkeypatch.setenv("TREG_PLATFORM_PROVIDERS", "diffbot")
+    get_settings.cache_clear()
+    yield
+    get_settings.cache_clear()
+
+
+@pytest.fixture
+def openmart_platform_on(monkeypatch):
+    monkeypatch.setenv("TREG_PLATFORM_KEY_OPENMART", "PLATFORM-OPENMART")
+    monkeypatch.setenv("TREG_PLATFORM_PROVIDERS", "openmart")
+    get_settings.cache_clear()
+    yield
+    get_settings.cache_clear()
+
+
+@pytest.fixture
+def limadata_platform_on(monkeypatch):
+    monkeypatch.setenv("TREG_PLATFORM_KEY_LIMADATA", "PLATFORM-LIMADATA")
+    monkeypatch.setenv("TREG_PLATFORM_PROVIDERS", "limadata")
     get_settings.cache_clear()
     yield
     get_settings.cache_clear()
@@ -240,6 +320,115 @@ async def test_deny_rules_cover_marketplace_calls(clients: AsyncClient):
 
 
 # ---- tier 4: treg's own key, billed to the org balance ------------------------------------------
+@pytest.mark.parametrize(("endpoint", "params", "target", "charge_micro"), [
+    (
+        "diffbot.x.extract-article",
+        {"url": "https://news.example/article"},
+        ("api.diffbot.com", "/v3/article"),
+        1_196,
+    ),
+    (
+        "diffbot.x.extract-event",
+        {"url": "https://events.example/conference"},
+        ("api.diffbot.com", "/v3/event"),
+        1_196,
+    ),
+    (
+        "diffbot.companies.enrich",
+        {"type": "Organization", "url": "https://company.example"},
+        ("kg.diffbot.com", "/kg/v3/enhance"),
+        29_900,
+    ),
+])
+async def test_diffbot_shared_key_uses_each_catalog_endpoint_host(
+    clients: AsyncClient, diffbot_platform_on, endpoint, params, target, charge_micro,
+):
+    """Exercise extraction and KG through the full host-sensitive HTTP call path."""
+    outbound: list[tuple[str, str]] = []
+
+    def upstream(request: httpx.Request) -> httpx.Response:
+        assert request.url.params.get("token") == "PLATFORM-DIFFBOT-KEY"
+        assert request.headers.get("authorization") is None
+        outbound.append((request.url.host, request.url.path))
+        status = 200 if outbound[-1] == target else 404
+        return httpx.Response(
+            status,
+            stream=httpx.ByteStream(b'{"objects":[{"name":"Synthetic example"}]}'),
+            headers={"content-type": "application/json"},
+        )
+
+    await A.app.state.http.aclose()
+    A.app.state.http = AsyncClient(transport=httpx.MockTransport(upstream))
+    before = await _balance(clients)
+
+    response = await clients.get(f"/call/{endpoint}", params=params)
+
+    assert response.status_code == 200, response.text
+    assert outbound == [target]
+    assert await _balance(clients) == before - charge_micro
+
+
+async def test_diffbot_own_key_uses_web_search_bearer_profile_without_metering(
+    clients: AsyncClient, diffbot_platform_on,
+):
+    await clients.post("/secrets", json={"name": "diffbot", "value": "OWN-DIFFBOT-KEY"})
+    outbound: list[tuple[str, str, str | None, str | None]] = []
+
+    def upstream(request: httpx.Request) -> httpx.Response:
+        outbound.append((
+            request.url.host,
+            request.url.path,
+            request.headers.get("authorization"),
+            request.url.params.get("token"),
+        ))
+        return httpx.Response(
+            200,
+            stream=httpx.ByteStream(b'{"data":[]}'),
+            headers={"content-type": "application/json"},
+        )
+
+    await A.app.state.http.aclose()
+    A.app.state.http = AsyncClient(transport=httpx.MockTransport(upstream))
+    before = await _balance(clients)
+
+    response = await clients.get(
+        "/call/diffbot.x.web-search", params={"text": "synthetic example"},
+    )
+
+    assert response.status_code == 200, response.text
+    assert outbound == [(
+        "llm.diffbot.com", "/api/v1/web_search/", "Bearer OWN-DIFFBOT-KEY", None,
+    )]
+    assert await _balance(clients) == before
+
+
+async def test_diffbot_unapproved_catalog_host_fails_before_relay_or_reserve(
+    clients: AsyncClient, diffbot_platform_on, monkeypatch,
+):
+    endpoint = catalog_store.load().by_id["diffbot.x.extract-article"]
+    monkeypatch.setitem(endpoint, "host", "credentials.example")
+    called = False
+
+    def upstream(request: httpx.Request) -> httpx.Response:
+        nonlocal called
+        called = True
+        return httpx.Response(500)
+
+    await A.app.state.http.aclose()
+    A.app.state.http = AsyncClient(transport=httpx.MockTransport(upstream))
+    before = await _balance(clients)
+
+    response = await clients.get(
+        "/call/diffbot.x.extract-article",
+        params={"url": "https://news.example/article"},
+    )
+
+    assert response.status_code == 502
+    assert response.json()["detail"].startswith("diffbot.x.extract-article declares")
+    assert called is False
+    assert await _balance(clients) == before
+
+
 async def test_tier4_relays_with_the_platform_key_and_charges_the_balance(clients: AsyncClient, platform_on):
     """The keyless first call: no credential in the org, and the endpoint is served anyway — on treg's
     key, with the estimate taken out of the $1 promo balance."""
@@ -491,6 +680,45 @@ def test_body_limit_reads_camel_case_and_nested_pagination_keys():
     # lusha decision-makers: `contactsLimit` caps contacts PER COMPANY and is the whole bill (1 credit
     # each) — without it the route answered 44 rows for microsoft.com, $5.49 in one call (2026-09-02)
     assert call_resolution._body_limit(json.dumps({"companies": [{"domain": "microsoft.com"}], "contactsLimit": 5}).encode()) == 5
+    # lusha people.enrich: `contacts` array must count (feedback #133, org 13545) — without this,
+    # a single-contact lookup fell back to the 20-row default and reserved $4.992 for a $0.2496 call (20x)
+    assert call_resolution._body_limit(json.dumps({"contacts": [{"firstName": "Jane", "lastName": "Doe", "companyDomain": "lusha.com"}], "reveal": ["emails"]}).encode()) == 1
+    assert call_resolution._body_limit(json.dumps({"contacts": [{"firstName": "A"}, {"firstName": "B"}], "reveal": ["emails"]}).encode()) == 2
+
+
+def test_body_limit_counts_lusha_companies_array():
+    """lusha.companies.enrich takes a `companies` array. Without counting it, a single-company lookup
+    estimated at 20 results (the default) instead of 1 — a 20x pricing mismatch."""
+    assert call_resolution._body_limit(json.dumps({"companies": [{"domain": "lusha.com"}]}).encode()) == 1
+    assert call_resolution._body_limit(json.dumps({"companies": [{"domain": "a.com"}, {"domain": "b.com"}, {"domain": "c.com"}]}).encode()) == 3
+
+
+def test_hunter_domain_search_estimate_uses_credit_rounding():
+    """Hunter bills 1 search credit per 10 emails RETURNED, rounded UP — the catalog's `per: 10` prices
+    at $0.00245/record, but Hunter actually charges whole credits. Feedback #116 (org 12770): catalog
+    showed ~$0.00245 but billed ~$0.0245 (10x) because the estimate used linear per-record math
+    while settle used rounded-up credits. The estimate must round up to whole credits too.
+
+    With limit=1: linear estimate was $0.00245, but settle = ceil(1/10) = 1 credit = $0.0245."""
+    credit_micro = 24_500  # $0.0245/credit (fx.yaml, Starter $49/mo / 2,000 credits)
+    # The estimate must round up to whole credits, same as settle does
+    cost = {"type": "per_result", "usd": 0.00245}  # per-record price from cost_view
+    # Default limit (10 for Hunter) → 1 credit
+    est, unit = call_resolution._marketplace_pricing("hunter", "hunter.companies.emails", cost, {}, b"")
+    assert est == credit_micro, f"default limit (10) should reserve 1 whole credit: {est}"
+    assert unit == credit_micro, "unit should be 1 credit"
+    # limit=1 → still 1 credit (rounded up)
+    est_1, _ = call_resolution._marketplace_pricing("hunter", "hunter.companies.emails", cost, {"limit": "1"}, b"")
+    assert est_1 == credit_micro, f"limit=1 should still reserve 1 whole credit (ceil(1/10)=1): {est_1}"
+    # limit=10 → 1 credit
+    est_10, _ = call_resolution._marketplace_pricing("hunter", "hunter.companies.emails", cost, {"limit": "10"}, b"")
+    assert est_10 == credit_micro, f"limit=10 should reserve 1 credit: {est_10}"
+    # limit=11 → 2 credits (rounded up)
+    est_11, _ = call_resolution._marketplace_pricing("hunter", "hunter.companies.emails", cost, {"limit": "11"}, b"")
+    assert est_11 == 2 * credit_micro, f"limit=11 should reserve 2 credits (ceil(11/10)=2): {est_11}"
+    # limit=100 (max) → 10 credits
+    est_100, _ = call_resolution._marketplace_pricing("hunter", "hunter.companies.emails", cost, {"limit": "100"}, b"")
+    assert est_100 == 10 * credit_micro, f"limit=100 should reserve 10 credits: {est_100}"
 
 
 async def test_provider_5xx_releases_the_hold(clients: AsyncClient, platform_on, monkeypatch):
@@ -592,6 +820,123 @@ def _mk(provider: str, **kw) -> call_resolution.MarketplaceCall:
     return call_resolution.MarketplaceCall(tool=None, upstream="", consumed=set(), provider=provider, **kw)
 
 
+@pytest.mark.parametrize(("endpoint", "body", "credits"), [
+    ("openmart.businesses.search", b'[]', 0),
+    ("openmart.businesses.search", b'[{"id":"1"}]', 1),
+    ("openmart.businesses.search", b'[{"id":"1"},{"id":"2"},{"id":"3"}]', 1),
+    ("openmart.businesses.search", b'[{},{},{},{}]', 2),
+    ("openmart.businesses.search", b'{"data":[{},{},{},{},{},{},{},{},{},{}]}', 3),
+    ("openmart.companies.enrich", b'{"data":[]}', 0),
+    ("openmart.companies.search", b'{"data":[{},{}]}', 1),
+    ("openmart.businesses.lookup.openmart", b'{"a":{},"b":{}}', 1),
+])
+def test_openmart_settlement_rounds_three_credits_per_ten_records(endpoint, body, credits):
+    mk = _mk("openmart", endpoint_id=endpoint, cost_type="per_result", unit_micro=29_800)
+    assert call_settle._observed_cost_micro(mk, body) == credits * 29_800
+
+
+def test_openmart_settlement_rejects_undocumented_response_shapes():
+    search = _mk("openmart", endpoint_id="openmart.businesses.search",
+                 cost_type="per_result", unit_micro=29_800)
+    lookup = _mk("openmart", endpoint_id="openmart.businesses.lookup.openmart",
+                 cost_type="per_result", unit_micro=29_800)
+    assert call_settle._observed_cost_micro(search, b'{"data":{}}') is None
+    assert call_settle._observed_cost_micro(lookup, b'[]') is None
+
+
+@pytest.mark.parametrize(("endpoint", "body", "expected"), [
+    ("openmart.businesses.search", {"query": "coffee", "limit": 1}, 29_800),
+    ("openmart.businesses.search", {"query": "coffee", "limit": 4}, 59_600),
+    ("openmart.companies.search", {"pagination": {"limit": 25}}, 238_400),
+    ("openmart.businesses.lookup.openmart", ["a", "b", "c"], 29_800),
+])
+def test_openmart_reservations_use_the_same_whole_credit_rounding(endpoint, body, expected):
+    cat = catalog_store.load()
+    cost = cat.cost_view(cat.by_id[endpoint]["cost"], "openmart")
+    estimate, unit = call_resolution._marketplace_pricing(
+        "openmart", endpoint, cost, {}, json.dumps(body).encode())
+    assert estimate == expected
+    assert unit == 29_800
+
+
+@pytest.mark.parametrize(("endpoint", "body"), [
+    ("openmart.businesses.search", {"query": "coffee"}),
+    ("openmart.businesses.search", {"query": "coffee", "limit": 26}),
+    ("openmart.companies.search", {"pagination": {"limit": 26}}),
+    ("openmart.businesses.lookup.openmart", [str(i) for i in range(26)]),
+])
+async def test_openmart_platform_calls_require_an_explicit_one_to_25_cap(
+    clients, openmart_platform_on, endpoint, body,
+):
+    before = await _balance(clients)
+    response = await clients.request(
+        catalog_store.load().by_id[endpoint]["method"], f"/call/{endpoint}",
+        content=json.dumps(body), headers={"content-type": "application/json"},
+    )
+    assert response.status_code == 400, response.text
+    assert await _balance(clients) == before
+    assert not [e for e in await _entries(clients) if e["kind"] in ("reserve", "settle", "release")]
+
+
+async def test_openmart_platform_search_settles_from_returned_rows(
+    clients, openmart_platform_on, monkeypatch,
+):
+    rows = [{"id": "1"}, {"id": "2"}, {"id": "3"}]
+    monkeypatch.setattr(call_service, "relay", _fake_relay(200, json.dumps(rows).encode()))
+    before = await _balance(clients)
+    response = await clients.post("/call/openmart.businesses.search", json={
+        "query": "coffee", "limit": 5,
+    })
+    assert response.status_code == 200, response.text
+    assert await _balance(clients) == before - 29_800
+    money = [e for e in await _entries(clients) if e["kind"] in ("reserve", "settle", "release")]
+    assert [e["kind"] for e in money[:2]] == ["settle", "reserve"]
+
+
+async def test_openmart_byok_keeps_upstream_limits_and_is_unmetered(clients, openmart_platform_on):
+    await clients.post("/secrets", json={"name": "openmart", "value": "OWN-OPENMART"})
+    before = await _balance(clients)
+    body = {"query": "coffee", "limit": 100}
+    response = await clients.post("/call/openmart.businesses.search", json=body)
+    assert response.status_code == 200, response.text
+    echoed = response.json()
+    assert echoed["auth"] == "Bearer OWN-OPENMART"
+    assert json.loads(echoed["body"]) == body
+    assert await _balance(clients) == before
+    assert not [e for e in await _entries(clients) if e["kind"] in ("reserve", "settle", "release")]
+
+
+async def test_openmart_byok_lookup_preserves_the_documented_get_array_body(
+    clients, openmart_platform_on,
+):
+    await clients.post("/secrets", json={"name": "openmart", "value": "OWN-OPENMART"})
+    ids = ["00000000-0000-4000-8000-000000000001"]
+    response = await clients.request(
+        "GET", "/call/openmart.businesses.lookup.openmart",
+        content=json.dumps(ids), headers={"content-type": "application/json"},
+    )
+    assert response.status_code == 200, response.text
+    assert response.json()["auth"] == "Bearer OWN-OPENMART"
+    assert json.loads(response.json()["body"]) == ids
+
+
+async def test_openmart_unpriced_fast_ids_are_blocked_before_relay_or_money(
+    clients, openmart_platform_on, monkeypatch,
+):
+    before = await _balance(clients)
+
+    async def forbidden(*args, **kwargs):
+        raise AssertionError("platform guard must precede relay")
+
+    monkeypatch.setattr(call_service, "relay", forbidden)
+    response = await clients.post("/call/openmart.businesses.search.ids", json={
+        "query": "coffee", "limit": 1,
+    })
+    assert response.status_code == 404, response.text
+    assert await _balance(clients) == before
+    assert not [e for e in await _entries(clients) if e["kind"] in ("reserve", "settle", "release")]
+
+
 def test_observed_cost_only_trusts_a_real_number():
     """A missing, non-numeric or negative charge means "we never learned it" — settle at the estimate.
     A reported ZERO is different: the provider is saying it did not charge, and is honoured."""
@@ -624,6 +969,37 @@ def test_crustdata_settles_from_the_response_credit_header():
     assert call_settle._observed_cost_micro(mk, b'{"rows": []}', httpx.Headers()) is None
     assert call_settle._observed_cost_micro(
         mk, b'{"rows": []}', httpx.Headers({"X-Credits-Used": "not-a-number"})) is None
+
+
+def test_aiark_settles_from_the_negative_response_credit_header():
+    """AI Ark reports a debit as a negative X-Credit value; the sign rule is provider-specific."""
+    mk = _mk("aiark", endpoint_id="aiark.people.phone.find",
+             cost_type="per_success", unit_micro=26_335)
+    body = b'{"data": {"data": [["+15550101000"]]}}'
+    assert call_settle._observed_cost_micro(
+        mk, body, httpx.Headers({"X-Credit": "-5"})) == 26_335
+    assert call_settle._observed_cost_micro(
+        mk, body, httpx.Headers({"X-Credit": "-0.5"})) == 2_634
+    assert call_settle._observed_cost_micro(
+        mk, body, httpx.Headers({"X-Credit": "0"})) == 0
+    assert call_settle._observed_cost_micro(
+        mk, body, httpx.Headers({"X-Credit": "5"})) is None
+    assert call_settle._observed_cost_micro(
+        mk, body, httpx.Headers({"X-Credit": "not-a-number"})) is None
+    assert call_settle._observed_cost_micro(
+        mk, body, httpx.Headers({"X-Credit": "NaN"})) is None
+    assert call_settle._observed_cost_micro(
+        mk, body, httpx.Headers({"X-Credit": "-Infinity"})) is None
+    assert call_settle._observed_cost_micro(mk, body, httpx.Headers()) is None
+
+
+@pytest.mark.parametrize(("endpoint", "doc"), [
+    ("aiark.people.email.find", {"data": {"email": {"output": []}}}),
+    ("aiark.people.phone.find", {"data": {"data": [[]]}}),
+])
+def test_aiark_present_but_empty_outputs_settle_as_free_misses(endpoint, doc):
+    mk = _mk("aiark", endpoint_id=endpoint, cost_type="per_success")
+    assert call_settle._observed_cost_micro(mk, json.dumps(doc).encode()) == 0
 
 
 def test_aviato_conditional_prices_follow_live_balance_deltas():
@@ -845,10 +1221,40 @@ async def test_daily_cap_refuses_when_it_cannot_be_verified(clients: AsyncClient
         raise RuntimeError("ledger unavailable")
 
     monkeypatch.setattr(ledger, "spent_today", _boom)
-    r = await clients.get(f"/call/{EP}?aweme_id=7")
-    assert r.status_code == 429
-    assert "refusing to spend" in r.json()["detail"]
-    assert await _balance(clients) == 1_000_000
+    monkeypatch.setenv("TREG_PLATFORM_DAILY_CAP_USD", "1")
+    get_settings.cache_clear()
+    try:
+        r = await clients.get(f"/call/{EP}?aweme_id=7")
+        assert r.status_code == 429
+        assert "refusing to spend" in r.json()["detail"]
+        assert await _balance(clients) == 1_000_000
+    finally:
+        get_settings.cache_clear()
+
+
+async def test_no_daily_cap_by_default_and_the_team_can_raise_past_any_deployment_default(
+        clients: AsyncClient, platform_on, monkeypatch):
+    """With no limit set anywhere, the ledger is never consulted and the balance is the bound. A
+    team's own figure wins over the deployment default in BOTH directions."""
+    async def _boom(db, org_id):
+        raise RuntimeError("must not be consulted when no cap applies")
+
+    real_spent_today = ledger.spent_today
+    monkeypatch.setattr(ledger, "spent_today", _boom)
+    assert (await clients.get(f"/call/{EP}?aweme_id=7")).status_code == 200
+    monkeypatch.setattr(ledger, "spent_today", real_spent_today)
+
+    monkeypatch.setenv("TREG_PLATFORM_DAILY_CAP_USD", "0.0015")   # default: one call, not two
+    get_settings.cache_clear()
+    try:
+        r = await clients.get(f"/call/{EP}?aweme_id=7")
+        assert r.status_code == 429 and r.json()["detail"]["error"] == "platform_daily_cap_reached"
+        org_id = (await clients.get("/orgs")).json()[0]["org_id"]
+        raised = await clients.patch(f"/orgs/{org_id}/settings", json={"daily_cap_micro": 10 * EP_MICRO})
+        assert raised.status_code == 200, raised.text
+        assert (await clients.get(f"/call/{EP}?aweme_id=7")).status_code == 200
+    finally:
+        get_settings.cache_clear()
 
 
 async def test_the_platform_key_never_appears_anywhere(clients: AsyncClient, platform_on):
@@ -911,6 +1317,24 @@ async def test_access_probe_reports_the_platform_tier(clients: AsyncClient, plat
     assert "no key needed" in d["detail"] and "0.001" in d["detail"]
 
 
+@pytest.mark.parametrize(("endpoint", "expected"), [
+    ("openmart.businesses.search", 29_800),
+    ("openmart.businesses.lookup.openmart", 29_800),
+    ("openmart.businesses.lookup.google-place", 29_800),
+    ("openmart.companies.enrich", 29_800),
+    ("openmart.companies.search", 89_400),
+])
+async def test_openmart_access_estimate_prices_the_runnable_example(
+    clients: AsyncClient, openmart_platform_on, endpoint, expected,
+):
+    response = await clients.get(f"/catalog/endpoints/{endpoint}/access")
+    assert response.status_code == 200, response.text
+    detail = response.json()
+    assert detail["tier"] == "platform"
+    assert detail["estimated_cost_micro"] == expected
+    assert f"${expected / 1_000_000:g}/call" in detail["detail"]
+
+
 async def test_a_user_may_not_forge_a_platform_binding(clients: AsyncClient, platform_on):
     """The other door onto treg's keys: a tool the caller registers themselves. `relay` resolves
     `platform_setting` from settings without looking at ownership, so the validator has to refuse it."""
@@ -951,6 +1375,17 @@ def test_platform_estimate_normalizes_per_result_pricing():
     assert call_resolution._platform_estimate_micro({"type": "per_call", "usd": None}, {}) == 0
     # rounds UP — a sub-micro fraction must never round to free
     assert call_resolution._platform_estimate_micro({"type": "per_call", "usd": 0.0000005}, {}) == 1
+
+
+def test_platform_estimate_prices_text_to_speech_by_input_characters():
+    """MiniMax publishes TTS per character, so the request's text length—not a result-page
+    default or a flat call price—sets the reserve. Unicode code points count as characters."""
+    hd = {"type": "per_success", "unit": "character", "usd": 0.0001}
+    turbo = {"type": "per_success", "unit": "character", "usd": 0.00006}
+    assert call_resolution._platform_estimate_micro(hd, {}, b'{"text":"Hello."}') == 600
+    assert call_resolution._platform_estimate_micro(turbo, {}, ' {"text":"Hi 👋"}'.encode()) == 240
+    assert call_resolution._platform_estimate_micro(hd, {}, b'{"text":""}') == 100
+    assert call_resolution._platform_estimate_micro(hd, {}, b'not-json') == 100
 
 
 def test_platform_estimate_counts_input_entities_not_a_page():
@@ -1023,6 +1458,67 @@ def test_exa_catalog_is_platform_priced():
     assert len(rows) == 10
     assert all(cat.platform_eligible(ep) for ep in rows)
     assert all(cat.cost_view(ep["cost"], "exa")["usd"] > 0 for ep in rows)
+
+
+def test_reapi_and_piapi_catalogs_are_platform_priced():
+    """Both AIGC resellers price in dollars per second or per image, so every generation row
+    converts natively; the free poll utilities are eligible as free routes."""
+    cat = A.catalog_store.load()
+    for provider, count in (("reapi", 6), ("piapi", 6)):
+        rows = cat.for_provider(provider)
+        assert len(rows) == count, provider
+        assert all(cat.platform_eligible(ep) for ep in rows), provider
+    # 480p Seedance 2.5, five seconds: the cheapest video cell on each route
+    assert cat.cost_view(cat.by_id["reapi.video-gen.seedance-2-5"]["cost"], "reapi")["usd_min"] == 0.4744
+    assert cat.cost_view(cat.by_id["piapi.video-gen.seedance-2-5.less-restriction"]["cost"], "piapi")["usd_min"] == 0.825
+
+
+def test_cloro_catalog_is_platform_priced():
+    """cloro prices in credits with a fx.yaml rate, so every curated route converts and is
+    eligible — except the own-account balance read, which tier 4 never serves."""
+    cat = A.catalog_store.load()
+    rows = cat.for_provider("cloro")
+    assert len(rows) == 11
+    own = [ep for ep in rows if ep.get("scope") == "own_account"]
+    assert [ep["id"] for ep in own] == ["cloro.account.usage"]
+    served = [ep for ep in rows if ep.get("scope") != "own_account"]
+    assert all(cat.platform_eligible(ep) for ep in served)
+    # 9 credits × $0.0004 (Hobby rate) — the full-surface ChatGPT call, the dearest route in the file
+    assert cat.cost_view(cat.by_id["cloro.ai-search.chatgpt.scrape"]["cost"], "cloro")["usd"] == 0.0036
+    assert cat.cost_view(cat.by_id["cloro.google.serp.news"]["cost"], "cloro")["usd"] == 0.002
+
+
+def test_cloro_state_targeting_rider_is_reserved():
+    """`state` is a top-level body field priced by a `cost.modifiers` rule (+2 credits on the four
+    engines that support it). The reserve must carry it; before the modifiers path was opened to
+    providers other than Aviato it silently did not (found reviewing #349)."""
+    cat = A.catalog_store.load()
+
+    def price(endpoint_id, body):
+        ep = cat.by_id[endpoint_id]
+        cv = cat.cost_view(ep["cost"], "cloro")
+        return call_resolution._marketplace_pricing("cloro", endpoint_id, cv, {}, json.dumps(body).encode())
+
+    plain = {"prompt": "what is a stock split", "country": "US"}
+    assert price("cloro.ai-search.perplexity.answer", plain) == (2_400, 0)            # 6 credits × $0.0004
+    assert price("cloro.ai-search.perplexity.answer", {**plain, "state": "CA"}) == (3_200, 0)  # 8
+    assert price("cloro.ai-search.chatgpt.scrape", {**plain, "state": "CA"}) == (4_400, 0)     # 11
+    # AI Mode has no state rider and no modifiers block: the plain estimate, untouched
+    assert price("cloro.google.serp.ai_mode", {"prompt": "x", "gl": "US"}) == (2_400, 0)
+
+
+def test_cloro_settles_from_the_response_credit_header():
+    """cloro's body has no billing field; X-Credits-Charged is the exact call charge, and it is
+    absent on the free routes and on a failed extraction (neither is billed) — which settles as
+    unreported rather than as zero."""
+    mk = _mk("cloro", endpoint_id="cloro.ai-search.chatgpt.scrape")
+    assert call_settle._observed_cost_micro(
+        mk, b'{"success": true}', httpx.Headers({"X-Credits-Charged": "7", "X-Credits-Remaining": "37493"})) == 2_800
+    assert call_settle._observed_cost_micro(
+        mk, b'{"success": true}', httpx.Headers({"X-Credits-Charged": "9"})) == 3_600
+    assert call_settle._observed_cost_micro(mk, b'{"success": true}', httpx.Headers()) is None
+    assert call_settle._observed_cost_micro(
+        mk, b'{"success": true}', httpx.Headers({"X-Credits-Charged": "?"})) is None
 
 
 def test_brightdata_estimate_counts_the_body_array():
@@ -1510,6 +2006,15 @@ def trial_on(monkeypatch):
     get_settings.cache_clear()
 
 
+@pytest.fixture()
+def getleadsio_trial_on(monkeypatch):
+    monkeypatch.setenv("TREG_PLATFORM_KEY_GETLEADSIO", "PLATFORM-GETLEADSIO")
+    monkeypatch.setenv("TREG_PLATFORM_PROVIDERS", "getleadsio")
+    get_settings.cache_clear()
+    yield
+    get_settings.cache_clear()
+
+
 async def test_a_trial_call_is_served_keyless_and_charges_NOTHING(clients: AsyncClient, trial_on,
                                                                   monkeypatch):
     monkeypatch.setattr(call_service, "relay", _fake_relay(200, b'{"c": 231.5, "pc": 230.1}'))
@@ -1529,7 +2034,8 @@ async def test_the_trial_allowance_bites_at_the_fx_number(clients: AsyncClient, 
     async with session_maker() as db:
         for i in range(50):
             db.add(CallRecord(org_id=1, user_email="u@example.com", tool_name="finnhub.quote",
-                              method="GET", path="/quote", status_code=200))
+                              method="GET", path="/quote", status_code=200,
+                              credential_tier="platform"))
         for i in range(10):  # failures do not consume the allowance
             db.add(CallRecord(org_id=1, user_email="u@example.com", tool_name="finnhub.quote",
                               method="GET", path="/quote", status_code=502))
@@ -1556,6 +2062,22 @@ async def test_failures_alone_never_exhaust_a_trial(clients: AsyncClient, trial_
     assert (await clients.get("/call/finnhub.quote?symbol=AAPL")).status_code == 200
 
 
+async def test_own_key_history_never_consumes_a_later_platform_trial(
+        clients: AsyncClient, trial_on, monkeypatch):
+    from treg.models import CallRecord
+
+    async with session_maker() as db:
+        for _ in range(50):
+            db.add(CallRecord(
+                org_id=1, user_email="u@example.com", tool_name="finnhub.quote",
+                method="GET", path="/quote", status_code=200,
+                credential_tier="credential",
+            ))
+        await db.commit()
+    monkeypatch.setattr(call_service, "relay", _fake_relay(200, b'{"c": 1}'))
+    assert (await clients.get("/call/finnhub.quote?symbol=AAPL")).status_code == 200
+
+
 async def test_another_orgs_usage_never_burns_MY_trial(clients: AsyncClient, trial_on, monkeypatch):
     """The allowance is per TEAM. Another org's fifty calls must not touch this org's pool — the
     multi-tenancy assertion, and the one failure here that would be unfair rather than merely
@@ -1568,10 +2090,132 @@ async def test_another_orgs_usage_never_burns_MY_trial(clients: AsyncClient, tri
         for i in range(50):
             db.add(CallRecord(org_id=other.json()["org_id"], user_email="other@example.com",
                               tool_name="finnhub.quote", method="GET", path="/quote",
-                              status_code=200))
+                              status_code=200, credential_tier="platform"))
         await db.commit()
     monkeypatch.setattr(call_service, "relay", _fake_relay(200, b'{"c": 1}'))
     assert (await clients.get("/call/finnhub.quote?symbol=AAPL")).status_code == 200
+
+
+async def test_getleadsio_platform_call_is_free_and_preserves_the_requested_limit(
+        clients: AsyncClient, getleadsio_trial_on):
+    before = await _balance(clients)
+    result = await clients.post("/call/getleadsio.people.search", json={
+        "filters": {"domains": ["example.com"]}, "limit": 5000, "offset": 0,
+    })
+    assert result.status_code == 200, result.text
+    assert result.json()["auth"] == "Bearer PLATFORM-GETLEADSIO"
+    assert json.loads(result.json()["body"])["limit"] == 5000
+    assert await _balance(clients) == before
+
+
+@pytest.mark.parametrize("endpoint", [
+    "getleadsio.people.enrich.from_email",
+    "getleadsio.people.enrich.from_linkedin",
+    "getleadsio.people.enrich.from_person",
+])
+@pytest.mark.parametrize("own_key", [False, True])
+async def test_getleadsio_enrichment_rejects_more_than_one_item_on_every_credential_tier(
+        clients: AsyncClient, getleadsio_trial_on, endpoint, own_key):
+    if own_key:
+        created = await clients.post(
+            "/secrets", json={"name": "getleadsio", "value": "OWN-GETLEADSIO"},
+        )
+        assert created.status_code == 200, created.text
+    result = await clients.post(
+        f"/call/{endpoint}", json={"items": [{"id": "one"}, {"id": "two"}]},
+    )
+    assert result.status_code == 400, result.text
+    detail = result.json()["detail"]
+    assert detail["error"] == "catalog_parameter_invalid"
+    assert detail["parameter"] == "body.items"
+
+
+async def test_getleadsio_own_key_wins_and_is_unmetered(
+        clients: AsyncClient, getleadsio_trial_on):
+    await clients.post("/secrets", json={"name": "getleadsio", "value": "OWN-GETLEADSIO"})
+    before = await _balance(clients)
+    result = await clients.post("/call/getleadsio.people.search", json={
+        "filters": {"domains": ["example.com"]}, "limit": 10,
+    })
+    assert result.status_code == 200, result.text
+    assert result.json()["auth"] == "Bearer OWN-GETLEADSIO"
+    assert await _balance(clients) == before
+    assert (await _telemetry(clients))["credential_tier"] == "credential"
+
+
+async def test_getleadsio_trial_allowance_is_five_successful_calls_per_team_day(
+        clients: AsyncClient, getleadsio_trial_on, monkeypatch):
+    from treg.models import CallRecord
+
+    async with session_maker() as db:
+        for _ in range(5):
+            db.add(CallRecord(
+                org_id=1, user_email="u@example.com",
+                tool_name="getleadsio.people.search", method="POST",
+                path="/api/v1/contacts/search", status_code=200,
+                credential_tier="platform",
+            ))
+        await db.commit()
+    monkeypatch.setattr(call_service, "relay", _fake_relay(200, b'{"ok":true}'))
+    before = await _balance(clients)
+    result = await clients.post("/call/getleadsio.people.search", json={
+        "filters": {"domains": ["example.com"]}, "limit": 1,
+    })
+    assert result.status_code == 429, result.text
+    detail = result.json()["detail"]
+    assert detail["error"] == "trial_allowance_reached"
+    assert detail["allowance_per_day"] == 5
+    assert await _balance(clients) == before
+
+
+async def test_getleadsio_free_calls_do_not_consume_the_paid_trial_allowance(
+        clients: AsyncClient, getleadsio_trial_on):
+    from treg.models import CallRecord
+
+    async with session_maker() as db:
+        for _ in range(5):
+            db.add(CallRecord(
+                org_id=1, user_email="u@example.com",
+                tool_name="getleadsio.people.search.count", method="POST",
+                path="/api/v1/contacts/search/count", status_code=200,
+                credential_tier="platform",
+            ))
+        await db.commit()
+    result = await clients.post("/call/getleadsio.people.search", json={
+        "filters": {"domains": ["example.com"]}, "limit": 1,
+    })
+    assert result.status_code == 200, result.text
+
+
+async def test_getleadsio_free_calls_still_work_after_the_paid_trial_allowance(
+        clients: AsyncClient, getleadsio_trial_on):
+    from treg.models import CallRecord
+
+    async with session_maker() as db:
+        for _ in range(5):
+            db.add(CallRecord(
+                org_id=1, user_email="u@example.com",
+                tool_name="getleadsio.people.search", method="POST",
+                path="/api/v1/contacts/search", status_code=200,
+                credential_tier="platform",
+            ))
+        await db.commit()
+    result = await clients.post("/call/getleadsio.people.search.count", json={
+        "filters": {"domains": ["example.com"]},
+    })
+    assert result.status_code == 200, result.text
+
+
+@pytest.mark.parametrize("status", [400, 500])
+async def test_getleadsio_failed_platform_calls_never_move_money(
+        clients: AsyncClient, getleadsio_trial_on, monkeypatch, status):
+    monkeypatch.setattr(call_service, "relay", _fake_relay(status, b'{"ok":false}'))
+    before = await _balance(clients)
+    result = await clients.post("/call/getleadsio.people.search", json={
+        "filters": {"domains": ["example.com"]}, "limit": 1,
+    })
+    assert result.status_code == status
+    assert await _balance(clients) == before
 
 
 # ---- X: the catalog price and the metered price are the same number ----------------------------
@@ -2044,7 +2688,8 @@ async def test_trykitt_platform_rejects_non_realtime_before_upstream(clients,mon
         pytest.fail('must reject before relay')
     monkeypatch.setattr(call_service,'relay',fail)
     body={'email':'a@example.com'}
-    if realtime is not None: body['realtime']=realtime
+    if realtime is not None:
+        body['realtime'] = realtime
     before=await _balance(clients)
     r=await clients.post('/call/'+'trykitt.people.email.verify',json=body)
     assert r.status_code==400,r.text
@@ -2092,6 +2737,32 @@ def test_platform_request_constraints_do_not_require_a_price_table(body, valid):
     else:
         with pytest.raises(ResolutionFailed):
             call_resolution._enforce_platform_request(ep, body)
+
+
+@pytest.mark.parametrize('body,valid', [
+    (b'{"model":"image-01","prompt":"A paper airplane."}', True),
+    (json.dumps({
+        "model": "image-01",
+        "prompt": "A clean editorial illustration of a paper airplane.",
+        "aspect_ratio": "1:1",
+        "response_format": "url",
+        "n": 1,
+    }).encode(), True),
+    (b'{"prompt":"A paper airplane."}', False),
+    (b'{}', False),
+])
+def test_minimax_image_01_platform_request_accepts_documented_model(body, valid):
+    """Feedback #634: platform image-01 calls accept the documented model value."""
+    ep = catalog_store.load().by_id["minimax.image-gen.from_text"]
+    if valid:
+        call_resolution._enforce_platform_request(ep, body)
+    else:
+        with pytest.raises(ResolutionFailed) as exc:
+            call_resolution._enforce_platform_request(ep, body)
+        detail = exc.value.detail
+        assert detail["error"] == "catalog_parameter_invalid"
+        assert detail["parameter"] == "body.model"
+        assert detail["expected"] == "image-01"
 
 
 # ---- ContactOut ----
@@ -2493,3 +3164,626 @@ def test_email_path_keeps_at_sign_but_cannot_inject_path_or_query():
     url, _ = call_resolution._marketplace_upstream(
         ep, oauth_providers.TOMBA, {'email': 'person@example.com/extra?x=1#fragment'})
     assert url.endswith('person@example.com%2Fextra%3Fx%3D1%23fragment')
+
+
+@pytest.mark.parametrize(
+    "endpoint,path,request_body,response_body,expected_micro",
+    [
+        ("dropleads.people.email.find", "/email-finder",
+         {"first_name": "Jane", "last_name": "Doe", "company_domain": "example.com"},
+         {"email": "jane@example.com", "status": "found", "credits_charged": 1}, 18_000),
+        ("dropleads.people.enrich", "/api/v2/prime-db/leads/simple-enrich",
+         {"id": "example-person"},
+         {"success": True, "person": {"name": "Jane Doe"}, "credits_consumed": 0.2}, 3_600),
+        ("dropleads.companies.search", "/api/v1/companies/search",
+         {"filters": {"companyDomains": ["example.com"]},
+          "pagination": {"page": 1, "limit": 1}},
+         {"success": True, "data": {"companies": [{"name": "Example"}]},
+          "credits": {"creditsDeducted": 0.1}}, 1_800),
+    ],
+)
+async def test_dropleads_platform_settles_reported_credits(
+    clients, monkeypatch, dropleads_platform_on, endpoint, path, request_body,
+    response_body, expected_micro,
+):
+    def serve(request):
+        assert request.url.path == path
+        assert request.headers["x-api-key"] == "PLATFORM-DROPLEADS"
+        return _dropleads_response(200, response_body)
+
+    before = await _balance(clients)
+    async with httpx.AsyncClient(transport=httpx.MockTransport(serve)) as upstream:
+        monkeypatch.setattr(A.app.state, "http", upstream)
+        result = await clients.post(f"/call/{endpoint}", json=request_body)
+    assert result.status_code == 200, result.text
+    assert result.json() == response_body
+    assert result.headers["x-treg-cost-micro"] == str(expected_micro)
+    assert before - await _balance(clients) == expected_micro
+
+
+@pytest.mark.parametrize(
+    "endpoint,request_body,response_body",
+    [
+        ("dropleads.people.email.find",
+         {"first_name": "Nobody", "last_name": "Missing", "company_domain": "example.test"},
+         {"email": None, "status": "not_found"}),
+        ("dropleads.people.phone.find",
+         {"linkedin_url": "https://www.linkedin.com/in/treg-nonexistent"},
+         {"mobile_number": None, "status": "not_found", "credits_charged": 0}),
+        ("dropleads.people.enrich",
+         {"id": "treg-nonexistent"},
+         {"success": False, "person": None, "credits_consumed": 0}),
+        ("dropleads.companies.enrich",
+         {"domains": ["example.test"]},
+         {"success": True, "data": {"companies": []},
+          "credits": {"creditsDeducted": 0}}),
+    ],
+)
+async def test_dropleads_reported_free_misses_release_full_hold(
+    clients, monkeypatch, dropleads_platform_on, endpoint, request_body, response_body,
+):
+    before = await _balance(clients)
+    async with httpx.AsyncClient(
+        transport=httpx.MockTransport(
+            lambda request: _dropleads_response(200, response_body)
+        )
+    ) as upstream:
+        monkeypatch.setattr(A.app.state, "http", upstream)
+        result = await clients.post(f"/call/{endpoint}", json=request_body)
+    assert result.status_code == 200, result.text
+    assert result.headers["x-treg-cost-micro"] == "0"
+    assert await _balance(clients) == before
+    assert [entry["kind"] for entry in (await _entries(clients))[:2]] == ["settle", "reserve"]
+
+
+async def test_dropleads_byok_wins_and_is_never_metered(
+    clients, monkeypatch, dropleads_platform_on,
+):
+    await clients.post("/secrets", json={"name": "dropleads", "value": "OWN-DROPLEADS"})
+    seen = []
+
+    def serve(request):
+        seen.append(request.headers["x-api-key"])
+        return _dropleads_response(
+            200, {"email": "jane@example.com", "credits_charged": 1}
+        )
+
+    before = await _balance(clients)
+    async with httpx.AsyncClient(transport=httpx.MockTransport(serve)) as upstream:
+        monkeypatch.setattr(A.app.state, "http", upstream)
+        result = await clients.post(
+            "/call/dropleads.people.email.find",
+            json={"first_name": "Jane", "last_name": "Doe", "company_domain": "example.com"},
+        )
+    assert result.status_code == 200, result.text
+    assert seen == ["OWN-DROPLEADS"]
+    assert "x-treg-cost-micro" not in result.headers
+    assert await _balance(clients) == before
+
+
+@pytest.mark.parametrize(
+    "endpoint,body,expected",
+    [
+        ("dropleads.companies.enrich", {"domains": [f"{i}.test" for i in range(25)],
+                                         "companyNames": [str(i) for i in range(25)]}, 90_000),
+        ("dropleads.companies.search", {"filters": {},
+                                         "pagination": {"page": 1, "limit": 50}}, 90_000),
+        ("dropleads.companies.search", {"filters": {},
+                                         "pagination": {"page": 1, "limit": "50"}}, 90_000),
+    ],
+)
+def test_dropleads_request_shapes_reserve_exact_valid_maxima(endpoint, body, expected):
+    catalog = catalog_store.load()
+    ep = catalog.by_id[endpoint]
+    cost = catalog.cost_view(ep["cost"], "dropleads")
+    estimate, _ = call_resolution._marketplace_pricing(
+        "dropleads", endpoint, cost, {}, json.dumps(body).encode()
+    )
+    assert estimate == expected
+
+
+@pytest.mark.parametrize(
+    "endpoint,doc,expected",
+    [
+        ("prospeo.people.email.find",
+         {"error": False, "free_enrichment": False, "person": {"email": {"email": "jane@example.com"}}},
+         24_500),
+        ("prospeo.people.email.find",
+         {"error": False, "free_enrichment": False, "person": {"email": {"email": None}}}, 0),
+        ("prospeo.people.email.find",
+         {"error": False, "free_enrichment": False, "person": {}}, 0),
+        ("prospeo.people.enrich",
+         {"error": False, "free_enrichment": True, "person": {"person_id": "p1"}}, 0),
+        ("prospeo.people.enrich",
+         {"error": False, "free_enrichment": False,
+          "person": {"person_id": "p1", "email": {"email": None}}}, 24_500),
+        ("prospeo.people.enrich",
+         {"error": False, "free_enrichment": False, "person": {}}, 0),
+        ("prospeo.companies.enrich",
+         {"error": False, "free_enrichment": False, "company": {"company_id": "c1"}}, 24_500),
+        ("prospeo.companies.enrich",
+         {"error": False, "free_enrichment": False, "company": None}, 0),
+        ("prospeo.companies.enrich",
+         {"error": False, "free_enrichment": False}, 0),
+        ("prospeo.people.search",
+         {"error": False, "free": False, "results": [{"person": {"person_id": "p1"}}]}, 24_500),
+        ("prospeo.companies.search",
+         {"error": False, "free": True, "results": [{"company": {"company_id": "c1"}}]}, 0),
+        ("prospeo.search.suggestions",
+         {"error": False, "location_results": []}, 0),
+        ("prospeo.people.email.find", {"error": True, "error_code": "NO_MATCH"}, 0),
+    ],
+)
+def test_prospeo_settles_only_from_response_evidence(endpoint, doc, expected):
+    mk = _mk("prospeo", endpoint_id=endpoint, cost_type="per_success", unit_micro=24_500)
+    assert call_settle._observed_cost_micro(mk, json.dumps(doc).encode()) == expected
+
+
+@pytest.mark.parametrize(
+    "doc,expected",
+    [
+        ({"error": False, "free_enrichment": False,
+          "person": {"mobile": {"mobile_international": "+15550101000"}}}, 245_000),
+        ({"error": False, "free_enrichment": False,
+          "person": {"mobile": {"mobile_international": None}}}, 0),
+        ({"error": False, "free_enrichment": False, "person": {"mobile": {}}}, 0),
+        ({"error": False, "free_enrichment": False, "person": {}}, 0),
+        ({"error": False, "free_enrichment": False}, 0),
+        ({"error": False, "free_enrichment": False, "person": "malformed"}, None),
+    ],
+)
+def test_prospeo_phone_settlement_requires_an_actual_mobile(doc, expected):
+    mk = _mk("prospeo", endpoint_id="prospeo.people.phone.find",
+             cost_type="per_success", unit_micro=245_000)
+    assert call_settle._observed_cost_micro(mk, json.dumps(doc).encode()) == expected
+
+
+async def test_prospeo_platform_email_settles_one_credit(
+    clients, monkeypatch, prospeo_platform_on,
+):
+    response_body = {
+        "error": False,
+        "free_enrichment": False,
+        "person": {"person_id": "p1", "email": {"email": "jane@example.com"}},
+        "company": {"company_id": "c1"},
+    }
+
+    def serve(request):
+        assert request.url.path == "/enrich-person"
+        assert request.headers["x-key"] == "PLATFORM-PROSPEO"
+        sent = json.loads(request.content)
+        assert sent["only_verified_email"] is True
+        assert sent["enrich_mobile"] is False
+        return _dropleads_response(200, response_body)
+
+    body = {
+        "only_verified_email": True,
+        "enrich_mobile": False,
+        "only_verified_mobile": False,
+        "data": {"full_name": "Jane Doe", "company_website": "example.com"},
+    }
+    before = await _balance(clients)
+    async with httpx.AsyncClient(transport=httpx.MockTransport(serve)) as upstream:
+        monkeypatch.setattr(A.app.state, "http", upstream)
+        result = await clients.post("/call/prospeo.people.email.find", json=body)
+    assert result.status_code == 200, result.text
+    assert result.headers["x-treg-cost-micro"] == "24500"
+    assert before - await _balance(clients) == 24_500
+
+
+async def test_aiark_platform_settles_hit_releases_miss_and_byok_wins(
+    clients, monkeypatch,
+):
+    monkeypatch.setenv("TREG_PLATFORM_KEY_AIARK", "PLATFORM-AIARK")
+    monkeypatch.setenv("TREG_PLATFORM_PROVIDERS", "aiark")
+    get_settings.cache_clear()
+    hit = {
+        "status": 200,
+        "error": None,
+        "data": {
+            "profile": {"first_name": "Jane", "last_name": "Example"},
+            "email": {"output": [{"address": "jane@example.com", "status": "VALID"}]},
+            "link": {"linkedin": "https://www.linkedin.com/in/example"},
+        },
+    }
+    monkeypatch.setattr(
+        call_service, "relay", _fake_relay(200, json.dumps(hit).encode())
+    )
+    before = await _balance(clients)
+    response = await clients.post("/call/aiark.people.email.find", json={
+        "url": "https://www.linkedin.com/in/example",
+    })
+    assert response.status_code == 200, response.text
+    assert response.headers["x-treg-cost-micro"] == "5267"
+    assert await _balance(clients) == before - 5267
+
+    miss = {"status": 200, "error": None, "data": None}
+    monkeypatch.setattr(
+        call_service, "relay", _fake_relay(200, json.dumps(miss).encode())
+    )
+    before_miss = await _balance(clients)
+    response = await clients.post("/call/aiark.people.email.find", json={
+        "url": "https://www.linkedin.com/in/missing",
+    })
+    assert response.status_code == 200
+    assert response.headers["x-treg-cost-micro"] == "0"
+    assert await _balance(clients) == before_miss
+
+    await clients.post("/secrets", json={"name": "aiark", "value": "OWN-AIARK"})
+    before_byok = await _balance(clients)
+    response = await clients.post("/call/aiark.people.email.find", json={
+        "url": "https://www.linkedin.com/in/example",
+    })
+    assert response.status_code == 200
+    assert "x-treg-cost-micro" not in response.headers
+    assert await _balance(clients) == before_byok
+    get_settings.cache_clear()
+
+
+async def test_aiark_platform_releases_rejected_request_and_enforces_search_bound(
+    clients, monkeypatch,
+):
+    monkeypatch.setenv("TREG_PLATFORM_KEY_AIARK", "PLATFORM-AIARK")
+    monkeypatch.setenv("TREG_PLATFORM_PROVIDERS", "aiark")
+    get_settings.cache_clear()
+    rejected = {"status": 400, "error": "invalid input"}
+    monkeypatch.setattr(
+        call_service, "relay", _fake_relay(400, json.dumps(rejected).encode())
+    )
+    before = await _balance(clients)
+    response = await clients.post("/call/aiark.people.email.find", json={})
+    assert response.status_code == 400
+    assert await _balance(clients) == before
+
+    response = await clients.post("/call/aiark.people.search", json={
+        "account": {"domain": {"any": {"include": ["example.com"]}}},
+        "page": 0,
+        "size": 2,
+    })
+    assert response.status_code == 400
+    assert response.json()["detail"]["error"] == "catalog_parameter_invalid"
+    assert await _balance(clients) == before
+    get_settings.cache_clear()
+
+
+@pytest.mark.parametrize(
+    "endpoint,request_body,response_body,expected_micro",
+    [
+        (
+            "limadata.companies.enrich",
+            {"domain": "example.com"},
+            {"company": {"name": "Example Inc", "domain": "example.com"}},
+            20_000,
+        ),
+        (
+            "limadata.people.email.verify",
+            {"email": "person@example.com"},
+            {"email": "person@example.com", "result": "Risky", "score": 50},
+            6_000,
+        ),
+    ],
+)
+async def test_limadata_platform_success_settles_bounded_price(
+    clients, monkeypatch, limadata_platform_on, endpoint, request_body, response_body,
+    expected_micro,
+):
+    def serve(request):
+        assert request.headers["x-api-key"] == "PLATFORM-LIMADATA"
+        return _dropleads_response(200, response_body)
+
+    before = await _balance(clients)
+    async with httpx.AsyncClient(transport=httpx.MockTransport(serve)) as upstream:
+        monkeypatch.setattr(A.app.state, "http", upstream)
+        result = await clients.post(f"/call/{endpoint}", json=request_body)
+    assert result.status_code == 200, result.text
+    assert result.headers["x-treg-cost-micro"] == str(expected_micro)
+    assert before - await _balance(clients) == expected_micro
+    assert [entry["kind"] for entry in (await _entries(clients))[:2]] == [
+        "settle", "reserve",
+    ]
+
+
+async def test_limadata_platform_releases_error_and_byok_wins(
+    clients, monkeypatch, limadata_platform_on,
+):
+    before = await _balance(clients)
+    real_relay = call_service.relay
+    monkeypatch.setattr(
+        call_service,
+        "relay",
+        _fake_relay(404, json.dumps({"message": "No work email found"}).encode()),
+    )
+    missing = await clients.post(
+        "/call/limadata.people.email.find.name",
+        json={"full_name": "Missing Person", "company_domain": "example.com"},
+    )
+    assert missing.status_code == 404
+    assert missing.headers["x-treg-cost-micro"] == "0"
+    assert await _balance(clients) == before
+    assert [entry["kind"] for entry in (await _entries(clients))[:2]] == [
+        "release", "reserve",
+    ]
+
+    monkeypatch.setattr(call_service, "relay", real_relay)
+    await clients.post("/secrets", json={"name": "limadata", "value": "OWN-LIMADATA"})
+    seen = []
+
+    def serve(request):
+        seen.append(request.headers["x-api-key"])
+        return _dropleads_response(
+            200, {"company": {"name": "Example Inc", "domain": "example.com"}}
+        )
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(serve)) as upstream:
+        monkeypatch.setattr(A.app.state, "http", upstream)
+        own = await clients.post(
+            "/call/limadata.companies.enrich", json={"domain": "example.com"}
+        )
+    assert own.status_code == 200, own.text
+    assert seen == ["OWN-LIMADATA"]
+    assert "x-treg-cost-micro" not in own.headers
+    assert await _balance(clients) == before
+
+
+@pytest.mark.parametrize(("endpoint", "body"), [
+    ("limadata.people.identity.resolve", {
+        "full_name": "Example Person", "company_domain": "example.com",
+    }),
+    ("limadata.people.count", {
+        "filter_expression": "full_name=treg-nonexistent-person",
+    }),
+])
+async def test_limadata_byok_only_operation_cannot_fall_through_to_platform_key(
+    clients, limadata_platform_on, endpoint, body,
+):
+    result = await clients.post(
+        f"/call/{endpoint}", json=body,
+    )
+    assert result.status_code == 404
+
+
+@pytest.mark.parametrize("doc", [
+    {"id": "task-1", "status": "success", "result": "deliverable", "score": 99,
+     "credits_consumed": 1, "credits_remaining": 9996},
+    {"id": "task-2", "status": "verifying", "try_again_at": 1789516800},
+])
+async def test_bounceban_platform_settles_every_accepted_standard_submission(
+    clients, monkeypatch, bounceban_platform_on, doc,
+):
+    def serve(request):
+        assert request.method == "GET"
+        assert request.url.path == "/v1/verify/single"
+        assert dict(request.url.params) == {"email": "dev@bounceban.com"}
+        assert request.headers["authorization"] == "PLATFORM-BOUNCEBAN"
+        return _dropleads_response(200, doc)
+
+    before = await _balance(clients)
+    async with httpx.AsyncClient(transport=httpx.MockTransport(serve)) as upstream:
+        monkeypatch.setattr(A.app.state, "http", upstream)
+        result = await clients.get(
+            "/call/bounceban.people.email.verify", params={"email": "dev@bounceban.com"})
+    assert result.status_code == 200, result.text
+    assert result.headers["x-treg-cost-micro"] == "4000"
+    assert before - await _balance(clients) == 4_000
+
+
+async def test_bounceban_platform_releases_invalid_input_and_byok_wins_unmetered(
+    clients, monkeypatch, bounceban_platform_on,
+):
+    before = await _balance(clients)
+    async with httpx.AsyncClient(transport=httpx.MockTransport(
+            lambda request: _dropleads_response(400, {"msg": "Invalid email"}))) as upstream:
+        monkeypatch.setattr(A.app.state, "http", upstream)
+        invalid = await clients.get(
+            "/call/bounceban.people.email.verify", params={"email": "not-an-email"})
+    assert invalid.status_code == 400
+    assert invalid.headers["x-treg-cost-micro"] == "0"
+    assert await _balance(clients) == before
+
+    await clients.post("/secrets", json={"name": "bounceban", "value": "OWN-BOUNCEBAN"})
+    seen = []
+
+    def serve(request):
+        seen.append(request.headers["authorization"])
+        return _dropleads_response(200, {
+            "id": "task-3", "status": "success", "result": "undeliverable", "score": 0,
+            "credits_consumed": 1, "credits_remaining": 50,
+        })
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(serve)) as upstream:
+        monkeypatch.setattr(A.app.state, "http", upstream)
+        own = await clients.get(
+            "/call/bounceban.people.email.verify", params={"email": "nobody@example.com"})
+    assert own.status_code == 200, own.text
+    assert seen == ["OWN-BOUNCEBAN"]
+    assert "x-treg-cost-micro" not in own.headers
+    assert await _balance(clients) == before
+
+
+async def test_zerobounce_platform_settlement_release_and_byok_precedence(
+    clients, monkeypatch, zerobounce_platform_on,
+):
+    answers = {
+        "bad@example.com": (200, {"status": "invalid"}),
+        "wait@example.com": (200, {"status": "unknown"}),
+        "fail@example.com": (500, {"error": "temporary"}),
+        "good@example.com": (200, {"status": "valid"}),
+    }
+    seen_keys = []
+
+    def serve(request):
+        seen_keys.append(request.url.params["api_key"])
+        if request.url.path == "/v2/guessformat":
+            if request.url.params.get("first_name") == "Missing":
+                return _dropleads_response(200, {"email": "", "failure_reason": "NO_DATA_FOR_THIS_DOMAIN"})
+            if request.url.params.get("first_name"):
+                return _dropleads_response(200, {"email": "ada@example.com", "failure_reason": ""})
+            if request.url.params.get("domain") == "missing.example":
+                return _dropleads_response(200, {"format": "", "failure_reason": "NO_DATA_FOR_THIS_DOMAIN"})
+            return _dropleads_response(200, {"format": "first.last", "failure_reason": ""})
+        status, doc = answers[request.url.params["email"]]
+        return _dropleads_response(status, doc)
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(serve)) as upstream:
+        monkeypatch.setattr(A.app.state, "http", upstream)
+        before = await _balance(clients)
+        invalid = await clients.get(
+            "/call/zerobounce.people.email.verify", params={"email": "bad@example.com"})
+        assert invalid.status_code == 200
+        assert invalid.headers["x-treg-cost-micro"] == "13800"
+        assert await _balance(clients) == before - 13_800
+
+        before_unknown = await _balance(clients)
+        unknown = await clients.get(
+            "/call/zerobounce.people.email.verify", params={"email": "wait@example.com"})
+        assert unknown.status_code == 200
+        assert unknown.headers["x-treg-cost-micro"] == "0"
+        assert await _balance(clients) == before_unknown
+
+        before_failure = await _balance(clients)
+        failure = await clients.get(
+            "/call/zerobounce.people.email.verify", params={"email": "fail@example.com"})
+        assert failure.status_code == 500
+        assert await _balance(clients) == before_failure
+
+        before_finder = await _balance(clients)
+        finder = await clients.get("/call/zerobounce.people.email.find", params={
+            "domain": "example.com", "first_name": "Ada", "last_name": "Lovelace",
+        })
+        assert finder.status_code == 200
+        assert finder.headers["x-treg-cost-micro"] == "276000"
+        assert await _balance(clients) == before_finder - 276_000
+
+        before_finder_miss = await _balance(clients)
+        finder_miss = await clients.get("/call/zerobounce.people.email.find", params={
+            "domain": "example.com", "first_name": "Missing", "last_name": "Person",
+        })
+        assert finder_miss.status_code == 200
+        assert finder_miss.headers["x-treg-cost-micro"] == "0"
+        assert await _balance(clients) == before_finder_miss
+
+        before_pattern = await _balance(clients)
+        pattern = await clients.get(
+            "/call/zerobounce.companies.email_pattern", params={"domain": "example.com"})
+        assert pattern.status_code == 200
+        assert pattern.headers["x-treg-cost-micro"] == "276000"
+        assert await _balance(clients) == before_pattern - 276_000
+
+        before_pattern_miss = await _balance(clients)
+        pattern_miss = await clients.get(
+            "/call/zerobounce.companies.email_pattern", params={"domain": "missing.example"})
+        assert pattern_miss.status_code == 200
+        assert pattern_miss.headers["x-treg-cost-micro"] == "0"
+        assert await _balance(clients) == before_pattern_miss
+
+        await clients.post(
+            "/secrets", json={"name": "zerobounce", "value": "OWN-ZEROBOUNCE"})
+        before_byok = await _balance(clients)
+        own = await clients.get(
+            "/call/zerobounce.people.email.verify", params={"email": "good@example.com"})
+        assert own.status_code == 200
+        assert "x-treg-cost-micro" not in own.headers
+        assert await _balance(clients) == before_byok
+
+    assert seen_keys == ["PLATFORM-ZEROBOUNCE"] * 7 + ["OWN-ZEROBOUNCE"]
+
+
+async def test_prospeo_platform_person_enrich_uses_non_free_flag_when_email_is_null(
+    clients, monkeypatch, prospeo_platform_on,
+):
+    response_body = {
+        "error": False,
+        "free_enrichment": False,
+        "person": {"person_id": "p1", "email": {"email": None}},
+    }
+
+    body = {
+        "only_verified_email": False,
+        "enrich_mobile": False,
+        "only_verified_mobile": False,
+        "data": {"linkedin_url": "https://www.linkedin.com/in/example"},
+    }
+    before = await _balance(clients)
+    async with httpx.AsyncClient(transport=httpx.MockTransport(
+            lambda request: _dropleads_response(200, response_body))) as upstream:
+        monkeypatch.setattr(A.app.state, "http", upstream)
+        result = await clients.post("/call/prospeo.people.enrich", json=body)
+    assert result.status_code == 200, result.text
+    assert result.headers["x-treg-cost-micro"] == "24500"
+    assert before - await _balance(clients) == 24_500
+
+
+@pytest.mark.parametrize(
+    "endpoint,body,response_body",
+    [
+        ("prospeo.people.email.find",
+         {"only_verified_email": True, "enrich_mobile": False,
+          "only_verified_mobile": False,
+          "data": {"full_name": "Missing Person", "company_website": "example.com"}},
+         {"error": False, "free_enrichment": False,
+          "person": {"email": {"email": None}}}),
+        ("prospeo.people.phone.find",
+         {"only_verified_email": False, "enrich_mobile": True,
+          "only_verified_mobile": True,
+          "data": {"linkedin_url": "https://www.linkedin.com/in/missing"}},
+         {"error": False, "free_enrichment": False,
+          "person": {"mobile": {"mobile_international": None}}}),
+    ],
+)
+async def test_prospeo_platform_field_level_misses_settle_zero(
+    clients, monkeypatch, prospeo_platform_on, endpoint, body, response_body,
+):
+    before = await _balance(clients)
+    async with httpx.AsyncClient(transport=httpx.MockTransport(
+            lambda request: _dropleads_response(200, response_body))) as upstream:
+        monkeypatch.setattr(A.app.state, "http", upstream)
+        result = await clients.post(f"/call/{endpoint}", json=body)
+    assert result.status_code == 200, result.text
+    assert result.headers["x-treg-cost-micro"] == "0"
+    assert await _balance(clients) == before
+
+
+async def test_prospeo_mobile_uses_fixed_ten_credit_platform_price_and_byok_is_unmetered(
+    clients, monkeypatch, prospeo_platform_on,
+):
+    body = {
+        "only_verified_email": False,
+        "enrich_mobile": True,
+        "only_verified_mobile": True,
+        "data": {"linkedin_url": "https://www.linkedin.com/in/example"},
+    }
+    def platform_serve(request):
+        assert request.headers["x-key"] == "PLATFORM-PROSPEO"
+        return _dropleads_response(200, {
+            "error": False,
+            "free_enrichment": False,
+            "person": {"mobile": {"mobile_international": "+15550101000"}},
+        })
+
+    before = await _balance(clients)
+    async with httpx.AsyncClient(transport=httpx.MockTransport(platform_serve)) as upstream:
+        monkeypatch.setattr(A.app.state, "http", upstream)
+        platform = await clients.post("/call/prospeo.people.phone.find", json=body)
+    assert platform.status_code == 200, platform.text
+    assert platform.headers["x-treg-cost-micro"] == "245000"
+    assert before - await _balance(clients) == 245_000
+
+    await clients.post("/secrets", json={"name": "prospeo", "value": "OWN-PROSPEO"})
+    seen = []
+
+    def serve(request):
+        seen.append(request.headers["x-key"])
+        return _dropleads_response(200, {
+            "error": False,
+            "free_enrichment": False,
+            "person": {"mobile": {"mobile_international": "+15550101000"}},
+        })
+
+    before = await _balance(clients)
+    async with httpx.AsyncClient(transport=httpx.MockTransport(serve)) as upstream:
+        monkeypatch.setattr(A.app.state, "http", upstream)
+        result = await clients.post("/call/prospeo.people.phone.find", json=body)
+    assert result.status_code == 200, result.text
+    assert seen == ["OWN-PROSPEO"]
+    assert "x-treg-cost-micro" not in result.headers
+    assert await _balance(clients) == before

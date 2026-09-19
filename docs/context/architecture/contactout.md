@@ -4,6 +4,8 @@ status: implemented; live connect and core surface verified, informational capac
 sources:
   - src/treg/catalog/contactout.yaml
   - src/treg/catalog/adapters.yaml
+  - src/treg/catalog/examples/contactout.people.contact.work.json
+  - src/treg/catalog/examples/contactout.people.contact.phone.json
   - src/treg/catalog/examples/contactout.people.email.verify.json
   - tests/test_routing.py
   - src/treg/catalog/examples/contactout.companies.search.json
@@ -31,19 +33,22 @@ related:
 `token` header and verifies via free `GET /v1/stats`, requiring both HTTP success and
 `status_code: 200`. A zero allowance does not invalidate a credential. The existing credential
 ladder makes an org's tool/key win over the platform key and bypass treg billing and capacity checks.
-`Settings.platform_key_contactout` reads `TREG_PLATFORM_KEY_CONTACTOUT`; `render.yaml` declares
-the server slot and forwards it to the worker. The existing platform provider allow-list still
-controls serving. No credential is committed or copied into a platform Secret row.
+`Settings.platform_key_contactout` reads `TREG_PLATFORM_KEY_CONTACTOUT`. A deployment supplies the
+secret to the server and capacity worker. The existing platform provider allow-list still controls
+serving. No credential is committed or copied into a platform Secret row.
 
 ## Surface and selectors
 
-Each tool has one catalog home: eight LinkedIn-specific lookup/contact tools on `linkedin`,
-ten general people tools on `people`, and two company tools on `companies`. LinkedIn placement covers the three contact splits, three availability checkers,
-LinkedIn profile enrichment and email-to-LinkedIn lookup. Their existing `contactout.people.*`
-IDs remain stable for saved CLI/API calls; platform and capability metadata control browsing.
-Capability labels distinguish work/personal email lookup from availability checks. Global catalog
-search remains cross-platform. Email verification, company search and company enrichment
-participate in their existing routed contracts. People search and profile enrichment remain direct-only: the PII rule excludes their
+Each tool has one catalog home: two LinkedIn profile-identity tools on `linkedin`, sixteen general
+people/contact tools on `people`, and two company tools on `companies`. The three contact reveals
+and three availability checks live on the People shelf even though they accept a LinkedIn URL;
+LinkedIn profile enrichment and email-to-LinkedIn lookup remain on the LinkedIn shelf. Existing
+`contactout.people.*` IDs remain stable for saved CLI/API calls; platform and capability metadata
+control browsing. Capability labels distinguish work/personal email lookup from availability
+checks. Global catalog search remains cross-platform. Work-email lookup, phone lookup, email
+verification, company search and company enrichment participate in their existing routed
+contracts. Personal-email lookup remains direct-only because the shared email route promises work
+email. People search and profile enrichment also remain direct-only: the PII rule excludes their
 verification requests/examples, so their adapter registrations are omitted.
 
 The catalog covers count, personal/work email and phone availability, single email verification,
@@ -205,8 +210,9 @@ https://api.contactout.com/#errors (checked 2026-09-08).
 
 ### Renewal and rollout
 
-People routes carry `untestable:` with no catalog test request or stored example under the PII
-rule. These entries cannot participate in automated catalog re-verification.
+People routes carry `untestable:` with no catalog test request under the PII rule, so they cannot
+participate in automated catalog re-verification. The two routed contact tools have only fixed,
+reserved-value structural fixtures; no captured person response is retained.
 `scripts/contactout_overflow_verify.py --budget-usd 10 --apply` discovers one profile
 at runtime, builds requests using that ephemeral URL and required catalog selectors, compares
 direct and aggregator shapes through the existing verifier, then syncs stamps.
@@ -238,22 +244,27 @@ recorded in `examples/contactout.people.email.verify.json`; no credential is inc
 routing tests cover all five documented verdicts, query preservation, zero cost, provenance,
 and fallback on missing verdicts or embedded errors.
 
-## Shared discovery and profile routing
+## Shared contact, discovery and profile routing
 
-Company adapters join the existing contracts without changing capability labels. The three people
-adapter registrations are omitted after removal of PII-bearing catalog fixtures; direct calls
-remain available. Tests assert their absence from shared routing; direct platform tests cover
-profile-only billing and own-key exclusion. No verification gate is bypassed:
+Work-email and phone adapters join the existing People contracts, and company adapters join the
+existing company contracts. The contact endpoints remain `untestable:` with no `test_request`, so
+catalog re-verification cannot call them and recapture PII. Their adapter output maps are checked
+against hand-sanitized structural fixtures containing only reserved fake contact values; the live
+positive checks described above establish the real response fields. Personal-email, people-search
+and profile adapters remain omitted. Direct platform tests cover profile-only billing and own-key
+exclusion. No verification gate is bypassed:
 
 | Routed tool | ContactOut child | Selected behavior |
 |---|---|---|
+| `treg.people.email.find` | `contactout.people.contact.work` | LinkedIn URL; `email_type=work`, `include_phone=false` |
+| `treg.people.phone.find` | `contactout.people.contact.phone` | LinkedIn URL; `email_type=none`, `include_phone=true` |
 | Ineligible: `treg.people.search` | `contactout.people.search` | `reveal_info=false`; domain/title/name/keyword identities; page size and location filters |
 | `treg.companies.search` | `contactout.companies.search` | Domain/name/industry/technology identities; vendor page size retained |
 | `treg.companies.enrich` | `contactout.companies.enrich` | One domain, sent as a one-element `domains` array |
 | Ineligible: `treg.people.enrich` | `contactout.people.enrich` | LinkedIn URL or email; `include=[]` prevents contact reveal |
 | Ineligible: `treg.linkedin.user.profile` | `contactout.people.linkedin.enrich` | LinkedIn URL or handle; `profile_only=true` |
 
-These mappings do not route decision-maker search, personal-email splits, or combined-reveal
+These mappings do not route decision-maker search, personal-email lookup, or combined-reveal
 variants. The direct provider tools retain those capabilities. Company search does not document
 a page-size control: the adapter does not forward the contract's `limit` as an invented parameter.
 Its returned companies are still metered at $0.02 each. People search and domain enrichment use
@@ -271,5 +282,6 @@ company search two companies, domain enrichment one company, and person/LinkedIn
 one profile each. The first sample LinkedIn URL missed, so the two successful profile captures
 used a profile from that search. All captured contact arrays were empty with the above selectors.
 The people captures and their catalog requests were removed after maintainer review under the
-catalog PII rule; only company and email-verification examples remain. People tools are marked
-`untestable:` to prevent re-capture. Other accepted company input variants were not separately live-verified.
+catalog PII rule. The work-email and phone adapters instead use fixed structural fixtures with
+reserved fake values; all People tools remain `untestable:` to prevent re-capture. Other accepted
+company input variants were not separately live-verified.

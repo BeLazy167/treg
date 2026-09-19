@@ -12,6 +12,7 @@ from treg.api import app
 from treg.config import Settings
 from treg.domain.catalog import store as catalog_store
 import dataclasses
+import pytest
 
 from httpx import AsyncClient
 
@@ -22,7 +23,7 @@ from treg import oauth_providers as P
 def test_key_providers_are_offerable_without_deployment_credentials():
     """The user brings the key, so treg holds no app of its own — a key provider must be offerable,
     not shown as 'not configured' the way an unset OAuth provider is."""
-    for svc in ("anyapi", "apollo", "pdl", "akta", "hunter", "sumble", "quickenrich", "contactout", "millionverifier", "trykitt", "crunchbase", "tikhub", "brightdata", "semrush",
+    for svc in ("anyapi", "apollo", "pdl", "akta", "hunter", "sumble", "moltsets", "openmart", "harvestapi", "dropleads", "quickenrich", "prospeo", "aiark", "wiza", "limadata", "getleadsio", "scrubby", "zerobounce", "datagma", "contactout", "millionverifier", "bounceban", "trykitt", "crunchbase", "tikhub", "brightdata", "semrush",
                 "justoneapi", "dataforseo", "seranking", "moz", "majestic", "serpstat", "exa",
                 "cloro",
                 "lusha", "coresignal", "diffbot", "thecompaniesapi", "leadmagic", "fiber-ai",
@@ -30,7 +31,7 @@ def test_key_providers_are_offerable_without_deployment_credentials():
                 "icypeas", "leadsforge", "influencersclub", "crustdata", "aviato",
                 "spyfu", "apify", "meta-ad-library", "serpapi",
                 "coingecko", "polygon", "finnhub", "twelvedata", "fmp", "eodhd", "marketstack",
-                "tiingo"):
+                "tiingo", "financialdatasets"):
         p = P.get(svc)
         assert p is not None, svc
         assert p.auth_kind == "key", svc
@@ -46,15 +47,326 @@ def test_key_providers_appear_in_the_marketplace_listing():
     assert listing["semrush"]["category"] == "SEO"
     assert listing["tikhub"]["category"] == "Social media"
     assert listing["coingecko"]["category"] == "Market data"
+    assert listing["financialdatasets"]["category"] == "Market data"
+    assert listing["bounceban"]["category"] == "Enrichment"
+    assert listing["bounceban"]["auth_kind"] == "key"
+    assert listing["zerobounce"]["category"] == "Enrichment"
+    assert listing["zerobounce"]["auth_kind"] == "key"
     assert listing["minimax"]["category"] == "AI generation"
+    assert listing["minimax"]["summary"] == "Generate voice, images, and videos from text or source images."
     assert listing["openrouter"]["auth_kind"] == "token"
     assert listing["replicate"]["base_url"] == "https://api.replicate.com/v1"
     assert "Enrichment" in P.CATEGORY_ORDER
     assert "Market data" in P.CATEGORY_ORDER
 
 
+def test_openmart_registry_uses_the_free_balance_probe_and_bearer_key(monkeypatch):
+    monkeypatch.setenv("TREG_PLATFORM_KEY_OPENMART", "PLATFORM-OPENMART")
+    monkeypatch.setenv("TREG_PLATFORM_PROVIDERS", "openmart")
+    provider = P.get("openmart")
+    settings = Settings(_env_file=None)
+    assert provider.base_url == "https://api.openmart.ai"
+    assert provider.probe_path == "/api/v2/credit-balance"
+    assert provider.probe_method == "GET"
+    assert settings.platform_key_for("openmart") == "PLATFORM-OPENMART"
+    assert P.platform_bindings(provider) == [{
+        "platform_setting": "platform_key_openmart",
+        "injector": "env",
+        "location": "header",
+        "name": "Authorization",
+        "format": "Bearer {secret}",
+    }]
+
+
+async def test_openmart_connect_rejects_bad_key_and_accepts_valid_key(clients, monkeypatch):
+    def probe(request):
+        assert request.method == "GET"
+        assert request.url.path == "/api/v2/credit-balance"
+        if request.headers["authorization"] == "Bearer bad":
+            return httpx.Response(401, json={"detail": "Invalid API Key"})
+        return httpx.Response(200, json={"balance": 4800})
+
+    async with AsyncClient(transport=httpx.MockTransport(probe)) as upstream:
+        monkeypatch.setattr(app.state, "http", upstream)
+        bad = await clients.post(
+            "/connections/token", json={"provider": "openmart", "token": "bad"})
+        assert bad.status_code == 422
+        good = await clients.post(
+            "/connections/token", json={"provider": "openmart", "token": "own-key"})
+        assert good.status_code == 200, good.text
+
+
+def test_zerobounce_registry_uses_internal_usage_probe_and_query_key(monkeypatch):
+    monkeypatch.setenv("TREG_PLATFORM_KEY_ZEROBOUNCE", "PLATFORM-ZEROBOUNCE")
+    monkeypatch.setenv("TREG_PLATFORM_PROVIDERS", "zerobounce")
+    provider = P.get("zerobounce")
+    settings = Settings(_env_file=None)
+    assert provider.base_url == "https://api.zerobounce.net"
+    assert provider.probe_path.startswith("/v2/getapiusage?")
+    assert settings.platform_key_for("zerobounce") == "PLATFORM-ZEROBOUNCE"
+    assert P.platform_bindings(provider) == [{
+        "platform_setting": "platform_key_zerobounce",
+        "injector": "env",
+        "location": "query",
+        "name": "api_key",
+        "format": "{secret}",
+    }]
+
+
+async def test_zerobounce_connect_rejects_bad_key_and_accepts_valid_key(clients, monkeypatch):
+    def probe(request):
+        assert request.url.path == "/v2/getapiusage"
+        assert request.url.params["start_date"] == "2026-01-01"
+        assert request.url.params["end_date"] == "2026-12-31"
+        key = request.url.params["api_key"]
+        if key == "bad-key":
+            return httpx.Response(403, json={"error": "invalid api key"})
+        return httpx.Response(200, json={"total": 0, "status_valid": 0})
+
+    async with AsyncClient(transport=httpx.MockTransport(probe)) as upstream:
+        monkeypatch.setattr(app.state, "http", upstream)
+        bad = await clients.post(
+            "/connections/token", json={"provider": "zerobounce", "token": "bad-key"})
+        assert bad.status_code == 422
+        good = await clients.post(
+            "/connections/token", json={"provider": "zerobounce", "token": "own-key"})
+        assert good.status_code == 200, good.text
+
+
+def test_dropleads_registry_uses_the_standard_key_provider_paths(monkeypatch):
+    monkeypatch.setenv("TREG_PLATFORM_KEY_DROPLEADS", "PLATFORM-DROPLEADS")
+    monkeypatch.setenv("TREG_PLATFORM_PROVIDERS", "dropleads")
+    settings = Settings(_env_file=None)
+    provider = P.get("dropleads")
+    assert provider.base_url == "https://prime.dropleads.io"
+    assert provider.probe_path == "/api/v2/prime-db/credits/balance"
+    assert provider.catalog_targets[0].host == "api.dropleads.io"
+    assert provider.extra_tools[0]["suffix"] == "contact"
+    assert settings.platform_key_for("dropleads") == "PLATFORM-DROPLEADS"
+    assert P.platform_bindings(provider) == [{
+        "platform_setting": "platform_key_dropleads",
+        "injector": "env",
+        "location": "header",
+        "name": "X-API-Key",
+        "format": "{secret}",
+    }]
+
+
+async def test_dropleads_connect_provisions_both_approved_hosts(clients, monkeypatch):
+    def probe(request):
+        assert request.url.host == "prime.dropleads.io"
+        assert request.url.path == "/api/v2/prime-db/credits/balance"
+        assert request.headers["x-api-key"] in ("bad", "own-key")
+        if request.headers["x-api-key"] == "bad":
+            return httpx.Response(401, json={"message": "Invalid API key"})
+        return httpx.Response(
+            200, json={"success": True, "credits": {"totalAvailable": 0}}
+        )
+
+    async with AsyncClient(transport=httpx.MockTransport(probe)) as upstream:
+        monkeypatch.setattr(app.state, "http", upstream)
+        bad = await clients.post(
+            "/connections/token", json={"provider": "dropleads", "token": "bad"}
+        )
+        assert bad.status_code == 422
+        good = await clients.post(
+            "/connections/token", json={"provider": "dropleads", "token": "own-key"}
+        )
+        assert good.status_code == 200, good.text
+
+    tools = {tool["name"]: tool for tool in (await clients.get("/tools")).json()}
+    assert set(tools) == {"dropleads", "dropleads-contact"}
+    assert tools["dropleads"]["base_url"] == "https://prime.dropleads.io"
+    assert tools["dropleads-contact"]["base_url"] == "https://api.dropleads.io"
+    assert tools["dropleads"]["bindings"] == tools["dropleads-contact"]["bindings"]
+
+
+def test_prospeo_registry_uses_account_information_without_exposing_it(monkeypatch):
+    monkeypatch.setenv("TREG_PLATFORM_KEY_PROSPEO", "PLATFORM-PROSPEO")
+    monkeypatch.setenv("TREG_PLATFORM_PROVIDERS", "prospeo")
+    settings = Settings(_env_file=None)
+    provider = P.get("prospeo")
+    assert provider.base_url == "https://api.prospeo.io"
+    assert provider.probe_path == "/account-information"
+    assert provider.probe_method == "GET"
+    assert provider.token_header == "X-KEY"
+    assert settings.platform_key_for("prospeo") == "PLATFORM-PROSPEO"
+    assert P.platform_bindings(provider) == [{
+        "platform_setting": "platform_key_prospeo",
+        "injector": "env",
+        "location": "header",
+        "name": "X-KEY",
+        "format": "{secret}",
+    }]
+
+
+async def test_prospeo_connect_provisions_a_single_catalog_host(clients, monkeypatch):
+    def probe(request):
+        assert request.url.host == "api.prospeo.io"
+        assert request.url.path == "/account-information"
+        key = request.headers["x-key"]
+        if key == "bad":
+            return httpx.Response(400, json={"error": True, "error_code": "INVALID_API_KEY"})
+        return httpx.Response(200, json={
+            "error": False,
+            "response": {"current_plan": "STARTER", "remaining_credits": 10},
+        })
+
+    async with AsyncClient(transport=httpx.MockTransport(probe)) as upstream:
+        monkeypatch.setattr(app.state, "http", upstream)
+        bad = await clients.post(
+            "/connections/token", json={"provider": "prospeo", "token": "bad"}
+        )
+        assert bad.status_code == 422
+        good = await clients.post(
+            "/connections/token", json={"provider": "prospeo", "token": "own-key"}
+        )
+        assert good.status_code == 200, good.text
+
+    tools = {tool["name"]: tool for tool in (await clients.get("/tools")).json()}
+    assert set(tools) == {"prospeo"}
+    assert tools["prospeo"]["base_url"] == "https://api.prospeo.io"
+
+
+def test_aiark_registry_uses_credits_probe_and_x_token(monkeypatch):
+    monkeypatch.setenv("TREG_PLATFORM_KEY_AIARK", "PLATFORM-AIARK")
+    monkeypatch.setenv("TREG_PLATFORM_PROVIDERS", "aiark")
+    settings = Settings(_env_file=None)
+    provider = P.get("aiark")
+    assert provider.base_url == "https://api.ai-ark.com/api/developer-portal"
+    assert provider.probe_path == "/v1/payments/credits"
+    assert provider.probe_method == "GET"
+    assert settings.platform_key_for("aiark") == "PLATFORM-AIARK"
+    assert P.platform_bindings(provider) == [{
+        "platform_setting": "platform_key_aiark",
+        "injector": "env",
+        "location": "header",
+        "name": "X-TOKEN",
+        "format": "{secret}",
+    }]
+
+
+async def test_aiark_connect_rejects_a_bad_key_and_provisions_the_catalog_host(
+        clients, monkeypatch):
+    def probe(request):
+        assert request.url.path == "/api/developer-portal/v1/payments/credits"
+        key = request.headers["x-token"]
+        if key == "bad":
+            return httpx.Response(401, json={"error": "Unauthorized"})
+        return httpx.Response(200, json={"total": 15000})
+
+    async with AsyncClient(transport=httpx.MockTransport(probe)) as upstream:
+        monkeypatch.setattr(app.state, "http", upstream)
+        bad = await clients.post(
+            "/connections/token", json={"provider": "aiark", "token": "bad"}
+        )
+        assert bad.status_code == 422
+        good = await clients.post(
+            "/connections/token", json={"provider": "aiark", "token": "own-key"}
+        )
+        assert good.status_code == 200, good.text
+
+    tools = {tool["name"]: tool for tool in (await clients.get("/tools")).json()}
+    assert set(tools) == {"aiark"}
+    assert tools["aiark"]["base_url"] == "https://api.ai-ark.com/api/developer-portal"
+
+
+def test_limadata_registry_uses_the_free_validation_probe_and_x_api_key(monkeypatch):
+    monkeypatch.setenv("TREG_PLATFORM_KEY_LIMADATA", "PLATFORM-LIMADATA")
+    monkeypatch.setenv("TREG_PLATFORM_PROVIDERS", "limadata")
+    settings = Settings(_env_file=None)
+    provider = P.get("limadata")
+    assert provider.base_url == "https://api.limadata.com"
+    assert provider.probe_path == "/api/v1/search/web"
+    assert provider.probe_method == "POST"
+    assert provider.probe_json == {}
+    assert provider.probe_reject_statuses == (401, 403)
+    assert settings.platform_key_for("limadata") == "PLATFORM-LIMADATA"
+    assert P.platform_bindings(provider) == [{
+        "platform_setting": "platform_key_limadata",
+        "injector": "env",
+        "location": "header",
+        "name": "x-api-key",
+        "format": "{secret}",
+    }]
+
+
+async def test_limadata_connect_rejects_bad_key_and_accepts_validation_error(
+        clients, monkeypatch):
+    def probe(request):
+        assert request.url == "https://api.limadata.com/api/v1/search/web"
+        assert request.content == b"{}"
+        if request.headers["x-api-key"] == "bad":
+            return httpx.Response(401, json={"message": "Unauthorized"})
+        return httpx.Response(400, json={"message": "query is required"})
+
+    async with AsyncClient(transport=httpx.MockTransport(probe)) as upstream:
+        monkeypatch.setattr(app.state, "http", upstream)
+        bad = await clients.post(
+            "/connections/token", json={"provider": "limadata", "token": "bad"}
+        )
+        assert bad.status_code == 422
+        good = await clients.post(
+            "/connections/token", json={"provider": "limadata", "token": "own-key"}
+        )
+        assert good.status_code == 200, good.text
+
+    tools = {tool["name"]: tool for tool in (await clients.get("/tools")).json()}
+    assert set(tools) == {"limadata"}
+    assert tools["limadata"]["base_url"] == "https://api.limadata.com"
+
+
+def test_getleadsio_registry_uses_bearer_and_the_free_usage_probe(monkeypatch):
+    monkeypatch.setenv("TREG_PLATFORM_KEY_GETLEADSIO", "PLATFORM-GETLEADSIO")
+    monkeypatch.setenv("TREG_PLATFORM_PROVIDERS", "getleadsio")
+    settings = Settings(_env_file=None)
+    provider = P.get("getleadsio")
+    assert provider.base_url == "https://app.getleads.io"
+    assert provider.probe_path == "/api/v1/usage/fair-use"
+    assert provider.probe_method == "GET"
+    assert provider.token_header == "Authorization"
+    assert provider.token_format == "Bearer {secret}"
+    assert settings.platform_key_for("getleadsio") == "PLATFORM-GETLEADSIO"
+    assert P.platform_bindings(provider) == [{
+        "platform_setting": "platform_key_getleadsio",
+        "injector": "env",
+        "location": "header",
+        "name": "Authorization",
+        "format": "Bearer {secret}",
+    }]
+
+
+async def test_getleadsio_connect_rejects_a_bad_key_and_provisions_the_catalog_host(
+        clients, monkeypatch):
+    def probe(request):
+        assert request.url.host == "app.getleads.io"
+        assert request.url.path == "/api/v1/usage/fair-use"
+        key = request.headers["authorization"]
+        if key == "Bearer bad":
+            return httpx.Response(401, json={"ok": False, "message": "Invalid API key"})
+        return httpx.Response(200, json={"ok": True, "credits_remaining": 997})
+
+    async with AsyncClient(transport=httpx.MockTransport(probe)) as upstream:
+        monkeypatch.setattr(app.state, "http", upstream)
+        bad = await clients.post(
+            "/connections/token", json={"provider": "getleadsio", "token": "bad"}
+        )
+        assert bad.status_code == 422
+        good = await clients.post(
+            "/connections/token", json={"provider": "getleadsio", "token": "own-key"}
+        )
+        assert good.status_code == 200, good.text
+
+    tools = {tool["name"]: tool for tool in (await clients.get("/tools")).json()}
+    assert set(tools) == {"getleadsio"}
+    assert tools["getleadsio"]["base_url"] == "https://app.getleads.io"
+    binding = tools["getleadsio"]["bindings"][0]
+    assert binding["name"] == "Authorization"
+    assert binding["format"] == "Bearer {secret}"
+
+
 def test_aigc_token_providers_are_offerable_without_deployment_credentials():
-    for service in ("minimax", "openrouter", "replicate"):
+    for service in ("minimax", "openrouter", "replicate", "reapi"):
         provider = P.get(service)
         assert provider is not None
         assert provider.auth_kind == "token"
@@ -63,6 +375,10 @@ def test_aigc_token_providers_are_offerable_without_deployment_credentials():
     assert P.get("minimax").probe_method == "POST"
     assert P.get("minimax").probe_json == {}
     assert P.get("minimax").probe_reject_statuses == (401, 403)
+    # reAPI has no free account route: an unknown task id is 404 on a valid key, 401 on a bad one.
+    assert P.get("reapi").probe_path == "/tasks/probe"
+    assert P.get("reapi").probe_reject_statuses == (401, 403)
+    assert P.get("piapi").auth_kind == "key" and P.get("piapi").token_header == "X-API-Key"
 
 
 # ---- connect-by-key ----------------------------------------------------------------------
@@ -195,6 +511,42 @@ async def test_basic_provider_accepts_a_ready_made_base64_blob(clients: AsyncCli
     assert echoed == "Basic " + blob, "a pasted Base64 blob must not be double-encoded"
 
 
+async def test_secret_add_raw_basic_credential_encodes_at_injection(clients: AsyncClient, monkeypatch):
+    """Secrets added via `treg secret add dataforseo` bypass the connect flow and store the raw value.
+    The injector must detect and Base64-encode a raw `login:password` to produce a valid Basic header.
+
+    Regression test for feedback #294 / #276 / #280-282: DataForSEO Lighthouse returned 40100
+    (401 Unauthorized) through treg while the same credential worked via direct curl. The cause
+    was that `treg secret add dataforseo --env-var` stored raw `login:password`, but the injector
+    used it verbatim as `Basic login:password` instead of `Basic <base64(login:password)>`.
+    """
+    import base64
+    monkeypatch.setitem(P.REGISTRY, "dataforseo", dataclasses.replace(
+        P.REGISTRY["dataforseo"], base_url="http://upstream", probe_path="/whoami"))
+    # Add a raw secret directly, bypassing the /connections/token flow that would Base64-encode it
+    r = await clients.post("/secrets", json={"name": "dataforseo", "value": "login:pw"})
+    assert r.status_code == 200, r.text
+    # Call a DataForSEO catalog endpoint to trigger marketplace resolution with the named secret
+    # (the named-tool path won't find a tool; this exercises _marketplace_secret -> _provider_bindings)
+    echoed = (await clients.get("/call/dataforseo.account.usage")).json()["auth"]
+    expected = "Basic " + base64.b64encode(b"login:pw").decode()
+    assert echoed == expected, f"raw secret must be Base64-encoded at injection time, got {echoed!r}"
+
+
+async def test_secret_add_already_encoded_basic_credential_not_double_encoded(clients: AsyncClient, monkeypatch):
+    """Secrets added with an already-encoded Base64 blob must not be double-encoded by the injector."""
+    import base64
+    blob = base64.b64encode(b"login:pw").decode()
+    monkeypatch.setitem(P.REGISTRY, "dataforseo", dataclasses.replace(
+        P.REGISTRY["dataforseo"], base_url="http://upstream", probe_path="/whoami"))
+    # Add an already-encoded secret directly
+    r = await clients.post("/secrets", json={"name": "dataforseo", "value": blob})
+    assert r.status_code == 200, r.text
+    # Call a DataForSEO catalog endpoint to trigger marketplace resolution with the named secret
+    echoed = (await clients.get("/call/dataforseo.account.usage")).json()["auth"]
+    assert echoed == "Basic " + blob, f"already-encoded secret must not be double-encoded, got {echoed!r}"
+
+
 # ---- corrected probe shapes (regression guards for the 2026-08-13 connect-flow fixes) --------
 def test_brightdata_probe_is_a_real_route():
     """The old /datasets/v3/datasets 404'd even for a valid token, refusing every real key. /status is
@@ -274,6 +626,51 @@ def test_millionverifier_platform_key_configuration(monkeypatch):
     assert P.platform_bindings(P.get("millionverifier")) == [
         {"platform_setting": "platform_key_millionverifier", "injector": "env",
          "location": "query", "name": "api", "format": "{secret}"}]
+
+
+def test_bounceban_registry_and_platform_key_configuration(monkeypatch):
+    monkeypatch.setenv("TREG_PLATFORM_KEY_BOUNCEBAN", "platform-test-key")
+    monkeypatch.setenv("TREG_PLATFORM_PROVIDERS", "bounceban")
+    settings = Settings(_env_file=None)
+    provider = P.get("bounceban")
+    assert provider.base_url == "https://api.bounceban.com"
+    assert provider.probe_path == "/v1/account"
+    assert provider.token_header == "Authorization"
+    assert provider.token_format == "{secret}"
+    assert provider.catalog_targets[0].host == "api-waterfall.bounceban.com"
+    assert settings.platform_key_for("bounceban") == "platform-test-key"
+    assert P.platform_bindings(provider) == [{
+        "platform_setting": "platform_key_bounceban",
+        "injector": "env",
+        "location": "header",
+        "name": "Authorization",
+        "format": "{secret}",
+    }]
+
+
+async def test_bounceban_connect_rejects_bad_key_and_provisions_both_hosts(clients, monkeypatch):
+    def probe(request):
+        assert request.url.host == "api.bounceban.com"
+        assert request.url.path == "/v1/account"
+        key = request.headers["authorization"]
+        if key == "bad-key":
+            return httpx.Response(401, json={"msg": "Invalid API key"})
+        return httpx.Response(200, json={"available_credits": 0, "rate_limit": []})
+
+    async with AsyncClient(transport=httpx.MockTransport(probe)) as upstream:
+        monkeypatch.setattr(app.state, "http", upstream)
+        bad = await clients.post(
+            "/connections/token", json={"provider": "bounceban", "token": "bad-key"})
+        assert bad.status_code == 422
+        good = await clients.post(
+            "/connections/token", json={"provider": "bounceban", "token": "own-key"})
+        assert good.status_code == 200, good.text
+
+    tools = {tool["name"]: tool for tool in (await clients.get("/tools")).json()}
+    assert set(tools) == {"bounceban", "bounceban-waterfall"}
+    assert tools["bounceban"]["base_url"] == "https://api.bounceban.com"
+    assert tools["bounceban-waterfall"]["base_url"] == "https://api-waterfall.bounceban.com"
+    assert tools["bounceban"]["bindings"] == tools["bounceban-waterfall"]["bindings"]
 
 
 async def test_quickenrich_connect_uses_free_authenticated_discovery(clients, monkeypatch):
@@ -358,3 +755,76 @@ def test_contactout_platform_binding(contactout_platform):
         }
     ]
     assert "contactout.account.usage" not in catalog_store.load().by_id
+
+
+@pytest.mark.parametrize("status", [200, 402])
+async def test_financialdatasets_connect_accepts_only_valid_key_outcomes_without_health_probe(
+    clients, monkeypatch, status,
+):
+    """200 and 402 prove the key reached the prepaid account.
+
+    The absolute connect-only probe must also stay out of the saved Tool health metadata: replaying
+    a paid data request from recurring health would consume Credits.
+    """
+    def probe(request):
+        assert request.url.path == "/prices/snapshot"
+        assert request.url.params["ticker"] == "AAPL"
+        assert request.headers["X-API-KEY"] == "valid-empty-key"
+        return httpx.Response(status, json={"detail": "Insufficient credits"})
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(probe)) as upstream:
+        monkeypatch.setattr(app.state, "http", upstream)
+        response = await clients.post(
+            "/connections/token",
+            json={"provider": "financialdatasets", "token": "valid-empty-key"},
+        )
+        assert response.status_code == 200, response.text
+        tool = next(t for t in (await clients.get("/tools")).json()
+                    if t["name"] == "financialdatasets")
+        assert tool["health_check"] is None
+        assert tool["bindings"][0]["name"] == "X-API-KEY"
+
+
+@pytest.mark.parametrize("status", [201, 301, 400, 401, 403, 404, 409, 422, 429, 500, 503])
+async def test_financialdatasets_connect_rejects_any_other_status(clients, monkeypatch, status):
+    def probe(request):
+        assert request.headers["X-API-KEY"] == "invalid-key"
+        return httpx.Response(status, json={"detail": "Invalid API key"})
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(probe)) as upstream:
+        monkeypatch.setattr(app.state, "http", upstream)
+        response = await clients.post(
+            "/connections/token",
+            json={"provider": "financialdatasets", "token": "invalid-key"},
+        )
+        assert response.status_code == 422, response.text
+        assert not [t for t in (await clients.get("/tools")).json()
+                    if t["name"] == "financialdatasets"]
+
+
+def test_financialdatasets_registry_and_platform_key_configuration(monkeypatch):
+    provider = P.get("financialdatasets")
+    assert provider.base_url == "https://api.financialdatasets.ai"
+    assert provider.token_header == "X-API-KEY"
+    assert provider.probe_url == (
+        "https://api.financialdatasets.ai/prices/snapshot?ticker=AAPL"
+    )
+    assert provider.probe_path == ""
+    assert 200 not in provider.probe_reject_statuses
+    assert 402 not in provider.probe_reject_statuses
+    assert all(
+        status in provider.probe_reject_statuses
+        for status in (201, 301, 400, 401, 403, 404, 409, 422, 429, 500, 503)
+    )
+
+    monkeypatch.setenv("TREG_PLATFORM_KEY_FINANCIALDATASETS", "platform-test-key")
+    monkeypatch.setenv("TREG_PLATFORM_PROVIDERS", "financialdatasets")
+    settings = Settings(_env_file=None)
+    assert settings.platform_key_for("financialdatasets") == "platform-test-key"
+    assert P.platform_bindings(provider) == [{
+        "platform_setting": "platform_key_financialdatasets",
+        "injector": "env",
+        "location": "header",
+        "name": "X-API-KEY",
+        "format": "{secret}",
+    }]

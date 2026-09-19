@@ -19,6 +19,8 @@ sources:
   - src/treg/alembic/versions/0004_archivekey_request_shape.py
   - src/treg/alembic/versions/0011_callrecord_archive_link.py
   - src/treg/application/call/service.py
+  - src/treg/application/call/settle.py
+  - src/treg/alembic/versions/0039_archive_own_key_and_repeat_pricing.py
   - scripts/backfill_call_archive_links.py
   - src/treg/api.py
   - src/treg/bootstrap.py
@@ -53,9 +55,87 @@ time-series — backlink profiles over time, price history), not waste.
 
 **Build state: COMPLETE (PR 6 of 6 — the panel shipped after the original five).** All five slices exist behind `TREG_ARCHIVE_MODE`:
 skeleton, recorder, catalog `cache` field + report, serve path, and the learner + refresh worker.
-What does NOT exist: any billing difference for a cached hit (deferred founder decision), and the
-phase-3 aggregator surfaces (history endpoints) — do not document either as existing. What DOES
-exist since 2026-09-03 is the per-call read below: a team can see the answer ITS OWN call got.
+Every credential tier takes part (own-key answers are recorded and served, see "Own-key
+answers") and a metered hit has ONE pricing difference (see "Pricing a hit"). What does
+NOT exist: the phase-3 aggregator surfaces (history endpoints) — do not document them as existing.
+What DOES exist since 2026-09-03 is the per-call read below: a team can see the answer ITS OWN
+call got.
+
+## Own-key answers
+
+An own-key catalog call (tier `tool`/`credential`, never metered) is a cache participant too.
+`_execute_call` looks a storable question up before
+the relay exactly as for a metered call, and after the relay reads the 2xx answer whole when it
+fits `archive_max_body_bytes` (`settle._read_whole_if_small`: bounded, before headers go out —
+the same bounded buffering a metered call already pays); an answer that does not fit, or whose
+declared `Content-Length` exceeds the cap, streams on untouched and is NOT recorded — never a
+prefix. The relay asks such calls for identity encoding (`force_identity`), and a vendor that
+compresses anyway is not recorded (`_identity_encoded`). A caller body the own-key path never
+read (streamed, no small `Content-Length`) cannot key the question: no lookup, no recording.
+Own-TOOL calls (no catalog entry) stay untouched. **An answer that quotes the team's own
+credential back is never recorded** (`_echoes_own_credential`: the exact renderings the error
+masking uses, failing closed when they cannot be rendered). The same guard, the same
+`origin_org_id` provenance and the same sharing rules apply to a metered call on an org
+credential that rides treg's pay-per-use OAuth app (`billed_oauth`): the token is the team's.
+
+**A hit on an own key is free**: nothing is reserved or settled (non-negotiable 1), the response
+carries the same `X-Treg-Cache: hit` headers and the audit row `cached: true`, and `cache_price`
+reports `free`. Own-key observations train the timer and the result state of THEIR key like any
+other.
+
+### Sharing: whose question is it
+
+Storage and sharing are two dimensions, judged separately. The licence (`cache.mode`) says
+whether bytes may be KEPT; `archive.sharing(entry, own_credential=…)` says whose question the
+answer is — "the vendor allows storage" never implies "the answer does not depend on who asked".
+
+| Who asked | `scope: any_account` | `scope: own_account` |
+|---|---|---|
+| treg's platform key | `public` | (never: own_account needs the caller's credential) |
+| the org's own credential (API key or OAuth token, metered or not) | `org`, or `public` only where the ENDPOINT declares `cache.sharing: public` | `connection` |
+
+Sharing is enforced by the KEY, not by a filter at read time: `scope_tags` folds `org:<id>` or
+`conn:<id>:<sorted bound secret ids>` into `cache_key`, so a private history is under a hash
+nobody else ever computes, its timer learns only from its own answers, and two Google accounts
+in one team never see each other's sites (a reconnect is a new secret, hence a fresh history).
+A caller consults its scopes most specific first — connection only; org then public (a
+platform-key fetch may serve an own-key caller free); public only — and records under the first.
+`ArchiveKey.scope` (`org` | `conn` | NULL = public, including every key from before the column)
+lets the refresh worker skip private keys: treg's platform key cannot re-ask them. History from
+before this rule (platform and billed-OAuth rows, all NULL-origin, all on public keys) is
+therefore never served to an `own_account` caller and only ever served on `any_account`
+endpoints, where it was a public question anyway. `cache_sharing` and, on a hit, `cache_scope`
+are on `tool_called`.
+
+`cache.sharing: public` is an ENDPOINT declaration (`_validate_cache` refuses it on a provider
+header, refuses any value but `public`, and refuses it on an `own_account` endpoint): it says
+this endpoint's answer is identical whoever asks — treg's own service OAuth reading public data
+is the intended case — and it is judged per endpoint, never inherited from a provider's licence.
+Nothing in the shipped catalog declares it yet.
+
+## Pricing a hit
+
+A metered hit goes through the same reserve → settle as a live call (the hold is reserved
+before the lookup and settled once, whatever answered). The one difference is the amount, and
+it is per TEAM and per QUESTION: a team's first billed call on a question pays full price
+whether the vendor or the archive answered it — the archive saved treg a vendor call, not the
+team its first price — and from that team's second call on, a hit settles at
+`archive_hit_repeat_price_percent` (default 10) of what the live call would cost. Another team's
+first hit on the same question is full price. A forced live call (`Cache-Control: no-cache`) is
+a billed call like any other and counts.
+
+The evidence is `ArchiveKeyOrg` — one row per (org, key_hash), written by
+`archive.note_org_use_in_transaction` INSIDE the settle transaction (`_platform_settle`, the
+allowlisted write `archive_org_use_in_settle`), so the mark lands with the charge or not at all;
+a racing pair of first calls is confined to a savepoint, and an IntegrityError that leaves no row
+to count is re-raised rather than swallowed. Only a STORABLE question is marked: `record()` hands
+back a hash for every metered 2xx (the phase-0 statistics count actions and forbidden providers
+too), and a mark for an answer that can never be a hit is a wasted write on the money path. `lookup` reads it on a hit
+(`repeat_for_org`), the call service hands `cached_hit`/`cached_repeat` to the settle, which
+scales the RAW amount (floor division) before the ledger applies the margin. The settle entry's
+meta carries `cached: true` and `cache_price_percent`; `tool_called` carries `cache_price`
+(`full` | `repeat` | `free`). Setting the percentage to 100 restores "a hit bills exactly like a
+live call"; 0 makes repeats free. Own-key hits are outside this: never metered, never marked.
 
 ## Body storage and R2 double writing
 
@@ -90,16 +170,17 @@ All switches are settings, with environment prefix `TREG_`:
 
 `both` first uploads, then enters the existing per-key lock / DB semaphore and transaction to
 store the DB body and publish the R2 location. No PUT occurs under a row lock or with a checked-out
-DB connection. On upload failure, `both` retains the DB copy with location `db`; `r2` publishes
-a hash-only snapshot with no body location. A successful upload followed by a failed DB transaction can leave an unreferenced
+DB connection. On upload failure, both R2 write modes retain an eligible DB copy with location
+`db`; the write setting chooses the normal destination, while DB remains the rare failure path.
+A successful upload followed by a failed DB transaction can leave an unreferenced
 content-addressed object; no pointer names a failed upload. Existing policy and size gates apply
 before uploading. Hash-only history stays in DB when bytes are ineligible.
 
 R2 has independent `ARCHIVE_R2_UPLOAD_CONCURRENCY` (8), `ARCHIVE_R2_MAX_PENDING` (256), and
 `ARCHIVE_R2_MAX_PENDING_BYTES` (128 MiB) budgets. A leader holds one upload slot for
 its bounded attempt sequence, including retry jitter; duplicate waiters hold no upload slot. The DB stage keeps its original two slots and 30-second deadline. Upload admission
-failure falls back to the separately bounded DB queue: `both` retains DB bytes, while `r2`
-retains only hash/history/statistics if DB admission succeeds.
+failure falls back to the separately bounded DB queue in both R2 write modes. Bodies rejected by
+policy or size remain hash-only; a later DB queue rejection remains an observable dropped recording.
 `ARCHIVE_R2_TIMEOUT_S` (10 seconds) bounds the complete PUT/retry sequence after upload-slot
 admission, including retry jitter. Upload-slot waiting is outside that timeout and is measured
 separately as `queue_wait_ms`. No extra timeout layer is introduced.
@@ -144,10 +225,11 @@ reads use these logs because they have no `tool_called`. Existing per-path proce
 additional bounded per-path/reason counters distinguish the failure classes.
 
 DB fallback requires a snapshot that still has DB bytes or a DB carrier, normally written during
-`db` or `both`. New `r2`-only writes have no DB copy: an R2 read failure becomes a cache miss and
-calls upstream for lookup; history returns `stored=false` with no response body, and terminal
-views have no archived terminal body. An old `both` snapshot can still fall back after the global
-write switch changes. A failed read does not mean the object was never archived or has been deleted.
+`db`, `both`, or a failed R2-only upload. Successful `r2` writes have no DB copy: an R2 read failure
+becomes a cache miss and calls upstream for lookup; history returns `stored=false` with no response
+body, and terminal views have no archived terminal body. An old `both` snapshot or an R2 upload's
+DB fallback can still serve after the global write switch changes. A failed read does not mean the
+object was never archived or has been deleted.
 Read timeout and fallback observability must precede `r2-first`, so the entire double-write window
 has visible fallback rates. Observing those rates is a prerequisite for closing the double-write
 window and switching new writes to `r2`.
@@ -156,8 +238,24 @@ window and switching new writes to `r2`.
 latency cannot delay it. The separate `archive_body_stored` completion event carries `call_ref`,
 `storage`, `upload_status`, `upload_ms`, `queue_wait_ms`, `dropped` and `drop_reason`. Join by
 `call_ref`. A failed R2 upload followed by a committed DB copy is not dropped. R2-only upload
-failure still records a hash-only snapshot and statistics. These remain best-effort background
+failure follows that same DB fallback for eligible bytes. These remain best-effort background
 writes: a killed process can lose completion events, but cannot withhold the calling event.
+The same completion event measures archive stages, including elapsed work on timeout or cancellation:
+
+| Fields (milliseconds) | Scope |
+| --- | --- |
+| `compare_sem_wait_ms`, `compare_ms` | Precomparison slot wait, then pointer queries/reads and any JSON normalization. Both precede the DB write deadline. |
+| `record_key_wait_ms`, `record_sem_wait_ms` | Same-key lock wait, then write-slot wait, inside the DB write deadline. |
+| `record_db_ms` | Wall time while holding the write slot: pool checkout, body packing, SQL/commit, and integrity retries/backoff. This is not pure SQL time. |
+| `observe_sem_wait_ms`, `observe_ms` | Optional post-commit change-report slot wait and work, outside the DB write deadline. |
+
+Unentered phases are `null`. `failure_phase` names the measured phase interrupted by an escaping
+exception (including cancellation); it is `null` when none was interrupted, including a queue
+rejection before recording starts. Internally handled comparison failures still fall back to raw
+hashes and use the existing counters. A post-commit observation cancellation does not mean the
+snapshot was lost: `storage`/`dropped` continue to describe the committed write. Timings add no
+DB writes or per-call events and do not change deadlines, the two archive slots, or pool sizes.
+
 Stats count snapshots with recoverable bodies in DB or R2, including deduplicated versions;
 `kept_bytes` is logical retained response bytes, not PostgreSQL physical table size.
 
@@ -187,7 +285,8 @@ team already received. Failure evidence (`error_*`) is untouched and still admin
 Rows older than the migration have no link and cannot get an exact one (the key needs the query
 and body the audit row never kept); `scripts/backfill_call_archive_links.py` links them best-
 effort — same endpoint, same byte size, fetch within ±10 s, unambiguous in both directions —
-dry run by default, `--apply` to write, `--render` for the prod allowlist dance.
+dry run by default and requires `--apply` to write. Deployment-specific execution belongs in the
+operator runbook.
 
 ## Result admission
 
@@ -275,12 +374,13 @@ refreshing IS the sampling that teaches the timer.
 ## Serving (PR 4)
 
 `archive.lookup()` runs in `call_tool` at the RELAY's position — after every access/deny/cap gate
-AND after the money reserve, replacing only the network trip. **Money on a hit is identical to a
-live call, on purpose**: reserve, settle, cost header and ledger rows are byte-for-byte the same;
-the response carries `X-Treg-Cache: hit`, `X-Treg-Fetched-At`, `X-Treg-Age`, and the audit row
-(+ `/calls`) carries `cached: true`. The founder's deferred pricing decision attaches to that tag
-later without touching this code. A hit is NOT a new observation: no snapshot, no change
-statistics — only `last_requested_at` (fire-and-forget `_touch`), the demand signal PR 5 reads.
+AND after the money reserve, replacing only the network trip. **Money on a hit has the same
+shape as a live call**: reserve, settle, cost header and ledger rows — the settle just closes
+the hold at the repeat price when the team has paid for the question before (see "Pricing a
+hit"; own-key hits are free). The response carries `X-Treg-Cache: hit`, `X-Treg-Fetched-At`,
+`X-Treg-Age`, and the audit row (+ `/calls`) carries `cached: true`. A hit is NOT a new
+observation: no snapshot, no change statistics — only `last_requested_at` (fire-and-forget
+`_touch`), the demand signal PR 5 reads.
 
 Freshness (phase 1) is `archive.ttl_for(entry)`: FIXED guesses per capability prefix
 (`crypto.price` 5 min, `web.search` 1 h, `people.`/`company.` 7 d, default 1 h), always capped by
@@ -289,6 +389,13 @@ a judged `cache.max_age_s` (CoinGecko's 24 h duty). The learner (PR 5) replaces 
 caps even an already-learned positive TTL by that declaration, then by caller `X-Treg-Max-Age`.
 Without a declared ceiling, learned TTLs can exceed capability defaults; lookup never uses the
 static default to cap a positive learned TTL.
+
+The one exception is a **volatile capability** (`volatile_max_age_s`): a
+capability SEGMENT naming moving data — `live`, `realtime`, `quote` (60 s), `price` and any
+`hot*`/`trend*` segment (300 s) — is a HARD ceiling on the default, on serving
+and on refresh, even over a learned timer. The learner cannot tell "flat over the weekend" from
+"stable"; a live quote or a trending list that was identical across refetches must still not be
+served hours later. A vendor `max_age_s` and an operator ceiling stack with it (the minimum wins).
 
 Caller controls, always honored: `Cache-Control: no-cache`/`no-store` forces a live call (the
 read-after-write escape — the archive never guesses cross-endpoint effects); `X-Treg-Max-Age`
@@ -361,7 +468,18 @@ would have it stored — judge `cache` per provider with that in mind.
 `TREG_ARCHIVE_MODE` (config `archive_mode`, default `off`) → `archive.mode()`:
 `off` | `shadow` (record + learn, serve nothing — phase 0) | `serve` (shadow + answer eligible
 fresh hits — phase 1+). Any unrecognized value degrades to `off`: a typo must disable, never
-enable. Rollback in production is a dashboard env edit, no deploy.
+enable. Rollback is an environment-setting change through the deployment's normal configuration
+process.
+
+In serve mode the two rollout gates default open: `TREG_ARCHIVE_SERVE_ENDPOINTS` is `*` (every
+endpoint the policy allows) and `TREG_ARCHIVE_SERVE_PERCENT` is `100` (the sha256 team/endpoint
+cohort still applies below 100). The allowlist is comma-separated and mixes three entry forms: an
+exact endpoint id, `capability:<prefix>` (a whole family — `capability:people.` matches every
+endpoint whose capability starts with it; `endpoint_served` checks the entry's capability), and
+`*`. Empty serves nothing — the rollback lever. An operator stages a rollout by narrowing the list
+to ids or families; the hosted service's staging plan lives in its private runbook. The refresh
+worker applies a family or `*` allowlist in Python after its query (`serve_ids_only` decides). `TREG_ARCHIVE_SERVE_MAX_AGE_S` remains the
+per-endpoint operator ceiling and `TREG_ARCHIVE_HIT_REPEAT_PRICE_PERCENT` (10) the repeat price.
 
 ## Conservative comparison and controlled serving (2026-09-08)
 
@@ -419,17 +537,22 @@ produce hypothetical hit counts or fresh-answer comparisons.
 
 ## Eligibility — three gates, in order
 
-1. **Kind.** `kind: action` entries are never stored; only data reads pass.
+1. **Kind.** Only a `data` read (the catalog's default kind) is ever stored. `action` changes
+   the world; `utility` is a task-status poll or a model list, where a stored "running" would
+   break every poller; `account` answers about the caller's own account (balance, quota, own
+   profile), stale the moment it is spent. `archive.cacheable_kind` (earlier only actions were
+   excluded).
 2. **License.** Per catalog entry: `cache: forbidden | transient | archive` — either a bare
    string or a provenance dict `{mode, license_quote, source_url, checked}`, exactly like `cost`
    provenance. **Absent ⇒ `archive_default_policy`**, which is `transient` since the founder's
    keep-all decision (2026-08-29): unjudged providers' bodies ARE kept as short-lived cache, and
    the env flips it back to `forbidden` without a deploy. A JUDGED forbidden (a licence that was
    read and says no — Finnhub) is always respected, and a missing entry is never stored.
-3. **Tier.** Only fully buffered METERED PLATFORM calls are recorded. Those responses are already fully buffered
-   for the settle (`_buffer_response` needs the provider's reported cost), so recording adds no
-   latency and no new data path. Own-key and own-tool calls stream and are never touched — that
-   is the privacy line, enforced at write time, not filtered at read time.
+3. **Body in hand.** A metered platform answer is already fully buffered for the settle
+   (`_buffer_response` needs the provider's reported cost), so recording adds no latency. An
+   own-key catalog answer is read whole only when it fits the archive's size cap (see "Own-key
+   answers"); larger ones stream untouched. Own-tool calls (no catalog entry) are never touched.
+   Who an own-credential answer may serve is decided by the KEY it is recorded under ("Sharing").
 
 Gates 1+2 are `archive.policy(entry)`; gate 3 is the hook site's own context.
 
@@ -440,10 +563,11 @@ buffer's 8 MiB limit fail before recording and cannot populate a cache or idempo
 
 ## The cache key
 
-`archive.cache_key(method, endpoint_id, upstream_url, body, headers)` → sha256 over the canonical
-request: uppercased method, catalog endpoint id (a provider URL reshuffle starts a fresh history),
-sorted query pairs, canonical-JSON body hash (raw hash for non-JSON), plus only `Accept` and
-`Accept-Language` from the caller's headers. Auth/cookies/tracing/encodings never enter the key —
+`archive.cache_key(method, endpoint_id, upstream_url, body, headers, scope="")` → sha256 over the
+canonical request: uppercased method, catalog endpoint id (a provider URL reshuffle starts a fresh
+history), sorted query pairs, canonical-JSON body hash (raw hash for non-JSON), plus only `Accept`
+and `Accept-Language` from the caller's headers, plus the sharing scope when the answer is not
+public (`org:<id>` / `conn:<id>:<secret ids>`, see "Sharing"; a public key hashes as it always did). Auth/cookies/tracing/encodings never enter the key —
 and credentials could not anyway: injection happens after the key is taken.
 
 ## Tables (migration 0002)
@@ -452,7 +576,11 @@ and credentials could not anyway: injection happens after the key is taken.
 `policy`, AIMD timer state (`ttl_s`, grow ×1.5 capped on stable refetch / shrink ×0.5 floored on
 change — the learner lands in PR 5), change statistics (`change_seen`/`stable_seen`/
 `last_changed_at`), legacy `volatile_paths` (retained for schema compatibility, no longer read or updated), and demand (`heat`, `last_requested_at`). Platform-scoped, no `org_id`:
-one team's fetch may warm another team's hit, and own-key traffic never enters.
+one team's fetch may warm another team's hit; an own-credential answer's reach is its KEY's
+scope (`ArchiveKey.scope`, migration 0039, and the scope folded into the hash — see "Sharing"),
+the snapshot's `origin_org_id` (same migration) is provenance, and `ArchiveKeyOrg` (same
+migration) is the per-(org, key) "has paid for this question" mark that prices a repeat hit —
+see "Pricing a hit".
 
 `ArchiveSnapshot` — one version: unique `(key_id, version)`, verbatim `body` bytes, `content_hash`
 (raw sha256) for dedup — an identical consecutive answer stores a version row with `body=NULL,
@@ -534,19 +662,18 @@ loop-bound-semaphore pattern (four until 2026-09-07; every slot is paid per uvic
 again per rolling-deploy instance, and a recording is one INSERT of a body already in memory).
 Before it, a burst could put up to 512 concurrent short sessions in front of the API's 15-slot pool
 (SToneX's pool-pressure report); those writes now land on the BACKGROUND pool instead
-(`ops/deploy.md` § Three pools), so the semaphore is the inner bound rather than the only one.
+(`ops/deploy.md` § Database pools), so the semaphore is the inner bound rather than the only one.
 Queued recordings wait inside their fire-and-forget task, so the caller is unaffected; the 30s
 bound covers wait+write, so a stuck queue still sheds rather than wedges. Throttled, not shed: the
 burst test proves all 12 concurrent recordings land while peak DB concurrency stays ≤2.
 
-**Memory bound (2026-09-07 OOM fix).** Each pending task holds its `body` bytes in a closure — up to
-`_MAX_PENDING` (512) tasks × `archive_max_body_bytes` (2 MB) = 1 GB worst case. After #363 reduced
-concurrent writes from 4 to 2, backlog built faster under heavy traffic and the 2026-09-07T00:43:06Z
-OOM killed production at 4 GB. `_MAX_PENDING_BYTES` (256 MiB) caps body bytes in DB
+**Memory bound.** Each pending task holds its `body` bytes in a closure, so task count alone is not a
+sufficient memory bound. `_MAX_PENDING_BYTES` (256 MiB) caps body bytes in DB
 pending work: `record()` sheds when EITHER the task count OR the bytes threshold is exceeded. The
 done callback releases bytes when a task completes, keeping the budget accurate. The independent
 R2 queue adds 128 MiB by default, for a combined 384 MiB body budget before SDK, compression
-and terminal-evidence overhead.
+and terminal-evidence overhead. Production incident evidence and deployment sizing are maintained in
+the private operator runbook.
 
 The semaphore is process-local; the recorder also supports deployment with multiple processes. An exact in-process key
 lock is acquired before the semaphore, so duplicate recordings queue without consuming both
@@ -593,7 +720,7 @@ a stability comparison. Subsequent observations learn normally. This conservativ
 learning interval avoids object I/O inside a write session or an extra speculative GET per write.
 
 `WritePlan` is the single body-retention decision passed into the DB writer. DB retention is
-inferred from its storage location; failed R2-only uploads become hash-only plans. Each started
+inferred from its storage location; failed eligible R2-only uploads become `db` plans. Each started
 recording emits its completion report from one `finally` block, while queue callbacks release
 budgets and report cancellation of tasks that never started. `tool_called` remains independent.
 The object-store lifespan chooses a real or injected context once and always resets the seam.
@@ -625,12 +752,26 @@ still exhaust R2's unchanged 256-record/128 MiB budget; increasing those setting
 this fix. `duplicate_queue_bypass`, `skipped_duplicate` and `coalesced` process counters supplement
 the existing per-record `archive_body_stored.upload_status` values.
 
-Residual `rate_limited`/`upstream_error` failures get one retry on nonterminal uploads too, with
-1.0-1.5 seconds of jitter before retry. This clears the one-write-per-second same-key window and
-shares the existing transfer deadline rather than restarting it. Exhaustion keeps `storage=db`
-in `both` mode with `upload_status=failed` and the classified `drop_reason`; the DB copy is not
-reported as dropped. R2-only mode retains its existing hash-only fallback. No SDK retries are
-enabled, no new DB writes/columns/tables are added, and no production setting is changed.
+`timeout`, `rate_limited`, `upstream_error` and bounded `store_error` failures get one retry on
+nonterminal uploads. Each attempt is capped at four seconds and at 40% of the configured transfer
+budget, so both attempts and jitter share the existing deadline rather than restarting it.
+Rate-limit/upstream retries retain 1.0-1.5 seconds of jitter; timeout/store retries use 0.05-0.15
+seconds. The leader releases the upload semaphore during that delay and reacquires it within the
+same deadline, while same-body followers continue sharing the leader's result. Permission, missing,
+hash, size, and unavailable-store failures are not retried. Exhaustion keeps `storage=db` in `both`
+mode with `upload_status=failed` and the classified `drop_reason`; the DB copy is not reported as
+dropped. R2-only mode uses the same DB fallback for eligible bytes. `archive_body_stored` reports
+`upload_attempts`, `upload_retry_reason`, and `upload_retry_recovered`; bounded process counters
+record retry reasons and recoveries. No SDK retries are enabled, no extra DB transaction or new
+column/table is added, and no production setting is changed.
+
+R2-first reads apply the same retryable-reason policy. They make at most two GET attempts, each
+capped at one second and half the configured read timeout, with at most 0.1 seconds of jitter.
+Missing objects, hash mismatches, permission failures, oversized objects, and an unavailable store
+fall back immediately. A retryable failure is logged as a fallback only if the second attempt also
+fails. Lookup diagnostics add `cache_r2_attempts`, `cache_r2_retry_reason`, and
+`cache_r2_retry_recovered`; bounded process counters cover result, terminal, and observation reads.
+The DB session is still opened only after all object I/O finishes.
 
 ### Timing and queue interpretation
 
@@ -643,7 +784,8 @@ regression; its configured SDK retry count remains zero. Neither fact identifies
 production network/server operation caused the delay.
 
 After this fix, leader `upload_ms` includes all attempts and jitter under its transfer budget;
-followers record their shared-flight wait in `queue_wait_ms` and zero transfer time. LRU hits have
+`queue_wait_ms` includes semaphore acquisition for each attempt. Followers record their
+shared-flight wait in `queue_wait_ms` and zero transfer time. LRU hits have
 zero transfer/wait time. Do not interpret these post-fix per-record values as one SDK request's
 latency, or average duplicate statuses and zero-transfer failed waiters into physical PUT latency. R2 pending accounting spans the
 recording's DB completion too; it is not just the number of active PUTs. Compare existing failure/
@@ -739,9 +881,13 @@ unavailable bodies fall back to raw byte hashes. The original bytes, content has
 history and served response never change.
 
 `cache.ignore_paths` is optional and empty by default; only explicit declarations exclude fields.
-Hunter declares `data.verification.date` for `hunter.people.email.find` and
-`data.emails[*].verification.date` for `hunter.companies.emails`. Date-only changes no longer shrink
-TTL, but mailbox values, scores, verification statuses and found/empty transitions remain significant.
+The people and company enrichment endpoints declare the fields their providers change on every
+request without changing the answer: job and request ids, credit counters, verification and
+processing timestamps, pagination cursors (Hunter's `data.verification.date` is the original
+example). Without a declaration such a field makes every re-fetch count as a change and shrinks
+the timer of an answer that did not move. Mailbox values, scores, verification statuses and
+found/empty transitions remain significant. `test_catalog_preserves_ignore_paths_and_defaults`
+pins the shipped declarations, so adding one means extending that list.
 Other pilot endpoints declare no ignored fields, including Findymail's `contact.id`.
 A comparison-only mapping does not override retention policy or assert vendor licensing permission.
 There is no automatic field selection; `ArchiveKey.volatile_paths` remains unused.
@@ -751,8 +897,11 @@ Deleting `items[*].request_id` keeps all elements; deleting `items[*]` deletes t
 Comparison has no six-level reporting limit and never uses reported/truncated paths as policy.
 
 `_ignored_matches` preloads at most the latest and decisive snapshot bodies before the DB write.
-It skips body reads for identical raw hashes. Pointer sessions close before object I/O. The pre-read
-uses the shared archive semaphore and a three-second budget, separate from the write deadline.
+It checks the key and raw hashes first, skipping new-response JSON normalization unless a differing
+candidate has a readable body pointer. New keys and raw-identical baselines therefore need no
+normalization; identical raw hashes also skip body reads. Pointer sessions close before JSON
+normalization or object I/O. The pre-read uses the shared archive semaphore and a three-second
+budget, separate from the write deadline.
 Only matched snapshot IDs are passed to `_store_locked`; a concurrently changed baseline falls
 back to raw hashes without holding a row lock across I/O or adding a reconciliation write.
 `ignore_body_unavailable` and `ignore_comparison_failed` retain their diagnostic names for both

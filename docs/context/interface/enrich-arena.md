@@ -181,6 +181,18 @@ Tasks are work email, person enrichment, company enrichment, phone lookup, email
 email-to-LinkedIn, people search, people at a company, and similar companies. The catalog's existing contracts and adapters define supported inputs and
 normalized result fields. Name-based comparisons require both first and last name, validated
 before quote creation or upstream dispatch; use a LinkedIn URL when that input is unavailable.
+
+BounceBan joins email verification only through its verified standard-single adapter. The adapter
+maps `result=deliverable` to valid, preserves other provider verdicts as status, and treats a missing
+result such as a pending `verifying` body as a routing miss. Public estimates use the fixed $0.004
+upstream cost before the configured platform margin. Waterfall and bulk BounceBan tools remain BYOK
+only and do not enter Arena.
+
+ZeroBounce also joins email verification through its verified single-validation adapter. It maps
+only `status=valid` to true, preserves the provider's other verdicts as negative answers, and treats
+unknown as a miss. Public estimates use the fixed $0.0138 upstream replacement cost before the
+configured platform margin. Account reads and the excluded batch/file surface do not enter Arena.
+
 Email inputs require a nonempty mailbox and dotted domain. Malformed domain/LinkedIn URLs,
 invalid ports, embedded credentials and non-web schemes return validation errors before pricing
 or charging, including malformed bracketed hosts that URL parsing would otherwise reject with an exception.
@@ -244,7 +256,14 @@ publishes, including a completed snapshot with no rows. A fresh database returns
 every two minutes while visible, preserves the last successful values after a refresh error, and
 shows the last update time. Prices still come from the catalog and team quote.
 
-`application.arena_insights.worker` runs on control/all roles and uses the background database pool.
+`application.arena_insights.drain` is the collector, run by the `treg-worker arena insights` cron
+(every two minutes; `--max-seconds` bounds a pass and the next run resumes from the cursor). It no
+longer runs inside the web processes: as a lifespan coroutine, every web process (and every extra
+instance during a deploy) contended for the cursor row and each walked `callrecord` on the
+database the money path depends on. In the worker process it uses the API pool, the only one open
+there. The rewind that
+revisits ten minutes of evidence is constrained to the Arena's endpoints so it rides
+`ix_callrecord_endpoint_id_created_at` instead of walking the table.
 It reads 100 audit records per transaction, follows their exact archive key/content and optional body
 carrier, reclassifies stored responses with current Arena required-field rules, and upserts anonymous
 `ArenaObservation` facts. It never calls vendors or trusts `CallRecord.hit`. No money writes or proxy
@@ -280,7 +299,10 @@ prevent controlled rankings, and returned fields are not independently verified.
 The heading's “Setup treg in” button shows Claude Code, Codex, OpenClaw and Hermes logos plus
 the count of other choices. It opens a native dialog using the same `AgentPicker` and
 `SetupInstructions` components as the dashboard welcome modal (`agent-setup.js`). The instruction
-label sits inside the prompt card alongside Copy, above the setup command. The remembered
+heading sits above the prompt card; the card is a flat panel with Copy floating in a right gutter
+on desktop and above the command on phones. Both stylesheets style that one shape, and the
+component carries no layout of its own, so a change to its markup is checked on both surfaces
+(the dashboard defines `.agent-setup-instructions .text-button` for "Show key"). The remembered
 `treg-agent` choice, expanded agent list and Grok Bot plugin step are shared. The setup text points
 to this deployment's `/llms.txt`. Continuing as a signed-in team member fetches `/auth/cli-token`
 for the active team; the token is masked by default, copied only on click, never persisted by the
@@ -379,10 +401,12 @@ verified accuracy, and speed excludes queue time. Single-entry winner rules rema
 
 ## Discovery queries
 
-Discover contains Find people (`people.search`), People at a company (`people.company.search`,
-an Arena alias of the catalog's `people.search` capability), and Find similar companies
-(`companies.similar`). Find people accepts a search description or job title plus a recognized
-ISO country code; company people search accepts a company domain with an optional job title.
+Discover contains Find people (`people.search`) and Find similar companies (`companies.similar`).
+Find people offers four input shapes, ordered by real demand: job title plus company domain
+(the default), company domain alone, a free-text search description, or job title plus a
+recognized ISO country code. The former "People at a company" task (`people.company.search`)
+was merged into it on 2026-09-14; runs saved under the old id still resolve through
+`domain.arena.catalog_capability`.
 Similar-company discovery accepts a seed domain. These are direct catalog queries, with no
 agent harness, model-written plan, automatic pagination or implicit follow-up enrichment.
 
@@ -658,8 +682,8 @@ a separate amount line. Cost/Time column sizing keeps the annotation inside its 
 including nested result tables and the existing mobile card layout.
 
 Arena migrations are ordered after main’s 0026 (call reviews): 0027 (runs and evaluations), 0028 (rolling insights), and 0029
-(published verification aggregates). Public snapshot reads use the API pool; the incremental worker
-is listed explicitly in the background pool budget. Email verification adapters join the existing
+(published verification aggregates). Public snapshot reads use the API pool; the incremental
+collector runs in the `treg-worker` process and draws on no web-process pool. Email verification adapters join the existing
 task through catalog-driven discovery.
 
 Email-verification result rows use `emailVerdict` and `outcomeClass` to show “Verdict: Valid”
@@ -766,3 +790,20 @@ The selected team must be in the signed-in user's memberships. Signed-out visito
 to sign in; email and social sign-in preserve the run destination. Missing, expired or inaccessible
 runs show an error instead of falling back to another result. These are private bookmarks with
 the existing retention limits, not public share links. New queries remove the run parameter.
+
+
+### Harvest profile lookups
+
+Arena discovers Harvest through the shared verified adapter categories. With LinkedIn URL
+input, Find work email selects the email profile tool, Enrich person selects the full profile
+tool, and Enrich company selects the company profile tool. Basic profiles do not enter person
+enrichment. Both Battle and Waterfall use the existing planner and ordinary call/billing path;
+there are no Harvest branches in Arena. Name, company-domain and email inputs do not select
+these Harvest tools. Native LinkedIn routes remain available. Additional adapter categories
+also make the full and company tools candidates in the corresponding public enrichment routes.
+
+
+`_fresh_caller` carries the initiating managed key into each paid step. It rechecks that the key
+is active and still belongs to the same membership and team. A Default-key generation change
+also stops later steps. The snapshot retains key attribution; browser-session runs keep no key.
+This recheck happens before a new call and does not cancel a request already in flight.

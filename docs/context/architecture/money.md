@@ -44,6 +44,17 @@ related:
 
 # Money
 
+LimaData converts credits at the assigned account's sustainable automatic-top-up replacement rate:
+$100 for 6,667 credits, rounded up to $0.015 per credit. Only fixed, synchronous prices use the
+shared key. Variable charges, a route billed on HTTP 404, extraction modifiers, and asynchronous
+refunds remain BYOK-only, so no LimaData settlement branch is needed. See [LimaData](limadata.md).
+
+MoltSets is the first real `treg_shared_plan` catalog rate: $0.01 per ordinary successful record on
+the flat $27 subscription. Its verified 5,000-record weekly allowance is conservatively 20,000 per
+four-week month, so the disclosed 2,700-call monthly break-even is 13.5% utilization. Generic
+success-only settlement handles its eligible tools; variable, batch, and dual-meter phone operations
+stay BYOK-only. See [MoltSets](moltsets.md).
+
 A catalogued endpoint can be served on **treg's own key** - no provider signup for the caller - which
 means treg pays the provider and bills the team. That needs a balance, a way to top it up, and a way
 to prove afterwards that the numbers were real. Three modules, one job each:
@@ -55,6 +66,11 @@ owner per use, so even a call on the org's *own* connection spends treg's prepai
 [auth-secrets](auth-secrets.md)). Both run the same reserve→relay→settle path in `routers/call.py`, share the
 fail-closed daily cap, and are distinguished in ledger meta by `tier: platform` vs `tier: oauth`.
 An org's own key/credential on any *other* provider is never metered - there the org's account pays.
+An endpoint declared `platform_auth: anonymous` is also unmetered: after the own-key tiers miss,
+`_anonymous_offer` relays its verified public route with no provider credential and creates no
+reserve, settle, or release entry. Catalog validation permits this only on free read-only routes.
+These calls still pass normal authorization and any configured per-member daily call cap. That cap
+defaults to unlimited. Sandbox and public-demo teams cannot use the real anonymous fallback.
 
 On an oauth-billed provider a **`free` catalog price is a bug, never a fact**: the upstream charges us
 whatever the route costs, so a zero there means the entry is stale, not that the call is free. The
@@ -433,11 +449,11 @@ command, not a URL.
 
 ## The spend ceiling (`application.call.reserve`)
 
-`_enforce_platform_daily_cap` is a per-org, per-UTC-day ceiling on platform spend, and it is
-**fail-closed** - unlike the per-user call cap, which may let a few extra through under load. A query
-that cannot answer refuses the call, because this one meters *our* money. The balance alone is not
-enough: auto-top-up refills it, so the cap is the blast radius of both a runaway agent and a pricing
-mistake in the catalog.
+`_enforce_platform_daily_cap` is a per-org, per-UTC-day limit on platform spend, applied only when
+one is set (the team's own figure, else the deployment default, which is none). When one applies it
+is **fail-closed** - unlike the per-user call cap, which may let a few extra through under load. A
+query that cannot answer refuses the call. When none applies the ledger is not consulted: the
+prepaid balance and the auto-top-up monthly cap are the bounds on what a team can spend.
 
 An endpoint whose price is unknown never reaches this path at all: `catalog_store.platform_eligible`
 requires `cost_view(...)["usd"] is not None`, so "we don't know" is refused rather than served free -
@@ -469,8 +485,9 @@ Provider-specific calculation stays outside the faithful relay.
 
 | Evidence | Settlement behavior |
 |---|---|
-| Reported charge | DataForSEO `cost`, ScrapeCreators `credits_charged`, Akta `credits_consumed`, Lusha `billing.creditsCharged`, Exa `costDollars.total`; credit amounts use the catalog FX rate |
-| Crustdata | Read `X-Credits-Used` from response headers using the same FX rate |
+| Reported charge | DataForSEO `cost`, ScrapeCreators and Dropleads finder/verifier `credits_charged`, Akta and Dropleads person enrichment `credits_consumed`, Dropleads company `credits.creditsDeducted`, Lusha `billing.creditsCharged`, Exa `costDollars.total`, and Prospeo bulk `total_cost`; credit amounts use the catalog FX rate |
+| Crustdata, cloro, AI Ark | Read the charge from a response header through `_CREDIT_HEADERS` using the same FX rate. Crustdata `X-Credits-Used` and cloro `X-Credits-Charged` are positive charges; AI Ark `X-Credit` is a negative debit and declares an explicit -1 multiplier. Invalid signs and non-finite values are ignored. cloro omits the header on its free routes and on a failed extraction, neither of which it bills, so an absent header settles at the estimate, not at zero |
+| cloro reserve | `cost.value` is the full-surface `test_request` price (ChatGPT 9, Google SERP 7); the plain call settles lower from the header (verified live 2026-09-07 at the then-Lite rate: reserve 7,200 µ$, settled 5,600, refunded 1,600; at the Hobby rate 3,600 → 2,800, re-verified 2026-09-14). The top-level `state` body field is a `cost.modifiers` rider (+2 credits) reserved through the same generic path Aviato uses, which is open to any credit-priced provider with a FX rate |
 | Apollo | Known empty organization results are free |
 | Tomba domain search | Non-empty pages cost ceil(`meta.pageSize` / 10) credits, even when partially filled; empty `data.emails` is free. Reservation uses requested `limit`, default 10. Missing/malformed page evidence falls back to the estimate. Upstream duplicate discounts are not detected |
 | Hunter domain search | One whole search credit per ten returned emails, rounded up; an empty result is free |
@@ -479,6 +496,8 @@ Provider-specific calculation stays outside the faithful relay.
 | TikHub | Honor explicit no-charge prose; an embedded error that says it is charged still costs the estimate |
 | Bright Data | Count delivered JSON-array records or CSV/NDJSON lines; a JSON object containing a status/snapshot handoff has zero records |
 | Aviato | Fixed routes use the estimate; bulk enrichment counts successful records; catalog `settle: base` and `settle: modifiers` release documented-but-unbilled `reserve_only` riders |
+| Datagma | A finite nonnegative `creditBurn`, including numeric strings and zero, settles at that many frozen-price credits; invalid or absent evidence falls back to normal settlement |
+| ZeroBounce | The verified `per_success` adapter treats `status=unknown` as a zero-cost miss; other completed verdicts settle at the frozen one-credit estimate |
 
 Bright Data snapshot downloads are billable per result, including repeat downloads. Gzip or a
 buffer-truncated response falls back to the estimate because the record count is unknown.
@@ -493,7 +512,6 @@ settled 20 rows, moz's one `targets` entry settled 20 quota rows; 2026-09-02: lu
 catalogued FREE, answered 44 contacts for one domain and settled $5.49 from `billing.creditsCharged`
 with nothing reserved). Without any signal it is the
 20-row page, and a settle-at-estimate provider then charges that page.
-
 The page default has no meaning at all when the catalog prices per INPUT entity, and the estimator
 knows the difference since 2026-09-05: a `per_result`/`quota_rows` cost whose `unit` is `target`,
 `domain`, `keyword` or `call` (`resolve._ENTITY_UNITS`) is counted by `_entity_count` — repeated or
@@ -522,6 +540,20 @@ real driver-wrapped SQLSTATE injection after staged writes, checking rollback an
 SQLSTATE injection tests recovery, not the production planner's original deadlock schedule.
 
 The request session must be committed before relay so settlement cannot wait on a connection held by that same request. See [connection discipline](proxy-model.md#connection-discipline-a-call-in-flight-holds-no-db-connection).
+
+## Pricing a cached hit
+
+A hit from the archive is settled through the same hold as a live call; the settle is the only
+place that knows the amount, and the amount differs in exactly one case. Per team and per
+question (`ArchiveKeyOrg`, one row per org and archive key hash, written inside the settle
+transaction): a team's first billed call on a question pays full price whether the vendor or the
+archive answered; from that team's second call on, a hit settles at
+`archive_hit_repeat_price_percent` (default 10) of the live amount — applied to the RAW amount by
+floor division, then the margin as usual. Another team's first hit on the same question is full
+price. The settle entry's meta says `cached: true` and `cache_price_percent`; `X-Treg-Cost-Micro`
+reports what was actually charged. Own-key hits are never metered (non-negotiable 1) and so never
+priced or marked. No new ledger entry kind: the hold is settled for less and the remainder
+released, like any settle below its reserve. Detail in [archive](archive.md#pricing-a-hit).
 
 ## Shared-plan pricing: flat-fee providers, and the rate treg sets
 
@@ -581,12 +613,18 @@ shared plan" - `cost_view`, holds, caps and settlement needed zero changes. What
 
 A third treg-set rate, `kind: treg_trial` (fx.yaml): a provider served on treg's own FREE-tier key
 at exactly $0, capped per team per day (`trial_calls_per_team_day`, enforced by
-`api._enforce_trial_allowance` - successes only, fail-closed, refusal 429 `trial_allowance_reached`
-with a connect-your-own-key hint). The strategy: the pool is the demand probe - a hot pool is the
-buy signal for the provider's commercial tier, negotiated with real volume numbers. Failed calls
-never burn allowance (the same line billability draws), and another org's usage never touches this
-org's pool (tested). At $0 the allowance is the only brake, so the validator refuses a trial entry
-without one.
+`_enforce_trial_allowance` - successful platform calls with a non-free catalog cost only,
+fail-closed, refusal 429 `trial_allowance_reached` with a connect-your-own-key hint). Free discovery
+tools, failed calls and own-key calls never burn the allowance; another org's usage never touches
+this org's pool (tested). The strategy: the pool is the demand probe - a hot pool is the buy signal
+for the provider's commercial tier, negotiated with real volume numbers. At $0 the allowance is the
+only per-team brake, so the validator refuses a trial entry without one.
+
+GetLeads.io uses this contract at five successful credit-using platform calls per team per day; its
+free search-count and filter-discovery tools do not consume the allowance. Its one-time promotional
+database credits have no published USD replacement price, so $0 describes treg's limited trial, not
+a vendor credit valuation. The separately priced Live Leads wallet is not substituted for that
+missing database-credit price.
 
 ## Idempotency and retries
 
@@ -710,12 +748,14 @@ the only budgets and reports it touches are the builder's own. When a token will
 a 403, because otherwise the holder could retag their calls and walk out of their own budget, which is
 the entire point of giving them a scoped token.
 
-### The per-org daily cap has two owners
+### The per-org daily cap is the team's
 
-`budget_policy._effective_daily_cap` takes the minimum of the team's `Org.daily_cap_micro`
-and the deployment's `platform_daily_cap_usd` ceiling (default $500/day). The team can lower its
-limit and inspect it through `GET /orgs/{id}/settings`. A request above the platform ceiling is
-refused, not silently clamped.
+`budget_policy._effective_daily_cap` is the team's `Org.daily_cap_micro` when set, else the
+deployment's `platform_daily_cap_usd` default (0 = no limit, the shipped default). The team sets
+any figure in either direction through `PATCH /orgs/{id}/settings`, 0 meaning "follow the
+default", and inspects it through `GET` (`daily_cap_micro` 0 = no limit, plus
+`platform_default_micro`). Nothing is clamped. The limit was once also a platform ceiling the
+team could not raise; that fired only on funded teams mid-workload and never on abuse, so it went.
 
 The check itself, `ledger.spent_today`, is the most-run query on the platform: every metered call,
 inside the reserve transaction, on an api-pool connection, fail-closed. Its cost is therefore the
@@ -733,7 +773,7 @@ Why a counter and not an index: until 2026-09-06 the check was that journal aggr
 org that writes a large share of the platform's day its rows sit on nearly every heap page of the
 day, so no index makes the aggregate cheaper than reading the day - measured 395k buffer touches
 per call, 56-171 s once those pages were cold, holding an api-pool slot throughout. That was the
-API-pool saturation (see [deploy](../ops/deploy.md) § Three pools).
+API-pool saturation (see [deploy](../ops/deploy.md) § Database pools).
 
 ## Referrals
 
@@ -817,9 +857,9 @@ The overflow child (`application.call.overflow`) is an ordinary metered cycle on
 and `cost_source: "aggregator"` + `served_via` in the ledger `meta`, so `reconcile` needs no join.
 `OverflowSpend` (per aggregator per UTC day) is updated inside that same settle transaction; it is
 accounting for the per-aggregator daily budget, not a balance. That budget is
-`TREG_OVERFLOW_DAILY_BUDGET_USD`: the code and the public Blueprint default to $20, and production
-runs at $500 set by the private Blueprint in treg-internal (the value is owned there; this repo's
-`render.yaml` is not what production reads). Shadow mode places no hold and charges nothing.
+`TREG_OVERFLOW_DAILY_BUDGET_USD`: the code default is $20 per aggregator. A deployment may set a
+different value in its private operational configuration. Shadow mode places no hold and charges
+nothing.
 
 **The relay price is disclosed wherever a price is read.** `/call/` says `X-Treg-Served-Via:
 overflow:<aggregator>` with `X-Treg-Cost-Micro` the child's charge; the MCP `call` result (both
@@ -913,3 +953,29 @@ buffering (`MarketplaceCall.streamable_free_result`). It retains the existing ze
 reserve/settle gates and settles with an explicit zero override before returning the stream. It
 does not observe the original generation task or persist a response for idempotent replay; the
 label is released and retrying performs another free read. MIME type never decides billability.
+
+
+## HarvestAPI integration
+
+HarvestAPI reuses `cost.reported_charge` with path `cost` in USD. Billed misses retain their reported charge; wallet reads may lag and are never per-call evidence. Profile variants reserve their own scalar price. See [HarvestAPI](harvestapi.md).
+
+
+## Dropleads credit settlement
+
+Dropleads uses the frozen PAYG rate in `fx.yaml`. `_marketplace_pricing` sizes the hold from the
+requested bulk count or company-search limit. `_observed_cost_micro` then reads the provider's
+reported credit use from its three verified response shapes. A finite, nonnegative value, including
+zero, replaces the estimate. A known email-finder `not_found` response also settles at zero when the
+provider omits the numeric field. Missing or malformed evidence keeps the estimate. BYOK calls do
+not enter this money path. See [Dropleads](dropleads.md) for the endpoint limits and verified costs.
+
+
+## Prospeo credit settlement
+
+Prospeo uses the frozen Starter conversion in `fx.yaml`. `_marketplace_pricing` reserves one credit
+per bulk record and reads the optional nine-credit mobile rider from `cost.modifiers`; the shared
+credit-modifier path performs the arithmetic and a missing FX rate retains the ordinary estimate
+instead of raising. `_prospeo_cost_micro` settles bulk calls from finite nonnegative `total_cost`,
+single enrichments from endpoint-specific success evidence plus `free_enrichment`, searches from
+`free` and the result list, and suggestions at zero. Non-finite or malformed numeric evidence keeps
+the estimate for reconciliation. BYOK calls never enter this money path. See [Prospeo](prospeo.md).

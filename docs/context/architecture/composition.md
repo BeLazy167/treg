@@ -63,7 +63,10 @@ from app state. This keeps one cache and one refresh Task per
 process even when HTTP and MCP search concurrently. The refresh Task starts lazily on a miss rather
 than appearing in the role's always-running background-task manifest. The lifespan still owns it:
 shutdown first unbinds it from MCP, then calls `aclose()`, which refuses new refreshes and cancels the
-shared Task before database and HTTP resources disappear.
+shared Task before database and HTTP resources disappear. Once the fault handler is installed the
+lifespan emits `analytics.capture_service_started(role)`, one `service_started` event per process
+carrying the `build` and `archive_config` fingerprints every server event has (see
+[data-model](data-model.md#product-analytics-writer-analyticspy)).
 
 `bootstrap_handlers.py` owns the app-wide pool-saturation and HTTP-exception adapters.
 `call_surface.split_call_path`
@@ -104,9 +107,9 @@ architecture test separately pins the dataplane/control startup split and backgr
 
 | Role | HTTP routes and mounts | Background tasks | Startup checks |
 |---|---|---|---|
-| `all` | The complete surface, including `/run`, static files, `/mcp`, and the flagged `/mcp/v2` | Arena insights collector; Ads conversion worker when enabled | Read-only DB verify, HTTP client, enabled MCP lifespans |
+| `all` | The complete surface, including `/run`, static files, `/mcp`, and the flagged `/mcp/v2` | Ads conversion worker when enabled | Read-only DB verify, HTTP client, enabled MCP lifespans |
 | `dataplane` | `/call/{rest:path}`, `/catalog/call/{rest:path}`, MCP mounts, and their resource metadata; no `/run`, static files, docs, or OpenAPI | None | Read-only DB verify, HTTP client, enabled MCP lifespans |
-| `control` | Everything except the calling surfaces; includes OAuth issuance, `/run`, and static files | Arena insights collector; Ads conversion worker when enabled | Read-only DB verify, HTTP client |
+| `control` | Everything except the calling surfaces; includes OAuth issuance, `/run`, and static files | Ads conversion worker when enabled | Read-only DB verify, HTTP client |
 
 No role lifespan writes schema, performs a data backfill, or provisions the local single user. The explicit
 `python -m treg upgrade` release phase owns content-driven backfills; the default `python -m treg`
@@ -149,12 +152,14 @@ otherwise change route inspection and the committed surface snapshot.
 Public routes added since: `/{INDEXNOW_KEY}.txt` (`indexnow_key`, `routers/web.py`) — the IndexNow
 key file; listed in the ownership table beside `/sitemap.xml`. See `interface/seo.md` § IndexNow.
 
-The control/all lifespan starts and drains `application.arena_insights.worker` for database-backed
-Arena statistics. Dataplane processes do not run this collector; `/arena/insights` is a control route.
+No web process collects Arena statistics any more: `treg-worker arena insights` (a cron) does,
+and `/arena/insights`, a control route, only reads the last published snapshot. `ROLE_BACKGROUND_TASKS`
+therefore lists `adsconv.worker` alone for control/all.
 Shutdown cancels and awaits every started background worker before draining Arena, audit and
 analytics or closing the shared client, so database rollback/close finishes before event-loop teardown.
 
-`POST /reviews` and `GET /admin/reviews` belong to control, alongside feedback intake and reads.
+`POST /reviews` and `GET /admin/reviews` belong to control, alongside feedback intake and reads,
+as do `POST /media` and the public `GET /m/{token}` that serves a hosted reference file.
 
 The archive object-store lifespan normalizes configuration once, chooses an R2 factory or
 injected in-memory context, and resets the store on exit. R2 validation runs before DB startup

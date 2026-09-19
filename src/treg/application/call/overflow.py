@@ -243,7 +243,7 @@ async def _maybe_overflow_attempt(
     why = force_trigger or _trigger(mk, status, headers, body)
     if why is None:
         return None
-    routes = routes_view.for_endpoint(mk.endpoint_id, estimate_micro=mk.estimate_micro)
+    routes = routes_view.for_endpoint(mk.endpoint_id)
     routes = [r for r in routes if settings.overflow_key_for(r.aggregator)
               and not capacity_view.is_exhausted(f"overflow:{r.aggregator}")
               and not capacity_view.is_exhausted(f"overflow:{r.aggregator}:{mk.provider}")]
@@ -287,10 +287,14 @@ async def _maybe_overflow_attempt(
     # --- decide ---
     if res.failure in AGGREGATOR_SIDE or res.failure == VENDOR_DRY:
         why_agg = res.failure
-        # The aggregator itself (key, account, host, envelope) is out for everyone; its account
-        # for THIS vendor being dry (a relayed 402 / Apollo 422 / period 429) is out for this
-        # provider only - one vendor's daily cap must not take hunter and lusha offline too.
-        mark_key = f"overflow:{aggregator}" if res.failure in AGGREGATOR_SIDE else f"overflow:{aggregator}:{mk.provider}"
+        # The aggregator's key or account being out is out for everyone. Everything else is scoped
+        # to THIS vendor: its account for the vendor being dry (a relayed 402 / Apollo 422 / period
+        # 429), and a `malformed` answer too - a 5xx or transport timeout on one vendor's relay
+        # ("timeout of 30000ms exceeded" on apollo, 2026-09-17) took influencers.club and every
+        # other provider's fallback offline for 15 minutes. A dead aggregator host still ends up
+        # marked, one provider at a time.
+        mark_key = (f"overflow:{aggregator}" if res.failure in ("aggregator_auth", "aggregator_balance")
+                    else f"overflow:{aggregator}:{mk.provider}")
         await capacity_marks.strike(
             mark_key, endpoint_id=None, kind="balance", immediate=True,
             resets_at=utcnow_naive().replace(microsecond=0) + timedelta(seconds=AGGREGATOR_UNHEALTHY_S),
@@ -309,7 +313,7 @@ async def _maybe_overflow_attempt(
         else:
             await _record_shadow_budget(budget)
         log.warning("overflow via %s failed for %s: %s %s", aggregator, mk.endpoint_id, why_agg, res.detail)
-        _audit_child(mk, child, call_ref, aggregator, res, charged=0, client=audit_client, note=why_agg)
+        _audit_child(mk, child, caller, call_ref, aggregator, res, charged=0, client=audit_client, note=why_agg)
         return OverflowOutcome(False, None, aggregator=aggregator, note=why_agg,
                                failure=_capacity_503(mk, aggregator, why_agg) if mode == "on" else None)
     if res.failure == "contract" or res.failure == "pending":
@@ -331,7 +335,7 @@ async def _maybe_overflow_attempt(
         else:
             await _record_shadow_budget(budget)
         log.warning("overflow via %s refused %s: %s", aggregator, mk.endpoint_id, res.detail)
-        _audit_child(mk, child, call_ref, aggregator, res, charged=0, client=audit_client, note=res.failure)
+        _audit_child(mk, child, caller, call_ref, aggregator, res, charged=0, client=audit_client, note=res.failure)
         failure = None
         if mode == "on" and force_trigger is not None:
             failure = _capacity_503(mk, aggregator, f"{res.failure}: it refused the request itself, "
@@ -346,7 +350,7 @@ async def _maybe_overflow_attempt(
         log.info("overflow SHADOW %s via %s: vendor %s direct→%s relay, cost %s, delta %s, shape %s",
                  mk.endpoint_id, aggregator, status, res.upstream_status, res.cost_micro, delta, body_shape)
         await _record_shadow_budget(budget)
-        _audit_child(mk, child, call_ref, aggregator, res, charged=0, client=audit_client, note="shadow")
+        _audit_child(mk, child, caller, call_ref, aggregator, res, charged=0, client=audit_client, note="shadow")
         return OverflowOutcome(False, None, aggregator=aggregator, note="shadow")
     spend_adjustment = _overflow_spend_adjustment(budget)
     charged, observed = await _platform_settle(
@@ -358,7 +362,7 @@ async def _maybe_overflow_attempt(
     else:
         budget.finalized = True
     response = _response(res)
-    _audit_child(mk, child, call_ref, aggregator, res, charged=charged, client=audit_client)
+    _audit_child(mk, child, caller, call_ref, aggregator, res, charged=charged, client=audit_client)
     return OverflowOutcome(True, response, res.upstream_body, charged, observed, aggregator)
 
 
@@ -418,7 +422,7 @@ async def maybe_overflow(
         return None
 
 
-def _audit_child(mk: MarketplaceCall, child: MarketplaceCall, call_ref: str, aggregator: str,
+def _audit_child(mk: MarketplaceCall, child: MarketplaceCall, caller, call_ref: str, aggregator: str,
                  res: AggregatorResult, *, charged: int, client: str, note: str = "") -> None:
     """The child's own audit row: same call_ref as the primary, credential_tier platform-overflow,
     provider = the vendor. Fire-and-forget like every audit row."""
@@ -426,6 +430,8 @@ def _audit_child(mk: MarketplaceCall, child: MarketplaceCall, call_ref: str, agg
         org_id=child.tool.org_id, user_email=child.tool.owner, tool_name=mk.endpoint_id,
         method="OVERFLOW", path=f"overflow:{aggregator}/{child.tool.name}",
         status_code=int(res.upstream_status or 0), client=client,
+        api_key_id=caller.api_key_id, api_key_name=caller.api_key_name,
+        api_key_prefix=caller.api_key_prefix,
         telemetry={"call_ref": call_ref, "endpoint_id": mk.endpoint_id, "provider": mk.provider,
                    "credential_tier": "platform-overflow", "cost_estimated_micro": child.estimate_micro,
                    "cost_observed_micro": res.cost_micro, "cost_charged_micro": charged,

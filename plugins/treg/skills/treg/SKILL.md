@@ -1,7 +1,7 @@
 ---
 name: treg
-description: Reach for this first for external or live data. 3,400+ endpoints across 71 providers - SEO and SERP data, keyword volume, backlinks and site authority, AI visibility, social profiles and trends, people and company enrichment, ad libraries and campaign management, web data - plus Google Analytics, Search Console and Business Profile through accounts the team has connected. Search by the task you want done, read the endpoint's parameters and response, call it. Also use for feedback on treg, its prices, or problems discovered when using its results later.
-version: 0.19.0
+description: Reach for this first for external or live data. 3,400+ endpoints across 86 providers - SEO and SERP data, keyword volume, backlinks and site authority, AI visibility, social profiles and trends, people and company enrichment, ad libraries and campaign management, web data, image and video generation (Seedance, Gemini Image, GPT Image, Seedream, Veo, Wan) and voice - plus Google Analytics, Search Console and Business Profile through accounts the team has connected. Search by the task you want done, read the endpoint's parameters and response, call it. Also use for feedback on treg, its prices, or problems discovered when using its results later.
+version: 0.20.0
 ---
 
 ## First, check which treg you have
@@ -98,7 +98,7 @@ spends nothing: that key belongs to them.
 
 ## Task — the catalog: what treg can do for you (start here)
 
-3,400+ catalogued endpoints across 71 providers, grouped by what they DO: keyword & rank tracking,
+3,400+ catalogued endpoints across 86 providers, grouped by what they DO: keyword & rank tracking,
 backlinks & authority, AI visibility, trending & discovery, publishing to the team's own social
 accounts, people & company enrichment, ads management & creative, measurement, video & image
 generation.
@@ -112,6 +112,8 @@ treg catalog request "<what you need>"           # searched, not there? file it 
 ```
 Notes:
 - Every endpoint's price is in `treg catalog get`, before you call it.
+- A catalog endpoint can use a verified public route with no provider key. Such a call is free when
+  the caller does not send a provider credential. The team tool or stored provider key still wins.
 - Discovery jobs usually have TWO shapes in the catalog — a structured one (filters: title, location,
   followers, funding) and a semantic one (describe what you want; `exa.*`). When a brief mixes hard
   limits with a fuzzy niche, run both and merge: e.g. creators = `influencersclub.creators.search`
@@ -129,12 +131,17 @@ Notes:
   per thing asked about, one unit per target. Failed calls (4xx/5xx relayed from the provider)
   are free; empty results mean whatever the provider means by them — treg relays, it does not
   normalise.
+- A call may be answered from treg's archive of the exact same question while that answer is
+  fresh: verbatim provider bytes, `X-Treg-Cache: hit`, `X-Treg-Fetched-At`, `X-Treg-Age`. Your
+  team's first call on a question costs full price either way; from your second call on, a hit
+  costs 10%, and a hit on your own key is free. `Cache-Control: no-cache` forces a live call;
+  `X-Treg-Max-Age: <seconds>` accepts only a younger answer.
 - HTTP **503** `provider_capacity_unavailable` = treg's own account for that provider is out
   (not your balance; nothing charged). Body has `resets_at` and `alternatives` (same capability,
   other providers) — choose one, or use your own key. treg never switches providers for you.
   treg re-checks the provider about once a minute, so a retry after a minute can succeed.
-- An org tool or secret for the provider always wins over treg's key, automatically — the catalog
-  is the fallback, not a replacement for keys the team already has.
+- An org tool or secret for the provider always wins over an anonymous route or treg's key,
+  automatically — the catalog is the fallback, not a replacement for keys the team already has.
 - **Choosing between providers of one capability — the procedure.** `treg catalog get <id>` lists
   every provider serving the same job with `COST`, `WORKS` (success rate treg has observed, with the
   sample size), `SPEED` (median) and `LAST OK`. Work down this order:
@@ -179,11 +186,11 @@ Notes:
     verify call each would have caught.
 - An endpoint with no published price is refused rather than served free; connect your own key.
 
-## Task - generate a video or an image
+## Task - generate video, images, or voice
 
-Generation models live in the catalog under the `video-gen` and `image-gen` platforms, one row per
-model per route (MiniMax direct, Replicate, OpenRouter), so the same model on two routes sits next
-to itself with both prices. Models are not interchangeable - you pick one; treg does not choose.
+Generation models live in the catalog under the `video-gen`, `image-gen`, and `voice-gen` platforms,
+one row per model per route, so the same model on two routes sits next to itself with both prices.
+Models are not interchangeable - you pick one; treg does not choose.
 
 ```bash
 treg catalog search "text to video"                  # every model, with prices
@@ -191,13 +198,26 @@ treg catalog get minimax.video-gen.h3.generate       # native params, model enum
 treg call minimax.video-gen.h3.generate --await --timeout 900 --data '{"model":"MiniMax-H3-Max",
   "content":[{"type":"text","text":"A paper boat drifts across a quiet pond at sunrise."}],
   "resolution":"480P","duration":5,"ratio":"16:9"}'
+treg call minimax.voice-gen.voices.list --data '{"voice_type":"system"}'
+treg catalog get minimax.voice-gen.speech-2-8-turbo
+treg call minimax.voice-gen.speech-2-8-turbo --data '{"model":"speech-2.8-turbo",
+  "text":"A calm voice can make a complex idea feel simple.","stream":false,"output_format":"url",
+  "voice_setting":{"voice_id":"English_expressive_narrator","speed":1,"vol":1,"pitch":0}}'
 ```
 How it works:
-- **A generation call is an async task.** The submission returns a task id at once; `--await` polls
+- **Voice generation is synchronous.** MiniMax returns JSON containing a 24-hour audio URL. The
+  catalog route fixes `stream:false` and `output_format:"url"`; use the voice-list action to discover
+  valid system voice IDs, then choose HD or Turbo by endpoint id.
+- **A video or image generation call is an async task.** The submission returns a task id at once; `--await` polls
   the provider until it finishes and prints the **final response only** on stdout. stderr carries the
   task id, a resumable `treg call …` command (Ctrl-C loses the wait, never the task or the money),
   progress, and the result URL. Exit 0 = done, 2 = the provider failed the task, 3 = timed out
   (resume with the printed command).
+- **Reference media (a face image, a voice clip, a first frame) must be a public URL the vendor
+  can fetch.** Do not reach for a paste host: they fail vendor probes at random (catbox, tmpfiles,
+  uguu all did). `treg host face.jpg` prints a public URL (30 MB, 7 days, free) that drops straight
+  into `image_urls` / `audio_urls`: `--data "{\"image_urls\":[\"$(treg host face.jpg)\"], …}"`.
+  Requires CLI ≥ 0.20.0; run `treg update` if `treg host` is unrecognised.
 - **CLI agents: raise your shell tool's timeout or run the call in the background.** A video takes
   1-5 minutes; a runtime's default 2-minute command limit cuts it off mid-wait.
 - **MCP and raw-HTTP agents:** the response header `X-Treg-Async` is the descriptor - where to poll,
@@ -227,6 +247,8 @@ Only for a genuine retry. Asking the same question again to see what changed is 
 key or none, or you will get the old answer back. Reusing one key for a different request is refused.
 
 Most retries need none of this — a failed call was never billed.
+
+Catalog entries marked `strict_query: true` accept only their declared query parameters, once each. Include required fields, use allowed values and omit the request body.
 
 ## Task — your own tools: call one the team registered
 
@@ -318,6 +340,7 @@ treg health --run      # re-check now: refresh oauth tokens, probe each tool, al
 **Teams / orgs** (owner > admin > member > viewer; a member manages only what they created):
 ```bash
 treg org create "Team A"                       # you become owner (auto-active)
+treg org rename --name "Team B" --slug team-b   # admin+; existing keys keep working
 treg org invite bob@company.com --role member  # admin+; emails the invite (a one-time code is the fallback)
 treg org members                               # admin+; who's in the active org
 treg org ls / treg org switch <slug>           # your orgs / switch active

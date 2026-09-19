@@ -1,11 +1,13 @@
 {
   "success": true,
-  "message": "No records found",
+  "message": "Employee found",
   "code": 200,
-  "data": [],
+  "data": {
+    "first_name": "Example",
+    "last_name": "Person",
+    "email": "person@example.com"
+  },
   "meta": {
-    "credits_used": 0,
-    "reason": "EMPLOYEE_NOT_FOUND",
-    "remaining_credits": 297
+    "credits_used": 1
   }
 }

@@ -6,6 +6,8 @@ import re
 from typing import Any
 from urllib.parse import urlsplit, urlunsplit
 
+from .catalog.routing.contracts import declared_miss
+
 VERSION = "2"
 MAX_RESULT_BYTES = 256_000
 MAX_BATCH_RAW_BYTES = 2_000_000
@@ -30,10 +32,10 @@ class Task:
 
 TASKS = {
     t.capability: t for t in (
-        Task("people.search", "Find people", "Discover people by a search description, or by role and country.",
-             (("q",), ("title", "country"))),
-        Task("people.company.search", "People at a company", "Find people at a company, with an optional job-title filter.",
-             (("company_domain",), ("title", "company_domain")), "people.search"),
+        # Variant order = real demand: 94% of routed people.search calls send a company domain, with
+        # or without a title; free-text `q` is ~5% (30-day prod sample, 2026-09-14).
+        Task("people.search", "Find people", "Find people at a company by job title, or by a search description, or by role and country.",
+             (("title", "company_domain"), ("company_domain",), ("q",), ("title", "country"))),
         Task("companies.similar", "Find similar companies", "Discover companies similar to a seed company domain.",
              (("domain",),)),
         Task("people.email.find", "Find a work email", "Find a work email from a name or LinkedIn profile.",
@@ -89,8 +91,12 @@ class ArenaError(Exception):
         self.status = status
 
 
+# Runs saved before the two people tasks were merged (2026-09-14) still carry the old id.
+_LEGACY = {"people.company.search": "people.search"}
+
+
 def catalog_capability(capability: str) -> str:
-    task = TASKS[capability]
+    task = TASKS[_LEGACY.get(capability, capability)]
     return task.catalog_capability or task.capability
 
 
@@ -205,8 +211,7 @@ def required_credit(attempts: list[dict], mode: str) -> int:
 
 def classify(contract, adapter, endpoint: dict, status: int, doc: Any) -> tuple[str, dict]:
     """Match the routed lookup's structural hit rule; retain verification qualifiers separately."""
-    miss_status = (endpoint.get("miss") or {}).get("status")
-    if status == miss_status and 400 <= status < 500:
+    if declared_miss(endpoint, status, doc):   # the router's reader of the `miss:` block, predicate included
         return "miss", {}
     if not 200 <= status < 300:
         return "error", {}

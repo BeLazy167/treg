@@ -2830,7 +2830,8 @@ endpoints:
       date_posted:
         type: string
         required: false
-        note: Date posted filter based on Google-indexed results
+        enum: [last-hour, last-day, last-week, last-month, last-year]
+        note: "Google-indexed date window. One of: last-hour | last-day | last-week | last-month | last-year. Values like past-week / past-day are NOT accepted (provider rejects them)."
         example: last-week
       cursor:
         type: string
@@ -5560,21 +5561,25 @@ endpoints:
       uploadDate:
         type: string
         required: false
-        note: Upload date
+        enum: [today, this_week, this_month, this_year]
+        note: "Filter by upload date. One of: today | this_week | this_month | this_year."
       sortBy:
         type: string
         required: false
-        note: Sort by
+        enum: [relevance, popular]
+        note: "Only relevance|popular work. view_count, upload_date, and rating are NOT accepted (HTTP 400)."
         example: relevance
       type:
         type: string
         required: false
-        note: Type of content to search for
+        enum: [videos, shorts, channels, playlists]
+        note: "Type of content to search for. Plural forms: videos | shorts | channels | playlists (not video/channel)."
         example: videos
       duration:
         type: string
         required: false
-        note: Duration of the video. Only applies to videos (not shorts).
+        enum: [under_3_min, between_3_and_20_min, over_20_min]
+        note: "Duration of the video. Only applies to videos (not shorts). One of: under_3_min | between_3_and_20_min | over_20_min."
         example: under_3_min
       region:
         type: string
@@ -5822,8 +5827,9 @@ endpoints:
       date_posted:
         type: string
         required: false
-        note: Date posted
-        example: last-hour
+        enum: [last-week, last-month, last-year]
+        note: Google-indexed date window (last-week, last-month, last-year). Hour/day windows are not supported; Google does not index Instagram reels reliably enough in those windows.
+        example: last-week
       page:
         type: number
         required: false

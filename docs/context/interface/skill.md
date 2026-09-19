@@ -3,6 +3,7 @@ title: The shippable tools-registry skill (3 personas)
 status: shipped
 sources:
   - src/treg/web/skill.md
+  - src/treg/web/skills/make-ugc/SKILL.md
   - src/treg/routers/web.py
   - src/treg/mcp_install.py
   - scripts/build_plugin.py
@@ -35,10 +36,12 @@ One skill, three personas:
 - **consumer** — discover + call tools with no credentials locally. Teaches the agent-native
   **URL-passthrough** first: take the real upstream URL and prefix it with `{BASE}/call/`
   + the `X-Treg-Token` header; `treg call <tool> <path>` is the CLI shorthand. Its
-  "generate a video or an image" task teaches the async shape: `--await` for the CLI, the
-  `X-Treg-Async` descriptor and lazy 30-60 s polling for MCP agents, the shell-timeout warning
-  (video takes 1-5 minutes), reserve-then-settle money with refunds on failure, and expiring
-  result URLs that treg never stores.
+  generation task distinguishes synchronous MiniMax voice generation from asynchronous video and
+  image generation. Voice callers discover current system voice IDs through
+  `minimax.voice-gen.voices.list`, then call the HD or Turbo endpoint for a temporary audio URL.
+  Video/image callers learn `--await`, the `X-Treg-Async` descriptor and lazy 30-60 s polling for
+  MCP agents, the shell-timeout warning (video takes 1-5 minutes), reserve-then-settle money with
+  releases on failure, and expiring result URLs that treg never stores.
 - **creator** — turn a local skill into a shared tool: `treg secret add`, `treg tool add` (single-key or
   `--bind` multi-credential), the `treg skill scaffold → push` bundle flow, and `treg oauth connect` for
   browser-consent tokens. Documents the two OAuth modes (auto-refresh vs manual) and the four auth shapes.
@@ -67,6 +70,7 @@ served**, because a second copy of the product's most-read page is a copy that r
 | DeepSeek Harness bundle | root `package.json` (`dsh.bundle`) + `dsh/cordis.patch.yml` + generated `dsh/skills/treg/SKILL.md` | `dsh plugin --profile <name> add github:superdesigndev/treg` |
 | MiniMax plugin | `plugins/minimax/.minimax-plugin/plugin.json` + generated `plugins/minimax/skills/treg/SKILL.md`; `scripts/minimax_plugin.py` pre-runs their validator and builds the ZIP | the MiniMax Plugin Marketplace (MiniMax Code + MiniMax Agent), submitted by form as GitHub subdir `plugins/minimax`; skills-only because the package may hold no credential and the bootstrap omits `treg mcp install`, which cannot write a MiniMax config. See [docs/MINIMAX-PLUGIN.md](../../MINIMAX-PLUGIN.md) |
 | the domain itself | `GET /.well-known/skills/index.json` + `/.well-known/skills/treg/SKILL.md` | anything speaking the agentskills.io convention (Hermes reads this directly) |
+| a workflow skill | `GET /skills/ugc/SKILL.md` (also `/.well-known/skills/make-ugc/SKILL.md`, second entry in the index): `make-ugc`, the `/ugc` workflow as a file to follow. Source `src/treg/web/skills/make-ugc/SKILL.md`; `.agents/skills/make-ugc` is a symlink to it so the repo's own agents and the served copy never drift. It delegates to `portrait-clone` and `ugc-talking-head-video` by URL rather than repeating them | anyone the /ugc page or the onboarding "Make UGC videos" card sends here |
 
 `scripts/build_plugin.py` renders every plugin copy from the one source and `--check` fails if any is
 stale (`tests/test_plugin.py`). The variants differ **only** in their prepended bootstrap, because they arrive in opposite worlds: the Codex plugin ships an MCP connector, so its
@@ -86,7 +90,7 @@ profile. That layer carries a treg MCP row whose `disabled` expression is evalua
 stays off until `TREG_TOKEN` is in the environment — the same "no always-on tools that 401" stance as
 the Claude manifest, but expressible as a row rather than an omission. Its bootstrap is its own for
 two reasons the others do not have: the tools are namespaced (`mcp__treg__call`, not `call`), and
-`treg mcp install` cannot help here (it writes Claude Code / Cursor / opencode configs, never a dsh
+`treg mcp install` cannot help here (it writes Claude Code / Cursor / opencode / Codex configs, never a dsh
 profile), so `mcp_install.py` reports dsh as a MANUAL agent pointing at the bundle. See
 [docs/DSH-PLUGIN.md](../../DSH-PLUGIN.md).
 
@@ -94,6 +98,15 @@ The Claude variant sits at the **repo root**, not under `plugin/`, because that 
 simultaneously what Claude Code's loader auto-discovers, what `npx skills add` resolves, and what
 `clawhub skill publish` takes. See [docs/CLAUDE-PLUGIN.md](../../CLAUDE-PLUGIN.md) for the
 per-registry submission runbook.
+
+`mcp_install._write_json_agent` merges Cursor and opencode entries (and `_write_toml_agent` the Codex
+table, both through `_write_private`) without disturbing unrelated
+configuration, then atomically replaces the config from a random same-directory temporary file.
+That temporary file is created through `tempfile.mkstemp` before any token bytes are written and is
+set to mode `0600` through its open fd on POSIX regardless of umask; failures remove it and leave
+the original config intact. Windows relies on the config directory's inherited ACL rather than
+claiming POSIX mode semantics.
+
 ## Feedback
 
 The consumer skill also names feedback as a loading trigger and links to `{BASE}/feedback.md`.
