@@ -135,8 +135,8 @@ def linkedin_url(v: Any) -> str | None:
     v = v.strip()
     if v.startswith("http"):
         return v
-    if "linkedin.com/" in v:
-        return f"https://{v.lstrip('/')}"
+    if re.match(r"^(?:[a-z]{2,3}\.)?(?:www\.)?linkedin\.com/", v, re.I):  # anchored: the HOST is linkedin, not a path that mentions it
+        return f"https://{v}"
     return f"https://www.linkedin.com/in/{v.strip('/')}"
 
 

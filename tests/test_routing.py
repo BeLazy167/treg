@@ -2385,3 +2385,10 @@ def test_linkedin_url_is_normalised_once_for_every_adapter():
     assert variant == ("linkedin_url",)
     assert ident["linkedin_url"] == "https://linkedin.com/in/patrickcollison"
     assert ident["linkedin_handle"] == "patrickcollison"
+
+
+def test_linkedin_url_only_trusts_a_linkedin_host():
+    from treg.domain.catalog.routing import paths as P
+    # a path that merely mentions linkedin.com is a handle-shaped string, never promoted to that host
+    assert P.linkedin_url("evil.example/?linkedin.com/in/x") == "https://www.linkedin.com/in/evil.example/?linkedin.com/in/x"
+    assert P.linkedin_url("uk.linkedin.com/in/x") == "https://uk.linkedin.com/in/x"
