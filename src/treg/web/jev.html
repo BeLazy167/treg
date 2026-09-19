@@ -579,7 +579,7 @@
   /* slide 1 race */
   .ig-q1 { font-size: 14px; color: var(--ink); background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; margin-bottom: 12px; }
   .ig-qlab { font-family: var(--mono); font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin-right: 10px; }
-  .ig-opts { display: block; font-family: var(--mono); font-size: 11px; color: var(--muted); margin-top: 4px; }
+  .ig-opts { display: block; font-size: 13.5px; color: var(--ink); margin-top: 6px; }
   .ig-bubble { min-height: 150px; }
   .ig-bubble .cur { display: inline-block; width: 2px; height: 1em; background: var(--ink); vertical-align: -2px; margin-left: 1px; animation: blink 1s steps(2) infinite; }
   .ig-bubble.done .cur { display: none; }
@@ -1091,10 +1091,10 @@
     <button class="dk-arrow prev" id="dk-prev" aria-label="Previous slide"><svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
     <div class="dk-view"><div class="dk-track" id="dk-track">
 
-      <article class="slide"><div class="sl-l"><span class="sl-n">1 / 7</span><h3>jev predicts probabilities, not text</h3><p>Ask a chat model and it <em>writes</em> an answer, one token after another, which your code then has to read. Ask jev and every option you named gets a probability, all at once, summing to one.</p><p class="sl-note">The numbers are the answer. Your code compares them to a threshold; nothing is parsed, nothing can be made up outside your list.</p><button class="pill sm" type="button" id="ig-replay1"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg> Play again</button></div>
-        <div class="sl-r"><div class="ig-q1"><span class="ig-qlab">question</span>Is this X post a product launch we should study? <span class="ig-opts">inspiring_launch · launch_other · not_a_launch</span></div><div class="ig-vs">
+      <article class="slide"><div class="sl-l"><span class="sl-n">1 / 7</span><h3>jev predicts probabilities, not text</h3><p>Ask a chat model and it <em>writes</em> an answer, one token after another, which your code then has to read. Ask jev and every option you named gets a probability, all at once, summing to one. Same message, same question:</p><p class="sl-note">The numbers are the answer. Your code compares them to a threshold; nothing is parsed, nothing can be made up outside your list.</p><button class="pill sm" type="button" id="ig-replay1"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg> Play again</button></div>
+        <div class="sl-r"><div class="ig-q1"><span class="ig-qlab">state</span>"Our API integration started returning 500 errors on every request about 20 minutes ago, and we can't process any customer orders until this is fixed."<span class="ig-opts"><span class="ig-qlab">question</span>Which team should handle this: billing, technical or sales?</span></div><div class="ig-vs">
           <div class="ig-col llm"><div class="ig-lab">chat model</div><div class="ig-bubble" id="ig-llm"><span class="cur"></span></div><div class="ig-time" id="ig-llm-time">0.0 s</div><div class="ig-foot" id="ig-llm-foot">writing…</div></div>
-          <div class="ig-col jev"><div class="ig-lab"><img class="lg" src="logos/jev.png" alt=""> jev</div><div class="ig-bars"><div class="ig-bar g"><span class="k">inspiring_launch</span><span class="tr"><i style="--w:94%"></i></span><span class="v">0.94</span></div><div class="ig-bar "><span class="k">launch_other</span><span class="tr"><i style="--w:5%"></i></span><span class="v">0.05</span></div><div class="ig-bar "><span class="k">not_a_launch</span><span class="tr"><i style="--w:1%"></i></span><span class="v">0.01</span></div></div><div class="ig-time g" id="ig-jev-time">0.4 s</div><div class="ig-foot" id="ig-jev-foot">0 output tokens · confidence 0.92</div></div>
+          <div class="ig-col jev"><div class="ig-lab"><img class="lg" src="logos/jev.png" alt=""> jev</div><div class="ig-bars"><div class="ig-bar g"><span class="k">technical</span><span class="tr"><i style="--w:100%"></i></span><span class="v">1.00</span></div><div class="ig-bar "><span class="k">billing</span><span class="tr"><i style="--w:0%"></i></span><span class="v">0.00</span></div><div class="ig-bar "><span class="k">sales</span><span class="tr"><i style="--w:0%"></i></span><span class="v">0.00</span></div></div><div class="ig-time g" id="ig-jev-time">0.38 s</div><div class="ig-foot" id="ig-jev-foot">0 output tokens · confidence 1.00 · $0.000018</div></div>
         </div></div></article>
 
       <article class="slide"><div class="sl-l"><span class="sl-n">2 / 7</span><h3>How a call works</h3><p>One HTTP request. You send a <b>state</b>, any JSON or text you want judged, and a set of <b>questions</b>, each with the answers you would accept. jev sends back one answer per question, keyed by the names you chose.</p><p class="sl-note">That is the whole API. No prompt engineering, no output schema to coerce, no retries for malformed JSON.</p></div>
@@ -1412,7 +1412,7 @@ document.querySelectorAll('.expand-all[data-wrap]').forEach(b => b.onclick = () 
   [...dots.children].forEach((d, k) => d.onclick = () => go(k));
 
   // slide 1: the chat model types, jev lands at once
-  const LLM_TEXT = 'This appears to be a product launch announcement. The author introduces a new agent marketplace and encourages users to try it, which suggests it is likely a launch, though it could also be read as a general product update…';
+  const LLM_TEXT = 'This message describes an API integration that has started returning 500 errors and is blocking order processing, so it is a technical issue rather than a billing or sales question. I would route it to the technical team, and given the customer cannot process orders it should be treated as urgent.';
   let raceTimer = null;
   const race = () => {
     clearTimeout(raceTimer);
@@ -1420,7 +1420,7 @@ document.querySelectorAll('.expand-all[data-wrap]').forEach(b => b.onclick = () 
     bub.classList.remove('done'); bub.innerHTML = '<span class="cur"></span>'; foot.textContent = 'writing…'; $('ig-llm-time').textContent = '0.0 s'; jevCol.classList.remove('land');
     const words = LLM_TEXT.split(' '); let n = 0; const t0 = performance.now();
     setTimeout(() => jevCol.classList.add('land'), 400);
-    const step = () => { if (n >= words.length) { bub.classList.add('done'); foot.textContent = '78 output tokens · then you parse it'; $('ig-llm-time').textContent = '2.5 s'; return; } bub.insertBefore(document.createTextNode((n ? ' ' : '') + words[n]), bub.lastChild); n++; foot.textContent = 'writing…'; $('ig-llm-time').textContent = `${((performance.now() - t0) / 1000).toFixed(1)} s`; raceTimer = setTimeout(step, 55 + Math.random() * 40); };
+    const step = () => { if (n >= words.length) { bub.classList.add('done'); foot.textContent = '85 output tokens · then you parse it · $0.000127'; $('ig-llm-time').textContent = '2.7 s'; return; } bub.insertBefore(document.createTextNode((n ? ' ' : '') + words[n]), bub.lastChild); n++; foot.textContent = 'writing…'; $('ig-llm-time').textContent = `${((performance.now() - t0) / 1000).toFixed(1)} s`; raceTimer = setTimeout(step, 55 + Math.random() * 40); };
     raceTimer = setTimeout(step, 250);
   };
   $('ig-replay1').onclick = race;
