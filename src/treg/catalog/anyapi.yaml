@@ -49,7 +49,6 @@ pricing_url: https://getanyapi.com/catalog
 proposed_capabilities:
   google.maps.reviews: List the Google Maps reviews of a place
   google.serp.ai_overview: Get the AI Overview panel Google shows above a search result
-  linkedin.email.work.find: Find work email from a LinkedIn profile, optionally with phone
 endpoints:
 - id: anyapi.x.search.posts
   capability: x.search.posts
@@ -1823,8 +1822,8 @@ endpoints:
     estimate. A request no source could serve is not charged. Send the `max_cost_usd` query parameter
     to refuse any source dearer than a price you name.'
 - id: anyapi.linkedin.email.work.find
-  capability: linkedin.email.work.find
-  platform: linkedin
+  capability: people.email.find
+  platform: people
   scope: any_account
   kind: data
   method: POST
