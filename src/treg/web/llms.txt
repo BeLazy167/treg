@@ -419,9 +419,15 @@ by job, with prices, and {BASE}/agents/chatgpt.md is the same page as Markdown.
 treg is also an **MCP server** at `{BASE}/mcp/`, two ways to authenticate it:
 
 - **Header (headless, no browser):** `treg mcp install` registers it into every supported agent
-  (Claude Code at user scope, Cursor, opencode) with your token as an `Authorization: Bearer` header
-  — this is what the one-shot installer above runs for you. treg 200s a valid header, so the client
-  uses it directly and never falls back to OAuth.
+  (Claude Code at user scope, Cursor, opencode, Codex) with your token as an `Authorization: Bearer`
+  header — this is what the one-shot installer above runs for you. treg 200s a valid header, so the
+  client uses it directly and never falls back to OAuth. Codex specifically: the token goes INLINE
+  in `~/.codex/config.toml`, never via `bearer_token_env_var` — an env var set in one shell is gone
+  when the Codex app restarts, and Codex then drops the server without a word:
+
+      [mcp_servers.treg]
+      url = "{BASE}/mcp/"
+      http_headers = { "Authorization" = "Bearer <token>" }
 - **OAuth (click to connect):** any client that speaks the MCP authorization spec — ChatGPT, Claude
   Code, Cursor — can instead connect with a link + consent screen. Choose **OAuth** when the client
   asks; the token is issued to the team you pick.

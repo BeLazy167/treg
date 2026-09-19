@@ -369,3 +369,65 @@ def test_is_transient_network_error_detects_ssl_and_connection_errors():
     assert cli._is_transient_network_error(Exception("SSL: WRONG_VERSION_NUMBER"))
     assert not cli._is_transient_network_error(ValueError("bad value"))
     assert not cli._is_transient_network_error(KeyError("missing key"))
+
+
+# ---- Codex: TOML, inline header ------------------------------------------------------------------
+
+def _codex_install(tmp_path, monkeypatch, existing: str | None, token="TESTKEY"):
+    monkeypatch.setattr(mcp_install, "HOME", tmp_path)
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / ".config"))
+    (tmp_path / ".codex").mkdir()
+    if existing is not None:
+        (tmp_path / ".codex" / "config.toml").write_text(existing)
+    out = mcp_install.install_mcp(base_url="https://treg.to", token=token, only=["codex"])
+    return out, (tmp_path / ".codex" / "config.toml")
+
+
+def test_codex_writes_inline_header_table_not_an_env_var(tmp_path, monkeypatch):
+    """The whole point: `http_headers` inline, never `bearer_token_env_var` — a token handed to Codex
+    by env-var reference vanishes on the next app restart and Codex silently drops every treg tool."""
+    import tomllib
+    out, cfg = _codex_install(tmp_path, monkeypatch, existing=None)
+    assert out["results"] == [("Codex", "ok", str(cfg))] and out["manual"] == [], out
+    data = tomllib.loads(cfg.read_text())
+    assert data["mcp_servers"]["treg"] == {
+        "url": "https://treg.to/mcp/", "http_headers": {"Authorization": "Bearer TESTKEY"}}
+    assert "bearer_token_env_var" not in cfg.read_text()
+    if os.name != "nt":
+        assert cfg.stat().st_mode & 0o777 == 0o600
+
+
+def test_codex_replaces_a_stale_env_var_table_and_keeps_the_rest(tmp_path, monkeypatch):
+    """A config an agent wrote from the OLD how-to (bearer_token_env_var) is replaced in place; every
+    other table — before and after ours, including the sub-table style — survives byte-for-byte."""
+    import tomllib
+    before = ('model = "gpt-5"\n\n[mcp_servers.figma]\nurl = "https://mcp.figma.com/mcp"\n\n'
+              '[mcp_servers.treg]\nurl = "https://treg.to/mcp/"\nbearer_token_env_var = "TREG_TOKEN"\n\n'
+              '[mcp_servers.node_repl]\ncommand = "node_repl"\n\n[mcp_servers.node_repl.env]\nX = "1"\n')
+    out, cfg = _codex_install(tmp_path, monkeypatch, existing=before, token="NEWKEY")
+    assert out["results"][0][1] == "ok", out
+    data = tomllib.loads(cfg.read_text())
+    assert data["model"] == "gpt-5"
+    assert data["mcp_servers"]["figma"] == {"url": "https://mcp.figma.com/mcp"}
+    assert data["mcp_servers"]["node_repl"] == {"command": "node_repl", "env": {"X": "1"}}
+    assert data["mcp_servers"]["treg"] == {
+        "url": "https://treg.to/mcp/", "http_headers": {"Authorization": "Bearer NEWKEY"}}
+    assert cfg.read_text().count("[mcp_servers.treg]") == 1
+    # idempotent
+    mcp_install.install_mcp(base_url="https://treg.to", token="NEWKEY", only=["codex"])
+    assert cfg.read_text().count("[mcp_servers.treg]") == 1
+
+
+def test_codex_refuses_to_touch_a_config_it_cannot_prove_correct(tmp_path, monkeypatch):
+    """Unparseable TOML, or a hand-written `[mcp_servers.treg.http_headers]` sub-table that would
+    collide with our inline map: report an error and leave the file exactly as it was."""
+    broken = 'model = "gpt-5"\n[mcp_servers.treg\nurl = "x"\n'
+    out, cfg = _codex_install(tmp_path, monkeypatch, existing=broken)
+    assert out["results"][0][1] == "error" and cfg.read_text() == broken
+
+    subtable = ('[mcp_servers.treg]\nurl = "https://treg.to/mcp/"\n\n'
+                '[mcp_servers.treg.http_headers]\nAuthorization = "Bearer OLD"\n')
+    (tmp_path / ".codex" / "config.toml").write_text(subtable)
+    out = mcp_install.install_mcp(base_url="https://treg.to", token="NEW", only=["codex"])
+    assert out["results"][0][1] == "error", out
+    assert cfg.read_text() == subtable
