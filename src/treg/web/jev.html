@@ -85,6 +85,7 @@
 
   /* recipe layout: prompt on the left, what it does on the right */
   #recipes .wrap { max-width: 1440px; }
+  #recipes { scroll-margin-top: 86px; }
   .tabs { display: flex; justify-content: center; gap: 4px; padding: 5px; margin: 0 auto 26px; width: max-content; max-width: 100%; border: 1px solid var(--line); border-radius: 999px; background: #fff; box-shadow: 0 2px 8px rgba(24,36,28,.03); }
   .tabs button { font: inherit; font-size: 14px; font-weight: 500; display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 11px 22px; border-radius: 999px; border: 0; background: transparent; color: var(--muted); cursor: pointer; white-space: nowrap; transition: background .15s, color .15s; }
   .tabs button svg { width: 17px; height: 17px; flex-shrink: 0; }
@@ -539,6 +540,73 @@
   .faq details[open] summary::after { transform: rotate(45deg); }
   .faq p { margin: 0 4px 16px; color: #43413E; font-size: 15px; line-height: 1.6; }
   .faq code { font-family: var(--mono); font-size: 12.5px; background: var(--card); padding: 1px 5px; border-radius: 5px; }
+
+
+  /* ---- phone pass ---- */
+  @media (max-width: 640px) {
+    html, body { overflow-x: hidden; }
+    .wrap, #recipes .wrap { padding: 0 12px; }
+    .hero { padding: 120px 16px 30px; }
+    .hero h1 { font-size: clamp(34px, 10vw, 44px); }
+    .hero p.sub { font-size: 15.5px; }
+    .demo { padding: 10px; border-radius: 16px; }
+    .demo .dh { padding: 2px 2px 10px; }
+    .demo .dh h3.flow { font-size: 15px; gap: 6px; }
+    .demo .receipt { gap: 8px 12px; font-size: 10.5px; }
+    .demo .acts { flex-wrap: wrap; }
+    .demo-body > *, .sig-grid > *, .tri-body > *, .board > *, .stage-in > * { min-width: 0; }
+    .demo-side { width: 100%; }
+    .pbtn .agents img { width: 16px; height: 16px; }
+    .setup-strip { padding: 12px 4px 2px; font-size: 14px; }
+    .setup-strip .pbtn.big { font-size: 13.5px; padding: 10px 14px; white-space: nowrap; }
+    .setup-strip.has-aux .mid { flex-direction: column; gap: 8px; }
+    .judge { padding: 4px 4px 4px 12px; } .judge input { font-size: 12px; }
+    .post .why { grid-template-columns: repeat(3, 1fr); white-space: normal; }
+    .xtopics { font-size: 12px; }
+    .xs { grid-template-columns: 40px minmax(0,1fr); }
+    .kv { grid-template-columns: auto minmax(0,1fr); } .kv .v { white-space: normal; }
+    .ev { grid-template-columns: 1fr; }
+    .tl { height: 60px; } .axis span:nth-child(even) { visibility: hidden; }
+    .qh { grid-template-columns: 26px auto auto; } .qh .d { display: none; }
+    .row .why { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .row .fig { font-size: 10px; }
+    .lead { grid-template-columns: 34px 26px minmax(0,1fr); } .lead .fig { display: none; }
+    .lead .e .mail { display: none; }
+    .sig-grid > .panel:last-child { position: static; }
+    .stage-post { padding: 6px; } .stage-post .embed iframe { zoom: .78; }
+    .ss { grid-template-columns: 56px minmax(0,1fr) 18px; }
+    .stage-verdict .big { font-size: 18px; }
+    .build .pgrid { grid-template-columns: 1fr; }
+    .build .more-cta { position: static; transform: none; margin: 12px auto 0; padding: 18px; }
+    .build .more-cta .t { font-size: 18px; }
+    .build .morewrap { max-height: none; }
+    .build .morein { max-height: 380px; overflow: hidden; }
+    .prims-in { grid-template-columns: 1fr; }
+    .slide { padding: 18px 14px; gap: 16px; } .slide h3 { font-size: 20px; } .slide p { font-size: 14px; }
+    .sl-r pre { font-size: 11px; padding: 12px; }
+    .g-row { grid-template-columns: 78px minmax(0,1fr) 84px; font-size: 10.5px; }
+    .lp-step { min-width: 0; padding: 12px 10px; }
+    .dk-arrow { width: 32px; height: 32px; }
+    .bill-right .bb { font-size: 44px; }
+    .faq summary { font-size: 15.5px; }
+    .close-cta h2.unleash { font-size: 26px; }
+    .bigfoot-in { gap: 24px; } .bf-cols { gap: 24px; }
+  }
+
+
+  @media (max-width: 640px) {
+    .tabs { width: 100%; padding: 4px; gap: 2px; } .tabs button { flex: 1 1 0; min-width: 0; padding: 9px 4px; font-size: 11.5px; white-space: normal; line-height: 1.15; }
+    .demo .dh { display: flex; flex-direction: column; align-items: stretch; gap: 10px; }
+    .demo .dh > div:first-child { min-width: 0; }
+    .demo .dh h3.flow { display: block; font-size: 15px; line-height: 1.5; }
+    .demo .dh h3.flow span { display: inline; white-space: nowrap; } .demo .dh h3.flow .lg { width: 16px; height: 16px; vertical-align: -3px; } .demo .dh h3.flow i { margin: 0 4px; } .demo .dh h3.flow em { display: block; margin: 2px 0 0; }
+    .demo .receipt { display: block; line-height: 1.7; white-space: normal; } .demo .receipt > span { display: inline; margin-right: 10px; white-space: normal; }
+    .demo .dh > div:first-child, .demo .receipt { overflow: hidden; }
+    .demo .acts { justify-content: flex-start; gap: 6px; }
+    .demo .acts .pill.sm { padding: 7px 10px; font-size: 12px; }
+    .pop { position: fixed; top: 50%; left: 50%; right: auto; transform: translate(-50%, -50%); width: calc(100vw - 24px); z-index: 130; }
+    .stage-post .embed iframe { zoom: 1; } .stage-in { gap: 10px; }
+  }
 
   /* closing */
   .close-cta { text-align: center; padding: 30px 24px 0; }
@@ -1161,6 +1229,7 @@ const navTabsTick = () => { const r = tabsBar.getBoundingClientRect(), sec = rec
 addEventListener('scroll', navTabsTick, { passive: true }); navTabsTick();
 addEventListener('hashchange', () => { const id = location.hash.slice(1); if (TABS.includes(id)) { showTab(id); $('recipes').scrollIntoView(); } });
 showTab(location.hash.slice(1));
+if (TABS.includes(location.hash.slice(1))) { if ('scrollRestoration' in history) history.scrollRestoration = 'manual'; const land = () => $('recipes').scrollIntoView(); requestAnimationFrame(land); addEventListener('load', () => setTimeout(land, 50)); }
 document.querySelectorAll('a[href^="#"]').forEach(a => a.addEventListener('click', e => { const id = a.getAttribute('href').slice(1); if (TABS.includes(id)) { e.preventDefault(); showTab(id, true); $('recipes').scrollIntoView({ behavior: reduced ? 'auto' : 'smooth' }); } }));
 
 /* prompt dropdowns */
