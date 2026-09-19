@@ -132,7 +132,11 @@
   .demo-side { display: flex; flex-direction: column; gap: 10px; }
   .board { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 10px; }
   .board.irr-open { grid-template-columns: repeat(3, minmax(0,1fr)); }
-  .board:not(.irr-open) .kcol.irrelevant { display: none; }
+  .board.live { grid-template-columns: repeat(3, minmax(0,1fr)); } .board.live.irr-open { grid-template-columns: repeat(4, minmax(0,1fr)); }
+  .board:not(.irr-open) .kcol.irrelevant { display: none; } .board:not(.live) .kcol.inbox { display: none; }
+  .kcol.inbox { --c: var(--blue); }
+  .post .tags .queued { background: var(--card); color: var(--muted); } .post .tags .reading { background: var(--blue-soft); color: var(--blue); } .post .tags .reading::after { content: ''; display: inline-block; width: 0; animation: dots .8s steps(4,end) infinite; }
+  @keyframes dots { to { width: 1.2em; } }
   @media (max-width: 860px) { .board, .board.irr-open { grid-template-columns: 1fr; } }
   .tally { display: grid; gap: 6px; margin-top: 8px; }
   .tv { border: 1px solid var(--line); border-left: 4px solid var(--c); background: var(--card); border-radius: 0 10px 10px 0; padding: 8px 10px; display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 8px; text-align: left; font: inherit; color: inherit; cursor: default; }
@@ -317,7 +321,7 @@
     </div>
 <div class="tab" id="xboost">
     <div class="demo" id="xb-demo">
-      <div class="dh"><div><h3>Launch posts on X, last 24h</h3><div class="receipt" id="xb-receipt">loading the latest run…</div></div><div class="acts"><div class="pwrap"><button class="pill sm pbtn" aria-expanded="false" aria-controls="pop-xboost">Prompt for <span class="agents"><img src="media/people-search/claude-code.png" alt="Claude Code"><img src="media/people-search/codex.png" alt="Codex"><img src="media/people-search/openclaw.png" alt="OpenClaw"><img src="media/people-search/hermes.png" alt="Hermes"></span> <i>▾</i></button>
+      <div class="dh"><div><h3>Launch posts on X, last 24h</h3><div class="receipt" id="xb-receipt">loading the latest run…</div></div><div class="acts"><button class="pill sm" id="xb-replay">Replay the run</button><button class="pill sm" id="xb-stop" hidden>Stop</button><div class="pwrap"><button class="pill sm pbtn" aria-expanded="false" aria-controls="pop-xboost">Prompt for <span class="agents"><img src="media/people-search/claude-code.png" alt="Claude Code"><img src="media/people-search/codex.png" alt="Codex"><img src="media/people-search/openclaw.png" alt="OpenClaw"><img src="media/people-search/hermes.png" alt="Hermes"></span> <i>▾</i></button>
           <div class="pop" id="pop-xboost" hidden><div class="ph"><span>Paste into your agent</span><button class="pill sm" data-copy="p-xboost">Copy prompt</button></div><pre id="p-xboost">Build me a daily "launch radar" for X and a page to browse it.
 
 <b>Setup</b>
@@ -369,6 +373,7 @@
         <div class="panel"><div class="lbl"><span>search phrases</span></div><div class="xtopics" id="xb-topics"></div></div>
       </aside>
       <div class="board" id="xb-board">
+        <div class="kcol inbox"><div class="kh"><span><span class="t">Inbox</span><span class="d">top posts from search, waiting for jev</span></span><span class="n" id="xb-n-inbox">0</span></div><div class="kb" id="xb-kb-inbox"></div></div>
         <div class="kcol organic"><div class="kh"><span><span class="t">Organic launch</span><span class="d">reach earned, study these</span></span><span class="n" id="xb-n-organic">0</span></div><div class="kb" id="xb-kb-organic"></div></div>
         <div class="kcol paid"><div class="kh"><span><span class="t">Paid launch</span><span class="d">reach bought, engagement thin</span></span><span class="n" id="xb-n-paid">0</span></div><div class="kb" id="xb-kb-paid"></div></div>
         <div class="kcol irrelevant"><div class="kh"><span><span class="t">Irrelevant</span><span class="d">not a launch, or not our space</span></span><span class="n" id="xb-n-irrelevant">0</span></div><div class="kb" id="xb-kb-irrelevant"></div></div>
@@ -590,6 +595,45 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape' && !drawer.hi
       <div class="sec4"><h4><span>jev · is it organic?</span><span class="w">probability ${(+p.is_organic).toFixed(2)}</span></h4>${Object.entries(p.authenticity_probs).map(([k,v]) => `<div class="prob"><span class="k">${AUTH[k]}</span><span class="bar"><i style="width:${Math.round(v*100)}%"></i></span><span class="p">${(+v).toFixed(2)}</span></div>`).join('')}</div>`,
       () => btn.setAttribute('aria-pressed','false'));
   }
+  let timer = null, live = false;
+  const tagsFor = p => `${p.manual?'<span class="manual">you asked</span>':''}<span class="${p.distribution}">${DIST[p.distribution]} ${(+p.distribution_probs[p.distribution]).toFixed(2)}</span><span>authenticity ${(+p.authenticity).toFixed(1)} / 3</span>${LTYPE[p.launch_type]&&LANE(p)!=='irrelevant'?`<span>${LTYPE[p.launch_type]}</span>`:''}`;
+  // replay: every card starts in the inbox, jev reads one at a time and a ghost flies it into its lane
+  function fly(btn, target) {
+    const first = btn.getBoundingClientRect(); target.appendChild(btn); target.scrollTop = target.scrollHeight;
+    if (reduced) return;
+    const last = btn.getBoundingClientRect(), ghost = btn.cloneNode(true);
+    Object.assign(ghost.style, {position:'fixed', left:first.left+'px', top:first.top+'px', width:first.width+'px', margin:0, zIndex:50, pointerEvents:'none', boxShadow:'0 14px 34px rgba(0,0,0,.28)'});
+    ghost.classList.remove('scanning'); document.body.appendChild(ghost); btn.style.visibility = 'hidden';
+    ghost.animate([{transform:'none'}, {transform:`translate(${last.left-first.left}px,${last.top-first.top}px)`}], {duration:460, easing:'cubic-bezier(.2,.8,.2,1)'}).onfinish = () => { ghost.remove(); btn.style.visibility = ''; };
+  }
+  function replay() {
+    stop(); live = true; $('xb-board').classList.add('live'); $('xb-replay').hidden = true; $('xb-stop').hidden = false; drawer.hidden = true;
+    const order = posts.filter(p => !p.manual);
+    ['organic','paid','irrelevant'].forEach(l => $('xb-kb-' + l).innerHTML = '');
+    $('xb-kb-inbox').innerHTML = '';
+    order.forEach(p => { $('xb-kb-inbox').insertAdjacentHTML('beforeend', card(p)); const b = $('xb-kb-inbox').lastElementChild; b.querySelector('.tags').innerHTML = '<span class="queued">queued</span>'; b.onclick = () => {}; });
+    counts([]); $('xb-n-inbox').textContent = order.length;
+    let i = 0;
+    const tick = () => {
+      if (i >= order.length) { stop(); return; }
+      const p = order[i], btn = $('xb-kb-inbox').querySelector(`.post[data-id="${CSS.escape(p.id)}"]`);
+      btn.classList.add('scanning'); btn.querySelector('.tags').innerHTML = '<span class="reading">jev · reading</span>';
+      btn.scrollIntoView({block:'center', behavior: reduced ? 'auto' : 'smooth'});
+      timer = setTimeout(() => {
+        btn.classList.remove('scanning'); btn.querySelector('.tags').innerHTML = tagsFor(p);
+        fly(btn, $('xb-kb-' + LANE(p))); btn.onclick = () => inspect(p, btn);
+        i++; counts(order.slice(0, i)); $('xb-n-inbox').textContent = $('xb-kb-inbox').children.length; timer = setTimeout(tick, 140);
+      }, 320);
+    };
+    timer = setTimeout(tick, 400);
+  }
+  function stop() {
+    clearTimeout(timer); timer = null; if (!live) return; live = false;
+    $('xb-board').classList.remove('live'); $('xb-replay').hidden = false; $('xb-stop').hidden = true;
+    if (RUN) render();
+    ['organic','paid','irrelevant'].forEach(l => $('xb-kb-' + l).scrollTo({top:0}));
+  }
+  $('xb-replay').onclick = replay; $('xb-stop').onclick = stop;
   function place(p, prepend) {
     const kb = $('xb-kb-' + LANE(p));
     kb.insertAdjacentHTML(prepend ? 'afterbegin' : 'beforeend', card(p));
@@ -598,22 +642,22 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape' && !drawer.hi
     return btn;
   }
   let irrOpen = false;
-  function counts() {
-    const n = {organic:0, paid:0, irrelevant:0}; posts.forEach(p => n[LANE(p)]++);
+  function counts(subset) {
+    const seen = subset || posts, n = {organic:0, paid:0, irrelevant:0}; seen.forEach(p => n[LANE(p)]++);
     for (const l in n) $('xb-n-' + l).textContent = n[l];
-    const other = posts.filter(p => p.relevance === 'launch_other').length, nota = posts.filter(p => p.relevance === 'not_a_launch').length;
-    $('xb-tallymeta').textContent = `${posts.length} posts`;
+    const other = seen.filter(p => p.relevance === 'launch_other').length, nota = seen.filter(p => p.relevance === 'not_a_launch').length;
+    $('xb-tallymeta').textContent = subset ? `${seen.length} of ${posts.length} sorted` : `${posts.length} posts`;
     $('xb-stack').innerHTML = `<i class="organic" style="width:${100*n.organic/Math.max(1,posts.length)}%"></i><i class="paid" style="width:${100*n.paid/Math.max(1,posts.length)}%"></i>`;
     $('xb-tallybox').innerHTML = `<div class="tv organic"><div><div class="t">organic launch</div><div class="d">earned reach, worth studying</div></div><div class="n">${n.organic}</div></div>
       <div class="tv paid"><div><div class="t">paid launch</div><div class="d">views bought, engagement thin</div></div><div class="n">${n.paid}</div></div>
       <button class="tv irrelevant" id="xb-irr"><div><div class="t">irrelevant</div><div class="d">${other} other launches · ${nota} not launches · <span class="tog">${irrOpen ? 'hide' : 'show'}</span></div></div><div class="n">${n.irrelevant}</div></button>`;
-    $('xb-irr').onclick = () => { irrOpen = !irrOpen; $('xb-board').classList.toggle('irr-open', irrOpen); counts(); };
+    $('xb-irr').onclick = () => { irrOpen = !irrOpen; $('xb-board').classList.toggle('irr-open', irrOpen); counts(subset); };
     $('xb-board').classList.toggle('irr-open', irrOpen);
-    const c = RUN.calls || {}, judged = (RUN.posts || []).length;
+    const c = RUN.calls || {}, judged = subset ? seen.length : (RUN.posts || []).length;
     $('xb-steps').innerHTML = [[`search × ${c.search||0}`, 'treg', '', `${RUN.posts_found ?? judged} posts <24h`], [`profiles × ${c.profile||0}`, 'treg', '', 'followers, verified'], [`reply samples × ${c.replies||0}`, 'treg', '', 'first 20 replies'], [`judge × ${judged}`, 'jev', 'jev', '5 questions per post']]
       .map(([a, w, cls, d]) => `<span>${a}</span><span class="who ${cls}">${w}</span><b>${d}</b>`).join('');
     const cost = RUN.costs || {};
-    $('xb-spend').innerHTML = `<div class="jev"><small>jev · list price</small>${fmt$(cost.jev||0)}</div><div><small>treg spend</small>${fmt$(cost.treg||0)}</div>`;
+    $('xb-spend').innerHTML = `<div class="jev"><small>jev · list price</small>${fmt$(subset ? seen.reduce((a,p)=>a+(p.jev_cost||0),0) : (cost.jev||0))}</div><div><small>treg spend</small>${fmt$(cost.treg||0)}</div>`;
     $('xb-topics').innerHTML = (RUN.topics || []).map(t => `<span>${esc(t)}</span><span class="v">${(RUN.posts||[]).filter(p => p.topic === t).length} in top ${judged}</span>`).join('');
   }
   function render() {
