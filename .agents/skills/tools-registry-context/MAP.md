@@ -31,9 +31,10 @@ Regenerate via `scripts/build-map.py`.
 | `scripts/backfill_call_archive_links.py` | architecture/archive.md |
 | `scripts/build_plugin.py` | interface/skill.md |
 | `scripts/catalog_drift.py` | architecture/catalog.md |
-| `scripts/catalog_ingest.py` | architecture/catalog.md, architecture/instagram-oauth.md |
+| `scripts/catalog_ingest.py` | architecture/anyapi.md, architecture/catalog.md, architecture/instagram-oauth.md |
 | `scripts/catalog_validate.py` | architecture/catalog.md, architecture/harvestapi.md |
 | `scripts/contactout_overflow_verify.py` | architecture/contactout.md |
+| `scripts/data/anyapi_measured_charges.json` | architecture/anyapi.md |
 | `scripts/dev-local.sh` | ops/deploy.md |
 | `scripts/dump_surface.py` | architecture/composition.md |
 | `scripts/import_arena_verification.py` | interface/enrich-arena.md |
@@ -125,10 +126,12 @@ Regenerate via `scripts/build-map.py`.
 | `src/treg/bootstrap_http.py` | architecture/composition.md, interface/api.md |
 | `src/treg/call_surface.py` | architecture/composition.md, architecture/proxy-model.md, interface/api.md |
 | `src/treg/caller_metadata.py` | architecture/multi-tenancy.md, interface/api.md |
-| `src/treg/catalog/adapters.yaml` | architecture/aiark.md, architecture/bounceban.md, architecture/catalog.md, architecture/contactout.md, architecture/datagma.md, architecture/dropleads.md, architecture/harvestapi.md, architecture/limadata.md, architecture/moltsets.md, architecture/openmart.md, architecture/prospeo.md, architecture/scrubby.md, architecture/wiza.md, architecture/zerobounce.md |
+| `src/treg/catalog/adapters.yaml` | architecture/aiark.md, architecture/anyapi.md, architecture/bounceban.md, architecture/catalog.md, architecture/contactout.md, architecture/datagma.md, architecture/dropleads.md, architecture/harvestapi.md, architecture/limadata.md, architecture/moltsets.md, architecture/openmart.md, architecture/prospeo.md, architecture/scrubby.md, architecture/wiza.md, architecture/zerobounce.md |
 | `src/treg/catalog/aiark.yaml` | architecture/aiark.md |
 | `src/treg/catalog/akta.extended.yaml` | architecture/catalog.md |
 | `src/treg/catalog/aliases.yaml` | architecture/catalog.md |
+| `src/treg/catalog/anyapi.extended.yaml` | architecture/anyapi.md |
+| `src/treg/catalog/anyapi.yaml` | architecture/anyapi.md |
 | `src/treg/catalog/apify.yaml` | architecture/catalog.md |
 | `src/treg/catalog/aviato.yaml` | architecture/catalog.md |
 | `src/treg/catalog/bounceban.yaml` | architecture/bounceban.md |
@@ -419,7 +422,7 @@ Regenerate via `scripts/build-map.py`.
 | `src/treg/cli.py` | architecture/instagram-oauth.md, interface/cli.md, interface/onboarding.md, interface/shell.md |
 | `src/treg/cli_analytics.py` | interface/cli.md |
 | `src/treg/client_identity.py` | architecture/import-boundaries.md, architecture/proxy-model.md, interface/api.md |
-| `src/treg/config.py` | architecture/aiark.md, architecture/archive.md, architecture/auth-secrets.md, architecture/bounceban.md, architecture/datagma.md, architecture/dropleads.md, architecture/feedback.md, architecture/getleadsio.md, architecture/harvestapi.md, architecture/limadata.md, architecture/moltsets.md, architecture/openmart.md, architecture/prospeo.md, architecture/scrubby.md, architecture/super-admin.md, architecture/wiza.md, architecture/zerobounce.md, guides/expanding-a-category.md, ops/deploy.md |
+| `src/treg/config.py` | architecture/aiark.md, architecture/anyapi.md, architecture/archive.md, architecture/auth-secrets.md, architecture/bounceban.md, architecture/datagma.md, architecture/dropleads.md, architecture/feedback.md, architecture/getleadsio.md, architecture/harvestapi.md, architecture/limadata.md, architecture/moltsets.md, architecture/openmart.md, architecture/prospeo.md, architecture/scrubby.md, architecture/super-admin.md, architecture/wiza.md, architecture/zerobounce.md, guides/expanding-a-category.md, ops/deploy.md |
 | `src/treg/convert.py` | interface/cli.md |
 | `src/treg/crypto.py` | architecture/auth-secrets.md |
 | `src/treg/domain/__init__.py` | architecture/import-boundaries.md |
@@ -504,7 +507,7 @@ Regenerate via `scripts/build-map.py`.
 | `src/treg/mcp_install.py` | interface/skill.md |
 | `src/treg/models.py` | architecture/data-model.md, architecture/media.md, architecture/money.md, architecture/multi-tenancy.md, interface/enrich-arena.md |
 | `src/treg/oauth.py` | architecture/auth-secrets.md |
-| `src/treg/oauth_providers.py` | architecture/aiark.md, architecture/auth-secrets.md, architecture/bounceban.md, architecture/datagma.md, architecture/dropleads.md, architecture/getleadsio.md, architecture/harvestapi.md, architecture/limadata.md, architecture/moltsets.md, architecture/openmart.md, architecture/prospeo.md, architecture/scrubby.md, architecture/wiza.md, architecture/zerobounce.md, guides/expanding-a-category.md |
+| `src/treg/oauth_providers.py` | architecture/aiark.md, architecture/anyapi.md, architecture/auth-secrets.md, architecture/bounceban.md, architecture/datagma.md, architecture/dropleads.md, architecture/getleadsio.md, architecture/harvestapi.md, architecture/limadata.md, architecture/moltsets.md, architecture/openmart.md, architecture/prospeo.md, architecture/scrubby.md, architecture/wiza.md, architecture/zerobounce.md, guides/expanding-a-category.md |
 | `src/treg/providers.py` | architecture/datagma.md, architecture/limadata.md, architecture/moltsets.md, architecture/openmart.md, interface/env-import.md |
 | `src/treg/ratestore.py` | architecture/data-model.md, interface/api.md |
 | `src/treg/reconcile.py` | architecture/money.md |
@@ -609,6 +612,7 @@ Regenerate via `scripts/build-map.py`.
 | `tests/js/enrich-arena.test.cjs` | interface/enrich-arena.md |
 | `tests/test_aigc_pr_b.py` | architecture/catalog.md |
 | `tests/test_alembic_expand_safety.py` | architecture/data-model.md |
+| `tests/test_anyapi.py` | architecture/anyapi.md |
 | `tests/test_api_keys.py` | architecture/auth-secrets.md, architecture/data-model.md, interface/cli.md, interface/dashboard.md |
 | `tests/test_app_roles.py` | architecture/composition.md |
 | `tests/test_archive.py` | architecture/zerobounce.md |
@@ -678,6 +682,7 @@ Regenerate via `scripts/build-map.py`.
 |---|---|
 | `architecture/ads-conversions.md` | `adsconv.py`, `signup.py`, `adtrack.js`, `gtag.js` |
 | `architecture/aiark.md` | `aiark.yaml`, `aiark.companies.search.json`, `aiark.lists.upsert.json`, `aiark.people.email.find.json`, `aiark.people.enrich.json`, `aiark.people.personality.analyze.json`, `aiark.people.phone.find.json`, `aiark.people.preview.json`, `aiark.people.search.json`, `adapters.yaml`, `fx.yaml`, `config.py`, `oauth_providers.py`, `collectors.py`, `policy.py`, `settle.py`, `aiark.svg`, `test_catalog_validate.py`, `test_capacity_collectors.py`, `test_capacity_overflow_routes.py`, `test_enrich_arena.py`, `test_key_providers.py`, `test_marketplace_call.py`, `test_oauth_providers_m3.py`, `test_routing.py`, `conftest.py` |
+| `architecture/anyapi.md` | `anyapi.yaml`, `anyapi.extended.yaml`, `catalog_ingest.py`, `anyapi_measured_charges.json`, `oauth_providers.py`, `config.py`, `test_anyapi.py`, `adapters.yaml` |
 | `architecture/archive.md` | `archive.py`, `hunter.yaml`, `results.py`, `0031_archive_result_admission.py`, `test_cache_result_admission.py`, `archive_bodies.py`, `config.py`, `object_store.py`, `0032_archive_body_storage.py`, `test_archive_r2.py`, `fake_object_store.py`, `smoke_archive_r2.py`, `0002_archive_tables.py`, `0003_callrecord_cached.py`, `0004_archivekey_request_shape.py`, `0011_callrecord_archive_link.py`, `service.py`, `settle.py`, `0039_archive_own_key_and_repeat_pricing.py`, `backfill_call_archive_links.py`, `api.py`, `bootstrap.py`, `admin.py`, `asynctasks.py` |
 | `architecture/auth-secrets.md` | `injectors.py`, `ssrf.py`, `crypto.py`, `oauth.py`, `__init__.py`, `authorization.py`, `oauth_flow.py`, `refresh.py`, `oauth_exchange.py`, `oauth_refresh.py`, `oauth_providers.py`, `health.py`, `connect.py`, `connections.py`, `resources.py`, `__init__.py`, `bindings.py`, `bundles.py`, `api_keys.py`, `access.py`, `api_keys.py`, `test_api_keys.py`, `test_oauth_refresh.py`, `test_financialdatasets.py`, `test_key_providers.py`, `config.py` |
 | `architecture/bounceban.md` | `bounceban.yaml`, `bounceban.people.email.verify.json`, `bounceban.people.email.verify.waterfall.json`, `bounceban.people.email.verify.status.json`, `bounceban.account.usage.json`, `adapters.yaml`, `fx.yaml`, `config.py`, `oauth_providers.py`, `collectors.py`, `policy.py`, `bounceban.svg`, `test_key_providers.py`, `test_oauth_providers_m3.py`, `test_capacity_collectors.py`, `test_capacity_overflow_routes.py`, `test_catalog_validate.py`, `test_marketplace_call.py`, `test_routing.py`, `test_enrich_arena.py` |

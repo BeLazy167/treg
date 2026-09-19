@@ -2481,3 +2481,136 @@ adapters:
     cost_units: "25"
     out: {people: elements, count: pagination.totalElements}
     miss: "coalesce(elements, []) == []"
+
+  # ---- AnyAPI (PR #398) --------------------------------------------------------------------------
+  # One envelope for every SKU: `output.found` + `output.data`, exact charge in `costUsd`. A
+  # profile miss is `found: false, data: null`; a search miss is `found: true` with an empty list,
+  # so list rows test `coalesce(list, []) == []`. AnyAPI BILLS a miss on profile and post rows
+  # (2026-09-19 probe); `reported_charge` settles that charge ahead of the miss rule, as HarvestAPI.
+  # Left out on purpose: linkedin.email (a $0.011 billed miss in a waterfall of free misses),
+  # tiktok.profile_videos (contract identity is sec_uid, the row takes a handle).
+  anyapi.x.search.posts:
+    accepts: [[q]]
+    in:  {q: body.query}
+    out: {posts: output.data.items, next_cursor: output.data.nextCursor}
+    miss: "coalesce(output.data.items, []) == []"
+  anyapi.x.user.posts:
+    accepts: [[username]]
+    in:  {username: body.handle}
+    out: {posts: output.data.tweets, next_cursor: output.data.nextCursor}
+    miss: "coalesce(output.data.tweets, []) == []"
+  anyapi.x.user.posts.timeline:
+    accepts: [[username]]
+    in:  {username: body.handle}
+    out: {posts: output.data.tweets, next_cursor: output.data.nextCursor}
+    miss: "coalesce(output.data.tweets, []) == []"
+  anyapi.x.user.profile:
+    accepts: [[username]]
+    in:  {username: body.handle}
+    out: {username: output.data.handle, name: output.data.displayName, followers: output.data.followers,
+          following: output.data.following, posts_count: output.data.tweets,
+          is_verified: output.data.verified, description: output.data.bio}
+    miss: "output.found == false"
+  anyapi.x.post.comments:
+    accepts: [[tweet_id]]
+    in:  {}
+    in_expr: {body.url: "fmt('https://x.com/i/status/{}', tweet_id)"}
+    test_identity: {tweet_id: "20"}
+    out: {comments: output.data.items, next_cursor: output.data.nextCursor}
+    miss: "coalesce(output.data.items, []) == []"
+  anyapi.tiktok.user.profile:
+    accepts: [[username]]
+    in:  {username: body.handle}
+    out: {username: output.data.handle, user_id: output.data.userId, sec_uid: output.data.secUid,
+          nickname: output.data.displayName, followers: output.data.followers, following: output.data.following,
+          likes: output.data.likes, videos_count: output.data.videos, is_verified: output.data.verified,
+          biography: output.data.bio}
+    miss: "output.found == false"
+  anyapi.tiktok.search.videos:
+    accepts: [[q]]
+    in:  {q: body.query}
+    out: {videos: output.data.videos, next_cursor: output.data.nextCursor}
+    miss: "coalesce(output.data.videos, []) == []"
+  anyapi.tiktok.search.users:
+    accepts: [[q]]
+    in:  {q: body.query}
+    out: {users: output.data.users, next_cursor: output.data.nextCursor}
+    miss: "coalesce(output.data.users, []) == []"
+  anyapi.tiktok.video.comments:
+    accepts: [[url]]
+    in:  {url: body.url}
+    out: {comments: output.data.comments, next_cursor: output.data.nextCursor}
+    miss: "coalesce(output.data.comments, []) == []"
+  anyapi.instagram.user.posts:
+    accepts: [[username]]
+    in:  {username: body.handle}
+    out: {posts: output.data.posts, next_cursor: output.data.nextCursor}
+    miss: "coalesce(output.data.posts, []) == []"
+  anyapi.instagram.user.reels:
+    accepts: [[username]]
+    in:  {username: body.handle}
+    out: {reels: output.data.reels, next_cursor: output.data.nextCursor}
+    miss: "coalesce(output.data.reels, []) == []"
+  anyapi.instagram.post.detail:
+    accepts: [[url]]
+    in:  {url: body.url}
+    out: {id: output.data.id, shortcode: output.data.shortcode, likes: output.data.likes,
+          owner_username: output.data.owner}
+    miss: "output.found == false"
+  anyapi.instagram.post.comments:
+    accepts: [[url]]
+    in:  {url: body.url}
+    out: {comments: output.data.comments, next_cursor: output.data.nextCursor}
+    miss: "coalesce(output.data.comments, []) == []"
+  anyapi.instagram.hashtag.posts:
+    accepts: [[hashtag]]
+    in:  {hashtag: body.hashtag}
+    out: {posts: output.data.posts, next_cursor: output.data.nextCursor}
+    miss: "coalesce(output.data.posts, []) == []"
+  anyapi.instagram.search.reels:
+    accepts: [[q]]
+    in:  {q: body.query}
+    out: {reels: output.data.reels, next_cursor: output.data.nextCursor}
+    miss: "coalesce(output.data.reels, []) == []"
+  anyapi.facebook.user.posts:
+    accepts: [[url]]
+    in:  {url: body.url}
+    out: {posts: output.data.posts, next_cursor: output.data.nextCursor}
+    miss: "coalesce(output.data.posts, []) == []"
+  anyapi.linkedin.user.profile:
+    accepts: [[linkedin_url]]
+    in:  {linkedin_url: body.url}
+    out: {full_name: output.data.name, location: output.data.location, followers: output.data.followers,
+          about: output.data.about}
+    miss: "output.found == false"
+  anyapi.linkedin.user.profile.full:
+    accepts: [[linkedin_url]]
+    in:  {linkedin_url: body.url}
+    out: {full_name: "join(output.data.firstName, output.data.lastName)", first_name: output.data.firstName,
+          last_name: output.data.lastName, headline: output.data.headline, location: output.data.location,
+          followers: output.data.followerCount, connections: output.data.connectionsCount,
+          about: output.data.about, linkedin_url: output.data.url}
+    miss: "output.found == false"
+  anyapi.google.serp.organic:
+    accepts: [[q]]
+    in:  {q: body.query}
+    in_expr: {body.gl: "lower(country)", body.hl: language, body.limit: limit}
+    out: {results: output.data.results, count: "len(output.data.results)"}
+    miss: "coalesce(output.data.results, []) == []"
+  anyapi.google.serp.news:
+    accepts: [[q]]
+    in:  {q: body.query}
+    in_expr: {body.gl: "lower(country)", body.hl: language}
+    out: {results: output.data.items, count: "len(output.data.items)"}
+    miss: "coalesce(output.data.items, []) == []"
+  anyapi.google.serp.maps.place:
+    accepts: [[q]]
+    in:  {q: body.query}
+    out: {places: output.data.items, count: "len(output.data.items)"}
+    miss: "coalesce(output.data.items, []) == []"
+  anyapi.google.keywords.ideas:
+    accepts: [[keyword]]
+    in:  {keyword: body.query}
+    in_expr: {body.gl: "lower(country)", body.hl: language}
+    out: {keywords: output.data.suggestions, count: "len(output.data.suggestions)"}
+    miss: "coalesce(output.data.suggestions, []) == []"

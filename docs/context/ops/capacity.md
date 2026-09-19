@@ -486,3 +486,11 @@ not a provider-wide balance lock. See the ContactOut fragment for enabled covera
 `scripts/contactout_overflow_verify.py --budget-usd 10 --apply` renewal command; nonexistent static
 catalog examples cannot renew successful contact checks. Hosted policy, mode and renewal scheduling
 remain private operational state.
+
+## AnyAPI
+
+A spent prepaid wallet or a key's own spend cap answers `402`. Observed 2026-09-19 by driving a
+trial key past its cap: `{"error": "trial_cap_reached"}`, recorded in `signatures._TABLE` as a
+`balance` signal. The funded-wallet body ("insufficient wallet balance", per its OpenAPI 402
+description) matches the same row but has not been observed. No overflow route is claimed. See
+[AnyAPI](../architecture/anyapi.md).
