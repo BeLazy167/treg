@@ -455,6 +455,19 @@
   @media (max-width: 880px) { .bill { flex-direction: column; gap: 30px; } .bill-divider { display: none; } .bill-left { min-width: 0; width: 100%; max-width: 360px; } .bill-right { align-items: center; text-align: center; } }
   @media (max-width: 640px) { .section { padding: 70px 18px; } }
 
+  .scrim { position: fixed; inset: 0; background: rgba(26,26,26,.55); display: none; place-items: center; z-index: 200; padding: 20px; backdrop-filter: blur(6px); }
+  .scrim.open { display: grid; }
+  .smodal { width: min(400px, 94vw); background: #fff; border-radius: 20px; padding: 30px 28px; text-align: center; position: relative; box-shadow: 0 30px 90px -38px rgba(20,18,12,.4); }
+  .smodal .cls { position: absolute; top: 12px; right: 15px; background: none; border: 0; color: var(--muted); font-size: 16px; cursor: pointer; }
+  .smodal h3 { font-family: var(--display); font-weight: 600; font-size: 22px; margin: 4px 0 6px; letter-spacing: -.015em; }
+  .smodal p { font-family: var(--mono); font-size: 12px; color: var(--muted); margin: 0 0 18px; }
+  .smodal .pill { width: 100%; justify-content: center; margin-top: 9px; }
+  .smodal .div { display: flex; align-items: center; gap: 10px; margin: 16px 0 6px; color: var(--muted); font-size: 10.5px; letter-spacing: .12em; text-transform: uppercase; }
+  .smodal .div::before, .smodal .div::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+  .smodal input { width: 100%; margin-top: 9px; background: var(--card); border: 1px solid var(--line); color: var(--ink); border-radius: 10px; padding: 11px 13px; font-family: var(--mono); font-size: 13px; outline: none; }
+  .smodal input:focus { border-color: var(--ink); }
+  .smodal .err { color: var(--red); font-size: 11.5px; margin-top: 10px; min-height: 14px; }
+
   /* closing */
   .close-cta { text-align: center; padding: 30px 24px 0; }
   .close-cta h2 { font-family: var(--display); font-weight: 500; letter-spacing: -.03em; font-size: clamp(30px, 4vw, 44px); line-height: 1.08; margin: 0 0 12px; }
@@ -481,7 +494,7 @@
   <span class="wordmark"><a href="/" style="display:inline-flex;align-items:center;gap:10px;color:inherit;text-decoration:none" aria-label="treg home"><svg viewBox="0 0 512 512" aria-hidden="true"><rect width="512" height="512" rx="112" fill="#101010"/><rect x="111" y="111" width="140.5" height="140.5" rx="20" fill="#fff"/><rect x="260.5" y="260.5" width="140.5" height="140.5" rx="20" fill="#fff"/></svg> treg</a> <span style="color:var(--muted);font-weight:400">/</span> <span style="font-weight:500">jev</span></span>
   <span style="display:flex;gap:8px">
     <span class="nav-links"><a href="#xboost">Viral posts</a><a href="#signals">Buyer signal</a><a href="#triage">Signup lead score</a><a href="#build">Build your own</a><a href="https://github.com/superdesigndev/treg" target="_blank" rel="noopener"><svg width="15" height="15" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg> Open source</a></span>
-    <a class="pill dark" href="/app?ref=jev">Set up treg</a>
+    <a class="pill dark" href="/app?ref=jev" id="ctaNav">Set up treg</a>
   </span>
 </nav>
 
@@ -489,7 +502,7 @@
   <h1><img class="jev-mark" src="logos/jev.png" alt="jev"> Jev for<br>GTM workflow</h1>
   <div class="powered">Powered by <a href="/" aria-label="treg home"><svg viewBox="0 0 512 512" aria-hidden="true"><rect width="512" height="512" rx="112" fill="#101010"/><rect x="111" y="111" width="140.5" height="140.5" rx="20" fill="#fff"/><rect x="260.5" y="260.5" width="140.5" height="140.5" rx="20" fill="#fff"/></svg> Treg</a></div>
   <p class="sub"><strong>jev</strong> is a decision model: you hand it a JSON state and typed questions (a choice, a yes/no, a score) and it returns probabilities, not prose, in under a second. <strong>treg</strong> hands it the data: X, LinkedIn, email verification, person and company enrichment, one key. Three workflows below, each with a prompt your agent can run and the demo it produces.</p>
-  <div class="ctas"><a class="pill dark" href="#recipes">See the workflows</a><a class="pill" href="/app?ref=jev">Set up treg</a></div>
+  <div class="ctas"><a class="pill dark" href="#recipes">See the workflows</a><a class="pill" href="/app?ref=jev" id="ctaHero">Set up treg</a></div>
 </header>
 
 <!-- ============================================================= the three recipes, as tabs -->
@@ -889,7 +902,7 @@
 <section class="close-cta rv">
   <h2 class="unleash">Unleash <img class="lg" src="logos/jev.png" alt=""> Jev with <svg class="lg" viewBox="0 0 512 512" aria-hidden="true"><rect width="512" height="512" rx="112" fill="#101010"/><rect x="111" y="111" width="140.5" height="140.5" rx="20" fill="#fff"/><rect x="260.5" y="260.5" width="140.5" height="140.5" rx="20" fill="#fff"/></svg> 2,896+ data &amp; tools</h2>
   <p>Every recipe above is a prompt away. treg gives your agent the catalog and the bill; jev gives it answers it can act on without parsing prose.</p>
-  <div class="ctas"><a class="pill dark" href="/app?ref=jev">Set up treg</a><a class="pill" href="/catalog">Browse the catalog</a></div>
+  <div class="ctas"><a class="pill dark" href="/app?ref=jev" id="ctaFinal">Set up treg</a><a class="pill" href="/catalog">Browse the catalog</a></div>
 </section>
 
 <footer class="bigfoot">
@@ -909,6 +922,26 @@
 
 <div class="panel drawer" id="drawer" hidden></div>
 <div class="popscrim" id="popscrim" hidden></div>
+<div class="scrim" id="signin-scrim">
+  <div class="smodal" role="dialog" aria-label="Sign in">
+    <button class="cls" id="signinClose" aria-label="Close">✕</button>
+    <h3>Sign in to treg</h3>
+    <p>first sign-in creates your account</p>
+    <a class="pill dark" href="/auth/github" style="text-decoration:none">Continue with GitHub</a>
+    <a class="pill" href="/auth/google" style="text-decoration:none">Continue with Google</a>
+    <div class="div">or email a code</div>
+    <div id="em-step1">
+      <input id="em-input" type="email" placeholder="you@work.com"/>
+      <button class="pill" id="em-btn1">Email me a sign-in code</button>
+    </div>
+    <div id="em-step2" style="display:none">
+      <input id="em-code" inputmode="numeric" placeholder="6-digit code"/>
+      <button class="pill dark" id="em-btn2">Sign in</button>
+    </div>
+    <div class="err" id="em-err"></div>
+  </div>
+</div>
+
 
 <script>
 (function () {
@@ -957,6 +990,39 @@ const stepRow = (a, w, cls, d, pr) => `<div class="xs"><span class="who ${cls}">
 
 const billIO = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { e.target.classList.add('seen'); billIO.unobserve(e.target); } }), { threshold: 0.25 });
 document.querySelectorAll('.bill-sec').forEach(el => billIO.observe(el));
+
+/* Set-up CTAs: signed in → the app; signed out → the sign-in modal (the /ugc pattern) */
+const scrim = $('signin-scrim');
+const openSignin = () => { scrim.classList.add('open'); $('em-input').focus(); };
+const closeSignin = () => scrim.classList.remove('open');
+$('signinClose').onclick = closeSignin;
+scrim.addEventListener('click', e => { if (e.target === scrim) closeSignin(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSignin(); });
+['ctaNav', 'ctaHero', 'ctaFinal'].forEach(id => { const el = $(id); if (!el) return; el.addEventListener('click', e => {
+  if (e.metaKey || e.ctrlKey || e.shiftKey || e.button === 1) return;
+  e.preventDefault();
+  try { localStorage.setItem('treg-ref', 'jev'); } catch (_) {}
+  fetch('/auth/me', { credentials: 'same-origin' }).then(r => { if (r.ok) location.href = '/app'; else openSignin(); }).catch(openSignin);
+}); });
+function emailStart() {
+  const em = $('em-input').value.trim(), err = $('em-err');
+  if (!em) { err.textContent = 'Enter your email address.'; return; }
+  $('em-btn1').textContent = 'Sending…'; err.textContent = '';
+  fetch('/auth/email/start', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: em }) })
+    .then(r => r.json().catch(() => ({})).then(d => { if (!r.ok) throw new Error(d.detail || 'could not send the code'); return d; }))
+    .then(d => { $('em-step1').style.display = 'none'; $('em-step2').style.display = 'block'; if (d.dev_code) { $('em-code').value = d.dev_code; err.style.color = 'var(--green)'; err.textContent = 'dev mode — your code: ' + d.dev_code; } else { err.style.color = ''; } $('em-code').focus(); })
+    .catch(e2 => { err.textContent = e2.message; $('em-btn1').textContent = 'Email me a sign-in code'; });
+}
+function emailVerify() {
+  const em = $('em-input').value.trim(), code = $('em-code').value.trim(), err = $('em-err');
+  if (!code) return;
+  $('em-btn2').textContent = 'Verifying…'; err.textContent = '';
+  fetch('/auth/email/verify', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: em, code }) })
+    .then(r => { if (!r.ok) return r.json().catch(() => ({})).then(d => { throw new Error(d.detail || "that code didn't work"); }); location.href = '/app'; })
+    .catch(e2 => { err.textContent = e2.message; $('em-btn2').textContent = 'Sign in'; });
+}
+$('em-btn1').onclick = emailStart; $('em-input').addEventListener('keyup', e => { if (e.key === 'Enter') emailStart(); });
+$('em-btn2').onclick = emailVerify; $('em-code').addEventListener('keyup', e => { if (e.key === 'Enter') emailVerify(); });
 
 /* copy buttons */
 document.querySelectorAll('[data-copy]').forEach(b => b.onclick = () => {
