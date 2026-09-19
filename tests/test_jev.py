@@ -43,16 +43,14 @@ async def test_xboost_json_falls_back_to_the_bundled_snapshot(clients: AsyncClie
 
 
 def test_the_bundled_demo_data_carries_no_real_email_addresses():
-    """The signup and lead demos replay real runs; every address was replaced before bundling."""
-    real = {"gmail.com", "outlook.com", "yahoo.com", "icloud.com", "proton.me", "hotmail.com"}
+    """The signup demo is a synthetic sample; the lead demo replays a real run with every address replaced."""
     triage = json.loads((WEB / "media" / "jev" / "triage.json").read_text())
+    assert triage["synthetic"] is True and len(triage["rows"]) >= 500
+    assert {"enterprise", "smb", "influencer_affiliate", "fraud", "normal"} == {r["seg"] for r in triage["rows"]}
     fake_corp = {"northwind.io", "acmecloud.com", "lumen-labs.dev", "pikeandco.com", "brightloop.ai", "fernbank.co",
                  "harborsoft.com", "quillstack.io", "vantapoint.com", "oakridgedata.com", "meridianops.co",
                  "saltmarsh.dev", "tinderbox.ai", "cobaltcrm.com", "ridgelinehq.com", "glasswing.io",
-                 "juniperbi.com", "ashgrove.co", "kestrel.dev", "larkspur.ai", "mailinator.com", "tempmail.dev",
-                 "10minutemail.net", "guerrillamail.com"}
-    for row in triage:
-        assert row["email"].split("@")[1] in real | fake_corp, row["email"]
+                 "juniperbi.com", "ashgrove.co", "kestrel.dev", "larkspur.ai"}
     signals = json.loads((WEB / "media" / "jev" / "signals.json").read_text())
     for lead in signals["leads"]:
         email = (lead.get("contact") or {}).get("email")

@@ -89,6 +89,7 @@
   .pbtn .agents img { width: 18px; height: 18px; border-radius: 5px; box-shadow: 0 0 0 1px rgba(0,0,0,.06); }
   .pbtn i { font-style: normal; opacity: .7; font-size: 11px; }
   .pbtn .agents img { box-shadow: 0 0 0 1px rgba(255,255,255,.25); }
+  .pbtn .agents img.onwhite { background: #fff; padding: 1px; }
   .pill svg.ic { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
   .pop { position: absolute; top: calc(100% + 8px); right: 0; z-index: 60; width: min(760px, calc(100vw - 48px)); background: #fff; border: 1px solid var(--line); border-radius: 16px; box-shadow: 0 30px 80px -30px rgba(20,18,12,.45); overflow: hidden; text-align: left; }
   .pop .ph { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px 10px 16px; border-bottom: 1px solid var(--line); background: var(--card); font-family: var(--mono); font-size: 12px; color: var(--muted); }
@@ -109,6 +110,7 @@
   .prob .bar { height: 5px; background: var(--line); border-radius: 3px; overflow: hidden; }
   .prob .bar i { display: block; height: 100%; background: var(--ink); transition: width .3s; }
   .prob .bar.g i { background: var(--green); } .prob .bar.a i { background: var(--amber); } .prob .bar.r i { background: var(--red); } .prob .bar.b i { background: var(--blue); }
+  .lanes-note { font-family: var(--mono); font-size: 10.5px; color: #B8B5AE; margin-top: 8px; }
   .prob .p { font-family: var(--mono); color: var(--muted); text-align: right; }
   .sec4 { border-top: 1px solid var(--line); padding-top: 10px; margin-top: 10px; }
   .sec4 h4 { margin: 0 0 6px; font-family: var(--mono); font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); font-weight: 500; display: flex; justify-content: space-between; }
@@ -143,14 +145,14 @@
   @media (max-width: 860px) { .board, .board.irr-open { grid-template-columns: 1fr; } }
   .tally { display: grid; gap: 6px; margin-top: 8px; }
   .tv { border: 1px solid var(--line); border-left: 4px solid var(--c); background: var(--card); border-radius: 0 10px 10px 0; padding: 8px 10px; display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 8px; text-align: left; font: inherit; color: inherit; cursor: default; }
-  .tv.organic, .tv.reach, .tv.dm { --c: var(--green); } .tv.paid, .tv.watch, .tv.user { --c: var(--amber); } .tv.hold { --c: var(--red); } .tv.irrelevant, .tv.none, .tv.skip { --c: var(--muted); }
+  .tv.organic, .tv.reach, .tv.dm, .tv.enterprise { --c: var(--green); } .tv.paid, .tv.watch, .tv.user, .tv.influencer_affiliate { --c: var(--amber); } .tv.hold, .tv.fraud { --c: var(--red); } .tv.smb { --c: var(--blue); } .tv.irrelevant, .tv.none, .tv.skip, .tv.normal { --c: var(--muted); }
   .tv.irrelevant, .tv.filter { cursor: pointer; } .tv.filter[aria-pressed="true"] { background: #fff; box-shadow: 0 0 0 2px var(--ink); }
   .tv .t { font-family: var(--mono); font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--c); font-weight: 500; }
   .tv .d { color: var(--muted); font-size: 11.5px; margin-top: 2px; }
   .tv .n { font-family: var(--display); font-weight: 600; font-size: 24px; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
   .tv .tog { font-family: var(--mono); font-size: 10px; color: var(--muted); text-decoration: underline; text-underline-offset: 3px; }
   .stack { height: 12px; display: flex; border-radius: 6px; overflow: hidden; margin-top: 10px; background: var(--line); }
-  .stack i { display: block; height: 100%; } .stack .organic, .stack .reach, .stack .dm { background: var(--green); } .stack .paid, .stack .watch, .stack .user { background: var(--amber); } .stack .hold { background: var(--red); }
+  .stack i { display: block; height: 100%; } .stack .organic, .stack .reach, .stack .dm, .stack .enterprise { background: var(--green); } .stack .paid, .stack .watch, .stack .user, .stack .influencer_affiliate { background: var(--amber); } .stack .hold, .stack .fraud { background: var(--red); } .stack .smb { background: var(--blue); }
   .xsteps { margin-top: 12px; font-family: var(--mono); font-size: 11px; color: var(--muted); display: grid; grid-template-columns: auto auto 1fr; gap: 4px 8px; align-items: baseline; }
   .xsteps b { color: var(--ink); font-weight: 500; text-align: right; }
   .xsteps .price { grid-column: 1 / -1; color: #B8B5AE; font-size: 10px; margin: -3px 0 2px; }
@@ -201,16 +203,16 @@
   .drawer .close { position: absolute; top: 10px; right: 10px; border: 1px solid var(--line); background: #fff; border-radius: 999px; width: 30px; height: 30px; cursor: pointer; font-size: 14px; }
   .verdict { display: flex; gap: 12px; align-items: center; padding-right: 40px; }
   .mark { width: 46px; height: 44px; border-radius: 10px; flex: 0 0 auto; font-family: var(--mono); font-weight: 500; font-size: 16px; color: #fff; display: flex; align-items: center; justify-content: center; background: var(--muted); }
-  .mark.organic, .mark.reach, .mark.dm { background: var(--green); } .mark.paid_promotion, .mark.watch, .mark.user { background: var(--amber); } .mark.artificial_engagement, .mark.hold { background: var(--red); }
+  .mark.organic, .mark.reach, .mark.dm, .mark.enterprise { background: var(--green); } .mark.paid_promotion, .mark.watch, .mark.user, .mark.influencer_affiliate { background: var(--amber); } .mark.artificial_engagement, .mark.hold, .mark.fraud { background: var(--red); } .mark.smb { background: var(--blue); }
   .verdict .e { font-weight: 600; font-size: 15px; line-height: 1.2; word-break: break-word; }
   .verdict .act { font-family: var(--mono); font-size: 11px; letter-spacing: .06em; text-transform: uppercase; font-weight: 500; margin-top: 3px; color: var(--muted); }
-  .verdict .act.organic, .verdict .act.reach, .verdict .act.dm { color: var(--green); } .verdict .act.paid_promotion, .verdict .act.watch, .verdict .act.user { color: var(--amber); } .verdict .act.artificial_engagement, .verdict .act.hold { color: var(--red); }
+  .verdict .act.organic, .verdict .act.reach, .verdict .act.dm, .verdict .act.enterprise { color: var(--green); } .verdict .act.paid_promotion, .verdict .act.watch, .verdict .act.user, .verdict .act.influencer_affiliate { color: var(--amber); } .verdict .act.artificial_engagement, .verdict .act.hold, .verdict .act.fraud { color: var(--red); } .verdict .act.smb { color: var(--blue); }
 
   /* ---- triage */
   .tl { display: grid; grid-template-columns: repeat(24, minmax(0,1fr)); gap: 3px; align-items: end; height: 80px; margin-top: 10px; }
   .hour { display: flex; flex-direction: column-reverse; gap: 1px; height: 100%; }
   .dotb { flex: 0 0 auto; border-radius: 1px; background: var(--muted); width: 100%; }
-  .dotb.reach { background: var(--green); } .dotb.hold { background: var(--red); } .dotb.watch { background: var(--amber); } .dotb.pending { background: var(--line); }
+  .dotb.enterprise { background: var(--green); } .dotb.fraud { background: var(--red); } .dotb.influencer_affiliate { background: var(--amber); } .dotb.smb { background: var(--blue); } .dotb.pending { background: var(--line); }
   .axis { display: grid; grid-template-columns: repeat(24, minmax(0,1fr)); font-family: var(--mono); font-size: 9px; color: #B8B5AE; margin-top: 4px; }
   .tri-body { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(300px, .85fr); gap: 10px; margin-top: 10px; align-items: start; }
   @media (max-width: 900px) { .tri-body { grid-template-columns: 1fr; } }
@@ -220,7 +222,7 @@
   .row:first-of-type { border-top: 0; }
   .row:hover { background: var(--card); } .row[aria-current="true"] { background: var(--card); box-shadow: inset 3px 0 0 var(--ink); border-radius: 6px; }
   .row .stripe { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
-  .row.reach .stripe, .row.dm .stripe { background: var(--green); } .row.hold .stripe { background: var(--red); } .row.watch .stripe, .row.user .stripe { background: var(--amber); }
+  .row.enterprise .stripe { background: var(--green); } .row.fraud .stripe { background: var(--red); } .row.influencer_affiliate .stripe { background: var(--amber); } .row.smb .stripe { background: var(--blue); }
   .row .e { font-weight: 500; font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .row .why { color: var(--muted); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .row .fig { font-family: var(--mono); font-size: 11px; color: var(--muted); text-align: right; white-space: nowrap; }
@@ -342,7 +344,7 @@
     </div>
 <div class="tab" id="xboost">
     <div class="demo" id="xb-demo">
-      <div class="dh"><div><h3>Launch posts on X, last 24h</h3><div class="receipt" id="xb-receipt">loading the latest run…</div></div><div class="acts"><button class="pill sm" id="xb-replay"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg> Replay the run</button><button class="pill sm" id="xb-stop" hidden>Stop</button><div class="pwrap"><button class="pill sm dark pbtn" aria-expanded="false" aria-controls="pop-xboost">Prompt for <span class="agents"><img src="media/people-search/claude-code.png" alt="Claude Code"><img src="media/people-search/codex.png" alt="Codex"><img src="media/people-search/openclaw.png" alt="OpenClaw"><img src="media/people-search/hermes.png" alt="Hermes"></span> <i>▾</i></button>
+      <div class="dh"><div><h3>Launch posts on X, last 24h</h3><div class="receipt" id="xb-receipt">loading the latest run…</div></div><div class="acts"><button class="pill sm" id="xb-replay"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg> Replay the run</button><button class="pill sm" id="xb-stop" hidden>Stop</button><div class="pwrap"><button class="pill sm dark pbtn" aria-expanded="false" aria-controls="pop-xboost">Prompt for <span class="agents"><img src="media/people-search/claude-code.png" alt="Claude Code"><img src="media/people-search/codex.png" alt="Codex"><img src="media/people-search/openclaw.png" alt="OpenClaw"><img src="media/people-search/hermes.png" alt="Hermes" class="onwhite"></span> <i>▾</i></button>
           <div class="pop" id="pop-xboost" hidden><div class="ph"><span>Paste into your agent</span><button class="pill sm dark" data-copy="p-xboost">Copy prompt</button></div><pre id="p-xboost">Build me a daily "launch radar" for X and a page to browse it.
 
 <b>Setup</b>
@@ -405,7 +407,7 @@
 
 <div class="tab" id="signals" hidden>
     <div class="demo" id="sg-demo">
-      <div class="dh"><div><h3>People engaging with GTM-tooling posts this week</h3><div class="receipt" id="sg-receipt"></div></div><div class="acts"><button class="pill sm" id="sg-replay"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg> Replay the run</button><button class="pill sm" id="sg-stop" hidden>Stop</button><div class="pwrap"><button class="pill sm dark pbtn" aria-expanded="false" aria-controls="pop-signals">Prompt for <span class="agents"><img src="media/people-search/claude-code.png" alt="Claude Code"><img src="media/people-search/codex.png" alt="Codex"><img src="media/people-search/openclaw.png" alt="OpenClaw"><img src="media/people-search/hermes.png" alt="Hermes"></span> <i>▾</i></button>
+      <div class="dh"><div><h3>People engaging with GTM-tooling posts this week</h3><div class="receipt" id="sg-receipt"></div></div><div class="acts"><button class="pill sm" id="sg-replay"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg> Replay the run</button><button class="pill sm" id="sg-stop" hidden>Stop</button><div class="pwrap"><button class="pill sm dark pbtn" aria-expanded="false" aria-controls="pop-signals">Prompt for <span class="agents"><img src="media/people-search/claude-code.png" alt="Claude Code"><img src="media/people-search/codex.png" alt="Codex"><img src="media/people-search/openclaw.png" alt="OpenClaw"><img src="media/people-search/hermes.png" alt="Hermes" class="onwhite"></span> <i>▾</i></button>
           <div class="pop" id="pop-signals" hidden><div class="ph"><span>Paste into your agent</span><button class="pill sm dark" data-copy="p-signals">Copy prompt</button></div><pre id="p-signals">Build a signal-first lead finder for &lt;my product&gt; and a page to browse the run.
 
 <b>Setup</b>
@@ -446,7 +448,7 @@
 
 <div class="tab" id="triage" hidden>
     <div class="demo" id="tr-demo">
-      <div class="dh"><div><h3>Signups, one day</h3><div class="receipt" id="tr-receipt"></div></div><div class="acts"><button class="pill sm" id="tr-replay"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg> Replay the run</button><button class="pill sm" id="tr-stop" hidden>Stop</button><div class="pwrap"><button class="pill sm dark pbtn" aria-expanded="false" aria-controls="pop-triage">Prompt for <span class="agents"><img src="media/people-search/claude-code.png" alt="Claude Code"><img src="media/people-search/codex.png" alt="Codex"><img src="media/people-search/openclaw.png" alt="OpenClaw"><img src="media/people-search/hermes.png" alt="Hermes"></span> <i>▾</i></button>
+      <div class="dh"><div><h3>Signups, one day <span style="font-family:var(--mono);font-size:11px;color:var(--muted);font-weight:400;margin-left:6px">synthetic sample</span></h3><div class="receipt" id="tr-receipt"></div></div><div class="acts"><button class="pill sm" id="tr-replay"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg> Replay the run</button><button class="pill sm" id="tr-stop" hidden>Stop</button><div class="pwrap"><button class="pill sm dark pbtn" aria-expanded="false" aria-controls="pop-triage">Prompt for <span class="agents"><img src="media/people-search/claude-code.png" alt="Claude Code"><img src="media/people-search/codex.png" alt="Codex"><img src="media/people-search/openclaw.png" alt="OpenClaw"><img src="media/people-search/hermes.png" alt="Hermes" class="onwhite"></span> <i>▾</i></button>
           <div class="pop" id="pop-triage" hidden><div class="ph"><span>Paste into your agent</span><button class="pill sm dark" data-copy="p-triage">Copy prompt</button></div><pre id="p-triage">Build a signup triage that runs every hour over new signups and posts the interesting ones to Slack.
 
 <b>Setup</b>
@@ -481,7 +483,7 @@
 9. Post reach / hold / watch to Slack with the one-line reason; post nothing on an empty hour.
 10. A review page: four lane counters, signups by hour, the queue per lane, an inspector with
     verify + enrichment + usage and the jev bars.</pre></div></div></div></div>
-      <div class="demo-body"><aside class="demo-side"><div class="panel"><div class="lbl"><span>lanes · click to filter</span><span class="n" id="tr-tallymeta"></span></div><div class="stack" id="tr-stack"></div><div class="tally" id="tr-tallybox"></div><div class="xsteps" id="tr-steps"></div><div class="spend" id="tr-spend"></div></div></aside>
+      <div class="demo-body"><aside class="demo-side"><div class="panel"><div class="lbl"><span>segments · click to filter</span><span class="n" id="tr-tallymeta"></span></div><div class="stack" id="tr-stack"></div><div class="tally" id="tr-tallybox"></div><div class="xsteps" id="tr-steps"></div><div class="spend" id="tr-spend"></div></div></aside>
       <div><div class="panel"><div class="lbl"><span>signups by hour, UTC</span><span class="n" id="tr-tlcount"></span></div><div class="tl" id="tr-tl"></div><div class="axis" id="tr-axis"></div></div>
       <div class="tri-body">
         <div class="queue" id="tr-queue"></div>
@@ -719,43 +721,33 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape' && !drawer.hi
 /* =============================================================== 2. triage (replay) */
 (function triage() {
   const fmt = n => (n ?? 0).toLocaleString();
-  const SEGNAME = {normal:'normal', fraud:'fraud', enterprise_upsell:'enterprise upsell', influencer_affiliate:'influencer / affiliate'};
-  const SEGCLS = {normal:'', fraud:'r', enterprise_upsell:'g', influencer_affiliate:'g'};
+  const SEGNAME = {enterprise:'enterprise', smb:'SMB', influencer_affiliate:'influencer / affiliate', fraud:'fraud', normal:'individual'};
+  const SEGCLS = {enterprise:'g', smb:'b', influencer_affiliate:'a', fraud:'r', normal:''};
   const LANES = {
-    reach: {title:'Reach out', desc:'corporate domain with a company match, or a creator worth an affiliate offer', fig:r => ['upsell ' + r.upsell.toFixed(2), (r.company||{}).employees ? (r.company.employees + ' staff') : (r.person||{}).position || '']},
-    hold:  {title:'Hold credits', desc:'burner-shaped identity and nothing behind it', fig:r => [Math.round(r.fraud*100) + '% fraud', r.verify.result]},
-    watch: {title:'Watch', desc:'credit-farming shape, or a fraud label that spends real money', fig:r => [fmt(r.usage.refused_calls) + ' refused', '$' + r.usage.spend_usd.toFixed(2) + ' spent']},
-    none:  {title:'No action', desc:'ordinary individual signup', fig:r => [r.usage.calls ? fmt(r.usage.calls) + ' calls' : 'no calls', r.usage.onboarded ? 'onboarded' : 'not onboarded']},
+    enterprise: {title:'Enterprise', desc:'company with real headcount, a titled person · sales reaches out', fig:r => ['upsell ' + r.upsell.toFixed(2), r.company.employees.toLocaleString() + ' staff']},
+    smb: {title:'SMB', desc:'small company or founder · nurture, watch for the first top-up', fig:r => ['upsell ' + r.upsell.toFixed(2), (r.person||{}).position || r.company.name]},
+    influencer_affiliate: {title:'Influencer / affiliate', desc:'creator with an audience · send the affiliate offer', fig:r => [Math.round((r.probs.influencer_affiliate||0)*100) + '% creator', ((r.person||{}).position || '').split(' · ')[0]]},
+    fraud: {title:'Fraud', desc:'burner or duplicate identity, refused calls, no spend · hold credits', fig:r => [Math.round(r.fraud*100) + '% fraud', r.usage.refused_calls ? fmt(r.usage.refused_calls) + ' refused' : r.verify.result]},
+    normal: {title:'Individual', desc:'ordinary personal signup · nothing to do', fig:r => [r.usage.calls ? fmt(r.usage.calls) + ' calls' : 'no calls', r.usage.onboarded ? 'onboarded' : 'not onboarded']},
   };
-  function lane(r) {
-    const u = r.usage, related = Object.values(u.similar_signups || {}).reduce((a, x) => a + x.count, 0);
-    const hard = related >= 2 || r.verify.result === 'disposable' || r.verify.result === 'invalid';
-    if (r.seg === 'fraud') return hard && u.spend_usd <= 0.5 ? 'hold' : 'watch';
-    if (r.seg === 'enterprise_upsell' || r.seg === 'influencer_affiliate') return 'reach';
-    if (r.upsell >= 0.75 && (r.person || {}).position && (r.person || {}).matched !== false) return 'reach';
-    if (related >= 3 || r.fraud >= 0.6 || (u.refused_calls > 20 && u.spend_usd < 0.5)) return 'watch';
-    return 'none';
-  }
+  const lane = r => r.seg;
   function reason(r) {
-    const u = r.usage, c = r.company || {}, p = r.person || {}, L = r.lane;
-    if (L === 'hold') return `Verify says ${r.verify.result}, no identity found, ${u.calls ? fmt(u.calls) + ' calls' : 'no calls'} and $${u.spend_usd.toFixed(2)} spent. Hold free credits until the address verifies.`;
-    if (L === 'watch' && r.seg === 'fraud') return `jev labelled this fraud on a ${r.verify.result} verify result, but the account made ${fmt(u.calls)} calls and spent $${u.spend_usd.toFixed(2)}. That is a paying user with a domain that fails SMTP. Check by hand, do not block.`;
-    if (L === 'watch' && r.fraud >= 0.6) return `${Math.round(r.fraud*100)}% fraud score with ${u.calls ? fmt(u.calls) + ' calls' : 'no calls'}. ${r.verify.role ? 'It is a role address (info@, support@), so probably a shared inbox rather than a person.' : 'Nothing behind the address yet.'} Re-score after 24h of usage.`;
-    if (L === 'watch') return `${fmt(u.refused_calls)} refused calls against $${u.spend_usd.toFixed(2)} spent. Hitting caps without paying is the credit-farming shape. Re-check tomorrow.`;
-    if (L === 'reach' && r.seg === 'influencer_affiliate') return `Personal-brand domain. Confirm a public audience before sending an affiliate offer.`;
-    if (L === 'reach') return `${c.name || p.company || r.email.split('@')[1]}${c.employees ? ', ' + c.employees + ' staff' : ''}${c.revenue ? ', revenue ' + c.revenue : ''}${p.position ? '. ' + (p.full_name || 'The signup') + ' is ' + p.position : ''}. ${u.calls ? 'Already made ' + fmt(u.calls) + ' calls, so outreach lands on an active user.' : 'No calls yet, reach out before the trial goes cold.'}`;
-    if (u.spend_usd > 5) return `Heavy real usage on day one: ${fmt(u.calls)} calls, $${u.spend_usd.toFixed(2)} spent across ${u.distinct_tools} tools. Nothing to do except keep the service up.`;
+    const u = r.usage, c = r.company || {}, p = r.person || {}, sim = Object.entries(u.similar_signups || {})[0];
+    if (r.seg === 'fraud') return `${r.verify.result === 'ok' ? 'Address verifies but' : 'Verify says ' + r.verify.result + ','} ${sim ? sim[1].count + ' signups share the ' + sim[0].replace('_7d','').replace(/_/g,' ').replace('same ','') + ' this week,' : 'nothing behind the address,'} ${u.refused_calls ? fmt(u.refused_calls) + ' refused calls and' : ''} $${u.spend_usd.toFixed(2)} spent. Hold free credits.`;
+    if (r.seg === 'enterprise') return `${c.name}, ${c.employees.toLocaleString()} staff, revenue ${c.revenue}. ${p.full_name} is ${p.position}. ${u.calls ? 'Already made ' + fmt(u.calls) + ' calls, so outreach lands on an active user.' : 'No calls yet, reach out before the trial goes cold.'}`;
+    if (r.seg === 'smb') return `${c.name}, ${c.employees} staff. ${p.full_name} is ${p.position}. ${u.spend_usd > 0.5 ? 'Spending already ($' + u.spend_usd.toFixed(2) + '): a top-up is likely, no push needed.' : u.calls ? fmt(u.calls) + ' calls on the free credit; nudge with a use-case guide.' : 'No calls yet; send the quickstart.'}`;
+    if (r.seg === 'influencer_affiliate') return `${p.position}. Personal-brand address with a public audience. Confirm the audience, then send the affiliate offer.`;
     return `Webmail address, verify ${r.verify.result}, ${u.onboarded ? 'onboarded' : 'not onboarded'}, ${u.calls ? fmt(u.calls) + ' calls' : 'no calls yet'}. Ordinary signup.`;
   }
   let DATA = [], shown = 0, laneFilter = null, current = 0, timer = null, hours, maxH = 1, dots = {};
-  const laneRank = {reach:0, watch:1, hold:2, none:3};
+  const laneRank = {enterprise:0, smb:1, influencer_affiliate:2, fraud:3, normal:4};
   const kv = (k, v, cls='') => `<span class="k">${k}</span><span class="v ${cls}">${esc(v)}</span>`;
 
   function renderLanes() {
     const rows = DATA.slice(0, shown), n = {};
     Object.keys(LANES).forEach(k => n[k] = rows.filter(r => r.lane === k).length);
     $('tr-tallymeta').textContent = `${fmt(rows.length)} signups`;
-    $('tr-stack').innerHTML = ['reach','watch','hold'].map(k => `<i class="${k}" style="width:${100*n[k]/Math.max(1,DATA.length)}%"></i>`).join('');
+    $('tr-stack').innerHTML = ['enterprise','smb','influencer_affiliate','fraud'].map(k => `<i class="${k}" style="width:${100*n[k]/Math.max(1,DATA.length)}%"></i>`).join('');
     $('tr-tallybox').innerHTML = Object.keys(LANES).map(k => `<button class="tv filter ${k}" data-lane="${k}" aria-pressed="${laneFilter===k}"><div><div class="t">${LANES[k].title}</div><div class="d">${LANES[k].desc}</div></div><div class="n">${fmt(n[k])}</div></button>`).join('');
     $('tr-tallybox').querySelectorAll('.tv').forEach(b => b.onclick = () => { laneFilter = laneFilter === b.dataset.lane ? null : b.dataset.lane; renderLanes(); renderQueue(); renderTL(); });
     const person = rows.filter(r => r.person).length, company = rows.filter(r => r.company).length;
@@ -775,11 +767,11 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape' && !drawer.hi
     DATA.forEach(r => { const on = r.i < shown; dots[r.i].className = 'dotb ' + (on ? r.lane : 'pending'); dots[r.i].style.opacity = on && laneFilter && r.lane !== laneFilter ? .2 : 1; });
     $('tr-tlcount').textContent = `${fmt(shown)} / ${fmt(DATA.length)} · peak ${maxH} in one hour`;
   }
-  const LIMIT = {reach: 40, hold: 40, watch: 40, none: 10};
+  const LIMIT = {enterprise: 30, smb: 30, influencer_affiliate: 30, fraud: 30, normal: 8};
   function renderQueue() {
-    const rows = DATA.slice(0, shown), order = laneFilter ? [laneFilter] : ['reach','watch','hold','none'];
+    const rows = DATA.slice(0, shown), order = laneFilter ? [laneFilter] : ['enterprise','smb','influencer_affiliate','fraud','normal'];
     $('tr-queue').innerHTML = order.map(k => {
-      const items = rows.filter(r => r.lane === k).sort((a, b) => k === 'reach' ? b.upsell - a.upsell : k === 'none' ? b.usage.spend_usd - a.usage.spend_usd : b.fraud - a.fraud);
+      const items = rows.filter(r => r.lane === k).sort((a, b) => k === 'fraud' ? b.fraud - a.fraud : k === 'normal' ? b.usage.spend_usd - a.usage.spend_usd : b.upsell - a.upsell);
       const lim = laneFilter ? 1e9 : LIMIT[k];
       return `<div class="panel"><div class="lbl"><span>${LANES[k].title}</span><span class="n">${items.length}</span></div><div class="list">` +
         (items.length ? items.slice(0, lim).map(r => { const [a, b] = LANES[k].fig(r); return `<button class="row ${k}" data-i="${r.i}" aria-current="${r.i === current}"><span class="stripe"></span><span><div class="e">${esc(r.email)}</div><div class="why">${esc(reason(r))}</div></span><span class="fig"><b>${esc(a)}</b>${esc(b)}</span></button>`; }).join('') : `<div class="empty">nothing here</div>`) +
@@ -812,23 +804,23 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape' && !drawer.hi
   const totalSecs = () => DATA.reduce((a, r) => a + r.secs, 0);
   function replay() {
     stop(); shown = 0; current = 0; $('tr-replay').hidden = true; $('tr-stop').hidden = false;
-    const speed = Math.max(1, totalSecs() / 40);
+    const speed = Math.max(1, totalSecs() / 18);
     const step = () => {
       if (shown >= DATA.length) { stop(); return; }
       select(shown); shown++; renderLanes(); renderTL();
-      if (shown % 4 === 0 || shown === DATA.length || DATA[shown-1].lane !== 'none') renderQueue();
-      timer = setTimeout(step, Math.max(60, DATA[shown-1].secs * 1000 / speed));
+      if (shown % 6 === 0 || shown === DATA.length || DATA[shown-1].lane !== 'normal') renderQueue();
+      timer = setTimeout(step, Math.max(18, DATA[shown-1].secs * 1000 / speed));
     };
     step();
   }
   function stop() { clearTimeout(timer); timer = null; shown = DATA.length; $('tr-replay').hidden = false; $('tr-stop').hidden = true; renderAll(); }
   $('tr-replay').onclick = replay; $('tr-stop').onclick = stop;
 
-  fetch('media/jev/triage.json', {cache: 'no-cache'}).then(r => r.json()).then(rows => {
+  fetch('media/jev/triage.json', {cache: 'no-cache'}).then(r => r.json()).then(doc => { const rows = doc.rows;
     DATA = rows; DATA.forEach((r, i) => { r.i = i; r.lane = lane(r); r.hour = new Date(r.usage.signed_up_at + 'Z').getUTCHours(); });
     shown = DATA.length;
     const totalCost = DATA.reduce((a, r) => a + r.cost, 0);
-    $('tr-receipt').innerHTML = `<span><b>${fmt(DATA.length)}</b> signups</span><span>enrichment + jev <b>$${totalCost.toFixed(2)}</b></span><span><b>$${(totalCost / DATA.length).toFixed(4)}</b> per signup</span><span><b>${(totalSecs() / 60).toFixed(1)} min</b> sequential</span>`;
+    $('tr-receipt').innerHTML = `<span><b>${fmt(DATA.length)}</b> signups</span><span>enrichment + jev <b>$${totalCost.toFixed(2)}</b></span><span><b>$${(totalCost / DATA.length).toFixed(4)}</b> per signup</span>`;
     buildTL(); renderAll();
     const first = DATA.slice().sort((a, b) => (laneRank[a.lane] - laneRank[b.lane]) || (b.upsell - a.upsell))[0];
     select(first ? first.i : 0);
