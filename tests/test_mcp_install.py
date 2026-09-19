@@ -403,6 +403,8 @@ def test_codex_replaces_a_stale_env_var_table_and_keeps_the_rest(tmp_path, monke
     import tomllib
     before = ('model = "gpt-5"\n\n[mcp_servers.figma]\nurl = "https://mcp.figma.com/mcp"\n\n'
               '[mcp_servers.treg]\nurl = "https://treg.to/mcp/"\nbearer_token_env_var = "TREG_TOKEN"\n\n'
+              # a hand-wired twin under another name, token in the env-var-NAME field (seen in the wild)
+              '[mcp_servers.treg-to_mcp]\nurl = "https://treg.to/mcp/"\nbearer_token_env_var = "eyJ.x"\n\n'
               '[mcp_servers.node_repl]\ncommand = "node_repl"\n\n[mcp_servers.node_repl.env]\nX = "1"\n')
     out, cfg = _codex_install(tmp_path, monkeypatch, existing=before, token="NEWKEY")
     assert out["results"][0][1] == "ok", out
@@ -413,6 +415,7 @@ def test_codex_replaces_a_stale_env_var_table_and_keeps_the_rest(tmp_path, monke
     assert data["mcp_servers"]["treg"] == {
         "url": "https://treg.to/mcp/", "http_headers": {"Authorization": "Bearer NEWKEY"}}
     assert cfg.read_text().count("[mcp_servers.treg]") == 1
+    assert "treg-to_mcp" not in cfg.read_text() and "eyJ.x" not in cfg.read_text()
     # idempotent
     mcp_install.install_mcp(base_url="https://treg.to", token="NEWKEY", only=["codex"])
     assert cfg.read_text().count("[mcp_servers.treg]") == 1

@@ -155,12 +155,22 @@ def _write_toml_agent(meta: dict, name: str, url: str, token: str) -> tuple[str,
         old = path.read_text() if path.exists() else ""
         tomllib.loads(old)  # a config Codex can't read is not ours to edit
         header = f"[mcp_servers.{name}]"
-        kept = re.sub(rf"(?ms)^\[mcp_servers\.{re.escape(name)}\]\n.*?(?=^\[|\Z)", "", old).rstrip()
+        # Cut our table, and any other table pointing at this same MCP url under another name — an
+        # agent wiring Codex by hand tends to leave a `treg-to_mcp` twin with the token in the wrong
+        # field, which Codex then shows as a dead server beside the working one.
+        stale = {name} | {k for k, v in tomllib.loads(old).get("mcp_servers", {}).items()
+                          if isinstance(v, dict) and v.get("url") == url}
+        kept = old
+        for k in stale:
+            kept = re.sub(rf"(?ms)^\[mcp_servers\.{re.escape(k)}\]\n.*?(?=^\[|\Z)", "", kept)
+        kept = kept.rstrip()
         block = (f"{header}\nurl = {json.dumps(url)}\n"
                  f"http_headers = {{ \"Authorization\" = {json.dumps('Bearer ' + token)} }}\n")
         new = (kept + "\n\n" if kept else "") + block
-        entry = tomllib.loads(new)["mcp_servers"][name]
-        if entry != {"url": url, "http_headers": {"Authorization": f"Bearer {token}"}}:
+        servers = tomllib.loads(new)["mcp_servers"]
+        if (servers[name] != {"url": url, "http_headers": {"Authorization": f"Bearer {token}"}}
+                or any(k != name and isinstance(v, dict) and v.get("url") == url
+                       for k, v in servers.items())):
             return "error", f"{path}: a sub-table of {header} survived; edit it by hand"
         _write_private(path, new)
         return "ok", str(path)
