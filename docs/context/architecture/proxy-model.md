@@ -111,7 +111,10 @@ Faithfulness mechanics inside `relay()`:
   already replays a caller's answer for the same label, so the caller loses nothing. A team's own key
   relays the header verbatim: that account is theirs.
 - query as the router-captured ordered pairs in `UpstreamRequest.query_items` (keeps duplicate keys
-  like `?tag=a&tag=b`).
+  like `?tag=a&tag=b`), merged onto the upstream URL with `copy_add_param` rather than passed as
+  `params=`: httpx replaces a URL's existing query whenever `params` is given, even empty, which
+  silently stripped a catalog path's own query (`/rest/images?action=initializeUpload`) until
+  2026-09-19. `tests/test_relay_path_query.py` pins it.
 - path rebuilt from `request.scope["raw_path"]` (in `call_tool`), not Starlette's URL-decoded path
   param - percent-encoding survives to the upstream (npm's scoped publish `PUT /@scope%2fname` 404s
   if `%2f` is decoded to a literal slash).
