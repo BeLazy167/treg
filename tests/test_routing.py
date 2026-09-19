@@ -42,6 +42,19 @@ def enrichment_on(monkeypatch, platform_on):
 
 
 @pytest.fixture
+def enrichment_with_miss_declarers_on(monkeypatch, enrichment_on):
+    """enrichment_on plus the two providers whose miss is a 4xx with a body (prospeo 400 NO_MATCH)
+    or a plain 4xx (limadata 404) — without them in TREG_PLATFORM_PROVIDERS a prospeo/limadata
+    test never runs the child and passes vacuously."""
+    for p in ("PROSPEO", "LIMADATA"):
+        monkeypatch.setenv(f"TREG_PLATFORM_KEY_{p}", f"PLATFORM-{p}-KEY")
+    monkeypatch.setenv("TREG_PLATFORM_PROVIDERS", "hunter,tomba,leadmagic,leadsforge,findymail,aviato,fiber-ai,prospeo,limadata")
+    get_settings.cache_clear()
+    yield
+    get_settings.cache_clear()
+
+
+@pytest.fixture
 def enrichment_with_quickenrich_on(monkeypatch, platform_on):
     """Like enrichment_on but includes QuickEnrich - the cheapest provider for phone/email lookups."""
     for p in ("HUNTER", "TOMBA", "LEADMAGIC", "LEADSFORGE", "FINDYMAIL", "AVIATO", "FIBER_AI", "QUICKENRICH"):
@@ -2265,7 +2278,7 @@ async def test_adapter_is_miss_throws_records_error_and_continues(
 
 
 async def test_prospeo_no_match_400_is_treated_as_miss_not_error(
-    clients: AsyncClient, enrichment_on, monkeypatch,
+    clients: AsyncClient, enrichment_with_miss_declarers_on, monkeypatch,
 ):
     """Prospeo returns 400 with error_code=NO_MATCH for 'no result' — this is a semantic miss,
     not a caller fault. The waterfall should continue and the parent should not 502."""
@@ -2277,7 +2290,8 @@ async def test_prospeo_no_match_400_is_treated_as_miss_not_error(
         'tomba': [(200, {'data': {'email': 'found@example.test', 'score': 99, 'verification': {'status': 'valid'}}})],
     }, seen))
 
-    r = await clients.post(f'/call/{ROUTED}', json={'full_name': 'Example Person', 'domain': 'example.com'})
+    r = await clients.post(f'/call/{ROUTED}', json={'full_name': 'Example Person', 'domain': 'example.com'},
+                           headers={'X-Treg-Route-Prefer': 'prospeo'})  # ask it first; otherwise tomba's hit ends the waterfall before it runs
     assert r.status_code == 200, r.text
     doc = r.json()
     # Waterfall continued past Prospeo's NO_MATCH
@@ -2285,12 +2299,13 @@ async def test_prospeo_no_match_400_is_treated_as_miss_not_error(
     tried = {t['endpoint_id']: t for t in doc['_treg']['tried']}
     # Prospeo should be recorded as miss, not error
     prospeo_attempts = [t for t in doc['_treg']['tried'] if t['provider'] == 'prospeo']
+    assert prospeo_attempts, doc['_treg']['tried']
     for attempt in prospeo_attempts:
         assert attempt['outcome'] == 'miss', f"Prospeo NO_MATCH should be miss, not {attempt['outcome']}"
 
 
 async def test_limadata_404_is_treated_as_miss_not_error(
-    clients: AsyncClient, enrichment_on, monkeypatch,
+    clients: AsyncClient, enrichment_with_miss_declarers_on, monkeypatch,
 ):
     """LimaData returns 404 for 'no email found' — with the miss status declared, this should
     be treated as a miss and the waterfall should continue."""
@@ -2302,7 +2317,8 @@ async def test_limadata_404_is_treated_as_miss_not_error(
         'tomba': [(200, {'data': {'email': 'found@example.test', 'score': 99, 'verification': {'status': 'valid'}}})],
     }, seen))
 
-    r = await clients.post(f'/call/{ROUTED}', json={'full_name': 'Example Person', 'domain': 'example.com'})
+    r = await clients.post(f'/call/{ROUTED}', json={'full_name': 'Example Person', 'domain': 'example.com'},
+                           headers={'X-Treg-Route-Prefer': 'limadata'})  # ask it first; otherwise tomba's hit ends the waterfall before it runs
     assert r.status_code == 200, r.text
     doc = r.json()
     # Waterfall continued past LimaData's 404
@@ -2310,5 +2326,62 @@ async def test_limadata_404_is_treated_as_miss_not_error(
     tried = {t['endpoint_id']: t for t in doc['_treg']['tried']}
     # LimaData should be recorded as miss, not error
     limadata_attempts = [t for t in doc['_treg']['tried'] if t['provider'] == 'limadata']
+    assert limadata_attempts, doc['_treg']['tried']
     for attempt in limadata_attempts:
         assert attempt['outcome'] == 'miss', f"LimaData 404 should be miss, not {attempt['outcome']}"
+
+
+# ---- miss.when: one status, two meanings (prospeo 400 NO_MATCH vs INVALID_DATAPOINTS) ----
+
+
+def test_declared_miss_honours_when_predicate_and_never_crashes():
+    from treg.application.call import route as call_route
+    ep = {"id": "x", "miss": {"status": 400, "when": "error_code == 'NO_MATCH'", "means": "no match"}}
+    assert call_route._declared_miss(ep, 400, b'{"error":true,"error_code":"NO_MATCH"}')
+    assert not call_route._declared_miss(ep, 400, b'{"error":true,"error_code":"INVALID_DATAPOINTS"}')
+    assert not call_route._declared_miss(ep, 404, b'{"error":true,"error_code":"NO_MATCH"}')
+    assert not call_route._declared_miss(ep, 400, b'["NO_MATCH"]')      # array body: no crash, not a miss
+    assert not call_route._declared_miss(ep, 400, b'not json')
+    plain = {"id": "y", "miss": {"status": 404, "means": "gone"}}
+    assert call_route._declared_miss(plain, 404, b'Not Found')
+    assert not call_route._declared_miss(plain, 400, b'')
+
+
+def test_prospeo_and_limadata_person_finders_declare_their_miss():
+    cat = catalog_store.load()
+    for eid in ("prospeo.people.email.find", "prospeo.people.phone.find", "prospeo.people.enrich"):
+        m = cat.by_id[eid]["miss"]
+        assert m["status"] == 400 and "NO_MATCH" in m["when"], eid
+    for eid in ("limadata.people.email.find.name", "limadata.people.email.find.linkedin", "limadata.people.phone.find"):
+        assert cat.by_id[eid]["miss"]["status"] == 404, eid
+
+
+async def test_prospeo_invalid_datapoints_400_stays_a_vendor_fault(
+    clients: AsyncClient, enrichment_with_miss_declarers_on, monkeypatch,
+):
+    """The same 400 with a non-NO_MATCH body is a rejected request: recorded as an error, the
+    waterfall goes on to free-on-failure providers, and the outcome is never a clean miss."""
+    seen = []
+    monkeypatch.setattr(call_service, 'relay', _relay_by_provider({
+        '*': [(200, {'data': None})] * 10,
+        'prospeo': [(400, {'error': True, 'error_code': 'INVALID_DATAPOINTS'})],
+    }, seen))
+    r = await clients.post(f'/call/{ROUTED}', json={'full_name': 'Example Person', 'domain': 'example.com'},
+                           headers={'X-Treg-Route-Prefer': 'prospeo'})  # ask it first; otherwise tomba's hit ends the waterfall before it runs
+    assert r.status_code == 502, r.text
+    prospeo = [t for t in r.json()['detail']['tried'] if t['provider'] == 'prospeo']
+    assert prospeo and all(t['outcome'] == 'error' for t in prospeo)
+
+
+def test_linkedin_url_is_normalised_once_for_every_adapter():
+    from treg.domain.catalog.routing import paths as P
+    from treg.domain.catalog.routing.contracts import canonical_identity
+    assert P.linkedin_url("linkedin.com/in/patrickcollison") == "https://linkedin.com/in/patrickcollison"
+    assert P.linkedin_url("www.linkedin.com/in/patrickcollison/") == "https://www.linkedin.com/in/patrickcollison/"
+    assert P.linkedin_url("https://www.linkedin.com/in/patrickcollison") == "https://www.linkedin.com/in/patrickcollison"
+    assert P.linkedin_url("patrickcollison") == "https://www.linkedin.com/in/patrickcollison"
+    contract = catalog_store.load().contracts["people.email.find"]
+    ident, variant = canonical_identity(contract, {"linkedin_url": "linkedin.com/in/patrickcollison"})
+    assert variant == ("linkedin_url",)
+    assert ident["linkedin_url"] == "https://linkedin.com/in/patrickcollison"
+    assert ident["linkedin_handle"] == "patrickcollison"

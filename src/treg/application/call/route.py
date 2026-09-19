@@ -34,6 +34,7 @@ from ...domain.capacity.view import view as capacity_view
 from ...domain.capacity.signatures import classify as classify_capacity
 from ...domain.catalog import stats as endpoint_stats
 from ...domain.catalog import store as catalog_store
+from ...domain.catalog.routing import paths as P
 from ...domain.catalog.routing.contracts import canonical_identity
 from ...domain.catalog.routing.plan import (
     MAX_ERROR_FALLBACKS, Candidate, Plan, candidates_for, cost_at, ignored_filters, rank,
@@ -116,22 +117,30 @@ def _miss_status(endpoint: dict) -> int | None:
     return None
 
 
-def _is_semantic_miss(provider: str, status: int, raw: bytes) -> bool:
-    """Detect provider-specific 4xx responses that indicate "no match" rather than request error.
+def _declared_miss(endpoint: dict, status: int, raw: bytes) -> bool:
+    """True when a child's ERROR status is the endpoint's declared "no result" answer.
 
-    Some providers use non-2xx status codes for valid "no result" outcomes:
-    - Prospeo returns 400 with {"error": true, "error_code": "NO_MATCH"} when a person/company
-      cannot be matched — a normal outcome, not a caller fault (and not charged).
-
-    Returns True if this response should be treated as a miss, not an error."""
-    if provider == "prospeo" and status == 400:
-        try:
-            doc = json.loads(raw)
-            if doc.get("error") is True and doc.get("error_code") == "NO_MATCH":
-                return True
-        except (ValueError, TypeError, KeyError):
-            pass
-    return False
+    `miss: {status}` alone matches on status. `miss: {status, when}` adds a body predicate in the
+    adapter expression language (`when: "error_code == 'NO_MATCH'"`) for providers that answer
+    the SAME status for a miss and a real request error — prospeo 400s both `NO_MATCH` (a miss)
+    and `INVALID_DATAPOINTS` (a fault). The provider knowledge stays in the YAML; nothing here
+    names a provider. A body that is not a JSON object never satisfies a predicate."""
+    if status != _miss_status(endpoint):
+        return False
+    when = (endpoint.get("miss") or {}).get("when")
+    if not when:
+        return True
+    try:
+        doc = json.loads(raw)
+    except ValueError:
+        return False
+    if not isinstance(doc, dict):
+        return False
+    try:
+        return bool(P.evaluate(str(when), doc))
+    except Exception:  # noqa: BLE001 — a broken predicate must read as "not a miss", never crash the parent
+        log.warning("miss.when predicate failed for %s", endpoint.get("id"), exc_info=True)
+        return False
 
 
 DEFAULT_MAX_COST_MICRO = 1_000_000  # $1.00 per routed call unless the caller says otherwise — a runaway guard, not a budget
@@ -468,15 +477,17 @@ async def run_routed(parent: CallContext, ep: dict, body_bytes: bytes, get_heade
             continue
         charged = int(_header(response, "X-Treg-Cost-Micro") or 0)
         spent += charged
-        if response.status == _miss_status(cand.endpoint) or _is_semantic_miss(cand.endpoint["provider"], response.status, raw):
+        if _declared_miss(cand.endpoint, response.status, raw):
             # The provider's declared "asked and answered: no result" status (`miss: {status, means}`
-            # on the endpoint — aviato/hunter/leadmagic/… 404 a person they have no record of), OR
-            # a body-based semantic miss (Prospeo 400 NO_MATCH, live 2026-09: ~13% of email.find
-            # 502s hit both limadata 404 and prospeo NO_MATCH before all children missed).
-            # It is a MISS, not a rejected request: before this the 404 counted as an error, so a
-            # waterfall whose other providers all missed ended in a 502 `route_failed` instead of
-            # a 200 miss (live 2026-09-03: 768 of 1,824 phone.find 502s in 30 days had no failure
-            # but an aviato 404), and a caller could not tell "nobody has it" from "treg broke".
+            # on the endpoint — aviato/hunter/leadmagic/… 404 a person they have no record of),
+            # optionally narrowed by a body predicate (`when`) where one status carries both a miss
+            # and a fault (prospeo 400 NO_MATCH vs INVALID_DATAPOINTS). It is a MISS, not a
+            # rejected request: before this the 404 counted as an error, so a waterfall whose other
+            # providers all missed ended in a 502 `route_failed` instead of a 200 miss (live
+            # 2026-09-03: 768 of 1,824 phone.find 502s in 30 days had no failure but an aviato 404;
+            # live 2026-09-18: 64% of three days of email.find 502s were a limadata 404 or a prospeo
+            # NO_MATCH among otherwise clean misses), and a caller could not tell "nobody has it"
+            # from "treg broke".
             tried.append(Attempt(cand.endpoint["id"], cand.endpoint["provider"], "miss", response.status, charged, ignored=ignored))
             if options.waterfall:
                 continue
@@ -515,11 +526,11 @@ async def run_routed(parent: CallContext, ep: dict, body_bytes: bytes, get_heade
             doc = json.loads(raw)
         except ValueError:
             doc = None
-        # Adapter transforms may throw on unexpected provider output. A crash here after a child
-        # succeeded (200) used to leave the parent 502 with no winner — the child was audited OK,
-        # the parent not. Catch adapter failures and record them as errors so the waterfall can
-        # try the next candidate and, at worst, return a structured route_failed with `tried`.
-        # Live 2026-09: ~25% of treg.people.email.find calls 502'd while children returned 200.
+        # An adapter transform that throws on unexpected provider output must not crash the parent
+        # after a child already answered (and was audited OK): record it as an error attempt and
+        # let the waterfall go on, so the worst case is a structured `route_failed` with `tried`.
+        # Defensive: no such crash was found in prod (2026-09-18 audit, 3 days, every 502 parent
+        # had run the route_failed path) — the bug that report traced was the undeclared miss above.
         try:
             core = cand.adapter.from_upstream(doc) if doc is not None else {}
         except Exception as exc:  # noqa: BLE001 — adapter threw on provider response

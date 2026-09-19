@@ -441,6 +441,9 @@ endpoints:
       checked: '2026-09-17'
       confidence: verified
       note: Ten credits only when at least one phone number is found; a 404 miss is free.
+    miss:
+      status: 404
+      means: "no phone number found for this person — a normal outcome (and free), not an API failure"
     docs_url: https://api.limadata.com/docs/basic_v2
     verified: '2026-09-17'
     example_response: examples/limadata.people.phone.find.json

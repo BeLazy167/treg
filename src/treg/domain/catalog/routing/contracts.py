@@ -147,6 +147,11 @@ def canonical_identity(contract: Contract, given: dict[str, Any]) -> tuple[dict[
     supplied = next((v for v in contract.identity if all(k in ident for k in v)), None)
     if supplied is None:
         return ident, None
+    if isinstance(ident.get("linkedin_url"), str):
+        # One normalisation for every adapter that forwards the URL raw: a scheme-less
+        # `linkedin.com/in/x` reached quickenrich as-is and 422'd "must be a valid URL"
+        # (311 routed calls in two days, 2026-09-18); a handle becomes the public URL.
+        ident["linkedin_url"] = P.linkedin_url(ident["linkedin_url"]) or ident["linkedin_url"]
     for _ in range(2):  # derive until stable (join needs first+last; split needs full_name)
         for k, expr in contract.derive.items():
             if ident.get(k) in (None, ""):

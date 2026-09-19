@@ -54,6 +54,10 @@ endpoints:
       checked: '2026-09-16'
       confidence: verified
       note: One credit when a verified email is returned; a miss or free_enrichment=true is free.
+    miss:
+      status: 400
+      when: "error_code == 'NO_MATCH'"
+      means: "no verified work email for this person — a normal outcome (and free), not an API failure (400 with error_code NO_MATCH; other 400 bodies are real request errors)"
     docs_url: https://prospeo.io/api-docs/enrich-person
     verified: '2026-09-16'
     example_response: examples/prospeo.people.email.find.json
@@ -92,6 +96,10 @@ endpoints:
       checked: '2026-09-16'
       confidence: documented
       note: Fixed ten-credit platform price for a non-free mobile reveal; email is included. Prospeo may internally charge nine incremental credits after a prior email reveal, but its response exposes no numeric charge, so platform settlement deliberately uses the documented ten-credit maximum.
+    miss:
+      status: 400
+      when: "error_code == 'NO_MATCH'"
+      means: "no mobile number for this person — a normal outcome (and free), not an API failure (400 with error_code NO_MATCH; other 400 bodies are real request errors)"
     docs_url: https://prospeo.io/api-docs/enrich-person
     verified: '2026-09-16'
     example_response: examples/prospeo.people.phone.find.json
@@ -122,6 +130,10 @@ endpoints:
     cost:
       <<: *one_credit_success
       note: One credit for a matched person when free_enrichment=false; a miss or free_enrichment=true is free.
+    miss:
+      status: 400
+      when: "error_code == 'NO_MATCH'"
+      means: "nobody matched the identity — a normal outcome (and free), not an API failure (400 with error_code NO_MATCH; other 400 bodies are real request errors)"
     docs_url: https://prospeo.io/api-docs/enrich-person
     verified: '2026-09-16'
     example_response: examples/prospeo.people.enrich.json
