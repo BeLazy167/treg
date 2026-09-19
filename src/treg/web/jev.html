@@ -140,8 +140,27 @@
   .judge button { flex: 0 0 auto; }
   .judge button:disabled { opacity: .5; cursor: wait; }
   .xb-note { font-size: 12.5px; color: var(--muted); margin: -4px 6px 12px; min-height: 18px; }
-  .board { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 10px; }
-  @media (max-width: 860px) { .board { grid-template-columns: 1fr; } }
+  .xb-body { display: grid; grid-template-columns: 250px minmax(0,1fr); gap: 10px; align-items: start; }
+  @media (max-width: 1000px) { .xb-body { grid-template-columns: 1fr; } }
+  .board { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 10px; }
+  .board.irr-open { grid-template-columns: repeat(3, minmax(0,1fr)); }
+  .board:not(.irr-open) .kcol.irrelevant { display: none; }
+  @media (max-width: 860px) { .board, .board.irr-open { grid-template-columns: 1fr; } }
+  .tally { display: grid; gap: 6px; margin-top: 8px; }
+  .tv { border: 1px solid var(--line); border-left: 4px solid var(--c); background: var(--card); border-radius: 0 10px 10px 0; padding: 8px 10px; display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 8px; text-align: left; font: inherit; color: inherit; cursor: default; }
+  .tv.organic { --c: var(--green); } .tv.paid { --c: var(--amber); } .tv.irrelevant { --c: var(--muted); cursor: pointer; }
+  .tv .t { font-family: var(--mono); font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--c); font-weight: 500; }
+  .tv .d { color: var(--muted); font-size: 11.5px; margin-top: 2px; }
+  .tv .n { font-family: var(--display); font-weight: 600; font-size: 24px; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+  .tv .tog { font-family: var(--mono); font-size: 10px; color: var(--muted); text-decoration: underline; text-underline-offset: 3px; }
+  .stack { height: 12px; display: flex; border-radius: 6px; overflow: hidden; margin-top: 10px; background: var(--line); }
+  .stack i { display: block; height: 100%; } .stack .organic { background: var(--green); } .stack .paid { background: var(--amber); }
+  .xsteps { margin-top: 12px; font-family: var(--mono); font-size: 11px; color: var(--muted); display: grid; grid-template-columns: auto auto 1fr; gap: 4px 8px; align-items: baseline; }
+  .xsteps b { color: var(--ink); font-weight: 500; text-align: right; }
+  .xsteps .who { font-size: 9px; letter-spacing: .08em; text-transform: uppercase; padding: 1px 5px; border-radius: 4px; background: var(--amber-soft); color: var(--amber); justify-self: start; }
+  .xsteps .who.jev { background: var(--blue-soft); color: var(--blue); }
+  .xtopics { display: grid; grid-template-columns: 1fr auto; gap: 3px 10px; font-size: 12.5px; margin-top: 8px; }
+  .xtopics .v { font-family: var(--mono); font-size: 11.5px; color: var(--muted); }
   .kcol { border: 1px solid var(--line); border-radius: 16px; background: #fff; display: flex; flex-direction: column; min-height: 0; }
   .kh { display: flex; justify-content: space-between; align-items: center; padding: 12px 14px 10px; border-bottom: 1px solid var(--line); }
   .kh .t { font-family: var(--display); font-weight: 500; font-size: 16px; letter-spacing: -.01em; color: var(--c); }
@@ -385,13 +404,19 @@
       <div class="dh"><h3>Launch posts on X, last 24h</h3><div class="receipt" id="xb-receipt">loading the latest run…</div></div>
       <div class="xb-top">
         <form class="judge" id="xb-form"><input id="xb-url" type="url" placeholder="Paste a post link, e.g. https://x.com/handle/status/…" aria-label="Post link" required><button class="pill dark sm" id="xb-go" type="submit">Judge it</button></form>
-        <div class="receipt" id="xb-tally"></div>
+        <div class="receipt" id="xb-tally" hidden></div>
       </div>
       <div class="xb-note" id="xb-note"></div>
+      <div class="xb-body">
+      <aside style="display:flex;flex-direction:column;gap:10px">
+        <div class="panel"><div class="lbl"><span>verdicts</span><span class="n" id="xb-tallymeta"></span></div><div class="stack" id="xb-stack"></div><div class="tally" id="xb-tallybox"></div><div class="xsteps" id="xb-steps"></div><div class="spend" id="xb-spend"></div></div>
+        <div class="panel"><div class="lbl"><span>search phrases</span></div><div class="xtopics" id="xb-topics"></div></div>
+      </aside>
       <div class="board" id="xb-board">
         <div class="kcol organic"><div class="kh"><span><span class="t">Organic launch</span><span class="d">reach earned, study these</span></span><span class="n" id="xb-n-organic">0</span></div><div class="kb" id="xb-kb-organic"></div></div>
         <div class="kcol paid"><div class="kh"><span><span class="t">Paid launch</span><span class="d">reach bought, engagement thin</span></span><span class="n" id="xb-n-paid">0</span></div><div class="kb" id="xb-kb-paid"></div></div>
         <div class="kcol irrelevant"><div class="kh"><span><span class="t">Irrelevant</span><span class="d">not a launch, or not our space</span></span><span class="n" id="xb-n-irrelevant">0</span></div><div class="kb" id="xb-kb-irrelevant"></div></div>
+      </div>
       </div>
     </div>
   </div>
@@ -633,10 +658,24 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape' && !drawer.hi
     btn.onclick = () => inspect(p, btn);
     return btn;
   }
+  let irrOpen = false;
   function counts() {
     const n = {organic:0, paid:0, irrelevant:0}; posts.forEach(p => n[LANE(p)]++);
     for (const l in n) $('xb-n-' + l).textContent = n[l];
-    $('xb-tally').innerHTML = `<span><b>${n.organic}</b> organic</span><span><b>${n.paid}</b> paid</span><span><b>${n.irrelevant}</b> irrelevant</span>`;
+    const other = posts.filter(p => p.relevance === 'launch_other').length, nota = posts.filter(p => p.relevance === 'not_a_launch').length;
+    $('xb-tallymeta').textContent = `${posts.length} posts`;
+    $('xb-stack').innerHTML = `<i class="organic" style="width:${100*n.organic/Math.max(1,posts.length)}%"></i><i class="paid" style="width:${100*n.paid/Math.max(1,posts.length)}%"></i>`;
+    $('xb-tallybox').innerHTML = `<div class="tv organic"><div><div class="t">organic launch</div><div class="d">earned reach, worth studying</div></div><div class="n">${n.organic}</div></div>
+      <div class="tv paid"><div><div class="t">paid launch</div><div class="d">views bought, engagement thin</div></div><div class="n">${n.paid}</div></div>
+      <button class="tv irrelevant" id="xb-irr"><div><div class="t">irrelevant</div><div class="d">${other} other launches · ${nota} not launches · <span class="tog">${irrOpen ? 'hide' : 'show'}</span></div></div><div class="n">${n.irrelevant}</div></button>`;
+    $('xb-irr').onclick = () => { irrOpen = !irrOpen; $('xb-board').classList.toggle('irr-open', irrOpen); counts(); };
+    $('xb-board').classList.toggle('irr-open', irrOpen);
+    const c = RUN.calls || {}, judged = (RUN.posts || []).length;
+    $('xb-steps').innerHTML = [[`search × ${c.search||0}`, 'treg', '', `${RUN.posts_found ?? judged} posts <24h`], [`profiles × ${c.profile||0}`, 'treg', '', 'followers, verified'], [`reply samples × ${c.replies||0}`, 'treg', '', 'first 20 replies'], [`judge × ${judged}`, 'jev', 'jev', '5 questions per post']]
+      .map(([a, w, cls, d]) => `<span>${a}</span><span class="who ${cls}">${w}</span><b>${d}</b>`).join('');
+    const cost = RUN.costs || {};
+    $('xb-spend').innerHTML = `<div class="jev"><small>jev · list price</small>${fmt$(cost.jev||0)}</div><div><small>treg spend</small>${fmt$(cost.treg||0)}</div>`;
+    $('xb-topics').innerHTML = (RUN.topics || []).map(t => `<span>${esc(t)}</span><span class="v">${(RUN.posts||[]).filter(p => p.topic === t).length} in top ${judged}</span>`).join('');
   }
   function render() {
     const manual = (RUN.manual || []).map(p => ({...p, manual: true}));
