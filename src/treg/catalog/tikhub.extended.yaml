@@ -27861,7 +27861,7 @@ endpoints:
       period:
         type: integer
         required: false
-        note: Time period (days)
+        note: "Time period in days. Allowed values 7 | 30 | 120 | 180 (TikHub OpenAPI: e.g. 7, 30, 120, 180 days). Other integers fail Creative Center nested validation."
         example: 180
       industry:
         type: string
@@ -27879,7 +27879,7 @@ endpoints:
       limit:
         type: integer
         required: false
-        note: Items per page
+        note: "Items per page. Default 20. Prefer limit ≤ 20 — live Creative Center validation has rejected values above 20 (30/50) even though some OpenAPI text says max 50."
         example: 20
       order_by:
         type: string
@@ -27889,7 +27889,7 @@ endpoints:
       country_code:
         type: string
         required: false
-        note: Country code
+        note: "Country code. May not always filter results the way agents expect (some codes, e.g. PH, have been observed appearing ignored)."
         example: US
       ad_format:
         type: integer

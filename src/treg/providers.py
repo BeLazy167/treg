@@ -144,6 +144,8 @@ CATALOG: list[dict] = [
      "probe": "api/v2/credit-balance"},
     {"provider": "LimaData", "tokens": ["LIMADATA"], "base_url": "https://api.limadata.com",
      "auth": {"shape": "api_key_header", "header": "x-api-key"}},
+    {"provider": "Datagma", "tokens": ["DATAGMA"], "base_url": "https://gateway.datagma.net",
+     "auth": {"shape": "query", "param": "apiId"}, "probe": "api/ingress/v1/mine"},
     {"provider": "Crustdata", "tokens": ["CRUSTDATA"], "base_url": "https://api.crustdata.com",
      "auth": {"shape": "bearer"}, "probe": "account/credits",
      "required_headers": {"x-api-version": "2025-11-01"}},

@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+from pathlib import Path
 
 import pytest
 from httpx import AsyncClient
@@ -35,6 +36,19 @@ def enrichment_on(monkeypatch, platform_on):
         monkeypatch.setenv(f"TREG_PLATFORM_KEY_{p}", f"PLATFORM-{p}-KEY")
     monkeypatch.setenv("TREG_PLATFORM_KEY_TOMBA_SECRET", "PLATFORM-TOMBA-SECRET")
     monkeypatch.setenv("TREG_PLATFORM_PROVIDERS", "hunter,tomba,leadmagic,leadsforge,findymail,aviato,fiber-ai")
+    get_settings.cache_clear()
+    yield
+    get_settings.cache_clear()
+
+
+@pytest.fixture
+def enrichment_with_miss_declarers_on(monkeypatch, enrichment_on):
+    """enrichment_on plus the two providers whose miss is a 4xx with a body (prospeo 400 NO_MATCH)
+    or a plain 4xx (limadata 404) — without them in TREG_PLATFORM_PROVIDERS a prospeo/limadata
+    test never runs the child and passes vacuously."""
+    for p in ("PROSPEO", "LIMADATA"):
+        monkeypatch.setenv(f"TREG_PLATFORM_KEY_{p}", f"PLATFORM-{p}-KEY")
+    monkeypatch.setenv("TREG_PLATFORM_PROVIDERS", "hunter,tomba,leadmagic,leadsforge,findymail,aviato,fiber-ai,prospeo,limadata")
     get_settings.cache_clear()
     yield
     get_settings.cache_clear()
@@ -1304,7 +1318,7 @@ async def test_lusha_is_the_last_rung_of_the_phone_waterfall_and_settles_on_its_
     get_settings.cache_clear()
     routed = "treg.people.phone.find"
     plan = (await clients.get(f"/catalog/endpoints/{routed}")).json()["routing"]["plan"]
-    assert plan[-1]["endpoint_id"] == "lusha.people.phone.find" and len(plan) == 11, [c["endpoint_id"] for c in plan]
+    assert plan[-1]["endpoint_id"] == "lusha.people.phone.find" and len(plan) == 12, [c["endpoint_id"] for c in plan]
     def misses():
         return {"aviato": [(404, {"message": "Not Found"})], "tomba": [(200, {"data": {"e164_format": None}})],
                 "leadmagic": [(200, {"mobile_number": None, "credits_consumed": 0})],
@@ -1504,11 +1518,6 @@ def test_bounceban_verdicts_join_existing_email_verification_route(result, valid
     assert cat.platform_eligible(cat.by_id[eid])
     for blocked in (
         "bounceban.people.email.verify.waterfall",
-        "bounceban.people.email.verify.bulk",
-        "bounceban.people.email.verify.bulk.status",
-        "bounceban.people.email.verify.bulk.emails",
-        "bounceban.people.email.verify.bulk.dump",
-        "bounceban.people.email.verify.bulk.export",
         "bounceban.account.usage",
     ):
         assert not cat.platform_eligible(cat.by_id[blocked])
@@ -1766,6 +1775,25 @@ def test_contact_adapters_reject_empty_markers(endpoint, field, value):
     assert not ad.is_miss({'success': True, 'data': {field: 'contact-value'}})
 
 
+def test_quickenrich_paid_adapter_fixtures_verify_success_outputs():
+    cat = catalog_store.load()
+    expected = {
+        'quickenrich.people.email.find': ('email', 'person@example.com'),
+        'quickenrich.people.phone.find': ('phone', '+15550101000'),
+        'quickenrich.people.enrich': ('full_name', 'Example Person'),
+    }
+    for endpoint_id, (field, value) in expected.items():
+        adapter = cat.adapters[endpoint_id]
+        assert adapter.verified is True
+        assert adapter.verify_note == ''
+        example = json.loads(
+            (Path(__file__).resolve().parents[1] / 'src/treg/catalog/examples'
+             / cat.by_id[endpoint_id]['example_file']).read_text()
+        )
+        assert not adapter.is_miss(example)
+        assert adapter.from_upstream(example)[field] == value
+
+
 def test_search_adapters_preserve_filters_and_fixed_page_quote():
     from treg.domain.catalog.routing.contracts import adapter_accepts
     cat = catalog_store.load()
@@ -1981,6 +2009,18 @@ def test_row_values_and_nested_lookup_expressions(value, expected):
 
 
 _CONTACTOUT_DISCOVERY = [
+    ('people.email.find', 'people.contact.work',
+     {'linkedin_url': 'https://www.linkedin.com/in/example'},
+     'GET', {'profile': 'https://www.linkedin.com/in/example',
+             'email_type': 'work', 'include_phone': False}, None,
+     {'status_code': 200, 'profile': {'work_email': ['work@example.test']}},
+     'email', 'work@example.test', 150_000),
+    ('people.phone.find', 'people.contact.phone',
+     {'linkedin_url': 'https://www.linkedin.com/in/example'},
+     'GET', {'profile': 'https://www.linkedin.com/in/example',
+             'email_type': 'none', 'include_phone': True}, None,
+     {'status_code': 200, 'profile': {'phone': ['+10000000000']}},
+     'phone', '+10000000000', 250_000),
     ('companies.search', 'companies.search', {'domain': 'example.test'},
      'POST', {}, {'domain': ['example.test']},
      {'status_code': 200, 'companies': [{'name': 'Example'}]}, 'companies', [{'name': 'Example'}], 20_000),
@@ -2033,10 +2073,341 @@ async def test_contactout_discovery_empty_or_error_response_is_not_a_hit(
         assert not (await db.execute(select(Hold))).scalars().all()
 
 
-def test_contactout_pii_routes_are_not_enabled_without_verification_examples():
+def test_contactout_unverified_pii_routes_stay_direct_only():
     cat = catalog_store.load()
     for cap, child in [('people.search', 'people.search'), ('people.enrich', 'people.enrich'),
                        ('linkedin.user.profile', 'people.linkedin.enrich')]:
         eid = 'contactout.' + child
         assert eid not in cat.adapters
         assert eid not in cat.by_id['treg.' + cap]['routed_children']
+    assert 'contactout.people.contact.personal' not in cat.adapters
+    assert cat.by_id['contactout.people.contact.personal']['platform'] == 'people'
+
+
+# ---- regression: adapter exceptions after child success must not crash the parent (2026-09) ----
+
+
+def _make_throwing_adapter(real, throw_on: str):
+    """Create a wrapper adapter that throws on the specified method."""
+    class ThrowingAdapter:
+        def __init__(self, real):
+            self._real = real
+            # Copy ALL attributes from the real Adapter dataclass
+            self.endpoint_id = real.endpoint_id
+            self.accepts = real.accepts
+            self.in_map = real.in_map
+            self.out_map = real.out_map
+            self.miss = real.miss
+            self.const = getattr(real, 'const', {})
+            self.in_expr = getattr(real, 'in_expr', {})
+            self.body_array = getattr(real, 'body_array', False)
+            self.test_identity = getattr(real, 'test_identity', {})
+            self.cost_units = getattr(real, 'cost_units', '')
+            self.additional_capabilities = getattr(real, 'additional_capabilities', ())
+            self.verified_capabilities = getattr(real, 'verified_capabilities', ())
+            self.verified = real.verified
+            self.verify_note = getattr(real, 'verify_note', '')
+            self._filter_keys = getattr(real, '_filter_keys', ())
+
+        def to_upstream(self, identity, variant):
+            if throw_on == 'to_upstream':
+                raise KeyError("simulated to_upstream failure")
+            return self._real.to_upstream(identity, variant)
+
+        def from_upstream(self, provider_body):
+            if throw_on == 'from_upstream':
+                raise ValueError("simulated from_upstream failure")
+            return self._real.from_upstream(provider_body)
+
+        def is_miss(self, provider_body):
+            if throw_on == 'is_miss':
+                raise TypeError("simulated is_miss failure")
+            return self._real.is_miss(provider_body)
+
+    return ThrowingAdapter(real)
+
+
+def _patched_catalog_with_throwing_adapter(original_cat, endpoint_id: str, throw_on: str):
+    """Return a new Catalog with one adapter replaced by a throwing wrapper."""
+    from dataclasses import replace
+    new_adapters = dict(original_cat.adapters)
+    new_adapters[endpoint_id] = _make_throwing_adapter(original_cat.adapters[endpoint_id], throw_on)
+    return replace(original_cat, adapters=new_adapters)
+
+
+def _patched_catalog_all_email_find_throw(original_cat):
+    """Return a new Catalog where all email.find adapters throw on from_upstream."""
+    from dataclasses import replace
+    new_adapters = {}
+    for eid, adapter in original_cat.adapters.items():
+        if 'email.find' in eid:
+            new_adapters[eid] = _make_throwing_adapter(adapter, 'from_upstream')
+        else:
+            new_adapters[eid] = adapter
+    return replace(original_cat, adapters=new_adapters)
+
+
+async def test_adapter_from_upstream_throws_after_child_200_waterfall_continues(
+    clients: AsyncClient, enrichment_on, monkeypatch,
+):
+    """Regression for 2026-09 bug: adapter.from_upstream throwing after a child returned 200 used
+    to crash the parent with a bare 502, leaving children audited OK but parent failed. Now the
+    adapter failure is recorded as an error and the waterfall continues to the next provider."""
+    original_cat = catalog_store.load()
+    # Patch tomba's adapter to throw (tomba is first in price order for this identity)
+    patched_cat = _patched_catalog_with_throwing_adapter(original_cat, "tomba.people.email.find", "from_upstream")
+
+    monkeypatch.setattr(catalog_store, 'load', lambda: patched_cat)
+
+    seen = []
+    # Tomba returns 200 but adapter throws; hunter returns 200 and works fine
+    # '*' catches other providers in waterfall (findymail, etc) returning miss
+    monkeypatch.setattr(call_service, 'relay', _relay_by_provider({
+        '*': [(200, {'data': None})] * 10,  # Other providers return miss-like response
+        'tomba': [(200, {'data': {'email': 'bad@format.test', 'unexpectedField': True}})],
+        'hunter': [(200, {'data': {'email': 'found@example.test', 'score': 80, 'verification': {'status': 'valid'}}})],
+    }, seen))
+
+    r = await clients.post(f'/call/{ROUTED}', json={'full_name': 'Example Person', 'domain': 'example.com'})
+    assert r.status_code == 200, r.text
+    doc = r.json()
+    # Waterfall continued to hunter after tomba's adapter failed
+    assert doc['_treg']['served_by'] == 'hunter.people.email.find'
+    assert doc['_treg']['outcome'] == 'hit'
+    # The tomba error should be recorded in `tried`
+    tried = {t['endpoint_id']: t for t in doc['_treg']['tried']}
+    assert 'tomba.people.email.find' in tried
+    assert tried['tomba.people.email.find']['outcome'] == 'error'
+    assert 'adapter.from_upstream failed' in tried['tomba.people.email.find']['detail']
+    # Hunter succeeded
+    assert tried['hunter.people.email.find']['outcome'] == 'hit'
+
+
+async def test_adapter_throws_on_all_children_returns_structured_502_with_tried(
+    clients: AsyncClient, enrichment_on, monkeypatch,
+):
+    """When ALL adapters throw on 200 responses, the parent must return a structured 502
+    with proper error details and `tried` list - not a bare 500 or empty 502."""
+    original_cat = catalog_store.load()
+    patched_cat = _patched_catalog_all_email_find_throw(original_cat)
+
+    monkeypatch.setattr(catalog_store, 'load', lambda: patched_cat)
+
+    seen = []
+    # All providers return 200 but adapters throw
+    # '*' wildcard catches all providers - return data that adapters will parse
+    monkeypatch.setattr(call_service, 'relay', _relay_by_provider({
+        '*': [(200, {'data': {'email': 'x@test.test'}})] * 15,
+    }, seen))
+
+    r = await clients.post(f'/call/{ROUTED}', json={'full_name': 'Example Person', 'domain': 'example.com'})
+    # Should be 502 route_failed, not 500 or empty body
+    assert r.status_code == 502, r.text
+    doc = r.json()
+    assert doc['detail']['error'] == 'route_failed'
+    # The tried list should have some error outcomes (adapters that threw)
+    tried = doc['detail']['tried']
+    assert len(tried) > 0
+    error_outcomes = [t for t in tried if t['outcome'] == 'error']
+    # At least one adapter should have thrown (those with email.find in name)
+    assert len(error_outcomes) > 0, f"Expected at least one error outcome, got: {tried}"
+    # Check that error details mention adapter failure
+    for t in error_outcomes:
+        if 'detail' in t and t['detail']:
+            assert 'adapter' in t['detail'] or 'failed' in t['detail'], f"Unexpected error detail: {t}"
+
+
+async def test_adapter_to_upstream_throws_records_error_and_continues(
+    clients: AsyncClient, enrichment_on, monkeypatch,
+):
+    """If adapter.to_upstream throws (before the child call), the error is recorded
+    and the waterfall continues to the next candidate."""
+    original_cat = catalog_store.load()
+    # Patch tomba's adapter to throw on to_upstream
+    patched_cat = _patched_catalog_with_throwing_adapter(original_cat, "tomba.people.email.find", "to_upstream")
+
+    monkeypatch.setattr(catalog_store, 'load', lambda: patched_cat)
+
+    seen = []
+    # Tomba's to_upstream will throw before relay is called
+    # '*' catches other providers, returning miss-like response
+    monkeypatch.setattr(call_service, 'relay', _relay_by_provider({
+        '*': [(200, {'data': None})] * 10,  # Other providers return miss-like response
+        'hunter': [(200, {'data': {'email': 'found@example.test', 'score': 80, 'verification': {'status': 'valid'}}})],
+    }, seen))
+
+    r = await clients.post(f'/call/{ROUTED}', json={'full_name': 'Example Person', 'domain': 'example.com'})
+    assert r.status_code == 200, r.text
+    doc = r.json()
+    # Tomba's to_upstream failed, waterfall continued to hunter
+    assert doc['_treg']['served_by'] == 'hunter.people.email.find'
+    tried = {t['endpoint_id']: t for t in doc['_treg']['tried']}
+    assert 'tomba.people.email.find' in tried
+    assert tried['tomba.people.email.find']['outcome'] == 'error'
+    assert 'adapter.to_upstream failed' in tried['tomba.people.email.find']['detail']
+
+
+async def test_adapter_is_miss_throws_records_error_and_continues(
+    clients: AsyncClient, enrichment_on, monkeypatch,
+):
+    """If adapter.is_miss throws after parsing the response, the error is recorded
+    and the waterfall continues."""
+    original_cat = catalog_store.load()
+    # Patch tomba's adapter to throw on is_miss
+    patched_cat = _patched_catalog_with_throwing_adapter(original_cat, "tomba.people.email.find", "is_miss")
+
+    monkeypatch.setattr(catalog_store, 'load', lambda: patched_cat)
+
+    seen = []
+    # '*' catches other providers, returning miss-like response
+    monkeypatch.setattr(call_service, 'relay', _relay_by_provider({
+        '*': [(200, {'data': None})] * 10,  # Other providers return miss-like response
+        'tomba': [(200, {'data': {'email': 'tomba@test.test', 'score': 99}})],
+        'hunter': [(200, {'data': {'email': 'found@example.test', 'score': 80, 'verification': {'status': 'valid'}}})],
+    }, seen))
+
+    r = await clients.post(f'/call/{ROUTED}', json={'full_name': 'Example Person', 'domain': 'example.com'})
+    assert r.status_code == 200, r.text
+    doc = r.json()
+    # Tomba's is_miss failed, waterfall continued to hunter
+    assert doc['_treg']['served_by'] == 'hunter.people.email.find'
+    tried = {t['endpoint_id']: t for t in doc['_treg']['tried']}
+    assert 'tomba.people.email.find' in tried
+    assert tried['tomba.people.email.find']['outcome'] == 'error'
+    assert 'adapter.is_miss failed' in tried['tomba.people.email.find']['detail']
+
+
+async def test_prospeo_no_match_400_is_treated_as_miss_not_error(
+    clients: AsyncClient, enrichment_with_miss_declarers_on, monkeypatch,
+):
+    """Prospeo returns 400 with error_code=NO_MATCH for 'no result' — this is a semantic miss,
+    not a caller fault. The waterfall should continue and the parent should not 502."""
+    seen = []
+    # Prospeo returns 400 NO_MATCH (semantic miss), tomba returns 200 hit
+    monkeypatch.setattr(call_service, 'relay', _relay_by_provider({
+        '*': [(200, {'data': None})] * 10,  # Other providers miss
+        'prospeo': [(400, {'error': True, 'error_code': 'NO_MATCH'})],
+        'tomba': [(200, {'data': {'email': 'found@example.test', 'score': 99, 'verification': {'status': 'valid'}}})],
+    }, seen))
+
+    r = await clients.post(f'/call/{ROUTED}', json={'full_name': 'Example Person', 'domain': 'example.com'},
+                           headers={'X-Treg-Route-Prefer': 'prospeo'})  # ask it first; otherwise tomba's hit ends the waterfall before it runs
+    assert r.status_code == 200, r.text
+    doc = r.json()
+    # Waterfall continued past Prospeo's NO_MATCH
+    assert doc['_treg']['outcome'] == 'hit'
+    tried = {t['endpoint_id']: t for t in doc['_treg']['tried']}
+    # Prospeo should be recorded as miss, not error
+    prospeo_attempts = [t for t in doc['_treg']['tried'] if t['provider'] == 'prospeo']
+    assert prospeo_attempts, doc['_treg']['tried']
+    for attempt in prospeo_attempts:
+        assert attempt['outcome'] == 'miss', f"Prospeo NO_MATCH should be miss, not {attempt['outcome']}"
+
+
+async def test_limadata_404_is_treated_as_miss_not_error(
+    clients: AsyncClient, enrichment_with_miss_declarers_on, monkeypatch,
+):
+    """LimaData returns 404 for 'no email found' — with the miss status declared, this should
+    be treated as a miss and the waterfall should continue."""
+    seen = []
+    # LimaData returns 404 (declared miss), tomba returns 200 hit
+    monkeypatch.setattr(call_service, 'relay', _relay_by_provider({
+        '*': [(200, {'data': None})] * 10,  # Other providers miss
+        'limadata': [(404, {})],
+        'tomba': [(200, {'data': {'email': 'found@example.test', 'score': 99, 'verification': {'status': 'valid'}}})],
+    }, seen))
+
+    r = await clients.post(f'/call/{ROUTED}', json={'full_name': 'Example Person', 'domain': 'example.com'},
+                           headers={'X-Treg-Route-Prefer': 'limadata'})  # ask it first; otherwise tomba's hit ends the waterfall before it runs
+    assert r.status_code == 200, r.text
+    doc = r.json()
+    # Waterfall continued past LimaData's 404
+    assert doc['_treg']['outcome'] == 'hit'
+    tried = {t['endpoint_id']: t for t in doc['_treg']['tried']}
+    # LimaData should be recorded as miss, not error
+    limadata_attempts = [t for t in doc['_treg']['tried'] if t['provider'] == 'limadata']
+    assert limadata_attempts, doc['_treg']['tried']
+    for attempt in limadata_attempts:
+        assert attempt['outcome'] == 'miss', f"LimaData 404 should be miss, not {attempt['outcome']}"
+
+
+# ---- miss.when: one status, two meanings (prospeo 400 NO_MATCH vs INVALID_DATAPOINTS) ----
+
+
+def test_declared_miss_honours_when_predicate_and_never_crashes():
+    from treg.application.call import route as call_route
+    ep = {"id": "x", "miss": {"status": 400, "when": "error_code == 'NO_MATCH'", "means": "no match"}}
+    assert call_route._declared_miss(ep, 400, b'{"error":true,"error_code":"NO_MATCH"}')
+    assert not call_route._declared_miss(ep, 400, b'{"error":true,"error_code":"INVALID_DATAPOINTS"}')
+    assert not call_route._declared_miss(ep, 404, b'{"error":true,"error_code":"NO_MATCH"}')
+    assert not call_route._declared_miss(ep, 400, b'["NO_MATCH"]')      # array body: no crash, not a miss
+    assert not call_route._declared_miss(ep, 400, b'not json')
+    plain = {"id": "y", "miss": {"status": 404, "means": "gone"}}
+    assert call_route._declared_miss(plain, 404, b'Not Found')
+    assert not call_route._declared_miss(plain, 400, b'')
+
+
+def test_prospeo_and_limadata_person_finders_declare_their_miss():
+    cat = catalog_store.load()
+    from treg.domain.catalog.routing.contracts import declared_miss
+    for eid in ("prospeo.people.email.find", "prospeo.people.phone.find", "prospeo.people.enrich"):
+        ep = cat.by_id[eid]
+        assert ep["miss"]["status"] == 400, eid
+        # evaluate the predicate, not just its spelling: a misspelt path would silently never match
+        assert declared_miss(ep, 400, {"error": True, "error_code": "NO_MATCH"}), eid
+        assert not declared_miss(ep, 400, {"error": True, "error_code": "INVALID_DATAPOINTS"}), eid
+        assert "when" not in catalog_store.endpoint_view(ep, "Prospeo", cat)["miss"], "internal predicate leaks to agents"
+    for eid in ("limadata.people.email.find.name", "limadata.people.email.find.linkedin", "limadata.people.phone.find"):
+        assert cat.by_id[eid]["miss"]["status"] == 404, eid
+
+
+async def test_prospeo_invalid_datapoints_400_stays_a_vendor_fault(
+    clients: AsyncClient, enrichment_with_miss_declarers_on, monkeypatch,
+):
+    """The same 400 with a non-NO_MATCH body is a rejected request: recorded as an error, the
+    waterfall goes on to free-on-failure providers, and the outcome is never a clean miss."""
+    seen = []
+    monkeypatch.setattr(call_service, 'relay', _relay_by_provider({
+        '*': [(200, {'data': None})] * 10,
+        'prospeo': [(400, {'error': True, 'error_code': 'INVALID_DATAPOINTS'})],
+    }, seen))
+    r = await clients.post(f'/call/{ROUTED}', json={'full_name': 'Example Person', 'domain': 'example.com'},
+                           headers={'X-Treg-Route-Prefer': 'prospeo'})  # ask it first; otherwise tomba's hit ends the waterfall before it runs
+    assert r.status_code == 502, r.text
+    prospeo = [t for t in r.json()['detail']['tried'] if t['provider'] == 'prospeo']
+    assert prospeo and all(t['outcome'] == 'error' for t in prospeo)
+
+
+def test_linkedin_url_is_normalised_once_for_every_adapter():
+    from treg.domain.catalog.routing import paths as P
+    from treg.domain.catalog.routing.contracts import canonical_identity
+    assert P.linkedin_url("linkedin.com/in/patrickcollison") == "https://linkedin.com/in/patrickcollison"
+    assert P.linkedin_url("www.linkedin.com/in/patrickcollison/") == "https://www.linkedin.com/in/patrickcollison/"
+    assert P.linkedin_url("https://www.linkedin.com/in/patrickcollison") == "https://www.linkedin.com/in/patrickcollison"
+    assert P.linkedin_url("patrickcollison") == "https://www.linkedin.com/in/patrickcollison"
+    contract = catalog_store.load().contracts["people.email.find"]
+    ident, variant = canonical_identity(contract, {"linkedin_url": "linkedin.com/in/patrickcollison"})
+    assert variant == ("linkedin_url",)
+    assert ident["linkedin_url"] == "https://linkedin.com/in/patrickcollison"
+    assert ident["linkedin_handle"] == "patrickcollison"
+
+
+def test_linkedin_url_only_trusts_a_linkedin_host():
+    from treg.domain.catalog.routing import paths as P
+    # a path that merely mentions linkedin.com is a handle-shaped string, never promoted to that host
+    assert P.linkedin_url("evil.example/?linkedin.com/in/x") == "https://www.linkedin.com/in/evil.example/?linkedin.com/in/x"
+    assert P.linkedin_url("uk.linkedin.com/in/x") == "https://uk.linkedin.com/in/x"
+
+
+def test_arena_and_router_read_the_miss_block_the_same_way():
+    from treg.domain import arena
+    cat = catalog_store.load()
+    ep = cat.by_id["prospeo.people.email.find"]; ad = cat.adapters[ep["id"]]; contract = cat.contracts["people.email.find"]
+    assert arena.classify(contract, ad, ep, 400, {"error": True, "error_code": "NO_MATCH"})[0] == "miss"
+    assert arena.classify(contract, ad, ep, 400, {"error": True, "error_code": "INVALID_DATAPOINTS"})[0] == "error"
+
+
+def test_linkedin_url_lowercases_the_host_so_the_handle_derives():
+    from treg.domain.catalog.routing import paths as P
+    assert P.linkedin_url("LinkedIn.com/in/Patrick") == "https://linkedin.com/in/Patrick"
+    assert P.linkedin_handle(P.linkedin_url("WWW.LinkedIn.com/in/Patrick")) == "Patrick"

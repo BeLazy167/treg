@@ -15,6 +15,13 @@
 
 adapters:
   # ---- people.email.find --------------------------------------------------------------------
+  contactout.people.contact.work:
+    accepts: [[linkedin_url]]
+    in: {linkedin_url: queryParams.profile}
+    const: {queryParams.email_type: work, queryParams.include_phone: false}
+    test_identity: {linkedin_url: "https://www.linkedin.com/in/routing-fixture"}
+    out: {email: "profile.work_email[0]"}
+    miss: "at_least(status_code != 200, coalesce(profile.work_email) == null)"
   dropleads.people.email.find:
     accepts: [[first_name, last_name, domain]]
     in: {first_name: body.first_name, last_name: body.last_name, domain: body.company_domain}
@@ -258,6 +265,13 @@ adapters:
     miss: "data.creator_info.unique_id == null"
 
   # ---- people.phone.find --------------------------------------------------------------------
+  contactout.people.contact.phone:
+    accepts: [[linkedin_url]]
+    in: {linkedin_url: queryParams.profile}
+    const: {queryParams.email_type: none, queryParams.include_phone: true}
+    test_identity: {linkedin_url: "https://www.linkedin.com/in/routing-fixture"}
+    out: {phone: "profile.phone[0]", line_type: "'mobile'"}
+    miss: "at_least(status_code != 200, coalesce(profile.phone) == null)"
   dropleads.people.phone.find:
     accepts: [[linkedin_url]]
     in: {linkedin_url: body.linkedin_url}
@@ -2350,10 +2364,48 @@ adapters:
     out: {companies: data, count: "len(data)", next_cursor: meta.next_cursor}
     miss: "coalesce(data, []) == []"
 
+  # Datagma's single-record email/person/company tools are price-competitive routed candidates.
+  # Phone is deliberately absent: its verified 30-credit cost makes it a direct catalog choice.
+  datagma.people.email.find:
+    accepts: [[full_name, domain], [first_name, last_name, domain]]
+    in: {full_name: queryParams.fullName, first_name: queryParams.firstName, last_name: queryParams.lastName, domain: queryParams.company}
+    out: {email: email, verified: "status == 'Valid'"}
+    miss: "email == null"
+  datagma.people.enrich:
+    accepts: [[email], [linkedin_url], [full_name, domain], [first_name, last_name, domain]]
+    in: {}
+    test_identity: {full_name: Raphael Azot, domain: datagma.com}
+    in_expr:
+      queryParams.data: "coalesce(email, linkedin_url, domain)"
+      queryParams.fullName: "coalesce(full_name, join(first_name, last_name))"
+    const: {queryParams.companyPremium: false, queryParams.companyFull: false,
+            queryParams.personFull: false, queryParams.phoneFull: false,
+            queryParams.deepTraffic: false, queryParams.debug: false}
+    out: {full_name: person.basic.name, first_name: person.basic.firstName, last_name: person.basic.lastName,
+          title: person.basic.jobTitle, company: person.basic.company, company_domain: person.basic.companyDomain,
+          linkedin_url: person.basic.linkedInUrl, location: person.basic.location}
+    miss: "person.basic.name == null"
+  datagma.companies.enrich:
+    accepts: [[domain], [website], [name], [linkedin_url], [email]]
+    in: {}
+    test_identity: {domain: algolia.com}
+    in_expr:
+      queryParams.data: "coalesce(domain, website, name, linkedin_url, email)"
+    const: {queryParams.companyPremium: true, queryParams.companyFull: true,
+            queryParams.personFull: false, queryParams.phoneFull: false,
+            queryParams.deepTraffic: false, queryParams.debug: false}
+    out: {name: "coalesce(company.premium.name, company.full.properties.title)", website: company.premium.website,
+          linkedin_url: company.premium.url, description: "coalesce(company.premium.about, company.full.properties.shortDescription)",
+          industry: company.premium.industries, employee_count: company.premium.companySize,
+          founded_year: company.premium.founded, location: company.premium.headquarters}
+    miss: "coalesce(company.premium.name, company.full.properties.title) == null"
 
 
-  # ContactOut people search/profile adapters are omitted: the PII rule excludes
-  # their verification fixtures. Direct tools remain available. Company discovery:
+
+  # ContactOut work-email and phone lookups use sanitized structural fixtures above. People
+  # search/profile adapters remain omitted because their PII-bearing responses have no safe
+  # routing fixture. Personal email stays direct-only because the shared email contract is work-only.
+  # Company discovery:
   contactout.companies.search:
     accepts: [[domain], [name], [industry], [technology]]
     in: {domain: body.domain, name: body.name, industry: body.industry, technology: body.technologies}

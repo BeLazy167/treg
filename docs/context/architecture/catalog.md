@@ -137,6 +137,7 @@ sources:
   - src/treg/catalog/examples/minimax.video-gen.result.retrieve.json
   - src/treg/catalog/examples/minimax.video-gen.from_image.json
   - src/treg/catalog/examples/minimax.video-gen.task.status.json
+  - src/treg/catalog/examples/minimax.voice-gen.voices.list.json
   - src/treg/catalog/openrouter.yaml
   - src/treg/catalog/openrouter.extended.yaml
   - src/treg/catalog/examples/openrouter.x.alibaba-wan-3-0.json
@@ -183,25 +184,39 @@ related:
 
 # Endpoint catalog — platform-grouped operations per provider
 
-LimaData adds all 24 Basic v2 operations. Fifteen fixed, synchronous operations can use the shared
-key; variable, 404-billed, and account-scoped batch operations require a team's own key. Six
+LimaData exposes 21 of 24 Basic v2 operations. Fourteen fixed, synchronous operations can use the
+shared key; variable and 404-billed operations require a team's own key. Account-scoped batch
+submission and result operations are omitted. Six
 fixture-verified adapters join existing routing and Enrich Arena contracts. See
 [LimaData](limadata.md) for the full boundary and live evidence.
 
 ## BounceBan email verification (2026-09-16)
 
-BounceBan adds nine tools across standard single verification, BYOK waterfall verification, BYOK
-single/bulk lifecycle reads, JSON bulk submission, and account usage. Only the standard single tool
+BounceBan adds four tools across standard single verification, BYOK waterfall verification, BYOK
+single-result polling, and account usage. Only the standard single tool
 is platform eligible. It has a fixed observed cost of one credit, priced at the supplied acquisition
 rate of $0.004, and uses `per_call` so an accepted `status=verifying` submission is charged while a
 rejected HTTP 400 request releases its hold. Waterfall retries, conditional zero-credit catch-all
-results, bulk refunds, and task ownership make the other lifecycle operations unsafe for a shared
-key, so they remain BYOK only.
+results make waterfall unsafe for a shared key. Bulk submission and lifecycle operations are
+omitted until an explicit cost-confirmation and owned-job workflow exists.
 
 The verified adapter adds only the standard endpoint to `treg.people.email.verify`; routing and
 Arena discover it from that adapter. Multipart upload, destructive bulk deletion, and the separately
 funded Check API are not catalog tools. See [BounceBan](bounceban.md) for the endpoint evidence,
 credential shape, capacity policy, and exclusions.
+
+## Datagma single-record enrichment (2026-09-18)
+
+Datagma contributes five read-only, non-bulk catalog tools: verified work-email finding, basic
+person enrichment, company enrichment, mobile finding, and job-change detection. All five support
+both a team's key and the platform key. The account route is internal-only, and `find_people` is
+not implemented. Verified adapters place email, person, and company enrichment in their existing
+routed tools and Enrich Arena tasks. Mobile stays direct-only because its verified 30-credit cost
+is not competitive for automatic routing; job-change detection has no corresponding route.
+
+The credit rate is the assigned prepaid acquisition cost converted at the dated ECB reference
+rate. Responses settle from Datagma's `creditBurn`, including zero-cost cached hits. See
+[Datagma](datagma.md) for the exact surface, exclusions, live evidence, and privacy boundary.
 
 ## ZeroBounce email verification (2026-09-17)
 
@@ -213,15 +228,18 @@ showed that it needs the key in its JSON body, which the faithful relay does not
 state-changing, and ambiguous-price operations are also outside the safe first surface. See
 [ZeroBounce](zerobounce.md) for the inventory and evidence.
 
-MoltSets adds 17 verified data tools: nine single-result shared-plan offers and eight BYOK-only
-variable, batch, or dual-meter tools. See [MoltSets](moltsets.md) for the boundary and evidence.
+MoltSets adds 12 verified data tools: nine single-result shared-plan offers and three BYOK-only
+variable-result searches. Five hybrid scalar/batch email and phone operations are omitted. See
+[MoltSets](moltsets.md) for the boundary and evidence.
 
 Sumble adds the full v9 surface with verified platform operations and explicit BYOK restrictions. See [Sumble](sumble.md) for schemas, pricing rules, routing and live evidence.
 
-GetLeads.io adds 12 direct contact-data tools. Every tool accepts BYOK or a $0 platform trial with
+GetLeads.io adds 11 direct contact-data tools. Every tool accepts BYOK or a $0 platform trial with
 five successful credit-using calls per team per day; its two free discovery tools do not consume
-that allowance. The caller controls provider-valid page limits and batch
-sizes; the allowance counts calls rather than returned records or upstream credits. Internal
+that allowance. Three enrichment tools keep the upstream `items` array but opt into `strict_body`
+with exactly one item. `_enforce_catalog_body` rejects invalid cardinality on every credential tier
+without rewriting an accepted request. The allowance counts calls rather than returned records or
+upstream credits. Internal
 account routes, stateful exports and monitoring are excluded. See [GetLeads.io](getleadsio.md) for
 the boundary and evidence.
 
@@ -304,6 +322,10 @@ satisfy a people-search request without a paid reveal. Domain search retains its
 page; its adapter quotes one credit without a title and up to 20 with a title, independently of
 `limit`. The router discloses unsupported filters, including the domain route's row limit.
 No company-enrichment, email-verification or lookup-utility adapter is added.
+The three paid single-person adapters use fixed synthetic hit fixtures matching the successful
+field shapes recorded in the initial live checks. Catalog loading therefore verifies their output
+paths on a hit; a miss fixture can no longer make those adapters eligible while leaving the hit
+mapping unchecked. The fixtures use reserved example contact values and omit account balances.
 The phone adapter retains `data.country_code` as the provider's reported country context (company
 metadata, not proof of the phone owner's location). `people.phone.verify` accepts optional ISO-2
 `country_code`, and Tomba forwards it for national-number parsing. International numbers need no
@@ -575,8 +597,8 @@ The core AIGC generation rows pin `domain: models` too and carry PER-MODEL capab
 (`video-gen.hailuo.from_text`, proposed in their provider files) rather than the job-level
 `video-gen.from_text` family. Generation models are not interchangeable - a merged row comparing
 Hailuo with Wan or Seedance is a false comparison - so the job-level capabilities are deliberately
-memberless, reserved for hand-picked models (see capabilities.yaml). Both AI generation pages
-therefore render as ONE flat model wall; the same model reachable over several routes (MiniMax
+memberless, reserved for hand-picked models (see capabilities.yaml). The AI generation modality
+pages therefore render as flat model walls; the same model reachable over several routes (MiniMax
 direct, OpenRouter, Replicate all serve Hailuo) sits adjacent under model-led names, which is the
 comparison that actually means something. The per-model capability is the join key that lets those
 routes merge onto one row if that comparison is later curated. reAPI and PiAPI are the first pair
@@ -607,6 +629,7 @@ platforms:
   web: "The web at large (backlinks, authority, traffic)"
   video-gen: {label: "Video generation", category: "AI generation"}
   image-gen: {label: "Image generation", category: "AI generation"}
+  voice-gen: {label: "Voice generation", category: "AI generation"}
 ```
 
 Rules:
@@ -617,8 +640,8 @@ Rules:
   this file. The validator accepts a capability that is either global or proposed in the same file.
 - Under `AI generation`, platform means the generated-media modality rather than a system that owns
   the data. The frozen vocabulary is `video-gen.from_text`, `video-gen.from_image`,
-  `video-gen.task.status`, `image-gen.from_text`, and `image-gen.edit`; text-to-video and
-  image-to-video stay separate because their required inputs and prices differ.
+  `video-gen.task.status`, `image-gen.from_text`, `image-gen.edit`, and `voice-gen.from_text`;
+  text-to-video and image-to-video stay separate because their required inputs and prices differ.
 
 ### `<service>.yaml`
 
@@ -673,7 +696,7 @@ endpoints:
 
 ### Async descriptors
 
-`catalog_store._normalize` sets `cache: forbidden` for `image-gen` and `video-gen` endpoints,
+`catalog_store._normalize` sets `cache: forbidden` for `image-gen`, `video-gen`, and `voice-gen` endpoints,
 including synchronous generation, task/result utilities and generated extended rows. Their `kind`
 is unchanged. These requests must reach the provider, not replay shared-account task ids or media
 from an identical prompt. Other platforms retain their declared/default cache policy.
@@ -782,6 +805,18 @@ MiniMax's curated Hailuo routes intentionally use the v1 three-step protocol: su
 the terminal values `Success`/`Fail`, then pass the returned `file_id` to
 `GET /v1/files/retrieve`. The v2 generation path serves the H3 family and is not a protocol upgrade
 for the Hailuo models in this listing.
+
+MiniMax also supplies the first `voice-gen` rows through the same provider connection. Speech 2.8
+HD and Turbo are separate model rows over `POST /v1/t2a_v2`, each fixing its model plus
+`stream: false` and `output_format: url`; this keeps the response bounded and returns a 24-hour
+audio URL. The route is synchronous and billed per input character, so `_body_text_characters`
+scales the reserve from the provider-facing `text` value. The two rows remain marked `skipped`
+until a deliberate paid verification call is authorized; documentation provenance is enough for
+platform eligibility, but is not presented as live route evidence. The Voice generation Actions
+shelf exposes `minimax.voice-gen.voices.list` so callers can discover valid system voice IDs. Its
+request is fixed to `voice_type: system`: account-specific cloned and generated voices must not
+cross team boundaries when treg's shared MiniMax connection is used. The synchronous
+`minimax.image-gen.from_text` row likewise pins `body.model: image-01` through `platform_request`.
 
 reAPI answers every submission with a bare `{id, status}` and reports the charge on the poll body
 (`usage.credits`, 1 credit = $0.001); video rows keep the file-level descriptor (`output.video_urls`)
@@ -1046,7 +1081,11 @@ that slice: it bills one whole credit (~$0.0245) for one email or ten (observed 
 10 emails"); `Catalog.advertised_usd` is what `catalog_search` / `catalog_get` put on
 `usd_per_call`. Settlement still reads `usd` and the derived email-count rule — display only.
 Akta bills 1.5 credits per 50 reviews the same `per` way. Without `per`, every one of those had
-to be either wrong or rounded into prose.
+to be either wrong or rounded into prose. A scalar `unit: character` is request-priced rather than
+page-priced: `_body_text_characters` counts the top-level JSON `text` string and multiplies the
+normalized per-character USD rate. Invalid JSON or a missing/empty string reserves one character,
+never zero; the normal request/envelope checks decide whether the provider served anything and
+`per_success` releases a rejected call.
 
 **Three kinds of denomination convert, and they convert differently:**
 
@@ -1597,6 +1636,26 @@ accepts both. Settlement is unchanged. Enforced by
 `test_dataforseo_related_keywords_does_not_advertise_order_by` and
 `test_catalog_get_dataforseo_related_keywords_omits_order_by`.
 
+### DataForSEO Labs ranked_keywords location+language is a pair
+
+DataForSEO Labs Google `ranked_keywords/live` takes `location_code` and
+`language_code` as a supported pair from GET
+`/v3/dataforseo_labs/locations_and_languages` (free; docs:
+https://docs.dataforseo.com/v3/dataforseo_labs/locations_and_languages/).
+An unsupported pair returns HTTP 200 + task status `40501 Invalid Field:
+'language_code'` and `$0`. Feedback #300:
+`dataforseo.google.domain.ranked_keywords` advertised only `2840 = United
+States` and `one of language_code | language_name` with example `en`, so
+agents sent `location_code: 2076` (Brazil; ISO numeric 076, not Morocco)
+with `language_code: fr`. Brazil accepts `pt`; Morocco is `2504` with
+`ar` and `fr`. Catalog-only: `location_code.note` names 2840 / 2076 Brazil
+/ 2504 Morocco; `language_code.note` names the pair list and the
+`2076`+`fr` failure; `input.note` points at the locations_and_languages
+docs. `test_request` stays US+en (`2840`/`en`). Settlement is unchanged.
+Enforced by `test_dataforseo_ranked_keywords_names_labs_location_language_pairs`
+and
+`test_catalog_get_dataforseo_ranked_keywords_names_labs_location_language_pairs`.
+
 ### DataForSEO Maps live/advanced rejects `location_name`
 
 Vendor SERP docs still list `location_name` as an alternative to
@@ -1666,6 +1725,62 @@ keeps example `google`. Settlement is unchanged. Enforced by
 `test_llm_mentions_platform_omitted_is_google_only` and
 `test_catalog_get_dataforseo_llm_mentions_platform_omitted_is_google_only`.
 
+### DataForSEO LLM Mentions Live `chat_gpt` location is United States only
+
+DataForSEO's LLM Mentions live routes take optional `location_code` /
+`location_name` alongside `platform`. Official docs
+(https://docs.dataforseo.com/v3/ai_optimization/llm_mentions/top_mentioned_domains/live/)
+say `chat_gpt` data is available for United States (`location_code` 2840)
+and English only. A live POST with `platform=chat_gpt` and
+`location_code=2036` returns HTTP 200 + top-level `status_code` 20000 Ok
+with `items_count=0`, while `tasks[].status_code` is `40501 Invalid Field:
+'location_code'`. Feedback #359:
+`dataforseo.x.ai-optimization-llm-mentions-top-mentioned-domains-live` (and
+the rest of the Live family) listed location fields without that constraint,
+so agents sent country codes and treated envelope Ok as success.
+Catalog-only: each llm-mentions Live `location_code.note` /
+`location_name.note` now names 2840 / United States and 40501, and tells
+agents to check `tasks[].status_code`. `platform.note` cross-references
+location 2840 / language en. Examples that already use 2840 + `chat_gpt`
+are unchanged. Settlement is unchanged. Enforced by
+`test_llm_mentions_chat_gpt_location_is_us_only` and
+`test_catalog_get_dataforseo_llm_mentions_chat_gpt_location_is_us_only`.
+
+### MiniMax Speech 2.8 `language_boost` / emotion / bitrate
+
+MiniMax T2A (`POST /v1/t2a_v2`) documents `language_boost` as exact language names
+(`Chinese`, `English`, `auto`, … — not `English(UK)` / `en-GB`); `audio_setting.bitrate`
+as `32000 | 64000 | 128000 | 256000` (mp3 only); and `audio_setting.sample_rate` as
+`8000 | 16000 | 22050 | 24000 | 32000 | 44100`. Official OpenAPI
+(https://platform.minimax.io/docs/api-reference/speech-t2a-http) lists
+`voice_setting.emotion` including `whisper` and `fluent`, but those two values are
+2.6-only: `speech-2.8-hd` and `speech-2.8-turbo` reject `whisper` (status `2013`) even
+with a whispering-named `voice_id`. Feedback #598 / #599 / #602:
+`minimax.voice-gen.speech-2-8-hd` (and the turbo sibling) advertised `language_boost`
+as a free string, mentioned emotion only as an unnamed optional control, and showed
+bitrate `128000` with no enum, so agents sent `English(UK)`, `emotion=whisper`, and
+`bitrate=192000`. Catalog-only: `language_boost` carries the official enum;
+`voice_setting.emotion` lists the 2.8 subset
+(`happy | sad | angry | fearful | disgusted | surprised | calm`);
+bitrate and sample_rate name the OpenAPI integers. Example and
+`test_request` bitrate stay `128000`. Non-streaming formats stay mp3/wav/flac.
+Settlement is unchanged. Enforced by `test_minimax_speech_28_language_emotion_audio_enums`
+and `test_catalog_get_minimax_speech_28_language_emotion_audio_enums`.
+
+### MiniMax image-01 `platform_request`
+
+`minimax.image-gen.from_text` is a single-model synchronous route (`POST /v1/image_generation`).
+Feedback #634: `body.model` was optional with `default: image-01` and a singleton enum, and the
+only pin was `cost.table` `when: {body.model: image-01}`. `_enforce_platform_request` promotes a
+singleton-enum table condition to a required exact match before reserve, so a platform call that
+omitted the documented default (or relied on it) returned HTTP 400 `catalog_parameter_invalid`
+for `body.model` with `expected: "image-01"`. Catalog-only: the row now declares
+`platform_request: {body.model: image-01}` and `body.model` is required with `enum: [image-01]`,
+matching Speech 2.8 HD/Turbo. `test_request` and `call_template` already send `image-01`.
+Settlement is unchanged. Enforced by `test_minimax_image_01_platform_request_pins_model`,
+`test_catalog_get_minimax_image_01_platform_request`, and
+`test_minimax_image_01_platform_request_accepts_documented_model`.
+
 ### ScrapeCreators Instagram reels search `date_posted`
 
 ScrapeCreators' OpenAPI for `GET /v2/instagram/reels/search` restricts `date_posted` to
@@ -1676,6 +1791,34 @@ so agents sent an invalid filter. Catalog-only: the field now names that three-v
 and example `last-week`. Sibling `date_posted` fields (Google search, LinkedIn posts) keep
 their own windows. Enforced by `test_scrapecreators_instagram_reels_search_date_posted_enum`
 and `test_catalog_get_scrapecreators_instagram_reels_search_date_posted`.
+
+### ScrapeCreators LinkedIn search posts `date_posted`
+
+ScrapeCreators' OpenAPI for `GET /v1/linkedin/search/posts` restricts `date_posted` to
+`last-hour | last-day | last-week | last-month | last-year`. Feedback #121:
+`scrapecreators.x.v1-linkedin-search-posts` advertised a free-form string with
+example `last-week` and no enum, so agents sent Google-style `past-week` / `past-day`
+and the provider rejected them. Catalog-only: the field now names that five-value
+enum and warns that `past-*` is not accepted. Example stays `last-week`. Sibling
+`date_posted` fields (Google search, Instagram reels) keep their own windows.
+Settlement is unchanged. Enforced by
+`test_scrapecreators_linkedin_search_posts_date_posted_enum` and
+`test_catalog_get_scrapecreators_linkedin_search_posts_date_posted`.
+
+### ScrapeCreators YouTube search `sortBy` / `uploadDate` / `type` / `duration`
+
+ScrapeCreators' OpenAPI for `GET /v1/youtube/search` restricts `sortBy` to `relevance`
+and `popular` only; `uploadDate` to `today | this_week | this_month | this_year`;
+`type` to the plural forms `videos | shorts | channels | playlists`; and `duration`
+to `under_3_min | between_3_and_20_min | over_20_min` (videos only, not shorts).
+Feedback #117 / #370: `scrapecreators.x.v1-youtube-search` advertised a vague
+"Sort by" note with example `relevance` and no enums, so agents sent
+`sortBy=view_count` (the common YouTube Data API / justoneapi / tikhub value) and
+got HTTP 400. Catalog-only: the four fields now name the OpenAPI enums; `sortBy`
+notes that `view_count`, `upload_date`, and `rating` are not accepted.
+`test_request` / `call_template` still use `sortBy=relevance`. Settlement is
+unchanged. Enforced by `test_scrapecreators_youtube_search_filter_enums` and
+`test_catalog_get_scrapecreators_youtube_search_filter_enums`.
 
 ### SerpApi Google Trends `data_type` query cardinality
 
@@ -1813,9 +1956,21 @@ Five rules worth keeping:
   same). Endpoints with evidenced miss behaviour carry a `miss: {status, means}` block in their
   YAML, surfaced through `endpoint_view` — so an agent reads "404 = no match, don't retry" instead
   of treating an expected empty answer as a failure. Only annotate what the wire has demonstrated.
-  **The router reads the same block** (`route._miss_status`): a child answering the declared
-  4xx is a MISS — the waterfall goes on and a fully-missed call ends as a 200 miss, never
-  `route_failed`. Before 2026-09-04 only PDL carried the block; the annotated set (aviato, hunter,
+  **The router and the arena read the same block through one function**
+  (`routing.contracts.declared_miss`, wrapped by `route._declared_miss` and called by
+  `arena.classify`): a child answering the declared 4xx is a MISS — the waterfall goes on and a
+  fully-missed call ends as a 200 miss, never `route_failed`. Where one status carries both a
+  miss and a fault, `when:` adds a body predicate in the adapter expression language, evaluated
+  only on a JSON-object body (`catalog_validate.py` rejects a `when` that is not a comparison or
+  call, since a misspelt path would evaluate False forever and silently revert the endpoint to
+  "every 4xx is an error"; `endpoint_view` shows agents `status` and `means` but not `when`):
+  prospeo answers 400
+  for `NO_MATCH` (a miss) and for `INVALID_DATAPOINTS` (a fault), so its three person endpoints
+  declare `miss: {status: 400, when: "error_code == 'NO_MATCH'"}`. Provider knowledge lives in
+  the YAML; `route.py` never names a provider. Live 2026-09-18: 64% of three days of
+  `treg.people.email.find` 502s were a limadata 404 or a prospeo NO_MATCH among otherwise clean
+  misses — the block had never been declared on either (limadata's cost note said "a 404 miss is
+  free"; prose is not read by the router). Before 2026-09-04 only PDL carried the block; the annotated set (aviato, hunter,
   leadmagic, findymail, companyenrich, thecompaniesapi, fiber-ai, scrapecreators linkedin) came
   from 30 days of prod children answering 404 with a "not found" body, and the router treated each
   as a rejected request: 1,824 `phone.find` parents were 502 in that window, 768 of them with no
@@ -2036,8 +2191,12 @@ to choose (`docs/CAPABILITY-ROUTING-PLAN.md`). Everything else in the catalog st
   is a bound on the reported-charge risk, not on the estimate — see money.md)
   — never the same provider again, within the error bound; if every one rejects it, the caller
   gets `route_caller_fault` naming each attempt. A 4xx the endpoint's YAML declares as its
-  "no result" status (`miss: {status: 404}`, see "`miss` semantics ride on the endpoint") is a
-  MISS instead, not a fault. Our 5xx/503/429 or a vendor 5xx/429/402 = error →
+  "no result" status (`miss: {status: 404}` or `miss: {status: 400, when: …}`, see "`miss`
+  semantics ride on the endpoint") is a MISS instead, not a fault. An adapter method
+  (`to_upstream`, `from_upstream`, `is_miss`) that throws is recorded as an error attempt and the
+  waterfall continues; the identity's `linkedin_url` is normalised once at planning time
+  (`canonical_identity`: scheme-less URL or bare handle → public URL) so no adapter forwards an
+  invalid URL. Our 5xx/503/429 or a vendor 5xx/429/402 = error →
   next candidate, at most two extra, only for idempotent contracts. A treg-side
   `tool_access_denied`, `policy_denied`, or `capability_pinned` refusal is local to that child and
   follows the same error fallback. A platform child's vendor 401/403 also falls back because it
@@ -2237,8 +2396,11 @@ before any example is committed, all learned the hard way:
 
 1. **No named private individuals.** Contact-lookup routes (LinkedIn contact info, people-enrichment
    by email) return a real person's name, personal email and phone. Such an endpoint stays in the
-   catalog — the route is real and useful — but it is marked `untestable:` with the reason, carries
-   NO `test_request` (so a re-verify cannot silently re-capture it), and no example is stored.
+   catalog — the route is real and useful — but it is marked `untestable:` with the reason and
+   carries NO `test_request` (so a re-verify cannot silently re-capture it). No captured person
+   response is stored. A routing adapter may use a hand-sanitized structural fixture only when its
+   contact values use reserved fake domains/numbers, it cannot be refreshed by the verifier, and
+   separate live evidence establishes the mapped response fields.
 2. **No third-party PII riding along.** Emails and phones turn up inside unrelated payloads — a
    YouTube description, a review body. Sweep every captured example for address-shaped strings and
    mask anything that isn't a business contact.
@@ -2300,8 +2462,11 @@ and signature test files. The reusable setup is in `tests/conftest.py`.
 
 `contactout.yaml` adds the core LinkedIn/contact surface with explicit work/personal selectors,
 on-hit Starter rates supplied by the account owner, free verification, and deferred batches.
-People lookup/search entries are `untestable:` without test requests or stored examples under the
-PII rule. Their routing adapters are omitted; company search/enrichment and email verification
+Contact reveals and availability checks live on the People shelf; profile identity tools remain
+on LinkedIn. People entries stay `untestable:` without test requests under the PII rule. Work-email
+and phone lookup use reserved-value structural fixtures and verified adapters for the existing
+People routes. Personal email remains direct-only because the shared email contract is work-only;
+people search/profile adapters remain omitted. Company search/enrichment and email verification
 retain verified adapters. Profile-only LinkedIn enrichment costs $0.02 when found.
 See [ContactOut](contactout.md) for request limitations, derived settlement and live evidence.
 
@@ -2342,19 +2507,19 @@ The single verified adapter is usable by Arena; the two-provider public routing 
 
 ## Dropleads integration
 
-`dropleads.yaml` adds twelve synchronous people and company tools. The balance check and export-cost
+`dropleads.yaml` adds ten synchronous people and company tools. The balance check and export-cost
 route stay outside the public catalog. Seven verified adapters add email finding, phone finding,
 email verification, people search and enrichment, and company search and enrichment to the existing
-routed tools and Enrich Arena. The count and synchronous bulk tools stay direct. The provider uses
+routed tools and Enrich Arena. Count tools stay direct; two ten-person bulk tools are omitted. The provider uses
 the existing `CatalogTarget` allow-list for its second API host; catalog data cannot send a
 credential to another host. See [Dropleads](dropleads.md) for the surface, prices and live evidence.
 
 
 ## Prospeo integration
 
-`prospeo.yaml` adds nine people and company tools on both own and platform keys. Six verified
+`prospeo.yaml` adds seven people and company tools on both own and platform keys. Six verified
 adapters add email finding, phone finding, person/company enrichment and person/company search to
-the routed tools and Enrich Arena; bulk enrichment and search suggestions stay direct-only. Search
+the routed tools and Enrich Arena; search suggestions stay direct-only and bulk enrichment is omitted. Search
 pages are fixed at 25 upstream, so adapters cannot forward the contract `limit`; they expose
 Prospeo's `pagination.total_count` while relaying the native result page. The account-information
 route remains internal for key verification and capacity. See [Prospeo](prospeo.md) for pricing,

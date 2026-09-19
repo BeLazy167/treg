@@ -24,9 +24,6 @@ sources:
   - src/treg/catalog/examples/limadata.web.extract.json
   - src/treg/catalog/examples/limadata.web.research.json
   - src/treg/catalog/examples/limadata.google.serp.organic.json
-  - src/treg/catalog/examples/limadata.people.audience.batch.start.json
-  - src/treg/catalog/examples/limadata.people.email.verify.batch.start.json
-  - src/treg/catalog/examples/limadata.people.batch.results.json
   - src/treg/catalog/adapters.yaml
   - src/treg/catalog/fx.yaml
   - src/treg/config.py
@@ -64,13 +61,19 @@ allows `limadata`. A team's own key remains first and treg never meters it.
 
 ## Surface and shared-key boundary
 
-`limadata.yaml` catalogs all 24 operations in the official Basic v2 OpenAPI document. Connected
-teams can call every operation. Fourteen synchronous operations can use the shared key because their
+`limadata.yaml` exposes 21 of the 24 operations in the official Basic v2 OpenAPI document. The two
+batch submissions and their shared result reader are omitted from the catalog. Fourteen synchronous operations can use the shared key because their
 successful charge is fixed and bounded: company enrichment, database autocomplete, company count,
 five contact and identity lookups, email verification, company LinkedIn lookup, phone lookup, AI
 research, and web search.
 
-Ten operations stay BYOK-only:
+The company LinkedIn-page finder remains callable by its stable endpoint ID
+`limadata.companies.linkedin.find`, but its catalog home is LinkedIn and its capability is
+`linkedin.company.from_domain`. The returned object is a LinkedIn company-page URL; the company
+domain is only its input. This follows the catalog rule that placement describes the result rather
+than the identifier used to request it.
+
+Seven exposed operations stay BYOK-only:
 
 - Person enrichment varies from one to 15 credits based on the identifier and optional results.
 - People count requires People Database API access, which is not enabled on treg's shared account.
@@ -80,10 +83,7 @@ Ten operations stay BYOK-only:
 - Identity resolution costs two credits even on HTTP 404. Generic settlement releases a hold on an
   upstream error, so shared service would undercharge.
 - URL extraction varies by URL count and JavaScript-rendering mode.
-- Both batch submissions and batch result reads use account-scoped job identifiers. Advertising
-  batches refund misses only after completion.
-
-The batch-results route is free. A live completed-job response carried `x-credits-cost: 1`, but the
+The omitted batch-results route is free. A live completed-job response carried `x-credits-cost: 1`, but the
 dashboard showed no polling activity or debit. That header describes task evidence and must not be
 used as the current request price. No LimaData branch is added to the shared settlement runtime.
 
@@ -151,3 +151,12 @@ charges shown by response evidence and the account activity page.
 An isolated local server exercised the real `POST /connections/token` path with the free probe. A
 bogus key was rejected with 422 after the upstream 401. The assigned key connected with 200 after
 the upstream authenticated 400. The key and raw upstream bodies were not printed or committed.
+
+## Routed miss declaration
+
+The work-email and phone finders answer HTTP 404 for "nothing found" (free, but slow: the 404
+arrives after the search, median about 10 s in production). All three routed finders
+(`people.email.find.name`, `people.email.find.linkedin`, `people.phone.find`) declare
+`miss: {status: 404, means}` so the router reads the 404 as a miss. The cost note had said "a 404
+miss is free" since listing, but the router reads only the `miss:` block: until 2026-09-18 every
+LimaData miss counted as a routed error and turned an otherwise clean waterfall into a 502.

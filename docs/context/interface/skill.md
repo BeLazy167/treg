@@ -36,10 +36,12 @@ One skill, three personas:
 - **consumer** — discover + call tools with no credentials locally. Teaches the agent-native
   **URL-passthrough** first: take the real upstream URL and prefix it with `{BASE}/call/`
   + the `X-Treg-Token` header; `treg call <tool> <path>` is the CLI shorthand. Its
-  "generate a video or an image" task teaches the async shape: `--await` for the CLI, the
-  `X-Treg-Async` descriptor and lazy 30-60 s polling for MCP agents, the shell-timeout warning
-  (video takes 1-5 minutes), reserve-then-settle money with refunds on failure, and expiring
-  result URLs that treg never stores.
+  generation task distinguishes synchronous MiniMax voice generation from asynchronous video and
+  image generation. Voice callers discover current system voice IDs through
+  `minimax.voice-gen.voices.list`, then call the HD or Turbo endpoint for a temporary audio URL.
+  Video/image callers learn `--await`, the `X-Treg-Async` descriptor and lazy 30-60 s polling for
+  MCP agents, the shell-timeout warning (video takes 1-5 minutes), reserve-then-settle money with
+  releases on failure, and expiring result URLs that treg never stores.
 - **creator** — turn a local skill into a shared tool: `treg secret add`, `treg tool add` (single-key or
   `--bind` multi-credential), the `treg skill scaffold → push` bundle flow, and `treg oauth connect` for
   browser-consent tokens. Documents the two OAuth modes (auto-refresh vs manual) and the four auth shapes.
@@ -88,7 +90,7 @@ profile. That layer carries a treg MCP row whose `disabled` expression is evalua
 stays off until `TREG_TOKEN` is in the environment — the same "no always-on tools that 401" stance as
 the Claude manifest, but expressible as a row rather than an omission. Its bootstrap is its own for
 two reasons the others do not have: the tools are namespaced (`mcp__treg__call`, not `call`), and
-`treg mcp install` cannot help here (it writes Claude Code / Cursor / opencode configs, never a dsh
+`treg mcp install` cannot help here (it writes Claude Code / Cursor / opencode / Codex configs, never a dsh
 profile), so `mcp_install.py` reports dsh as a MANUAL agent pointing at the bundle. See
 [docs/DSH-PLUGIN.md](../../DSH-PLUGIN.md).
 
@@ -97,7 +99,8 @@ simultaneously what Claude Code's loader auto-discovers, what `npx skills add` r
 `clawhub skill publish` takes. See [docs/CLAUDE-PLUGIN.md](../../CLAUDE-PLUGIN.md) for the
 per-registry submission runbook.
 
-`mcp_install._write_json_agent` merges Cursor and opencode entries without disturbing unrelated
+`mcp_install._write_json_agent` merges Cursor and opencode entries (and `_write_toml_agent` the Codex
+table, both through `_write_private`) without disturbing unrelated
 configuration, then atomically replaces the config from a random same-directory temporary file.
 That temporary file is created through `tempfile.mkstemp` before any token bytes are written and is
 set to mode `0600` through its open fd on POSIX regardless of umask; failures remove it and leave

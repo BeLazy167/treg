@@ -193,6 +193,7 @@ class Settings(BaseSettings):
     platform_key_getleadsio: str = ""  # Bearer; 1,000 promotional database credits, capped treg trial
     platform_key_scrubby: str = ""  # x-api-key; prepaid verification credits
     platform_key_zerobounce: str = ""  # api_key query param; PAYG validation credits, Auto-Pay managed upstream
+    platform_key_datagma: str = ""  # apiId query param; prepaid purchased credits, replenished manually
     platform_key_leadmagic: str = ""
     platform_key_lusha: str = ""
     platform_key_pdl: str = ""
@@ -230,7 +231,7 @@ class Settings(BaseSettings):
     platform_key_aviato: str = ""     # Bearer key; $10 auto-top-up buys 1,000 credits
     platform_key_exa: str = ""        # x-api-key; dollar-metered ($7/1k searches, $1/1k pages); settles from costDollars.total
     platform_key_cloro: str = ""      # Bearer key (sk_live_…); Hobby metered rate $0.0004/credit; settles from X-Credits-Charged
-    platform_key_minimax: str = ""    # Bearer key for asynchronous Hailuo generation
+    platform_key_minimax: str = ""    # Bearer key for MiniMax voice, image and video generation
     platform_key_openrouter: str = ""  # Bearer key for asynchronous routed generation
     platform_key_replicate: str = ""  # Bearer token for official asynchronous models
     platform_key_reapi: str = ""      # Bearer key; prepaid credits at $0.001, Seedance 2.5 + image models

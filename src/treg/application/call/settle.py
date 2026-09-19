@@ -174,19 +174,10 @@ def _quickenrich_cost_micro(mk: MarketplaceCall, doc: dict) -> int | None:
 
 
 def _prospeo_cost_micro(mk: MarketplaceCall, doc: dict) -> int | None:
-    """Settle from Prospeo's dedupe flags, endpoint success field, and exact bulk charge."""
+    """Settle from Prospeo's dedupe flags and endpoint-specific success fields."""
     if doc.get("error") is True:
         return 0
     if doc.get("error") is not False:
-        return None
-    if mk.endpoint_id in (
-        "prospeo.people.enrich.bulk",
-        "prospeo.companies.enrich.bulk",
-    ):
-        credits = doc.get("total_cost")
-        if (isinstance(credits, (int, float)) and not isinstance(credits, bool)
-                and math.isfinite(credits) and credits >= 0):
-            return int(credits * mk.unit_micro + 0.5)
         return None
     if mk.endpoint_id in ("prospeo.people.search", "prospeo.companies.search"):
         if doc.get("free") is True:
@@ -355,6 +346,20 @@ def _observed_cost_micro(mk: MarketplaceCall, body: bytes, headers=None) -> int 
         # The request-time unit freezes the supplied $/credit acquisition rate.
         if type(credits) is int and credits >= 0:
             return credits * mk.unit_micro
+        return None
+    if provider == "datagma":
+        # Datagma returns the exact charge as a numeric string, including zero for cached repeats
+        # and misses. Use the request-time unit so a later catalog price edit cannot change a call
+        # already in flight.
+        raw = doc.get("creditBurn")
+        if isinstance(raw, (int, float, str)) and not isinstance(raw, bool):
+            try:
+                credits = Decimal(str(raw))
+                if credits.is_finite() and credits >= 0:
+                    return int((credits * mk.unit_micro).quantize(
+                        Decimal("1"), rounding=ROUND_HALF_UP))
+            except (InvalidOperation, ValueError, OverflowError):
+                pass
         return None
     if provider == "quickenrich":
         return _quickenrich_cost_micro(mk, doc)

@@ -1557,6 +1557,26 @@ ZEROBOUNCE = OAuthProvider(
     probe_path="/v2/getapiusage?start_date=2026-01-01&end_date=2026-12-31",
 )
 
+DATAGMA = OAuthProvider(
+    service="datagma", display_name="Datagma", auth_kind="key",
+    token_label="API ID", token_placeholder="your Datagma API ID",
+    token_location="query", token_param="apiId", token_format="{secret}",
+    setup_url="https://app.datagma.com/user-api",
+    setup_action_label="Get your Datagma API ID",
+    setup_steps=("Sign in to Datagma and open the API page.",
+                 "Copy your API ID and paste it here."),
+    setup_note=("Person, company, email, phone and job-change lookups use prepaid credits. "
+                "Connection verification reads the balance internally and exposes no account details."),
+    auth_uri="", token_uri="", scopes={}, client_id_setting="", client_secret_setting="",
+    category="Enrichment",
+    summary="Find work emails and mobile numbers, enrich people and companies, and detect job changes.",
+    base_url="https://gateway.datagma.net",
+    docs_url="https://datagmaapi.readme.io/reference/getting-started-with-your-api",
+    # Live 2026-09-18: the assigned key returned 200 and a bogus key returned 401. This free
+    # account route remains internal; catalog callers never receive its account payload.
+    probe_path="/api/ingress/v1/mine", probe_method="GET",
+)
+
 TRYKITT = OAuthProvider(
     service="trykitt",
     display_name="Kitt AI",
@@ -1673,7 +1693,7 @@ MINIMAX = OAuthProvider(
     auth_uri="", token_uri="", scopes={},
     client_id_setting="", client_secret_setting="",
     category="AI generation",
-    summary="Generate images and create videos from text or source images.",
+    summary="Generate voice, images, and videos from text or source images.",
     base_url="https://api.minimax.io",
     docs_url="https://platform.minimax.io/docs/api-reference/api-overview",
     probe_path="/v2/video_generation",
@@ -3212,7 +3232,7 @@ REGISTRY: dict[str, OAuthProvider] = {
         LINKEDIN, SLACK, X, TIKTOK, FACEBOOK, INSTAGRAM, META_ADS,
         # API-key providers
         APOLLO, PDL, AKTA, HUNTER, SUMBLE, MOLTSETS, OPENMART, HARVESTAPI, DROPLEADS,
-        QUICKENRICH, PROSPEO, AIARK, WIZA, LIMADATA, GETLEADSIO, SCRUBBY, ZEROBOUNCE,
+        QUICKENRICH, PROSPEO, AIARK, WIZA, LIMADATA, GETLEADSIO, SCRUBBY, ZEROBOUNCE, DATAGMA,
         TRYKITT, CONTACTOUT, MILLIONVERIFIER, BOUNCEBAN, CRUNCHBASE, MINIMAX, OPENROUTER,
         REPLICATE,
         REAPI, PIAPI,

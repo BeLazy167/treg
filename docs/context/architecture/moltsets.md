@@ -8,11 +8,6 @@ sources:
   - src/treg/catalog/examples/moltsets.linkedin.profile.search.json
   - src/treg/catalog/examples/moltsets.people.email.find.name.json
   - src/treg/catalog/examples/moltsets.people.enrich.name.json
-  - src/treg/catalog/examples/moltsets.people.email.find.json
-  - src/treg/catalog/examples/moltsets.people.email.find.business.json
-  - src/treg/catalog/examples/moltsets.people.email.find.personal.json
-  - src/treg/catalog/examples/moltsets.people.email.find.personal-best.json
-  - src/treg/catalog/examples/moltsets.people.phone.find.json
   - src/treg/catalog/examples/moltsets.people.enrich.email.json
   - src/treg/catalog/examples/moltsets.people.enrich.linkedin.json
   - src/treg/catalog/examples/moltsets.people.audiences.maid.json
@@ -55,7 +50,7 @@ caller value without adding provider logic to the relay. A team's own key wins a
 by treg. `platform_key_moltsets` supplies the optional shared credential, and the existing provider
 allow-list remains the production switch. This integration does not change that switch.
 
-The catalog exposes all 17 documented data operations: people and company search, name/company
+The catalog exposes 12 of 17 documented data operations: people and company search, name/company
 lookups, four profile-to-email variants, phone lookup, two reverse enrichments, three audience/hash
 lookups, email-to-profile, and IP-to-company. Every operation was exercised with synthetic inputs.
 MoltSets returns HTTP 200 for both hits and misses; `status: ok` is a hit and
@@ -76,20 +71,13 @@ Nine single-result tools are safe shared-key offers: business email and profile 
 email and profile lookup, three audience/hash conversions, email-to-profile, and IP-to-company.
 They reserve one ordinary record and settle only when `status` is `ok`.
 
-Eight tools are BYOK-only:
+Three exposed tools are BYOK-only:
 
 - People search, company search, and profile search can return variable record counts; profile
   search also has a free `count_only` mode.
-- Four profile-to-email tools accept either one URL or batches of up to 100, whose entries can have
-  mixed hit/miss outcomes.
-- Phone lookup accepts the same batch shape and has two meters on a hit: one ordinary record plus
-  one phone token.
-
-The current generic response contract cannot count these variable or per-item outcomes, and the
-request guard cannot safely promise single-only input for a body that documents both fields. They
-remain faithful, unmetered BYOK relays rather than gaining MoltSets-specific call or money logic.
-Phone pricing is displayed as the documented upper-bound replacement cost: $0.50 phone token plus
-the $0.01 ordinary record, or $0.51 per hit. Misses cost neither meter.
+The four hybrid profile-to-email operations and hybrid phone lookup are omitted because each accepts
+one URL or a batch of up to 100 with mixed hit/miss outcomes. They need a separately designed scalar
+or confirmed-batch contract before agents can call them.
 
 ## Routing and Arena
 

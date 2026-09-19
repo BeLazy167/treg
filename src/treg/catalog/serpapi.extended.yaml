@@ -769,7 +769,7 @@ endpoints:
         required: true
         note: city-level origin of the search — confirmed REQUIRED live (a bare gl/hl call 400s with "Missing `location` parameter")
         example: Austin, Texas, United States
-    note: answers arrive in `ads_results`.
+    note: answers arrive in `ads` (not `ads_results`).
   cost:
     type: per_success
     value: 0.015

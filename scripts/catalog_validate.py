@@ -56,6 +56,7 @@ from treg.domain.catalog.store import COST_SOURCES as _SOURCES  # noqa: E402
 from treg.domain.catalog.store import COST_UNITS as _UNITS  # noqa: E402
 from treg.domain.catalog.store import CONFIDENCES as _CONFIDENCES  # noqa: E402
 from treg.domain.catalog.store import effective_async_descriptor  # noqa: E402
+from treg.domain.catalog.routing import paths as _paths  # noqa: E402
 
 SCOPES = {"any_account", "own_account"}
 METHODS = {"GET", "POST", "PUT", "PATCH", "DELETE"}
@@ -214,6 +215,27 @@ def check_strict_query(ep: dict, where: str, errors: list[str]) -> None:
         elif "enum" in spec and (not isinstance(spec["enum"], list) or not spec["enum"]
                                  or any(not isinstance(v, str) for v in spec["enum"])):
             fail(errors, where, f"strict query field {name} enum must contain strings")
+
+
+def check_strict_body(ep: dict, where: str, errors: list[str]) -> None:
+    if "strict_body" not in ep:
+        return
+    if ep["strict_body"] is not True:
+        fail(errors, where, "strict_body must be true when present")
+        return
+    fields = (ep.get("input") or {}).get("body")
+    arrays = [
+        spec for spec in (fields or {}).values()
+        if isinstance(spec, dict) and str(spec.get("type") or "").startswith("array")
+    ]
+    if ep.get("method") not in {"POST", "PUT", "PATCH"} or not arrays:
+        fail(errors, where, "strict_body requires a body method with a declared array field")
+        return
+    for spec in arrays:
+        minimum = spec.get("minItems", spec.get("min"))
+        maximum = spec.get("maxItems", spec.get("max"))
+        if not isinstance(minimum, int) or not isinstance(maximum, int) or minimum > maximum:
+            fail(errors, where, "strict_body array fields require valid integer min/max bounds")
 
 
 def check_platform_request(rule: object, input_schema: object, where: str,
@@ -875,6 +897,16 @@ def main(argv: list[str]) -> int:
             for f in REQUIRED[tier]:
                 if not ep.get(f):
                     fail(errors, where, f"missing required field '{f}'")
+            miss = ep.get("miss")
+            if isinstance(miss, dict) and miss.get("when") is not None:
+                # The router evaluates `when` against the provider body; a misspelt path parses
+                # fine, evaluates False on every body, and silently turns every declared miss back
+                # into an error. Require a comparison or a call the expression language accepts.
+                when = miss["when"]
+                if not isinstance(when, str) or not (_paths._CMP.match(when.strip()) or _paths._CALL.match(when.strip())):
+                    fail(errors, where, f"miss.when must be a comparison or call in the adapter expression language, got {when!r}")
+                elif miss.get("status") is None:
+                    fail(errors, where, "miss.when needs miss.status (the 4xx it narrows)")
             if eid in seen_ids:
                 fail(errors, where, f"duplicate id (also in {seen_ids[eid]})")
             seen_ids[eid] = name
@@ -921,6 +953,7 @@ def main(argv: list[str]) -> int:
             check_status_marker(ep, where, endpoint_status, errors)
             inp = ep.get("input") or {}
             check_strict_query(ep, where, errors)
+            check_strict_body(ep, where, errors)
             check_platform_auth(ep, where, errors)
             if "platform_request" in ep:
                 check_platform_request(ep["platform_request"], inp, where, errors)

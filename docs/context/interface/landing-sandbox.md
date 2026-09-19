@@ -144,7 +144,10 @@ files a skill folder is — `SKILL.md` (agent recipe: call the treg proxy, key i
 supported interpreter range (`PYREQ`, kept in sync with `requires-python` in `pyproject.toml`): without
 it uv resolves against its *default* interpreter — its own managed Python first — and a machine whose
 default falls outside the range fails resolution instead of picking (or auto-downloading) a compatible
-one. It also installs the official
+one. The pip3 path cannot pick an interpreter at all, so it checks `pip3 --version` against the range
+first and, outside it, prints which Python pip3 belongs to plus the uv one-liner instead of letting
+pip fail with its "Ignored the following versions" wall (a real user hit exactly that). It also
+installs the official
 **tools-registry skill** into every detected agent via `treg skill bootstrap` (Claude Code, Cursor, Codex,
 Gemini, Copilot, OpenCode, Windsurf …), falling back on older CLIs to a Claude-only drop that curls
 `{BASE}/skill.md` into `~/.claude/skills/treg`. Because the package is public on PyPI,

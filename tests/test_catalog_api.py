@@ -22,8 +22,8 @@ from treg import oauth_providers as P
 def test_openmart_surface_separates_platform_reads_from_byok_lifecycles():
     cat = cs.load()
     rows = cat.for_provider("openmart")
-    assert len(rows) == 16
-    assert len({(e["method"], e["path"]) for e in rows}) == 16
+    assert len(rows) == 9
+    assert len({(e["method"], e["path"]) for e in rows}) == 9
     assert {e["id"] for e in rows if cat.platform_eligible(e)} == {
         "openmart.businesses.search",
         "openmart.businesses.lookup.openmart",
@@ -36,17 +36,15 @@ def test_openmart_surface_separates_platform_reads_from_byok_lifecycles():
     assert "openmart.account.balance" not in cat.by_id
 
 
-def test_openmart_pricing_and_lifecycle_boundaries_stay_visible():
+def test_openmart_pricing_and_account_boundaries_stay_visible():
     cat = cs.load()
-    assert cat.by_id["openmart.people.find.batch"]["cost"]["value"] == 11
-    assert cat.by_id["openmart.technologies.find.batch"]["cost"]["value"] == 2
-    company_email = cat.by_id["openmart.companies.email.find.batch"]
-    assert company_email["cost"]["value"] == .3
-    assert company_email["cost"]["confidence"] == "documented"
+    assert not any(
+        eid.startswith("openmart.tasks.") or eid.endswith(".batch")
+        for eid in cat.by_id if eid.startswith("openmart.")
+    )
     fast = cat.by_id["openmart.businesses.search.ids"]
     assert fast["cost"]["value"] is None and fast["cost"]["confidence"] == "unknown"
     assert all(cat.by_id[key]["scope"] == "own_account" for key in (
-        "openmart.tasks.batch.status", "openmart.tasks.batch.ids", "openmart.tasks.get",
         "openmart.deny-rules.create", "openmart.deny-rules.check",
         "openmart.deny-rules.delete",
     ))
@@ -891,8 +889,13 @@ def test_ai_generation_taxonomy_and_chinese_alias_tokens_are_loaded():
     cat = cs.load()
     assert cat.platforms["video-gen"]["category"] == "AI generation"
     assert cat.platforms["image-gen"]["category"] == "AI generation"
+    assert cat.platforms["voice-gen"] == {
+        "label": "Voice generation",
+        "category": "AI generation",
+        "summary": "Text-to-speech across voice models, with prices side by side.",
+    }
     assert {"video-gen.from_text", "video-gen.from_image", "video-gen.task.status",
-            "image-gen.from_text", "image-gen.edit"} <= set(cat.capabilities)
+            "image-gen.from_text", "image-gen.edit", "voice-gen.from_text"} <= set(cat.capabilities)
     text_to_video_zh = "\u6587\u751f\u89c6\u9891"
     assert cat.aliases[text_to_video_zh] == ["text-to-video"]
     assert cs._tokens(f"{text_to_video_zh} text-to-video") == [
@@ -939,6 +942,38 @@ async def test_ai_generation_pages_keep_comparisons_curated_and_coverage_in_mode
     image_ids = {endpoint["id"] for row in image_rows for endpoint in row["endpoints"]}
     assert {"minimax.image-gen.from_text", "replicate.image-gen.flux-schnell",
             "reapi.image-gen.gemini-3-pro-image", "piapi.image-gen.gpt-image-2-5"} <= image_ids
+
+    voice = (await clients.get("/catalog/platforms/voice-gen")).json()
+    assert {section["domain"] for section in voice["domains"]} == {"models"}
+    voice_rows = [row for section in voice["domains"] for row in section["rows"]]
+    assert {row["capability"] for row in voice_rows} == {
+        "voice-gen.speech-2-8-hd.generate",
+        "voice-gen.speech-2-8-turbo.generate",
+    }
+    voice_endpoints = [endpoint for row in voice_rows for endpoint in row["endpoints"]]
+    assert {endpoint["id"] for endpoint in voice_endpoints} == {
+        "minimax.voice-gen.speech-2-8-hd",
+        "minimax.voice-gen.speech-2-8-turbo",
+    }
+    assert all(endpoint["provider"] == "minimax" for endpoint in voice_endpoints)
+    catalog = cs.load()
+    assert all(catalog.by_id[endpoint["id"]]["cache"] == "forbidden"
+               for endpoint in voice_endpoints)
+
+    voice_full = (await clients.get(
+        "/catalog/platforms/voice-gen?include_hidden=1")).json()
+    assert voice_full["hidden_count"] == 1
+    action_endpoints = {
+        endpoint["id"]: endpoint
+        for section in voice_full["domains"]
+        for row in section["rows"]
+        for endpoint in row["endpoints"]
+        if endpoint["kind"] == "utility"
+    }
+    assert set(action_endpoints) == {"minimax.voice-gen.voices.list"}
+    assert catalog.by_id["minimax.voice-gen.voices.list"]["platform_request"] == {
+        "body.voice_type": "system"
+    }
 
 
 def test_a_missing_catalog_directory_is_an_empty_catalog_not_a_crash(tmp_path):
@@ -1412,6 +1447,65 @@ async def test_catalog_get_dataforseo_related_keywords_omits_order_by(clients: A
     assert "filters" in note
 
 
+RANKED_KEYWORDS_ID = "dataforseo.google.domain.ranked_keywords"
+
+
+def test_dataforseo_ranked_keywords_names_labs_location_language_pairs():
+    """Feedback #300: ranked_keywords location+language must be a Labs pair.
+
+    catalog_get used to say only `2840 = United States` / `one of language_code
+    | language_name` with example `en`, so agents sent `location_code: 2076`
+    (Brazil, often misread as Morocco) with `language_code: fr` and got
+    Invalid Field language_code. Settlement is unchanged.
+    """
+    cat = cs.load()
+    ep = cat.by_id[RANKED_KEYWORDS_ID]
+    assert ep["path"] == "/dataforseo_labs/google/ranked_keywords/live"
+    loc = ep["input"]["body"]["location_code"]
+    lang = ep["input"]["body"]["language_code"]
+    loc_note = loc["note"].lower()
+    lang_note = lang["note"].lower()
+    input_note = ep["input"]["note"].lower()
+    assert "2840" in loc_note and "united states" in loc_note
+    assert "2076" in loc_note and "brazil" in loc_note
+    assert "morocco" in loc_note and "2504" in loc_note
+    assert "locations_and_languages" in loc_note
+    assert loc["example"] == 2840
+    assert "invalid field" in lang_note
+    assert "2076" in lang_note and "fr" in lang_note
+    assert "brazil" in lang_note and "pt" in lang_note
+    assert "2504" in lang_note and "morocco" in lang_note
+    assert "locations_and_languages" in lang_note
+    assert lang["example"] == "en"
+    assert "locations_and_languages" in input_note
+    assert "https://docs.dataforseo.com/v3/dataforseo_labs/locations_and_languages/" in ep["input"]["note"]
+    task = ep["test_request"]["body"][0]
+    assert task["location_code"] == 2840
+    assert task["language_code"] == "en"
+
+
+async def test_catalog_get_dataforseo_ranked_keywords_names_labs_location_language_pairs(
+        clients: AsyncClient):
+    """Feedback #300: catalog_get must name Brazil 2076 vs Morocco 2504 pairs."""
+    body = (await clients.get(f"/catalog/endpoints/{RANKED_KEYWORDS_ID}")).json()
+    loc = body["endpoint"]["input"]["body"]["location_code"]
+    lang = body["endpoint"]["input"]["body"]["language_code"]
+    loc_note = loc["note"].lower()
+    lang_note = lang["note"].lower()
+    input_note = body["endpoint"]["input"]["note"]
+    assert "2840" in loc_note and "united states" in loc_note
+    assert "2076" in loc_note and "brazil" in loc_note
+    assert "2504" in loc_note and "morocco" in loc_note
+    assert "locations_and_languages" in loc_note
+    assert loc["example"] == 2840
+    assert "invalid field" in lang_note
+    assert "2076" in lang_note and "fr" in lang_note
+    assert "2504" in lang_note
+    assert "locations_and_languages" in lang_note
+    assert lang["example"] == "en"
+    assert "https://docs.dataforseo.com/v3/dataforseo_labs/locations_and_languages/" in input_note
+
+
 async def test_catalog_get_dataforseo_maps_live_omits_location_name(clients: AsyncClient):
     body = (await clients.get(
         "/catalog/endpoints/dataforseo.x.serp-google-maps-live-advanced"
@@ -1523,6 +1617,10 @@ async def test_catalog_get_hunter_domain_search_quotes_the_credit(clients: Async
 
 INSTAGRAM_REELS_SEARCH_ID = "scrapecreators.x.v2-instagram-reels-search"
 INSTAGRAM_REELS_DATE_POSTED = ["last-week", "last-month", "last-year"]
+LINKEDIN_SEARCH_POSTS_ID = "scrapecreators.x.v1-linkedin-search-posts"
+LINKEDIN_SEARCH_POSTS_DATE_POSTED = [
+    "last-hour", "last-day", "last-week", "last-month", "last-year",
+]
 
 
 def test_scrapecreators_instagram_reels_search_date_posted_enum():
@@ -1549,8 +1647,9 @@ def test_scrapecreators_instagram_reels_search_date_posted_enum():
     google = cat.by_id["scrapecreators.x.v1-google-search"]["input"]["queryParams"]["date_posted"]
     assert google.get("enum") is None
     assert google["example"] == "last-hour"
-    linkedin = cat.by_id["scrapecreators.x.v1-linkedin-search-posts"]["input"]["queryParams"]["date_posted"]
-    assert linkedin.get("enum") is None
+    linkedin = cat.by_id[LINKEDIN_SEARCH_POSTS_ID]["input"]["queryParams"]["date_posted"]
+    assert linkedin["enum"] == LINKEDIN_SEARCH_POSTS_DATE_POSTED
+    assert linkedin["enum"] != INSTAGRAM_REELS_DATE_POSTED
 
 
 async def test_catalog_get_scrapecreators_instagram_reels_search_date_posted(
@@ -1563,6 +1662,48 @@ async def test_catalog_get_scrapecreators_instagram_reels_search_date_posted(
     note = field["note"].lower()
     assert "hour" in note and "day" in note
     assert "not supported" in note or "unsupported" in note
+
+
+def test_scrapecreators_linkedin_search_posts_date_posted_enum():
+    """Feedback #121: GET /v1/linkedin/search/posts only accepts last-* windows.
+
+    catalog_get used to advertise date_posted as a free string (example last-week)
+    with no enum, so agents sent past-week / past-day (Google-style) and the
+    provider rejected them. Upstream OpenAPI enum is last-hour | last-day |
+    last-week | last-month | last-year. Instagram reels search keeps its own
+    three-value window. Settlement is unchanged.
+
+    Ref: https://docs.scrapecreators.com/openapi.json
+    """
+    cat = cs.load()
+    ep = cat.by_id[LINKEDIN_SEARCH_POSTS_ID]
+    assert ep["path"] == "/v1/linkedin/search/posts"
+    field = ep["input"]["queryParams"]["date_posted"]
+    assert field["enum"] == LINKEDIN_SEARCH_POSTS_DATE_POSTED
+    assert field["example"] == "last-week"
+    note = field["note"].lower()
+    assert "last-hour" in note and "last-day" in note
+    assert "last-week" in note and "last-month" in note and "last-year" in note
+    assert "past-week" in note and "past-day" in note
+    assert "not accepted" in note
+    assert ep["cost"]["value"] == 1
+    assert ep["cost"]["currency"] == "credit"
+
+    reels = cat.by_id[INSTAGRAM_REELS_SEARCH_ID]["input"]["queryParams"]["date_posted"]
+    assert reels["enum"] == INSTAGRAM_REELS_DATE_POSTED
+
+
+async def test_catalog_get_scrapecreators_linkedin_search_posts_date_posted(
+        clients: AsyncClient):
+    """Feedback #121: catalog_get must name last-* and warn against past-*."""
+    body = (await clients.get(f"/catalog/endpoints/{LINKEDIN_SEARCH_POSTS_ID}")).json()
+    field = body["endpoint"]["input"]["queryParams"]["date_posted"]
+    assert field["enum"] == LINKEDIN_SEARCH_POSTS_DATE_POSTED
+    assert field["example"] == "last-week"
+    note = field["note"].lower()
+    assert "last-hour" in note and "last-week" in note
+    assert "past-week" in note and "past-day" in note
+    assert "not accepted" in note
 
 
 LLM_MENTIONS_HISTORICAL_ID = "dataforseo.x.ai-optimization-llm-mentions-historical-live"
@@ -1660,6 +1801,50 @@ def test_dataforseo_llm_mentions_platform_omitted_is_google_only():
         assert "returned for both" not in note
         assert "united states" in note and "english" in note
         assert field["example"] == "google"
+
+
+LLM_MENTIONS_TOP_DOMAINS_ID = (
+    "dataforseo.x.ai-optimization-llm-mentions-top-mentioned-domains-live"
+)
+
+
+def test_dataforseo_llm_mentions_chat_gpt_location_is_us_only():
+    """Feedback #359: historical + top-domains chat_gpt location is US-only.
+
+    catalog_get used to list location_code without the chat_gpt 2840 / 40501
+    caveat, so agents sent country codes (e.g. 2036) and read envelope Ok as
+    success. Settlement is unchanged.
+    """
+    cat = cs.load()
+    for endpoint_id in (LLM_MENTIONS_HISTORICAL_ID, LLM_MENTIONS_TOP_DOMAINS_ID):
+        ep = cat.by_id[endpoint_id]
+        loc = ep["input"]["body"]["location_code"]
+        name = ep["input"]["body"]["location_name"]
+        loc_note = loc["note"].lower()
+        assert "chat_gpt" in loc_note
+        assert "2840" in loc_note
+        assert "united states" in loc_note
+        assert "40501" in loc_note
+        assert "tasks[]" in loc_note or "tasks[" in loc_note
+        assert loc["example"] == 2840
+        name_note = name["note"].lower()
+        assert "chat_gpt" in name_note
+        assert "united states" in name_note
+        assert "40501" in name_note
+
+
+async def test_catalog_get_dataforseo_llm_mentions_chat_gpt_location_is_us_only(
+        clients: AsyncClient):
+    """Feedback #359: catalog_get must name chat_gpt US-only location / 40501."""
+    for endpoint_id in (LLM_MENTIONS_HISTORICAL_ID, LLM_MENTIONS_TOP_DOMAINS_ID):
+        body = (await clients.get(f"/catalog/endpoints/{endpoint_id}")).json()
+        loc = body["endpoint"]["input"]["body"]["location_code"]
+        note = loc["note"].lower()
+        assert "chat_gpt" in note
+        assert "2840" in note
+        assert "40501" in note
+        assert "tasks[]" in note or "tasks[" in note
+        assert loc["example"] == 2840
 
 
 async def test_catalog_get_dataforseo_llm_mentions_platform_omitted_is_google_only(
@@ -1782,3 +1967,386 @@ async def test_catalog_get_serpapi_google_maps_place_id(clients: AsyncClient):
     assert "type=search" in tmpl
     assert "q=pizza" in tmpl
     assert "place_id=" not in tmpl
+
+
+TIKTOK_ADS_SEARCH_ID = "tikhub.x.tiktok-ads-search-ads"
+TIKTOK_ADS_SEARCH_PERIOD = "7 | 30 | 120 | 180"
+
+
+def test_tikhub_tiktok_ads_search_ads_period_and_limit_notes():
+    """Feedback #561 / #459: period is 7|30|120|180; live limit max is ~20.
+
+    catalog_get used to advertise period as a free integer (example 180) and
+    limit as "Items per page" (example 20). Live Creative Center / TikHub
+    nested validation rejects other period values and rejects limit=30/50 even
+    though some OpenAPI text says max 50. Catalog-only: name the period oneof
+    and prefer limit ≤ 20. Settlement is unchanged.
+    """
+    cat = cs.load()
+    ep = cat.by_id[TIKTOK_ADS_SEARCH_ID]
+    assert ep["path"] == "/api/v1/tiktok/ads/search_ads"
+    body = ep["input"]["body"]
+
+    period = body["period"]
+    assert period["type"] == "integer"
+    assert period["example"] == 180
+    assert TIKTOK_ADS_SEARCH_PERIOD in period["note"]
+
+    limit = body["limit"]
+    assert limit["type"] == "integer"
+    assert limit["example"] == 20
+    limit_note = limit["note"].lower()
+    assert "default 20" in limit_note
+    assert "≤ 20" in limit["note"]
+    assert "50" in limit_note
+    assert (ep.get("test_request") or {}).get("body", {}).get("limit") == 5
+
+    sibling = cat.by_id["tikhub.x.tiktok-ads-get-top-ads-spotlight"]
+    assert sibling["input"]["body"]["limit"]["note"] == "Items per page"
+
+
+async def test_catalog_get_tikhub_tiktok_ads_search_ads_period_and_limit(
+        clients: AsyncClient):
+    """Feedback #561 / #459: catalog_get must name period oneof and limit ≤ 20."""
+    body = (await clients.get(f"/catalog/endpoints/{TIKTOK_ADS_SEARCH_ID}")).json()
+    fields = body["endpoint"]["input"]["body"]
+    assert TIKTOK_ADS_SEARCH_PERIOD in fields["period"]["note"]
+    assert fields["period"]["type"] == "integer"
+    assert fields["period"]["example"] == 180
+    limit_note = fields["limit"]["note"].lower()
+    assert "default 20" in limit_note
+    assert "≤ 20" in fields["limit"]["note"]
+    assert fields["limit"]["example"] == 20
+
+
+YOUTUBE_SEARCH_ID = "scrapecreators.x.v1-youtube-search"
+YOUTUBE_SEARCH_SORTBY = ["relevance", "popular"]
+YOUTUBE_SEARCH_UPLOAD_DATE = ["today", "this_week", "this_month", "this_year"]
+YOUTUBE_SEARCH_TYPE = ["videos", "shorts", "channels", "playlists"]
+YOUTUBE_SEARCH_DURATION = ["under_3_min", "between_3_and_20_min", "over_20_min"]
+
+
+def test_scrapecreators_youtube_search_filter_enums():
+    """Feedback #117 / #370: GET /v1/youtube/search only accepts OpenAPI enums.
+
+    catalog_get used to advertise sortBy as a free string (example relevance)
+    with no enum, so agents sent view_count from sibling YouTube search APIs
+    (justoneapi / tikhub) and got HTTP 400. Upstream OpenAPI enum is
+    relevance | popular only. uploadDate / type / duration have their own
+    enums; type uses plural forms (not video/channel). call_template stays
+    sortBy=relevance. Settlement is unchanged.
+
+    Ref: https://docs.scrapecreators.com/openapi.json
+    """
+    cat = cs.load()
+    ep = cat.by_id[YOUTUBE_SEARCH_ID]
+    assert ep["path"] == "/v1/youtube/search"
+    params = ep["input"]["queryParams"]
+
+    sort_by = params["sortBy"]
+    assert sort_by["enum"] == YOUTUBE_SEARCH_SORTBY
+    assert sort_by["example"] == "relevance"
+    sort_note = sort_by["note"].lower()
+    assert "relevance" in sort_note and "popular" in sort_note
+    assert "view_count" in sort_note
+    assert "upload_date" in sort_note
+    assert "rating" in sort_note
+    assert "400" in sort_note
+    assert "not accepted" in sort_note
+
+    upload = params["uploadDate"]
+    assert upload["enum"] == YOUTUBE_SEARCH_UPLOAD_DATE
+    assert "today" in upload["note"]
+    assert "this_week" in upload["note"]
+    assert "this_month" in upload["note"]
+    assert "this_year" in upload["note"]
+
+    type_field = params["type"]
+    assert type_field["enum"] == YOUTUBE_SEARCH_TYPE
+    assert type_field["example"] == "videos"
+    type_note = type_field["note"].lower()
+    assert "plural" in type_note
+    assert "not video/channel" in type_note
+
+    duration = params["duration"]
+    assert duration["enum"] == YOUTUBE_SEARCH_DURATION
+    assert duration["example"] == "under_3_min"
+    duration_note = duration["note"].lower()
+    assert "not shorts" in duration_note
+
+    assert (ep.get("test_request") or {}).get("queryParams", {}).get("sortBy") == "relevance"
+    assert "sortBy=relevance" in cs.call_template(ep)
+    assert ep["cost"]["value"] == 1
+    assert ep["cost"]["currency"] == "credit"
+
+    sibling = cat.by_id["justoneapi.x.youtube-search-v1"]["input"]["queryParams"]["sortBy"]
+    assert "view_count" in sibling["enum"]
+
+
+async def test_catalog_get_scrapecreators_youtube_search_filter_enums(
+        clients: AsyncClient):
+    """Feedback #117 / #370: catalog_get must name relevance|popular, not view_count."""
+    body = (await clients.get(f"/catalog/endpoints/{YOUTUBE_SEARCH_ID}")).json()
+    params = body["endpoint"]["input"]["queryParams"]
+    assert params["sortBy"]["enum"] == YOUTUBE_SEARCH_SORTBY
+    assert params["sortBy"]["example"] == "relevance"
+    note = params["sortBy"]["note"].lower()
+    assert "relevance" in note and "popular" in note
+    assert "view_count" in note
+    assert "not accepted" in note
+    assert "400" in note
+    assert params["uploadDate"]["enum"] == YOUTUBE_SEARCH_UPLOAD_DATE
+    assert params["type"]["enum"] == YOUTUBE_SEARCH_TYPE
+    assert params["duration"]["enum"] == YOUTUBE_SEARCH_DURATION
+    tmpl = body["call_template"]
+    assert tmpl.startswith(f"treg call {YOUTUBE_SEARCH_ID}")
+    assert "sortBy=relevance" in tmpl
+    assert "view_count" not in tmpl
+
+
+SPEECH_28_IDS = (
+    "minimax.voice-gen.speech-2-8-hd",
+    "minimax.voice-gen.speech-2-8-turbo",
+)
+SPEECH_28_LANGUAGE_BOOST = [
+    "Chinese", "Chinese,Yue", "English", "Arabic", "Russian", "Spanish",
+    "French", "Portuguese", "German", "Turkish", "Dutch", "Ukrainian",
+    "Vietnamese", "Indonesian", "Japanese", "Italian", "Korean", "Thai",
+    "Polish", "Romanian", "Greek", "Czech", "Finnish", "Hindi", "Bulgarian",
+    "Danish", "Hebrew", "Malay", "Persian", "Slovak", "Swedish", "Croatian",
+    "Filipino", "Hungarian", "Norwegian", "Slovenian", "Catalan", "Nynorsk",
+    "Tamil", "Afrikaans", "auto",
+]
+SPEECH_28_EMOTIONS = [
+    "happy", "sad", "angry", "fearful", "disgusted", "surprised", "calm",
+]
+SPEECH_28_BITRATES = [32000, 64000, 128000, 256000]
+SPEECH_28_SAMPLE_RATES = [8000, 16000, 22050, 24000, 32000, 44100]
+
+
+def _assert_speech_28_input_enums(body: dict) -> None:
+    """Feedback #598 / #599 / #602: speech-2.8 catalog fields match MiniMax OpenAPI."""
+    language = body["language_boost"]
+    assert language["enum"] == SPEECH_28_LANGUAGE_BOOST
+    assert language["example"] == "auto"
+    lang_note = language["note"].lower()
+    assert "english(uk)" in lang_note
+    assert "en-gb" in lang_note
+    assert "english" in lang_note
+    assert "2013" in language["note"]
+
+    emotion = body["voice_setting"]["properties"]["emotion"]
+    assert emotion["enum"] == SPEECH_28_EMOTIONS
+    emotion_note = emotion["note"].lower()
+    assert "whisper" in emotion_note
+    assert "fluent" in emotion_note
+    assert "2.6" in emotion_note
+    assert "2013" in emotion["note"]
+    voice_note = body["voice_setting"]["note"].lower()
+    assert "whisper" in voice_note and "fluent" in voice_note
+
+    audio = body["audio_setting"]
+    assert audio["example"]["bitrate"] == 128000
+    bitrate = audio["properties"]["bitrate"]
+    assert bitrate["enum"] == SPEECH_28_BITRATES
+    assert bitrate["example"] == 128000
+    bitrate_note = bitrate["note"].lower()
+    assert "mp3" in bitrate_note
+    assert "192000" in bitrate["note"]
+    assert "2013" in bitrate["note"]
+    sample_rate = audio["properties"]["sample_rate"]
+    assert sample_rate["enum"] == SPEECH_28_SAMPLE_RATES
+    audio_note = audio["note"].lower()
+    assert "192000" in audio["note"]
+    assert "mp3" in audio_note and "wav" in audio_note and "flac" in audio_note
+
+
+def test_minimax_speech_28_language_emotion_audio_enums():
+    """Feedback #598 / #599 / #602: Speech 2.8 HD+Turbo catalog enums.
+
+    catalog_get used to advertise language_boost as a free string (example auto),
+    voice_setting.emotion only as an unnamed optional control, and audio_setting
+    bitrate only via the 128000 example. Live MiniMax returns status 2013 for
+    English(UK), emotion=whisper, and bitrate=192000. Catalog-only: name the
+    OpenAPI enums and the 2.8 emotion subset. Settlement is unchanged.
+    Ref: https://platform.minimax.io/docs/api-reference/speech-t2a-http
+    """
+    cat = cs.load()
+    for endpoint_id in SPEECH_28_IDS:
+        ep = cat.by_id[endpoint_id]
+        assert ep["path"] == "/v1/t2a_v2"
+        _assert_speech_28_input_enums(ep["input"]["body"])
+        audio = (ep.get("test_request") or {}).get("body", {}).get("audio_setting") or {}
+        assert audio.get("bitrate") == 128000
+        assert ep["cost"]["currency"] == "USD"
+
+
+async def test_catalog_get_minimax_speech_28_language_emotion_audio_enums(
+        clients: AsyncClient):
+    """Feedback #598 / #599 / #602: catalog_get must name speech-2.8 enums."""
+    for endpoint_id in SPEECH_28_IDS:
+        body = (await clients.get(f"/catalog/endpoints/{endpoint_id}")).json()
+        _assert_speech_28_input_enums(body["endpoint"]["input"]["body"])
+        tmpl = body["call_template"]
+        assert tmpl.startswith(f"treg call {endpoint_id}")
+        assert "128000" in tmpl
+        assert "192000" not in tmpl
+        assert "English(UK)" not in tmpl
+        assert "whisper" not in tmpl
+
+
+IMAGE_01_ID = "minimax.image-gen.from_text"
+
+
+def test_minimax_image_01_platform_request_pins_model():
+    """Feedback #634: image-01 must declare platform_request like Speech 2.8.
+
+    body.model was optional with default image-01 and only pinned via cost.table
+    when: {body.model: image-01}. _enforce_platform_request treats a singleton-enum
+    table selector as a required exact match, so omitting the documented default
+    returned catalog_parameter_invalid for body.model. Catalog-only: required
+    singleton enum + platform_request body.model: image-01.
+    """
+    ep = cs.load().by_id[IMAGE_01_ID]
+    assert ep["platform_request"] == {"body.model": "image-01"}
+    model = ep["input"]["body"]["model"]
+    assert model["required"] is True
+    assert model["enum"] == ["image-01"]
+    assert model["example"] == "image-01"
+    assert "default" not in model
+    assert (ep.get("test_request") or {}).get("body", {}).get("model") == "image-01"
+
+
+async def test_catalog_get_minimax_image_01_platform_request(clients: AsyncClient):
+    """Feedback #634: catalog_get must require model image-01 on the documented call."""
+    body = (await clients.get(f"/catalog/endpoints/{IMAGE_01_ID}")).json()
+    model = body["endpoint"]["input"]["body"]["model"]
+    assert model["required"] is True
+    assert model["enum"] == ["image-01"]
+    assert model["example"] == "image-01"
+    assert (body["endpoint"].get("test_request") or {}).get("body", {}).get("model") == "image-01"
+    tmpl = body["call_template"]
+    assert tmpl.startswith(f"treg call {IMAGE_01_ID}")
+    assert "image-01" in tmpl
+
+
+HEYGEN_AVATAR_IV_ID = "openrouter.x.heygen-avatar-iv"
+HEYGEN_AVATAR_IV_PASSTHROUGH = (
+    "voice_id", "voice_settings", "motion_prompt", "expressiveness",
+    "fit", "remove_background", "background", "caption", "title",
+)
+
+
+def _assert_heygen_avatar_iv_input(body: dict) -> None:
+    """Feedback #594: Avatar IV must expose photo, optional audio, and HeyGen passthrough."""
+    prompt = body["prompt"]
+    assert "paper boat" not in prompt["example"].lower()
+    assert "tts" in prompt["note"].lower() or "script" in prompt["note"].lower()
+
+    audio_flag = body["generate_audio"]
+    assert audio_flag["default"] is False
+    flag_note = audio_flag["note"].lower()
+    assert "generate_audio: false" in audio_flag["note"] or "generate_audio: false" in flag_note
+    assert "input_references" in flag_note
+
+    refs = body["input_references"]
+    assert refs["required"] is True
+    ref_note = refs["note"].lower()
+    assert "frame_images" in ref_note
+    assert "image_url" in ref_note
+    assert "audio_url" in ref_note
+    example = refs["example"]
+    assert example[0]["type"] == "image_url"
+    assert example[0]["image_url"]["url"].startswith("https://")
+
+    provider = body["provider"]
+    assert provider["required"] is False
+    provider_note = provider["note"]
+    assert "provider.options.heygen.parameters" in provider_note
+    for key in HEYGEN_AVATAR_IV_PASSTHROUGH:
+        assert key in provider_note
+    passthrough = provider["properties"]["options"]["properties"]["heygen"]["properties"]["parameters"]["properties"]
+    assert set(passthrough) == set(HEYGEN_AVATAR_IV_PASSTHROUGH)
+    assert passthrough["voice_id"]["note"]
+    example_voice = provider["example"]["options"]["heygen"]["parameters"]["voice_id"]
+    assert example_voice
+
+
+def test_openrouter_heygen_avatar_iv_documents_photo_audio_and_passthrough():
+    """Feedback #594: Avatar IV catalog named only generic video fields.
+
+    The live rate card has supported_frame_images: null and generate_audio: false.
+    Photo and optional audio ride input_references; HeyGen controls ride
+    provider.options.heygen.parameters. Settlement is unchanged.
+    Ref: https://openrouter.ai/heygen/avatar-iv
+    """
+    ep = cs.load().by_id[HEYGEN_AVATAR_IV_ID]
+    assert ep["path"] == "/videos"
+    _assert_heygen_avatar_iv_input(ep["input"]["body"])
+    assert ep["cost"]["table"][0]["value"] == 0.05
+
+
+async def test_catalog_get_openrouter_heygen_avatar_iv_photo_script(
+        clients: AsyncClient):
+    """Feedback #594: catalog_get must show a photo+script call, not a scenic prompt."""
+    body = (await clients.get(f"/catalog/endpoints/{HEYGEN_AVATAR_IV_ID}")).json()
+    _assert_heygen_avatar_iv_input(body["endpoint"]["input"]["body"])
+    tmpl = body["call_template"]
+    assert tmpl.startswith(f"treg call {HEYGEN_AVATAR_IV_ID}")
+    assert "input_references" in tmpl
+    assert "image_url" in tmpl
+    assert "paper boat" not in tmpl
+    assert "Welcome to our product tour" in tmpl
+
+
+CRUSTDATA_COMPANIES_SEARCH_ID = "crustdata.companies.search"
+CRUSTDATA_PEOPLE_SEARCH_ID = "crustdata.people.search"
+
+
+def _assert_crustdata_ranked_search(body: dict, *, ranked_drops_cursor: bool) -> None:
+    search = body["search"]
+    assert search["type"] == "object"
+    assert search.get("required") is False
+    note = search["note"]
+    assert "{query, mode?}" in note
+    assert "hybrid" in note and "lexical" in note and "semantic" in note
+    assert "default hybrid" in note
+    sorts_note = body["sorts"]["note"]
+    assert "{field" in sorts_note and "column" not in sorts_note
+    assert "not supported with ranked search" in sorts_note.lower()
+    if ranked_drops_cursor:
+        assert "not supported with ranked search" in body["cursor"]["note"].lower()
+        assert "1000" in body["limit"]["note"] and "100" in body["limit"]["note"]
+        assert "hard constraints" in body["filters"]["note"]
+    else:
+        assert "not supported with ranked search" not in body["cursor"]["note"].lower()
+
+
+def test_crustdata_company_and_person_search_document_ranked_nl_search():
+    """Feedback #631: catalog_get omitted Crustdata's official `search` body field.
+
+    CompanySearchRequest accepts filters or search. `search` is {query, mode?}
+    with mode hybrid|lexical|semantic (default hybrid). Ranked company search
+    does not support cursor/sorts and caps limit at 100. Person search documents
+    the same search object; sorts use {field, order} not {column, order}.
+    """
+    cat = cs.load()
+    companies = cat.by_id[CRUSTDATA_COMPANIES_SEARCH_ID]
+    people = cat.by_id[CRUSTDATA_PEOPLE_SEARCH_ID]
+    assert companies["path"] == "/company/search"
+    assert people["path"] == "/person/search"
+    _assert_crustdata_ranked_search(companies["input"]["body"], ranked_drops_cursor=True)
+    _assert_crustdata_ranked_search(people["input"]["body"], ranked_drops_cursor=False)
+    assert companies["input"]["note"] == "supply at least one of filters or search"
+    assert people["input"]["note"] == "supply at least one of filters or search"
+    assert "search" not in companies["test_request"]["body"]
+    assert companies["cost"]["value"] == 0.03
+    assert people["cost"]["value"] == 0.03
+
+
+async def test_catalog_get_crustdata_companies_search_lists_search_object(
+        clients: AsyncClient):
+    """Feedback #631: catalog_get must list CompanySemanticSearch {query, mode?}."""
+    body = (await clients.get(f"/catalog/endpoints/{CRUSTDATA_COMPANIES_SEARCH_ID}")).json()
+    _assert_crustdata_ranked_search(body["endpoint"]["input"]["body"], ranked_drops_cursor=True)
+    assert body["endpoint"]["input"]["note"] == "supply at least one of filters or search"

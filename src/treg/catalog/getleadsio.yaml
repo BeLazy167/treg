@@ -7,7 +7,7 @@ source:
   docs: https://www.getleads.io/docs/
   openapi: null
   curated: '2026-09-16'
-limits: '100 requests per minute by default across all endpoints. JSON enrichment batches accept up to 100 items. Search and company-contact lookups can return up to 5,000 records per request.'
+limits: '100 requests per minute by default across all endpoints. Catalog enrichment calls accept exactly one item. Search and company-contact lookups can return up to 5,000 records per request.'
 pricing_url: https://www.getleads.io/pricing/
 proposed_capabilities:
   people.count: Count people matching search filters without returning records
@@ -23,18 +23,19 @@ endpoints:
     scope: any_account
     method: POST
     path: /api/v1/enrich/from-email
-    name: Enrich people from work emails
-    summary: Enrich up to 100 people from known work email addresses.
+    strict_body: true
+    name: Enrich one person from a work email
+    summary: Enrich one person from a known work email address.
     input:
       body:
         items:
           type: 'array[object]'
           required: true
           min: 1
-          max: 100
+          max: 1
           example: [{email: nobody-treg-20260916@example.invalid}]
           note: Each item needs an email string.
-      note: One credit for each result where success is true. A 100-item batch can consume 100 credits.
+      note: Exactly one item is accepted. One credit is charged when that result has success=true.
     test_request:
       body: {items: [{email: nobody-treg-20260916@example.invalid}]}
     cost: &one_credit_success
@@ -59,19 +60,20 @@ endpoints:
     scope: any_account
     method: POST
     path: /api/v1/enrich/from-linkedin
-    name: Enrich people from LinkedIn URLs
-    summary: Enrich up to 100 people from public LinkedIn profile URLs.
+    strict_body: true
+    name: Enrich one person from a LinkedIn URL
+    summary: Enrich one person from a public LinkedIn profile URL.
     input:
       body:
         items:
           type: 'array[object]'
           required: true
           min: 1
-          max: 100
+          max: 1
           example: [{linkedin_url: https://www.linkedin.com/in/example}]
           note: Each item needs linkedin_url.
         limit_per_item: {type: integer, required: false, default: 1, min: 1, max: 10}
-      note: One credit for each result where success is true.
+      note: Exactly one item is accepted. One credit is charged when that result has success=true.
     test_request:
       body: {items: [{linkedin_url: https://www.linkedin.com/in/treg-nonexistent-20260916}], limit_per_item: 1}
     cost:
@@ -88,18 +90,19 @@ endpoints:
     scope: any_account
     method: POST
     path: /api/v1/enrich/from-person
-    name: Enrich people from name and company
-    summary: Enrich up to 100 people from names plus a company name or email domain.
+    strict_body: true
+    name: Enrich one person from name and company
+    summary: Enrich one person from a name plus a company name or email domain.
     input:
       body:
         items:
           type: 'array[object]'
           required: true
           min: 1
-          max: 100
+          max: 1
           example: [{first_name: Jane, last_name: Doe, email_domain: example.com}]
           note: Each item needs first_name and last_name plus company_name or email_domain.
-      note: One credit for each result where success is true.
+      note: Exactly one item is accepted. One credit is charged when that result has success=true.
     test_request:
       body: {items: [{first_name: Treg, last_name: Nonexistent, email_domain: treg-nonexistent-20260916.invalid}]}
     cost:
@@ -139,35 +142,6 @@ endpoints:
     docs_url: https://www.getleads.io/docs/#get-apiv1contactslookupphone
     verified: '2026-09-16'
     example_response: examples/getleadsio.people.phone.lookup.json
-
-  - id: getleadsio.people.phone.lookup_batch
-    capability: people.phone.find
-    platform: people
-    domain: contacts
-    scope: any_account
-    method: POST
-    path: /api/v1/contacts/from-phone
-    name: Look up contacts by phone in a batch
-    summary: Find contact records for a batch of phone numbers.
-    input:
-      body:
-        items:
-          type: 'array[object]'
-          required: true
-          min: 1
-          max: 100
-          example: [{phone: '+1 202-555-0100'}]
-          note: Each item accepts phone or cellphone.
-        limit_per_item: {type: integer, required: false, default: 1, min: 1, max: 10}
-    test_request:
-      body: {items: [{phone: '+1 202-555-0100'}], limit_per_item: 1}
-    cost:
-      <<: *one_credit_success
-      source_url: https://www.getleads.io/docs/#post-apiv1contactsfrom-phone
-    docs_url: https://www.getleads.io/docs/#post-apiv1contactsfrom-phone
-    verified: '2026-09-16'
-    example_response: examples/getleadsio.people.phone.lookup_batch.json
-
   - id: getleadsio.people.colleagues
     capability: people.organization_contacts
     platform: people

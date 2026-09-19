@@ -648,10 +648,13 @@ platform without opening it, and every field comes off the `/catalog/platforms` 
   provider with no published rate stays silent. Note that `price_from` arrives as `null` *or* as an
   empty `{}`, and the empty object has to be normalised to null first — being truthy, it otherwise
   short-circuits the auth-kind branch and silently costs an OAuth-only platform its "free with your
-  account".
+  account". A grouped scalar rate such as MiniMax TTS supplies `display_usd` plus `display_unit`, so
+  the card says `$0.60 / 10000 characters` instead of rounding the normalized per-character rate
+  down to an unreadable number.
 
 **Prices are unified USD.** Every price the marketplace displays — the card footer, the capability card's
-"from", and the per-endpoint cost chip — is the **server's computed `usd`** field on `cost` / `price_from`,
+"from", and the per-endpoint cost chip — comes from the server's price object on `cost` / `price_from`:
+normally its computed **`usd`**, or its equivalent grouped **`display_usd` / `display_unit`** pair,
 formatted by `usdNum`: two significant figures under a dollar (`$0.015`, `$0.00015`), cents at or above one.
 The FX table lives in the catalog (`fx.yaml`) so a rate refresh re-prices every surface at once, and the
 dashboard carries **no** conversion constant of its own — one here would drift from the CLI the moment the
@@ -1052,6 +1055,13 @@ again asks anyone to add funds.
 
 `GET /referrals` mints the code as well as sweeping, so the page is one call and `link` is never
 empty on a first visit.
+
+**Two programs, forked at the header (`refTab`).** The "Refer a friend" tab is the credit program
+above. The "Affiliate partner" tab is the invite-only cash tier: three short sections and a button
+to an application form, no treg state behind it. It is a fork rather than a card under the referral
+column because a card there read as step four of the referral program. Hand-approval via the form is
+the anti-gaming design (see money), so nothing on that tab is self-serve, and it renders for
+everyone, team or not. The cap card points at the tab instead of a support address.
 
 **Every status renders a reason** (`refStatus`), including `capped` and `rejected`. "I referred
 someone and got nothing" is the ticket this program generates, and the answer belongs on the page

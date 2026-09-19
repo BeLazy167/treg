@@ -652,6 +652,7 @@ def _normalize(raw: dict, provider: str, directory: Path) -> dict:
             if raw.get("platform_auth") is not None else None
         ),
         "strict_query": raw.get("strict_query") is True,
+        "strict_body": raw.get("strict_body") is True,
         "cost": _effective_cost(raw),
         # Absent `tier` means core: the curated first wave predates the split, and treating an
         # unmarked endpoint as extended would hide it from the platform view entirely.
@@ -660,7 +661,7 @@ def _normalize(raw: dict, provider: str, directory: Path) -> dict:
         # inherited from the file header unless the endpoint declares its own.
         # Generated media and its task/result utilities must never replay shared-account ids.
         # Enforce this for core and generated extended rows without changing their public kind.
-        "cache": "forbidden" if platform in {"image-gen", "video-gen"} else raw.get("cache"),
+        "cache": "forbidden" if platform in {"image-gen", "video-gen", "voice-gen"} else raw.get("cache"),
         "verified": str(verified) if verified else None,
         # {status, means} — a status the provider uses for "asked and answered: no result" (PDL
         # 404s a person it has no record of). Only endpoints with evidenced miss semantics carry
@@ -750,7 +751,7 @@ def endpoint_view(ep: dict, provider_display: str, cat: Catalog | None = None) -
         "platform_blocked": ep.get("platform_blocked") or None,
         # "no match" semantics, when the endpoint has them — an agent that reads `miss` stops
         # treating an expected empty answer as a failed call (and stops retrying it).
-        "miss": ep.get("miss"),
+        "miss": ({k: v for k, v in ep["miss"].items() if k != "when"} if isinstance(ep.get("miss"), dict) else ep.get("miss")),
         # Only direct-id lookups can return a marked row; discovery surfaces never include one.
         "status": ep.get("status") or None,
         "status_note": ep.get("status_note") or None,
@@ -762,6 +763,7 @@ def endpoint_view(ep: dict, provider_display: str, cat: Catalog | None = None) -
         # the dashboard can show what comes BACK (example_response) but not what to SEND
         "input": ep.get("input") or None,
         **({"strict_query": True} if ep.get("strict_query") else {}),
+        **({"strict_body": True} if ep.get("strict_body") else {}),
         # the exact request that live-verified this endpoint — the Try-it drawer prefills from it
         # verbatim (it also carries the ground truth the input spec can't express: whether the
         # body is a bare object or an ARRAY of tasks, which dataforseo requires)

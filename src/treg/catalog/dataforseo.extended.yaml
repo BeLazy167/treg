@@ -105,11 +105,11 @@ endpoints:
       location_name:
         type: string
         required: false
-        note: <em>full name of search location</em><br>optional field<br>if you use this field, you don't need to specify <code>location_code</code><br>if you don't specify this field, the <code>location_code</code> with <code class="long-string">2840</code> value will be used by default;<br>you can receive the l
+        note: 'full name of search location. Optional field. If you use this field, you don''t need to specify location_code. Default is United States (location_code 2840). With platform=chat_gpt, only United States is valid; other names return the same task status 40501 Invalid Field on location. The HTTP envelope may still be 200 / top-level status_code 20000 Ok with items_count=0 — always check tasks[].status_code / status_message.'
       location_code:
         type: integer
         required: false
-        note: <em>search location code</em><br>optional field<br>if you use this field, you don't need to specify <code>location_name</code><br>you can receive the list of available locations of the search engine with their <code>location_code</code> by making a separate request to the <code>https://api.dataforse
+        note: 'search location code. Optional field. If you use this field, you don''t need to specify location_name. Default is 2840 (United States). With platform=chat_gpt, only 2840 is valid; any other code (e.g. 2036) returns task status 40501 Invalid Field: ''location_code''. The HTTP envelope may still be 200 / top-level status_code 20000 Ok with items_count=0 — always check tasks[].status_code / status_message.'
         example: 2840
       language_name:
         type: string
@@ -123,7 +123,7 @@ endpoints:
       platform:
         type: string
         required: false
-        note: 'target platform. Optional field. Possible values: chat_gpt, google. When omitted, DataForSEO defaults to google only (not both platforms). chat_gpt data is available for the United States and English only.'
+        note: 'target platform. Optional field. Possible values: chat_gpt, google. When omitted, DataForSEO defaults to google only (not both platforms). chat_gpt data is available for the United States and English only (location 2840 / US + language en; else task status 40501).'
         example: google
       tag:
         type: string
@@ -180,11 +180,11 @@ endpoints:
       location_name:
         type: string
         required: false
-        note: <em>full name of search location</em><br>optional field<br>if you use this field, you don't need to specify <code>location_code</code><br>if you don't specify this field, the <code>location_code</code> with <code class="long-string">2840</code> value will be used by default;<br>you can receive the l
+        note: 'full name of search location. Optional field. If you use this field, you don''t need to specify location_code. Default is United States (location_code 2840). With platform=chat_gpt, only United States is valid; other names return the same task status 40501 Invalid Field on location. The HTTP envelope may still be 200 / top-level status_code 20000 Ok with items_count=0 — always check tasks[].status_code / status_message.'
       location_code:
         type: integer
         required: false
-        note: <em>search location code</em><br>optional field<br>if you use this field, you don't need to specify <code>location_name</code><br>you can receive the list of available locations of the search engine with their <code>location_code</code> by making a separate request to the <code>https://api.dataforse
+        note: 'search location code. Optional field. If you use this field, you don''t need to specify location_name. Default is 2840 (United States). With platform=chat_gpt, only 2840 is valid; any other code (e.g. 2036) returns task status 40501 Invalid Field: ''location_code''. The HTTP envelope may still be 200 / top-level status_code 20000 Ok with items_count=0 — always check tasks[].status_code / status_message.'
         example: 2840
       language_name:
         type: string
@@ -198,7 +198,7 @@ endpoints:
       platform:
         type: string
         required: false
-        note: 'target platform. Optional field. Possible values: chat_gpt, google. When omitted, DataForSEO defaults to google only (not both platforms). chat_gpt data is available for the United States and English only.'
+        note: 'target platform. Optional field. Possible values: chat_gpt, google. When omitted, DataForSEO defaults to google only (not both platforms). chat_gpt data is available for the United States and English only (location 2840 / US + language en; else task status 40501).'
         example: google
       filters:
         type: array
@@ -289,11 +289,11 @@ endpoints:
       location_name:
         type: string
         required: false
-        note: <em>full name of search location</em><br>optional field<br>if you use this field, you don't need to specify <code>location_code</code><br>if you don't specify this field, the <code>location_code</code> with <code class="long-string">2840</code> value will be used by default;<br>you can receive the l
+        note: 'full name of search location. Optional field. If you use this field, you don''t need to specify location_code. Default is United States (location_code 2840). With platform=chat_gpt, only United States is valid; other names return the same task status 40501 Invalid Field on location. The HTTP envelope may still be 200 / top-level status_code 20000 Ok with items_count=0 — always check tasks[].status_code / status_message.'
       location_code:
         type: integer
         required: false
-        note: <em>search location code</em><br>optional field<br>if you use this field, you don't need to specify <code>location_name</code><br>you can receive the list of available locations of the search engine with their <code>location_code</code> by making a separate request to the <code>https://api.dataforse
+        note: 'search location code. Optional field. If you use this field, you don''t need to specify location_name. Default is 2840 (United States). With platform=chat_gpt, only 2840 is valid; any other code (e.g. 2036) returns task status 40501 Invalid Field: ''location_code''. The HTTP envelope may still be 200 / top-level status_code 20000 Ok with items_count=0 — always check tasks[].status_code / status_message.'
         example: 2840
       language_name:
         type: string
@@ -307,7 +307,7 @@ endpoints:
       platform:
         type: string
         required: false
-        note: 'target platform. Optional field. Possible values: chat_gpt, google. When omitted, DataForSEO defaults to google only (not both platforms). chat_gpt data is available for the United States and English only.'
+        note: 'target platform. Optional field. Possible values: chat_gpt, google. When omitted, DataForSEO defaults to google only (not both platforms). chat_gpt data is available for the United States and English only (location 2840 / US + language en; else task status 40501).'
         example: google
       filters:
         type: array
@@ -392,11 +392,11 @@ endpoints:
       location_name:
         type: string
         required: false
-        note: <em>full name of search location</em><br>optional field<br>if you use this field, you don't need to specify <code>location_code</code><br>if you don't specify this field, the <code>location_code</code> with <code class="long-string">2840</code> value will be used by default;<br>you can receive the l
+        note: 'full name of search location. Optional field. If you use this field, you don''t need to specify location_code. Default is United States (location_code 2840). With platform=chat_gpt, only United States is valid; other names return the same task status 40501 Invalid Field on location. The HTTP envelope may still be 200 / top-level status_code 20000 Ok with items_count=0 — always check tasks[].status_code / status_message.'
       location_code:
         type: integer
         required: false
-        note: <em>search location code</em><br>optional field<br>if you use this field, you don't need to specify <code>location_name</code><br>you can receive the list of available locations of the search engine with their <code>location_code</code> by making a separate request to the <code>https://api.dataforse
+        note: 'search location code. Optional field. If you use this field, you don''t need to specify location_name. Default is 2840 (United States). With platform=chat_gpt, only 2840 is valid; any other code (e.g. 2036) returns task status 40501 Invalid Field: ''location_code''. The HTTP envelope may still be 200 / top-level status_code 20000 Ok with items_count=0 — always check tasks[].status_code / status_message.'
         example: 2840
       language_name:
         type: string
@@ -410,7 +410,7 @@ endpoints:
       platform:
         type: string
         required: false
-        note: 'target platform. Optional field. Possible values: chat_gpt, google. When omitted, DataForSEO defaults to google only (not both platforms). chat_gpt data is available for the United States and English only.'
+        note: 'target platform. Optional field. Possible values: chat_gpt, google. When omitted, DataForSEO defaults to google only (not both platforms). chat_gpt data is available for the United States and English only (location 2840 / US + language en; else task status 40501).'
         example: chat_gpt
       initial_dataset_filters:
         type: array
@@ -477,11 +477,11 @@ endpoints:
       location_name:
         type: string
         required: false
-        note: <em>full name of search location</em><br>optional field<br>if you use this field, you don't need to specify <code>location_code</code><br>if you don't specify this field, the <code>location_code</code> with <code class="long-string">2840</code> value will be used by default;<br>you can receive the l
+        note: 'full name of search location. Optional field. If you use this field, you don''t need to specify location_code. Default is United States (location_code 2840). With platform=chat_gpt, only United States is valid; other names return the same task status 40501 Invalid Field on location. The HTTP envelope may still be 200 / top-level status_code 20000 Ok with items_count=0 — always check tasks[].status_code / status_message.'
       location_code:
         type: integer
         required: false
-        note: <em>search location code</em><br>optional field<br>if you use this field, you don't need to specify <code>location_name</code><br>you can receive the list of available locations of the search engine with their <code>location_code</code> by making a separate request to the <code>https://api.dataforse
+        note: 'search location code. Optional field. If you use this field, you don''t need to specify location_name. Default is 2840 (United States). With platform=chat_gpt, only 2840 is valid; any other code (e.g. 2036) returns task status 40501 Invalid Field: ''location_code''. The HTTP envelope may still be 200 / top-level status_code 20000 Ok with items_count=0 — always check tasks[].status_code / status_message.'
         example: 2840
       language_name:
         type: string
@@ -495,7 +495,7 @@ endpoints:
       platform:
         type: string
         required: false
-        note: 'target platform. Optional field. Possible values: chat_gpt, google. When omitted, DataForSEO defaults to google only (not both platforms). chat_gpt data is available for the United States and English only.'
+        note: 'target platform. Optional field. Possible values: chat_gpt, google. When omitted, DataForSEO defaults to google only (not both platforms). chat_gpt data is available for the United States and English only (location 2840 / US + language en; else task status 40501).'
         example: google
       initial_dataset_filters:
         type: array
@@ -585,11 +585,11 @@ endpoints:
       location_name:
         type: string
         required: false
-        note: <em>full name of search location</em><br>optional field<br>if you use this field, you don't need to specify <code>location_code</code><br>if you don't specify this field, the <code>location_code</code> with <code class="long-string">2840</code> value will be used by default;<br>you can receive the l
+        note: 'full name of search location. Optional field. If you use this field, you don''t need to specify location_code. Default is United States (location_code 2840). With platform=chat_gpt, only United States is valid; other names return the same task status 40501 Invalid Field on location. The HTTP envelope may still be 200 / top-level status_code 20000 Ok with items_count=0 — always check tasks[].status_code / status_message.'
       location_code:
         type: integer
         required: false
-        note: <em>search location code</em><br>optional field<br>if you use this field, you don't need to specify <code>location_name</code><br>you can receive the list of available locations of the search engine with their <code>location_code</code> by making a separate request to the <code>https://api.dataforse
+        note: 'search location code. Optional field. If you use this field, you don''t need to specify location_name. Default is 2840 (United States). With platform=chat_gpt, only 2840 is valid; any other code (e.g. 2036) returns task status 40501 Invalid Field: ''location_code''. The HTTP envelope may still be 200 / top-level status_code 20000 Ok with items_count=0 — always check tasks[].status_code / status_message.'
         example: 2840
       language_name:
         type: string
@@ -603,7 +603,7 @@ endpoints:
       platform:
         type: string
         required: false
-        note: 'target platform. Optional field. Possible values: chat_gpt, google. When omitted, DataForSEO defaults to google only (not both platforms). chat_gpt data is available for the United States and English only.'
+        note: 'target platform. Optional field. Possible values: chat_gpt, google. When omitted, DataForSEO defaults to google only (not both platforms). chat_gpt data is available for the United States and English only (location 2840 / US + language en; else task status 40501).'
         example: google
       tag:
         type: string
@@ -670,11 +670,11 @@ endpoints:
       location_name:
         type: string
         required: false
-        note: <em>full name of search location</em><br>optional field<br>if you use this field, you don't need to specify <code>location_code</code><br>if you don't specify this field, the <code>location_code</code> with <code class="long-string">2840</code> value will be used by default;<br>you can receive the l
+        note: 'full name of search location. Optional field. If you use this field, you don''t need to specify location_code. Default is United States (location_code 2840). With platform=chat_gpt, only United States is valid; other names return the same task status 40501 Invalid Field on location. The HTTP envelope may still be 200 / top-level status_code 20000 Ok with items_count=0 — always check tasks[].status_code / status_message.'
       location_code:
         type: integer
         required: false
-        note: <em>search location code</em><br>optional field<br>if you use this field, you don't need to specify <code>location_name</code><br>you can receive the list of available locations of the search engine with their <code>location_code</code> by making a separate request to the <code>https://api.dataforse
+        note: 'search location code. Optional field. If you use this field, you don''t need to specify location_name. Default is 2840 (United States). With platform=chat_gpt, only 2840 is valid; any other code (e.g. 2036) returns task status 40501 Invalid Field: ''location_code''. The HTTP envelope may still be 200 / top-level status_code 20000 Ok with items_count=0 — always check tasks[].status_code / status_message.'
         example: 2840
       language_name:
         type: string
@@ -688,7 +688,7 @@ endpoints:
       platform:
         type: string
         required: false
-        note: 'target platform. Optional field. Possible values: chat_gpt, google. When omitted, DataForSEO defaults to google only (not both platforms). chat_gpt data is available for the United States and English only.'
+        note: 'target platform. Optional field. Possible values: chat_gpt, google. When omitted, DataForSEO defaults to google only (not both platforms). chat_gpt data is available for the United States and English only (location 2840 / US + language en; else task status 40501).'
         example: google
       tag:
         type: string
@@ -742,11 +742,11 @@ endpoints:
       location_name:
         type: string
         required: false
-        note: <em>full name of search location</em><br>optional field<br>if you use this field, you don't need to specify <code>location_code</code><br>if you don't specify this field, the <code>location_code</code> with <code class="long-string">2840</code> value will be used by default;<br>you can receive the l
+        note: 'full name of search location. Optional field. If you use this field, you don''t need to specify location_code. Default is United States (location_code 2840). With platform=chat_gpt, only United States is valid; other names return the same task status 40501 Invalid Field on location. The HTTP envelope may still be 200 / top-level status_code 20000 Ok with items_count=0 — always check tasks[].status_code / status_message.'
       location_code:
         type: integer
         required: false
-        note: <em>search location code</em><br>optional field<br>if you use this field, you don't need to specify <code>location_name</code><br>you can receive the list of available locations of the search engine with their <code>location_code</code> by making a separate request to the <code>https://api.dataforse
+        note: 'search location code. Optional field. If you use this field, you don''t need to specify location_name. Default is 2840 (United States). With platform=chat_gpt, only 2840 is valid; any other code (e.g. 2036) returns task status 40501 Invalid Field: ''location_code''. The HTTP envelope may still be 200 / top-level status_code 20000 Ok with items_count=0 — always check tasks[].status_code / status_message.'
         example: 2840
       language_name:
         type: string
@@ -760,7 +760,7 @@ endpoints:
       platform:
         type: string
         required: false
-        note: 'target platform. Optional field. Possible values: chat_gpt, google. When omitted, DataForSEO defaults to google only (not both platforms). chat_gpt data is available for the United States and English only.'
+        note: 'target platform. Optional field. Possible values: chat_gpt, google. When omitted, DataForSEO defaults to google only (not both platforms). chat_gpt data is available for the United States and English only (location 2840 / US + language en; else task status 40501).'
         example: chat_gpt
       filters:
         type: array
@@ -857,11 +857,11 @@ endpoints:
       location_name:
         type: string
         required: false
-        note: <em>full name of search location</em><br>optional field<br>if you use this field, you don't need to specify <code>location_code</code><br>if you don't specify this field, the <code>location_code</code> with <code class="long-string">2840</code> value will be used by default;<br>you can receive the l
+        note: 'full name of search location. Optional field. If you use this field, you don''t need to specify location_code. Default is United States (location_code 2840). With platform=chat_gpt, only United States is valid; other names return the same task status 40501 Invalid Field on location. The HTTP envelope may still be 200 / top-level status_code 20000 Ok with items_count=0 — always check tasks[].status_code / status_message.'
       location_code:
         type: integer
         required: false
-        note: <em>search location code</em><br>optional field<br>if you use this field, you don't need to specify <code>location_name</code><br>you can receive the list of available locations of the search engine with their <code>location_code</code> by making a separate request to the <code>https://api.dataforse
+        note: 'search location code. Optional field. If you use this field, you don''t need to specify location_name. Default is 2840 (United States). With platform=chat_gpt, only 2840 is valid; any other code (e.g. 2036) returns task status 40501 Invalid Field: ''location_code''. The HTTP envelope may still be 200 / top-level status_code 20000 Ok with items_count=0 — always check tasks[].status_code / status_message.'
         example: 2840
       language_name:
         type: string
@@ -875,7 +875,7 @@ endpoints:
       platform:
         type: string
         required: false
-        note: 'target platform. Optional field. Possible values: chat_gpt, google. When omitted, DataForSEO defaults to google only (not both platforms). chat_gpt data is available for the United States and English only.'
+        note: 'target platform. Optional field. Possible values: chat_gpt, google. When omitted, DataForSEO defaults to google only (not both platforms). chat_gpt data is available for the United States and English only (location 2840 / US + language en; else task status 40501).'
         example: chat_gpt
       filters:
         type: array
@@ -972,11 +972,11 @@ endpoints:
       location_name:
         type: string
         required: false
-        note: <em>full name of search location</em><br>optional field<br>if you use this field, you don't need to specify <code>location_code</code><br>if you don't specify this field, the <code>location_code</code> with <code class="long-string">2840</code> value will be used by default;<br>you can receive the l
+        note: 'full name of search location. Optional field. If you use this field, you don''t need to specify location_code. Default is United States (location_code 2840). With platform=chat_gpt, only United States is valid; other names return the same task status 40501 Invalid Field on location. The HTTP envelope may still be 200 / top-level status_code 20000 Ok with items_count=0 — always check tasks[].status_code / status_message.'
       location_code:
         type: integer
         required: false
-        note: <em>search location code</em><br>optional field<br>if you use this field, you don't need to specify <code>location_name</code><br>you can receive the list of available locations of the search engine with their <code>location_code</code> by making a separate request to the <code>https://api.dataforse
+        note: 'search location code. Optional field. If you use this field, you don''t need to specify location_name. Default is 2840 (United States). With platform=chat_gpt, only 2840 is valid; any other code (e.g. 2036) returns task status 40501 Invalid Field: ''location_code''. The HTTP envelope may still be 200 / top-level status_code 20000 Ok with items_count=0 — always check tasks[].status_code / status_message.'
         example: 2840
       language_name:
         type: string
@@ -990,7 +990,7 @@ endpoints:
       platform:
         type: string
         required: false
-        note: 'target platform. Optional field. Possible values: chat_gpt, google. When omitted, DataForSEO defaults to google only (not both platforms). chat_gpt data is available for the United States and English only.'
+        note: 'target platform. Optional field. Possible values: chat_gpt, google. When omitted, DataForSEO defaults to google only (not both platforms). chat_gpt data is available for the United States and English only (location 2840 / US + language en; else task status 40501).'
         example: chat_gpt
       filters:
         type: array
@@ -1087,11 +1087,11 @@ endpoints:
       location_name:
         type: string
         required: false
-        note: <em>full name of search location</em><br>optional field<br>if you use this field, you don't need to specify <code>location_code</code><br>if you don't specify this field, the <code>location_code</code> with <code class="long-string">2840</code> value will be used by default;<br>you can receive the l
+        note: 'full name of search location. Optional field. If you use this field, you don''t need to specify location_code. Default is United States (location_code 2840). With platform=chat_gpt, only United States is valid; other names return the same task status 40501 Invalid Field on location. The HTTP envelope may still be 200 / top-level status_code 20000 Ok with items_count=0 — always check tasks[].status_code / status_message.'
       location_code:
         type: integer
         required: false
-        note: <em>search location code</em><br>optional field<br>if you use this field, you don't need to specify <code>location_name</code><br>you can receive the list of available locations of the search engine with their <code>location_code</code> by making a separate request to the <code>https://api.dataforse
+        note: 'search location code. Optional field. If you use this field, you don''t need to specify location_name. Default is 2840 (United States). With platform=chat_gpt, only 2840 is valid; any other code (e.g. 2036) returns task status 40501 Invalid Field: ''location_code''. The HTTP envelope may still be 200 / top-level status_code 20000 Ok with items_count=0 — always check tasks[].status_code / status_message.'
         example: 2840
       language_name:
         type: string
@@ -1105,7 +1105,7 @@ endpoints:
       platform:
         type: string
         required: false
-        note: 'target platform. Optional field. Possible values: chat_gpt, google. When omitted, DataForSEO defaults to google only (not both platforms). chat_gpt data is available for the United States and English only.'
+        note: 'target platform. Optional field. Possible values: chat_gpt, google. When omitted, DataForSEO defaults to google only (not both platforms). chat_gpt data is available for the United States and English only (location 2840 / US + language en; else task status 40501).'
         example: chat_gpt
       filters:
         type: array
@@ -1202,11 +1202,11 @@ endpoints:
       location_name:
         type: string
         required: false
-        note: <em>full name of search location</em><br>optional field<br>if you use this field, you don't need to specify <code>location_code</code><br>if you don't specify this field, the <code>location_code</code> with <code class="long-string">2840</code> value will be used by default;<br>you can receive the l
+        note: 'full name of search location. Optional field. If you use this field, you don''t need to specify location_code. Default is United States (location_code 2840). With platform=chat_gpt, only United States is valid; other names return the same task status 40501 Invalid Field on location. The HTTP envelope may still be 200 / top-level status_code 20000 Ok with items_count=0 — always check tasks[].status_code / status_message.'
       location_code:
         type: integer
         required: false
-        note: <em>search location code</em><br>optional field<br>if you use this field, you don't need to specify <code>location_name</code><br>you can receive the list of available locations of the search engine with their <code>location_code</code> by making a separate request to the <code>https://api.dataforse
+        note: 'search location code. Optional field. If you use this field, you don''t need to specify location_name. Default is 2840 (United States). With platform=chat_gpt, only 2840 is valid; any other code (e.g. 2036) returns task status 40501 Invalid Field: ''location_code''. The HTTP envelope may still be 200 / top-level status_code 20000 Ok with items_count=0 — always check tasks[].status_code / status_message.'
         example: 2840
       language_name:
         type: string
@@ -1220,7 +1220,7 @@ endpoints:
       platform:
         type: string
         required: false
-        note: 'target platform. Optional field. Possible values: chat_gpt, google. When omitted, DataForSEO defaults to google only (not both platforms). chat_gpt data is available for the United States and English only.'
+        note: 'target platform. Optional field. Possible values: chat_gpt, google. When omitted, DataForSEO defaults to google only (not both platforms). chat_gpt data is available for the United States and English only (location 2840 / US + language en; else task status 40501).'
         example: chat_gpt
       links_scope:
         type: string
@@ -1323,11 +1323,11 @@ endpoints:
       location_name:
         type: string
         required: false
-        note: <em>full name of search location</em><br>optional field<br>if you use this field, you don't need to specify <code>location_code</code><br>if you don't specify this field, the <code>location_code</code> with <code class="long-string">2840</code> value will be used by default;<br>you can receive the l
+        note: 'full name of search location. Optional field. If you use this field, you don''t need to specify location_code. Default is United States (location_code 2840). With platform=chat_gpt, only United States is valid; other names return the same task status 40501 Invalid Field on location. The HTTP envelope may still be 200 / top-level status_code 20000 Ok with items_count=0 — always check tasks[].status_code / status_message.'
       location_code:
         type: integer
         required: false
-        note: <em>search location code</em><br>optional field<br>if you use this field, you don't need to specify <code>location_name</code><br>you can receive the list of available locations of the search engine with their <code>location_code</code> by making a separate request to the <code>https://api.dataforse
+        note: 'search location code. Optional field. If you use this field, you don''t need to specify location_name. Default is 2840 (United States). With platform=chat_gpt, only 2840 is valid; any other code (e.g. 2036) returns task status 40501 Invalid Field: ''location_code''. The HTTP envelope may still be 200 / top-level status_code 20000 Ok with items_count=0 — always check tasks[].status_code / status_message.'
         example: 2840
       language_name:
         type: string
@@ -1341,7 +1341,7 @@ endpoints:
       platform:
         type: string
         required: false
-        note: 'target platform. Optional field. Possible values: chat_gpt, google. When omitted, DataForSEO defaults to google only (not both platforms). chat_gpt data is available for the United States and English only.'
+        note: 'target platform. Optional field. Possible values: chat_gpt, google. When omitted, DataForSEO defaults to google only (not both platforms). chat_gpt data is available for the United States and English only (location 2840 / US + language en; else task status 40501).'
         example: chat_gpt
       links_scope:
         type: string
@@ -1444,11 +1444,11 @@ endpoints:
       location_name:
         type: string
         required: false
-        note: <em>full name of search location</em><br>optional field<br>if you use this field, you don't need to specify <code>location_code</code><br>if you don't specify this field, the <code>location_code</code> with <code class="long-string">2840</code> value will be used by default;<br>you can receive the l
+        note: 'full name of search location. Optional field. If you use this field, you don''t need to specify location_code. Default is United States (location_code 2840). With platform=chat_gpt, only United States is valid; other names return the same task status 40501 Invalid Field on location. The HTTP envelope may still be 200 / top-level status_code 20000 Ok with items_count=0 — always check tasks[].status_code / status_message.'
       location_code:
         type: integer
         required: false
-        note: <em>search location code</em><br>optional field<br>if you use this field, you don't need to specify <code>location_name</code><br>you can receive the list of available locations of the search engine with their <code>location_code</code> by making a separate request to the <code>https://api.dataforse
+        note: 'search location code. Optional field. If you use this field, you don''t need to specify location_name. Default is 2840 (United States). With platform=chat_gpt, only 2840 is valid; any other code (e.g. 2036) returns task status 40501 Invalid Field: ''location_code''. The HTTP envelope may still be 200 / top-level status_code 20000 Ok with items_count=0 — always check tasks[].status_code / status_message.'
         example: 2840
       language_name:
         type: string
@@ -1462,7 +1462,7 @@ endpoints:
       platform:
         type: string
         required: false
-        note: 'target platform. Optional field. Possible values: chat_gpt, google. When omitted, DataForSEO defaults to google only (not both platforms). chat_gpt data is available for the United States and English only.'
+        note: 'target platform. Optional field. Possible values: chat_gpt, google. When omitted, DataForSEO defaults to google only (not both platforms). chat_gpt data is available for the United States and English only (location 2840 / US + language en; else task status 40501).'
         example: chat_gpt
       links_scope:
         type: string
@@ -1565,11 +1565,11 @@ endpoints:
       location_name:
         type: string
         required: false
-        note: <em>full name of search location</em><br>optional field<br>if you use this field, you don't need to specify <code>location_code</code><br>if you don't specify this field, the <code>location_code</code> with <code class="long-string">2840</code> value will be used by default;<br>you can receive the l
+        note: 'full name of search location. Optional field. If you use this field, you don''t need to specify location_code. Default is United States (location_code 2840). With platform=chat_gpt, only United States is valid; other names return the same task status 40501 Invalid Field on location. The HTTP envelope may still be 200 / top-level status_code 20000 Ok with items_count=0 — always check tasks[].status_code / status_message.'
       location_code:
         type: integer
         required: false
-        note: <em>search location code</em><br>optional field<br>if you use this field, you don't need to specify <code>location_name</code><br>you can receive the list of available locations of the search engine with their <code>location_code</code> by making a separate request to the <code>https://api.dataforse
+        note: 'search location code. Optional field. If you use this field, you don''t need to specify location_name. Default is 2840 (United States). With platform=chat_gpt, only 2840 is valid; any other code (e.g. 2036) returns task status 40501 Invalid Field: ''location_code''. The HTTP envelope may still be 200 / top-level status_code 20000 Ok with items_count=0 — always check tasks[].status_code / status_message.'
         example: 2840
       language_name:
         type: string
@@ -1583,7 +1583,7 @@ endpoints:
       platform:
         type: string
         required: false
-        note: 'target platform. Optional field. Possible values: chat_gpt, google. When omitted, DataForSEO defaults to google only (not both platforms). chat_gpt data is available for the United States and English only.'
+        note: 'target platform. Optional field. Possible values: chat_gpt, google. When omitted, DataForSEO defaults to google only (not both platforms). chat_gpt data is available for the United States and English only (location 2840 / US + language en; else task status 40501).'
         example: chat_gpt
       links_scope:
         type: string
