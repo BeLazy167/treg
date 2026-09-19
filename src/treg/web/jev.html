@@ -245,6 +245,7 @@
   .sig-grid { display: grid; grid-template-columns: minmax(0,1fr) 400px; gap: 10px; align-items: start; }
   @media (max-width: 1100px) { .sig-grid { grid-template-columns: 1fr; } }
   .spend { margin-top: 10px; border-top: 1px solid var(--line); padding-top: 8px; display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .spend.top { margin-top: 8px; border-top: 0; border-bottom: 1px solid var(--line); padding: 0 0 10px; }
   .spend div { font-family: var(--mono); font-size: 17px; }
   .spend small { display: block; font-family: var(--mono); font-size: 9px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin-bottom: 2px; }
   .spend .jev { color: var(--blue); }
@@ -399,7 +400,7 @@
       <div class="xb-note" id="xb-note"></div>
       <div class="demo-body">
       <aside class="demo-side">
-        <div class="panel"><div class="lbl"><span>verdicts</span><span class="n" id="xb-tallymeta"></span></div><div class="stack" id="xb-stack"></div><div class="tally" id="xb-tallybox"></div><div class="xsteps" id="xb-steps"></div><div class="spend" id="xb-spend"></div></div>
+        <div class="panel"><div class="lbl"><span>verdicts</span><span class="n" id="xb-tallymeta"></span></div><div class="spend top" id="xb-spend"></div><div class="stack" id="xb-stack"></div><div class="tally" id="xb-tallybox"></div><div class="xsteps" id="xb-steps"></div></div>
         <div class="panel"><div class="lbl"><span>search phrases</span></div><div class="xtopics" id="xb-topics"></div></div>
       </aside>
       <div class="board" id="xb-board">
@@ -445,7 +446,7 @@
    cards with the on-topic score, the people ranked by fit with role and tier filters, and an
    inspector with the signals, both jev distributions and the contact with which provider hit.
    Show treg and jev spend separately.</pre></div></div></div></div>
-      <div class="demo-body"><aside class="demo-side"><div class="panel"><div class="lbl"><span>people · click to filter</span><span class="n" id="sg-tallymeta"></span></div><div class="stack" id="sg-stack"></div><div class="tally" id="sg-tallybox"></div><div class="xsteps" id="sg-steps"></div><div class="spend" id="sg-spend"></div></div></aside>
+      <div class="demo-body"><aside class="demo-side"><div class="panel"><div class="lbl"><span>people · click to filter</span><span class="n" id="sg-tallymeta"></span></div><div class="spend top" id="sg-spend"></div><div class="stack" id="sg-stack"></div><div class="tally" id="sg-tallybox"></div><div class="xsteps" id="sg-steps"></div></div></aside>
       <div class="sig-grid">
         <div class="panel"><div class="lbl"><span>step 1 · posts, jev checks each is on topic</span><span class="n" id="sg-postsmeta"></span></div><div class="posts" id="sg-posts"></div></div>
         <div class="panel"><div class="lbl"><span>steps 2 + 3 · people, ranked by jev</span><span class="n" id="sg-listmeta"></span></div><div class="chips" id="sg-filters"></div><div class="leadlist" id="sg-list"></div></div>
@@ -490,7 +491,7 @@
 9. Post reach / hold / watch to Slack with the one-line reason; post nothing on an empty hour.
 10. A review page: four lane counters, signups by hour, the queue per lane, an inspector with
     verify + enrichment + usage and the jev bars.</pre></div></div></div></div>
-      <div class="demo-body"><aside class="demo-side"><div class="panel"><div class="lbl"><span>segments · click to filter</span><span class="n" id="tr-tallymeta"></span></div><div class="stack" id="tr-stack"></div><div class="tally" id="tr-tallybox"></div><div class="xsteps" id="tr-steps"></div><div class="spend" id="tr-spend"></div></div></aside>
+      <div class="demo-body"><aside class="demo-side"><div class="panel"><div class="lbl"><span>segments · click to filter</span><span class="n" id="tr-tallymeta"></span></div><div class="spend top" id="tr-spend"></div><div class="stack" id="tr-stack"></div><div class="tally" id="tr-tallybox"></div><div class="xsteps" id="tr-steps"></div></div></aside>
       <div><div class="panel"><div class="lbl"><span>signups by hour, UTC</span><span class="n" id="tr-tlcount"></span></div><div class="tl" id="tr-tl"></div><div class="axis" id="tr-axis"></div></div>
       <div class="tri-body">
         <div class="queue" id="tr-queue"></div>
