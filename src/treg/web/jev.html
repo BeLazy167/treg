@@ -78,6 +78,7 @@
   .tabs { display: flex; justify-content: center; gap: 4px; padding: 5px; margin: 0 auto 26px; width: max-content; max-width: 100%; border: 1px solid var(--line); border-radius: 999px; background: #fff; box-shadow: 0 2px 8px rgba(24,36,28,.03); }
   .tabs button { font: inherit; font-size: 14px; font-weight: 500; display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 11px 22px; border-radius: 999px; border: 0; background: transparent; color: var(--muted); cursor: pointer; white-space: nowrap; transition: background .15s, color .15s; }
   .tabs button svg { width: 17px; height: 17px; flex-shrink: 0; }
+  .tabs button[data-tab="xboost"] svg { width: 15px; height: 15px; }
   .tabs button:hover { color: var(--ink); background: #F7F9F7; }
   .tabs button[aria-selected="true"] { color: #31594F; background: #EDF5F1; box-shadow: inset 0 0 0 1px #E2EEE7; }
   @media (max-width: 640px) { .tabs { width: 100%; } .tabs button { flex: 1; padding: 10px 6px; font-size: 12px; gap: 0; } .tabs button svg { display: none; } }
@@ -369,9 +370,9 @@
 <section class="sec" id="recipes">
   <div class="wrap">
     <div class="tabs" role="tablist" id="tabs">
-      <button role="tab" data-tab="xboost" aria-selected="true"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 15l4-6 3 4 3-7 4 9"/><path d="M3 17h14"/></svg>Viral posts monitor</button>
-      <button role="tab" data-tab="signals" aria-selected="false"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 17a7 7 0 1 0 0-14 7 7 0 0 0 0 14z"/><path d="M10 13a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/><path d="M10 10h.01"/></svg>Buyer signal</button>
-      <button role="tab" data-tab="triage" aria-selected="false"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 17a4 4 0 0 0-8 0M10 10a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/><path d="M15 7l1.2 1.2L18.5 6"/></svg>Signup lead score</button>
+      <button role="tab" data-tab="xboost" aria-selected="true"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231 5.451-6.231Zm-1.161 17.52h1.833L7.084 4.126H5.117l11.966 15.644Z"/></svg>Viral posts monitor</button>
+      <button role="tab" data-tab="signals" aria-selected="false"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="10" cy="10" r="1.6" fill="currentColor" stroke="none"/><path d="M7.2 12.8a4 4 0 0 1 0-5.6M12.8 7.2a4 4 0 0 1 0 5.6M4.7 15.3a7.5 7.5 0 0 1 0-10.6M15.3 4.7a7.5 7.5 0 0 1 0 10.6"/></svg>Buyer signal</button>
+      <button role="tab" data-tab="triage" aria-selected="false"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8.5 10.5a3.25 3.25 0 1 0 0-6.5 3.25 3.25 0 0 0 0 6.5z"/><path d="M2.5 17.5a6 6 0 0 1 12 0"/><path d="M15.4 8.2l.85 1.75 1.9.28-1.38 1.35.33 1.9-1.7-.9-1.7.9.33-1.9-1.38-1.35 1.9-.28z" fill="currentColor" stroke="none"/></svg>Signup lead score</button>
     </div>
 <div class="tab" id="xboost">
     <div class="demo" id="xb-demo">
