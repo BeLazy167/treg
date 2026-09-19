@@ -1219,8 +1219,8 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape' && !drawer.hi
     $('xb-embed').innerHTML = 'loading the post…'; post.classList.add('scanning');
     let step = 0; stageSteps(0);
     const ticker = setInterval(() => { if (step < STEPS.length - 1) { step++; stageSteps(step); } }, 900);
-    let embedded = false;
-    loadWidgets().then(tw => { if (!tw) return; $('xb-embed').innerHTML = ''; return tw.widgets.createTweet(m[1], $('xb-embed'), {conversation: 'none', dnt: true, width: 400, cards: 'visible'}); }).then(el => { embedded = !!el; if (!el && !$('xb-embed').querySelector('.post')) $('xb-embed').textContent = 'X would not embed this post; showing treg\'s copy once it arrives'; });
+    let embedded = false, embedFailed = false;
+    loadWidgets().then(tw => { if (!tw) return; $('xb-embed').innerHTML = ''; return tw.widgets.createTweet(m[1], $('xb-embed'), {conversation: 'none', dnt: true, width: 400, cards: 'visible'}); }).then(el => { embedded = !!el; embedFailed = !el; if (el) $('xb-embed').querySelectorAll('.post').forEach(x => x.remove()); else if (!$('xb-embed').querySelector('.post')) $('xb-embed').textContent = 'X would not embed this post; showing treg\'s copy once it arrives'; });
     try {
       const r = await fetch('/jev/xboost/judge', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({url})});
       const d = await r.json();
@@ -1228,7 +1228,9 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape' && !drawer.hi
       clearInterval(ticker); stageSteps(STEPS.length); post.classList.remove('scanning');
       const cached = !!d.cached;
       const p = {...d, manual: !cached || d.manual}, laneOf = LANE(p);
-      if (!embedded && !$('xb-embed').querySelector('.twitter-tweet')) { $('xb-embed').innerHTML = card(p); $('xb-embed').querySelector('.post').style.cursor = 'default'; }
+      // treg's own card only when X has given up, or has not rendered within a grace period
+      const fallback = () => { if (embedded || $('xb-embed').querySelector('iframe')) return; $('xb-embed').innerHTML = card(p); $('xb-embed').querySelector('.post').style.cursor = 'default'; };
+      if (embedFailed) fallback(); else setTimeout(fallback, 3000);
       $('xb-stage-meta').textContent = cached ? `already analysed${p.judged_at ? ' on ' + String(p.judged_at).slice(0, 10) : ' in the daily run'} · no new charge` : `treg ${fmt$(p.treg_cost||0)} · jev ${fmt$(p.jev_cost||0)}`;
       $('xb-stage-verdict').hidden = false;
       $('xb-stage-verdict').innerHTML = `<div class="big ${laneOf}">${laneOf === 'organic' ? 'Organic launch' : laneOf === 'paid' ? 'Paid launch' : 'Irrelevant'}</div><div class="sub">${REL[p.relevance]} ${(+p.relevance_probs[p.relevance]).toFixed(2)} · ${DIST[p.distribution]} ${(+p.distribution_probs[p.distribution]).toFixed(2)} · authenticity ${(+p.authenticity).toFixed(1)} / 3</div>
