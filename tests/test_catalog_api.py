@@ -1778,6 +1778,69 @@ async def test_catalog_get_scrapecreators_linkedin_search_posts_date_posted(
     assert "not accepted" in note
 
 
+FACEBOOK_ADLIBRARY_SEARCH_ADS_ID = "scrapecreators.x.v1-facebook-adlibrary-search-ads"
+FACEBOOK_ADLIBRARY_AD_ID = "scrapecreators.x.v1-facebook-adlibrary-ad"
+FACEBOOK_ADLIBRARY_SEARCH_ADS_SORT_BY = [
+    "total_impressions", "relevancy_monthly_grouped",
+]
+
+
+def test_scrapecreators_facebook_adlibrary_search_ads_sort_by_order_only():
+    """Feedback #658: sort_by ranks results; it is not verified performance.
+
+    catalog_get used to say "Sort by impressions (high to low)" with example
+    total_impressions, so agents read spend / impressions_text /
+    impressions_index as measurable ranking. Observed Meta Ad Library
+    commercial search rows often have null spend, null impressions_text, and
+    impressions_index=-1. Search collation_count can be null on the sibling
+    detail endpoint. Catalog-only: sort_by.note is order-only and names the
+    OpenAPI enum; input.note warns that collation_count is not a
+    creative-variant or budget count. Settlement is unchanged.
+
+    Ref: https://docs.scrapecreators.com/openapi.json
+    """
+    cat = cs.load()
+    ep = cat.by_id[FACEBOOK_ADLIBRARY_SEARCH_ADS_ID]
+    assert ep["path"] == "/v1/facebook/adLibrary/search/ads"
+    field = ep["input"]["queryParams"]["sort_by"]
+    assert field["enum"] == FACEBOOK_ADLIBRARY_SEARCH_ADS_SORT_BY
+    assert field["example"] == "total_impressions"
+    note = field["note"].lower()
+    assert "total_impressions" in note and "relevancy_monthly_grouped" in note
+    assert "order" in note
+    assert "spend" in note and "impressions_text" in note
+    assert "impressions_index" in note
+    assert "null" in note and "-1" in note
+    assert "verified" in note or "performance" in note
+    input_note = ep["input"]["note"].lower()
+    assert "order-only" in input_note or "order only" in input_note
+    assert "collation_count" in input_note
+    assert FACEBOOK_ADLIBRARY_AD_ID in ep["input"]["note"]
+    assert "search" in input_note and "detail" in input_note
+    assert "creative" in input_note or "budget" in input_note
+    assert ep["cost"]["value"] == 1
+    assert ep["cost"]["currency"] == "credit"
+
+
+async def test_catalog_get_scrapecreators_facebook_adlibrary_search_ads_sort_by(
+        clients: AsyncClient):
+    """Feedback #658: catalog_get must warn that sort_by is order-only."""
+    body = (await clients.get(
+        f"/catalog/endpoints/{FACEBOOK_ADLIBRARY_SEARCH_ADS_ID}")).json()
+    field = body["endpoint"]["input"]["queryParams"]["sort_by"]
+    assert field["enum"] == FACEBOOK_ADLIBRARY_SEARCH_ADS_SORT_BY
+    assert field["example"] == "total_impressions"
+    note = field["note"].lower()
+    assert "order" in note
+    assert "spend" in note and "impressions_text" in note
+    assert "impressions_index" in note
+    assert "null" in note
+    input_note = body["endpoint"]["input"]["note"].lower()
+    assert "collation_count" in input_note
+    assert FACEBOOK_ADLIBRARY_AD_ID in body["endpoint"]["input"]["note"]
+    assert "search" in input_note and "detail" in input_note
+
+
 LLM_MENTIONS_HISTORICAL_ID = "dataforseo.x.ai-optimization-llm-mentions-historical-live"
 LLM_MENTIONS_MULTI_TARGET_ID = (
     "dataforseo.x.ai-optimization-llm-mentions-multi-target-metrics-live"
