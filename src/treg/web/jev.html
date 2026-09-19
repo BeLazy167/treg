@@ -671,7 +671,7 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape' && !drawer.hi
   }
   function replay() {
     stop(); live = true; $('xb-board').classList.add('live'); $('xb-replay').hidden = true; $('xb-stop').hidden = false; drawer.hidden = true;
-    const order = posts.filter(p => !p.manual);
+    const rest = posts.filter(p => !p.manual), order = [...rest.filter(p => LANE(p) !== 'irrelevant'), ...rest.filter(p => LANE(p) === 'irrelevant')];
     ['organic','paid','irrelevant'].forEach(l => $('xb-kb-' + l).innerHTML = '');
     $('xb-kb-inbox').innerHTML = '';
     order.forEach(p => { $('xb-kb-inbox').insertAdjacentHTML('beforeend', card(p)); const b = $('xb-kb-inbox').lastElementChild; b.querySelector('.tags').innerHTML = '<span class="queued">queued</span>'; b.onclick = () => {}; });
@@ -679,14 +679,14 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape' && !drawer.hi
     let i = 0;
     const tick = () => {
       if (i >= order.length) { stop(); return; }
-      const p = order[i], btn = $('xb-kb-inbox').querySelector(`.post[data-id="${CSS.escape(p.id)}"]`);
+      const p = order[i], btn = $('xb-kb-inbox').querySelector(`.post[data-id="${CSS.escape(p.id)}"]`), quick = LANE(p) === 'irrelevant';
       btn.classList.add('scanning'); btn.querySelector('.tags').innerHTML = '<span class="reading">jev · reading</span>';
       const kb = $('xb-kb-inbox'); kb.scrollTo({top: btn.offsetTop - kb.clientHeight / 2 + btn.offsetHeight / 2, behavior: reduced ? 'auto' : 'smooth'});   // inner column only; never the page
       timer = setTimeout(() => {
         btn.classList.remove('scanning'); btn.querySelector('.tags').innerHTML = tagsFor(p);
         fly(btn, $('xb-kb-' + LANE(p))); btn.onclick = () => inspect(p, btn);
-        i++; counts(order.slice(0, i)); $('xb-n-inbox').textContent = $('xb-kb-inbox').children.length; timer = setTimeout(tick, 140);
-      }, 320);
+        i++; counts(order.slice(0, i)); $('xb-n-inbox').textContent = $('xb-kb-inbox').children.length; timer = setTimeout(tick, quick ? 40 : 140);
+      }, quick ? 90 : 320);
     };
     timer = setTimeout(tick, 400);
   }
