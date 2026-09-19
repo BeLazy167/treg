@@ -3242,13 +3242,22 @@ async def jev_xboost_json(db: AsyncSession = Depends(get_session)):
     from .. import ratestore
     from ..application import jev_xboost
 
+    run = await _xboost_run(db)
+    run["live"] = jev_xboost.configured()
+    return JSONResponse(run, headers={"Cache-Control": "no-cache"})
+
+
+async def _xboost_run(db: AsyncSession) -> dict:
+    """The worker's stored run, else the bundled snapshot marked `snapshot: true`."""
+    from .. import ratestore
+    from ..application import jev_xboost
+
     run = await ratestore.kv_get(db, jev_xboost.KV_NS, jev_xboost.KV_KEY)
     if run is None:
         seed = _MEDIA_DIR / "jev" / "xboost-seed.json"
         run = json.loads(seed.read_text(encoding="utf-8")) if seed.exists() else {"posts": [], "manual": []}
         run["snapshot"] = True
-    run["live"] = jev_xboost.configured()
-    return JSONResponse(run, headers={"Cache-Control": "no-cache"})
+    return run
 
 
 @app.post("/jev/xboost/judge", include_in_schema=False)
@@ -3279,7 +3288,8 @@ async def jev_xboost_judge(request: Request, db: AsyncSession = Depends(get_sess
         judged = await jev_xboost.judge_url(request.app.state.http, url)
     except jev_xboost.XboostError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from None
-    run = await ratestore.kv_get(db, jev_xboost.KV_NS, jev_xboost.KV_KEY) or {"posts": [], "manual": []}
+    # A visitor may judge before the first daily run: keep the snapshot's board under their card.
+    run = await _xboost_run(db)
     await ratestore.kv_put(db, jev_xboost.KV_NS, jev_xboost.KV_KEY, jev_xboost.with_manual(run, judged),
                            ttl_s=jev_xboost.KV_TTL_S)
     await db.commit()

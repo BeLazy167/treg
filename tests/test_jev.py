@@ -89,7 +89,7 @@ async def test_judge_is_rate_limited_per_ip(clients: AsyncClient, monkeypatch):
     assert codes == [200] * 5 + [429]
     run = (await clients.get("/jev/xboost.json")).json()
     assert [m["id"] for m in run["manual"]] == [f"100000000000{i}" for i in (4, 3, 2, 1, 0)]
-    assert not run.get("snapshot") and run["live"] is True
+    assert run["live"] is True and run["posts"], "the first visitor judge keeps the snapshot's board"
 
 
 def test_forensics_and_lane_are_pure_arithmetic():
