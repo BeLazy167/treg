@@ -825,12 +825,12 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape' && !drawer.hi
   const totalSecs = () => DATA.reduce((a, r) => a + r.secs, 0);
   function replay() {
     stop(); shown = 0; current = 0; $('tr-replay').hidden = true; $('tr-stop').hidden = false;
-    const speed = Math.max(1, totalSecs() / 22);
+    const speed = Math.max(1, totalSecs() / 16);
     const step = () => {
       if (shown >= DATA.length) { stop(); return; }
       select(shown); shown++; renderLanes(); renderTL();
       if (shown % 6 === 0 || shown === DATA.length || DATA[shown-1].lane !== 'normal') renderQueue();
-      timer = setTimeout(step, Math.max(50, DATA[shown-1].secs * 1000 / speed));
+      timer = setTimeout(step, Math.max(40, DATA[shown-1].secs * 1000 / speed));
     };
     step();
   }
