@@ -815,7 +815,8 @@ until a deliberate paid verification call is authorized; documentation provenanc
 platform eligibility, but is not presented as live route evidence. The Voice generation Actions
 shelf exposes `minimax.voice-gen.voices.list` so callers can discover valid system voice IDs. Its
 request is fixed to `voice_type: system`: account-specific cloned and generated voices must not
-cross team boundaries when treg's shared MiniMax connection is used.
+cross team boundaries when treg's shared MiniMax connection is used. The synchronous
+`minimax.image-gen.from_text` row likewise pins `body.model: image-01` through `platform_request`.
 
 reAPI answers every submission with a bare `{id, status}` and reports the charge on the poll body
 (`usage.credits`, 1 credit = $0.001); video rows keep the file-level descriptor (`output.video_urls`)
@@ -1765,6 +1766,20 @@ bitrate and sample_rate name the OpenAPI integers. Example and
 `test_request` bitrate stay `128000`. Non-streaming formats stay mp3/wav/flac.
 Settlement is unchanged. Enforced by `test_minimax_speech_28_language_emotion_audio_enums`
 and `test_catalog_get_minimax_speech_28_language_emotion_audio_enums`.
+
+### MiniMax image-01 `platform_request`
+
+`minimax.image-gen.from_text` is a single-model synchronous route (`POST /v1/image_generation`).
+Feedback #634: `body.model` was optional with `default: image-01` and a singleton enum, and the
+only pin was `cost.table` `when: {body.model: image-01}`. `_enforce_platform_request` promotes a
+singleton-enum table condition to a required exact match before reserve, so a platform call that
+omitted the documented default (or relied on it) returned HTTP 400 `catalog_parameter_invalid`
+for `body.model` with `expected: "image-01"`. Catalog-only: the row now declares
+`platform_request: {body.model: image-01}` and `body.model` is required with `enum: [image-01]`,
+matching Speech 2.8 HD/Turbo. `test_request` and `call_template` already send `image-01`.
+Settlement is unchanged. Enforced by `test_minimax_image_01_platform_request_pins_model`,
+`test_catalog_get_minimax_image_01_platform_request`, and
+`test_minimax_image_01_platform_request_accepts_documented_model`.
 
 ### ScrapeCreators Instagram reels search `date_posted`
 

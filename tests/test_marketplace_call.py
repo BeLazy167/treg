@@ -2739,6 +2739,32 @@ def test_platform_request_constraints_do_not_require_a_price_table(body, valid):
             call_resolution._enforce_platform_request(ep, body)
 
 
+@pytest.mark.parametrize('body,valid', [
+    (b'{"model":"image-01","prompt":"A paper airplane."}', True),
+    (json.dumps({
+        "model": "image-01",
+        "prompt": "A clean editorial illustration of a paper airplane.",
+        "aspect_ratio": "1:1",
+        "response_format": "url",
+        "n": 1,
+    }).encode(), True),
+    (b'{"prompt":"A paper airplane."}', False),
+    (b'{}', False),
+])
+def test_minimax_image_01_platform_request_accepts_documented_model(body, valid):
+    """Feedback #634: platform image-01 calls accept the documented model value."""
+    ep = catalog_store.load().by_id["minimax.image-gen.from_text"]
+    if valid:
+        call_resolution._enforce_platform_request(ep, body)
+    else:
+        with pytest.raises(ResolutionFailed) as exc:
+            call_resolution._enforce_platform_request(ep, body)
+        detail = exc.value.detail
+        assert detail["error"] == "catalog_parameter_invalid"
+        assert detail["parameter"] == "body.model"
+        assert detail["expected"] == "image-01"
+
+
 # ---- ContactOut ----
 
 def _contactout_cost(eid):
