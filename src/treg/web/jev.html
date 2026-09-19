@@ -177,7 +177,8 @@
   .kh .d { display: block; font-size: 12px; color: var(--muted); }
   .kh .n { font-family: var(--mono); font-size: 20px; color: var(--c); background: var(--card); border-radius: 8px; padding: 2px 10px; min-width: 42px; text-align: center; }
   .kcol.organic { --c: var(--green); } .kcol.paid { --c: var(--amber); } .kcol.irrelevant { --c: var(--muted); }
-  .kb { max-height: 720px; overflow: auto; padding: 12px 10px; display: flex; flex-direction: column; gap: 12px; }
+  .kb { position: relative; max-height: 720px; overflow: auto; padding: 12px 10px; display: flex; flex-direction: column; gap: 12px; }
+  .board.live .kb { height: 720px; }   /* fixed while cards move, so the page never reflows or clamps its scroll */
   .post { position: relative; border: 1px solid var(--line); border-radius: 14px; background: #fff; text-align: left; color: inherit; padding: 12px 14px; cursor: pointer; display: flex; flex-direction: column; gap: 6px; font: inherit; width: 100%; }
   .post:hover { border-color: var(--line2); }
   .post[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--ink); }
@@ -273,7 +274,7 @@
   .spend div { font-family: var(--mono); font-size: 17px; }
   .spend small { display: block; font-family: var(--mono); font-size: 9px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin-bottom: 2px; }
   .spend .jev { color: var(--blue); }
-  .posts { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 10px; margin-top: 8px; max-height: 720px; overflow: auto; padding-right: 4px; align-items: start; }
+  .posts { position: relative; display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 10px; margin-top: 8px; max-height: 720px; overflow: auto; padding-right: 4px; align-items: start; }
   @media (max-width: 640px) { .posts { grid-template-columns: 1fr; } }
   .lp { border: 1px solid var(--line); border-radius: 8px; background: #fff; overflow: hidden; display: flex; flex-direction: column; position: relative; cursor: pointer; transition: opacity .3s; font-family: -apple-system, system-ui, "Segoe UI", Roboto, "Helvetica Neue", sans-serif; box-shadow: 0 0 0 1px rgba(0,0,0,.02), 0 2px 3px rgba(0,0,0,.05); }
   .lp.rejected { opacity: .45; }
@@ -680,7 +681,7 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape' && !drawer.hi
       if (i >= order.length) { stop(); return; }
       const p = order[i], btn = $('xb-kb-inbox').querySelector(`.post[data-id="${CSS.escape(p.id)}"]`);
       btn.classList.add('scanning'); btn.querySelector('.tags').innerHTML = '<span class="reading">jev · reading</span>';
-      btn.scrollIntoView({block:'center', behavior: reduced ? 'auto' : 'smooth'});
+      const kb = $('xb-kb-inbox'); kb.scrollTo({top: btn.offsetTop - kb.clientHeight / 2 + btn.offsetHeight / 2, behavior: reduced ? 'auto' : 'smooth'});   // inner column only; never the page
       timer = setTimeout(() => {
         btn.classList.remove('scanning'); btn.querySelector('.tags').innerHTML = tagsFor(p);
         fly(btn, $('xb-kb-' + LANE(p))); btn.onclick = () => inspect(p, btn);
@@ -937,7 +938,7 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape' && !drawer.hi
       w.setAttribute('aria-pressed', String(postFilter === p.id));
       v.className = 'verdict-tag ' + (scanning ? 'reading' : !seen ? '' : p.kept ? 'on' : p.on_topic >= 0.7 ? '' : 'off');
       v.textContent = scanning ? 'jev · reading…' : !seen ? 'queued' : p.kept ? `jev · on topic ${p.on_topic.toFixed(2)} · pulled ${p.comments} commenters + ${p.likes} reactors` : `jev · on topic ${p.on_topic.toFixed(2)}${p.on_topic >= 0.7 ? ' · not pulled' : ''}`;
-      if (scanning) w.scrollIntoView({block: 'nearest', behavior: reduced ? 'auto' : 'smooth'});
+      if (scanning) { const box = $('sg-posts'); box.scrollTo({top: w.offsetTop - box.clientHeight / 2 + w.offsetHeight / 2, behavior: reduced ? 'auto' : 'smooth'}); }
     });
     $('sg-postsmeta').textContent = `${posts.slice(0, shown.scanned).filter(p => p.kept).length} kept of ${Math.min(shown.scanned, posts.length)}`;
   }
