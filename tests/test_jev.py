@@ -1,0 +1,118 @@
+"""/jev: the landing page, its live launch-radar document, and the visitor judge endpoint.
+
+The page is a bundled file; the board it renders comes from `/jev/xboost.json`, which serves the
+worker's stored run or the bundled snapshot. The judge endpoint spends money on the demo team's
+token, so its guards (configured, valid link, rate limit) are what these tests pin.
+"""
+
+from __future__ import annotations
+
+import json
+from pathlib import Path
+
+import pytest
+from httpx import AsyncClient
+
+from treg.application import jev_xboost
+from treg.config import get_settings
+
+WEB = Path(__file__).parents[1] / "src" / "treg" / "web"
+
+
+async def test_jev_page_is_a_first_class_landing(clients: AsyncClient):
+    r = await clients.get("/jev")
+    assert r.status_code == 200
+    assert '<link rel="canonical" href="https://treg.to/jev"/>' in r.text
+    for anchor in ("id=\"xboost\"", "id=\"triage\"", "id=\"signals\""):
+        assert anchor in r.text
+    assert r.text.count('data-copy="p-') == 3, "one copyable prompt per recipe"
+
+
+async def test_jev_is_in_the_sitemap(clients: AsyncClient):
+    xml = (await clients.get("/sitemap.xml")).text
+    assert f"{get_settings().public_url.rstrip('/')}/jev" in xml
+
+
+async def test_xboost_json_falls_back_to_the_bundled_snapshot(clients: AsyncClient):
+    r = await clients.get("/jev/xboost.json")
+    assert r.status_code == 200
+    run = r.json()
+    assert run["snapshot"] is True and run["live"] is False
+    assert run["posts"] and {"organic", "paid", "irrelevant"} <= {jev_xboost.lane(p) for p in run["posts"]}
+    assert run["manual"] == []
+
+
+def test_the_bundled_demo_data_carries_no_real_email_addresses():
+    """The signup and lead demos replay real runs; every address was replaced before bundling."""
+    real = {"gmail.com", "outlook.com", "yahoo.com", "icloud.com", "proton.me", "hotmail.com"}
+    triage = json.loads((WEB / "media" / "jev" / "triage.json").read_text())
+    fake_corp = {"northwind.io", "acmecloud.com", "lumen-labs.dev", "pikeandco.com", "brightloop.ai", "fernbank.co",
+                 "harborsoft.com", "quillstack.io", "vantapoint.com", "oakridgedata.com", "meridianops.co",
+                 "saltmarsh.dev", "tinderbox.ai", "cobaltcrm.com", "ridgelinehq.com", "glasswing.io",
+                 "juniperbi.com", "ashgrove.co", "kestrel.dev", "larkspur.ai", "mailinator.com", "tempmail.dev",
+                 "10minutemail.net", "guerrillamail.com"}
+    for row in triage:
+        assert row["email"].split("@")[1] in real | fake_corp, row["email"]
+    signals = json.loads((WEB / "media" / "jev" / "signals.json").read_text())
+    for lead in signals["leads"]:
+        email = (lead.get("contact") or {}).get("email")
+        assert email is None or email.split("@")[1] in fake_corp, email
+        assert "picture" not in lead
+
+
+async def test_judge_refuses_when_the_live_demo_is_not_configured(clients: AsyncClient):
+    r = await clients.post("/jev/xboost/judge", json={"url": "https://x.com/treg_ai/status/1234567890123"})
+    assert r.status_code == 503
+
+
+async def test_judge_validates_the_link_before_spending(clients: AsyncClient, monkeypatch):
+    monkeypatch.setattr(get_settings(), "jev_treg_token", "t", raising=False)
+    monkeypatch.setattr(get_settings(), "ai_gateway_api_key", "k", raising=False)
+    r = await clients.post("/jev/xboost/judge", json={"url": "https://example.com/not-a-post"})
+    assert r.status_code == 400
+    assert "status" in r.json()["detail"]
+
+
+async def test_judge_is_rate_limited_per_ip(clients: AsyncClient, monkeypatch):
+    monkeypatch.setattr(get_settings(), "jev_treg_token", "t", raising=False)
+    monkeypatch.setattr(get_settings(), "ai_gateway_api_key", "k", raising=False)
+
+    async def fake_judge(http, url):
+        handle, post_id = jev_xboost.parse_post_url(url)
+        return {"id": post_id, "authorUsername": handle, "relevance": "inspiring_launch", "distribution": "organic"}
+
+    monkeypatch.setattr(jev_xboost, "judge_url", fake_judge)
+    codes = []
+    for i in range(6):
+        r = await clients.post("/jev/xboost/judge", json={"url": f"https://x.com/treg_ai/status/100000000000{i}"})
+        codes.append(r.status_code)
+    assert codes == [200] * 5 + [429]
+    run = (await clients.get("/jev/xboost.json")).json()
+    assert [m["id"] for m in run["manual"]] == [f"100000000000{i}" for i in (4, 3, 2, 1, 0)]
+    assert not run.get("snapshot") and run["live"] is True
+
+
+def test_forensics_and_lane_are_pure_arithmetic():
+    post = {"id": "1", "viewCount": 100_000, "likeCount": 2_000, "retweetCount": 300, "replyCount": 100,
+            "bookmarkCount": 150, "quoteCount": 20, "createdUtc": 1_000}
+    replies = [{"createdUtc": 1_100, "text": "great 🔥"}, {"createdUtc": 5_000, "text": "How does the routing decide the provider?"}]
+    f = jev_xboost.forensics(post, {"followers": 50_000}, replies)
+    assert f["rates"]["likes_per_view"] == 0.02 and f["views_per_follower"] == 2.0
+    assert f["replies_sample"] == {"n": 2, "quick_share": 0.5, "short_share": 0.5, "generic_share": 0.5}
+    assert jev_xboost.lane({"relevance": "inspiring_launch", "distribution": "paid_promotion"}) == "paid"
+    assert jev_xboost.lane({"relevance": "inspiring_launch", "distribution": "artificial_engagement"}) == "organic"
+    assert jev_xboost.lane({"relevance": "not_a_launch", "distribution": "organic"}) == "irrelevant"
+
+
+def test_parse_post_url_accepts_x_and_twitter_links_only():
+    assert jev_xboost.parse_post_url("https://twitter.com/jack/status/20?s=1") == ("jack", "20")
+    assert jev_xboost.parse_post_url(" https://x.com/jack/status/20 ") == ("jack", "20")
+    with pytest.raises(jev_xboost.XboostError):
+        jev_xboost.parse_post_url("https://x.com/jack")
+
+
+def test_with_manual_dedupes_and_caps():
+    run = {"manual": [{"id": str(i)} for i in range(jev_xboost.MANUAL_CAP)]}
+    out = jev_xboost.with_manual(run, {"id": "3"})
+    assert out["manual"][0]["id"] == "3" and len(out["manual"]) == jev_xboost.MANUAL_CAP
+    assert [m["id"] for m in out["manual"]].count("3") == 1

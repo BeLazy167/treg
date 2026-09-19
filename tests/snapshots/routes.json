@@ -796,6 +796,32 @@
       "GET",
       "HEAD"
     ],
+    "name": "jev_page",
+    "path": "/jev"
+  },
+  {
+    "kind": "APIRoute",
+    "methods": [
+      "GET",
+      "HEAD"
+    ],
+    "name": "jev_xboost_json",
+    "path": "/jev/xboost.json"
+  },
+  {
+    "kind": "APIRoute",
+    "methods": [
+      "POST"
+    ],
+    "name": "jev_xboost_judge",
+    "path": "/jev/xboost/judge"
+  },
+  {
+    "kind": "APIRoute",
+    "methods": [
+      "GET",
+      "HEAD"
+    ],
     "name": "blog_index",
     "path": "/blog"
   },
