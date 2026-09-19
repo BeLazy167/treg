@@ -90,7 +90,7 @@ profile. That layer carries a treg MCP row whose `disabled` expression is evalua
 stays off until `TREG_TOKEN` is in the environment — the same "no always-on tools that 401" stance as
 the Claude manifest, but expressible as a row rather than an omission. Its bootstrap is its own for
 two reasons the others do not have: the tools are namespaced (`mcp__treg__call`, not `call`), and
-`treg mcp install` cannot help here (it writes Claude Code / Cursor / opencode configs, never a dsh
+`treg mcp install` cannot help here (it writes Claude Code / Cursor / opencode / Codex configs, never a dsh
 profile), so `mcp_install.py` reports dsh as a MANUAL agent pointing at the bundle. See
 [docs/DSH-PLUGIN.md](../../DSH-PLUGIN.md).
 
@@ -99,7 +99,8 @@ simultaneously what Claude Code's loader auto-discovers, what `npx skills add` r
 `clawhub skill publish` takes. See [docs/CLAUDE-PLUGIN.md](../../CLAUDE-PLUGIN.md) for the
 per-registry submission runbook.
 
-`mcp_install._write_json_agent` merges Cursor and opencode entries without disturbing unrelated
+`mcp_install._write_json_agent` merges Cursor and opencode entries (and `_write_toml_agent` the Codex
+table, both through `_write_private`) without disturbing unrelated
 configuration, then atomically replaces the config from a random same-directory temporary file.
 That temporary file is created through `tempfile.mkstemp` before any token bytes are written and is
 set to mode `0600` through its open fd on POSIX regardless of umask; failures remove it and leave
