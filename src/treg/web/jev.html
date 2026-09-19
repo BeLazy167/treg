@@ -192,7 +192,8 @@
   .build .morewrap { position: relative; margin-top: 10px; pointer-events: auto; -webkit-mask-image: none; mask-image: none; max-height: 520px; overflow: hidden; }
   .build .morein { pointer-events: none; -webkit-mask-image: linear-gradient(180deg, rgba(0,0,0,.5) 0%, rgba(0,0,0,.12) 45%, transparent 75%); mask-image: linear-gradient(180deg, rgba(0,0,0,.5) 0%, rgba(0,0,0,.12) 45%, transparent 75%); }
   .build .more-cta { position: absolute; left: 50%; bottom: 70px; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 14px; padding: 22px 34px; background: rgba(253,252,251,.92); backdrop-filter: blur(6px); border: 1px solid var(--line); border-radius: 20px; box-shadow: 0 20px 60px -30px rgba(20,18,12,.35); }
-  .build .more-cta .t { font-family: var(--display); font-weight: 500; font-size: 24px; letter-spacing: -.02em; text-align: center; }
+  .build .more-cta .t { font-family: var(--display); font-weight: 500; font-size: 24px; letter-spacing: -.02em; text-align: center; display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: center; }
+  .build .more-cta .t .lg { width: 26px; height: 26px; border-radius: 7px; }
   .build .more-cta .pbtn.big { font-size: 15px; padding: 11px 20px; margin-top: 4px; }
   .build .more-cta .pbtn.big .agents img { width: 22px; height: 22px; border-radius: 6px; }
   .build .more-cta .d { color: var(--muted); font-size: 14px; text-align: center; max-width: 40ch; margin-top: -4px; }
@@ -830,7 +831,7 @@
           </div>
 
           </div>
-          <div class="more-cta"><div class="t">Set up Treg &amp; Jev workflow</div><div class="d">One token, every aisle above, typed decisions on top. New teams start with $1.00 free.</div><button class="pill dark pbtn big" type="button" id="build-copy">Copy prompt for <span class="agents"><img src="media/people-search/claude-code.png" alt="Claude Code"><img src="media/people-search/codex.png" alt="Codex"><img src="media/people-search/openclaw.png" alt="OpenClaw"><img src="media/people-search/hermes.png" alt="Hermes" class="onwhite"></span></button></div>
+          <div class="more-cta"><div class="t">Setup <img class="lg" src="logos/jev.png" alt=""> Jev × <svg class="lg" viewBox="0 0 512 512" aria-hidden="true"><rect width="512" height="512" rx="112" fill="#101010"/><rect x="111" y="111" width="140.5" height="140.5" rx="20" fill="#fff"/><rect x="260.5" y="260.5" width="140.5" height="140.5" rx="20" fill="#fff"/></svg> Treg workflow</div><div class="d">One token, every aisle above, typed decisions on top. New teams start with $1.00 free.</div><button class="pill dark pbtn big" type="button" id="build-copy">Copy prompt for <span class="agents"><img src="media/people-search/claude-code.png" alt="Claude Code"><img src="media/people-search/codex.png" alt="Codex"><img src="media/people-search/openclaw.png" alt="OpenClaw"><img src="media/people-search/hermes.png" alt="Hermes" class="onwhite"></span></button></div>
         </div>
       </div>
     </div>
