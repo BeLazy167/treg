@@ -1811,6 +1811,26 @@ Settlement is unchanged. Enforced by
 `test_scrapecreators_linkedin_search_posts_date_posted_enum` and
 `test_catalog_get_scrapecreators_linkedin_search_posts_date_posted`.
 
+### ScrapeCreators Facebook Ad Library search ads `sort_by`
+
+ScrapeCreators' OpenAPI for `GET /v1/facebook/adLibrary/search/ads` restricts
+`sort_by` to `total_impressions | relevancy_monthly_grouped` (default impressions
+ranking). Feedback #658: `scrapecreators.x.v1-facebook-adlibrary-search-ads`
+advertised "Sort by impressions (high to low)" with example `total_impressions`,
+so agents read the ranking as verified spend or impression counts. Observed
+commercial Meta Ad Library search rows often have null `spend`, null
+`impressions_text`, and `impressions_index=-1`; this is upstream/Meta field
+availability, not a confirmed provider bug. Search may also return a non-null
+`collation_count` that is null on `scrapecreators.x.v1-facebook-adlibrary-ad`
+detail for the same ad — grouping semantics differ; do not treat
+`collation_count` as creative-variant or budget counts. Catalog-only:
+`sort_by` now names the OpenAPI enum and warns that it is order-only;
+`input.note` documents the search-vs-detail `collation_count` caveat.
+Settlement, routing and request shaping are unchanged. Sibling company-ads
+`end_date` (#642) and ACTIVE vs `is_active` (#659) stay on their own tickets.
+Enforced by `test_scrapecreators_facebook_adlibrary_search_ads_sort_by_order_only`
+and `test_catalog_get_scrapecreators_facebook_adlibrary_search_ads_sort_by`.
+
 ### ScrapeCreators YouTube search `sortBy` / `uploadDate` / `type` / `duration`
 
 ScrapeCreators' OpenAPI for `GET /v1/youtube/search` restricts `sortBy` to `relevance`

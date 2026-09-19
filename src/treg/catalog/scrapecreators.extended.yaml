@@ -581,7 +581,8 @@ endpoints:
       sort_by:
         type: string
         required: false
-        note: Sort by impressions (high to low), or Most Recent (relevancy_monthly_grouped). Defaults to impressions.
+        enum: [total_impressions, relevancy_monthly_grouped]
+        note: "Order only. One of: total_impressions | relevancy_monthly_grouped. Defaults to impressions ranking (total_impressions). Controls result ORDER, not verified performance — does not guarantee non-null spend, impressions_text, or a positive impressions_index. Those fields are often null / -1 for commercial ads and are not verified performance metrics."
         example: total_impressions
       search_type:
         type: string
@@ -628,6 +629,7 @@ endpoints:
         required: false
         note: Set to true for a trimmed down version of the response
         example: 'false'
+    note: "sort_by is order-only: ranking by total_impressions does not mean the response carries verified spend or impression counts. Search may return a non-null collation_count that is null on scrapecreators.x.v1-facebook-adlibrary-ad detail for the same ad — grouping semantics differ between search and detail; do not treat collation_count as creative-variant or budget counts."
   test_request:
     queryParams:
       query: running
