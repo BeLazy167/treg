@@ -1089,29 +1089,33 @@
         </div></div></article>
 
       <article class="slide"><div class="sl-l"><span class="sl-n">2 / 7</span><h3>How a call works</h3><p>One HTTP request. You send a <b>state</b>, any JSON or text you want judged, and a set of <b>questions</b>, each with the answers you would accept. jev sends back one answer per question, keyed by the names you chose.</p><p class="sl-note">That is the whole API. No prompt engineering, no output schema to coerce, no retries for malformed JSON.</p></div>
-        <div class="sl-r"><div class="ig-flow"><div class="ig-step"><div class="ig-lab">1 · state</div><pre>"We just launched Agentsky, the world's
- 1st Agent Market. Use 40+ agents in
- your browser or via one API."</pre></div><div class="ig-step"><div class="ig-lab">2 · questions</div><pre>{
-  "is_launch": {
+        <div class="sl-r"><div class="ig-flow"><div class="ig-step"><div class="ig-lab">1 · state</div><pre>"Our API integration started returning 500
+ errors on every request about 20 minutes
+ ago, and we can't process any customer
+ orders until this is fixed."</pre></div><div class="ig-step"><div class="ig-lab">2 · questions</div><pre>{
+  "department": {
     "type": "choice",
-    "instructions": "Is this a product launch post?",
+    "instructions": "Which team should handle this",
     "criteria": {
-      "inspiring_launch": "maker announcing their product",
-      "launch_other":     "a launch by someone else",
-      "not_a_launch":     "commentary, news, memes"
+      "billing":   "Payment or subscription issues",
+      "technical": "Bugs or integration problems",
+      "sales":     "Pricing or account questions"
     }
   }
-}</pre></div><div class="ig-arrow"><img class="lg" src="logos/jev.png" alt=""> jev, ~0.4 s</div><div class="ig-step out"><div class="ig-lab">3 · answer</div><pre>{
-  "is_launch": {
-    "choice": "inspiring_launch",
+}</pre></div><div class="ig-arrow"><img class="lg" src="logos/jev.png" alt=""> jev, 0.38 s</div><div class="ig-step out"><div class="ig-lab">3 · answer</div><pre>{
+  "department": {
+    "type": "choice",
+    "choice": "technical",
     "probabilities": {
-      "inspiring_launch": 0.94,
-      "launch_other":     0.05,
-      "not_a_launch":     0.01
+      "billing":   0,
+      "sales":     0,
+      "technical": 1
     },
-    "confidence": 0.92
+    "confidence": 1
   }
-}</pre></div></div></div></article>
+}
+
+usage: 428 tokens in · $0.000018</pre></div></div></div></article>
 
       <article class="slide"><div class="sl-l"><span class="sl-n">3 / 7</span><h3>Three kinds of question</h3><p>Every jev question is one of three types, and you can send several in one call. Same support message for all three:</p><p class="sl-note">"Our API integration started returning 500 errors on every request 20 minutes ago, and we can't process any customer orders until this is fixed."</p><p class="sl-note"><b>choice</b> picks from your options. <b>noul</b> is a yes/no as a probability. <b>score</b> is a position on your ordered rubric, returned as the probability on each level plus their weighted mean.</p></div>
         <div class="sl-r"><div class="qt-tabs" role="tablist"><button role="tab" aria-selected="true" data-qt="choice">choice</button><button role="tab" aria-selected="false" data-qt="noul">noul</button><button role="tab" aria-selected="false" data-qt="score">score</button></div>
