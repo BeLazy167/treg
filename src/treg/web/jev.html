@@ -653,6 +653,13 @@
   .qt-req .ig-lab { margin: 0; } .qt-req pre { font-size: 10.5px; line-height: 1.45; padding: 12px 14px; }
   .qt-req pre.st { flex: 0 0 auto; background: #fff; }
   .qt-req pre:not(.st) { flex: 1; }
+  .st-msg { font-size: 13.5px; color: var(--ink); background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; margin-bottom: 12px; }
+  .st-pane { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, .9fr); gap: 12px; align-items: start; }
+  .st-pane .qt-req pre:not(.st) { flex: 0 0 auto; }
+  .st-pane[hidden] { display: none; }
+  .st-pane .qt-req pre { font-size: 12px; }
+  .sl-r:has(.st-tabs) { justify-content: flex-start; align-items: stretch; } .sl-r:has(.st-tabs) .st-tabs { align-self: flex-start; }
+  @media (max-width: 860px) { .st-pane { grid-template-columns: 1fr; } }
   .qt-why { font-size: 12.5px; color: #43413E; line-height: 1.5; margin: 0; border-top: 1px solid var(--line); padding-top: 10px; }
   .qt-why code { font-size: 11px; }
   .qt-pane[hidden] { display: none; }
@@ -1217,11 +1224,20 @@ action = { jailbreak: block, harmful: block,
 </svg>
         <div class="ig-foot" id="rt-foot"></div></div></article>
 
-      <article class="slide"><div class="sl-l"><span class="sl-n">6 / 7</span><h3>Rubrics: say what an option is <em>not</em></h3><p>An option's description can be an object. <code>what</code>, <code>not_for</code> and <code>examples</code> are ordinary keys, and jev reads the key names too. "It doesn't export to Framer" is a bug if Framer export exists and a feature request if it never did; a one-line label cannot know, a rubric can carry the fact.</p><p class="sl-note">Same message: plain labels say <b>bug</b>, the rubric with the product fact in <code>not_for</code> says <b>feature_request</b>.</p></div>
-        <div class="sl-r"><div class="ig-flip"><div class="ig-col"><div class="ig-lab">plain labels</div><div class="ig-bars"><div class="ig-bar r"><span class="k">bug</span><span class="tr"><i style="--w:78%"></i></span><span class="v">0.78</span></div><div class="ig-bar "><span class="k">feature_request</span><span class="tr"><i style="--w:22%"></i></span><span class="v">0.22</span></div></div></div><div class="ig-col"><div class="ig-lab">rubric with <code>not_for</code></div><div class="ig-bars"><div class="ig-bar g"><span class="k">feature_request</span><span class="tr"><i style="--w:91%"></i></span><span class="v">0.91</span></div><div class="ig-bar "><span class="k">bug</span><span class="tr"><i style="--w:9%"></i></span><span class="v">0.09</span></div></div></div></div><pre>"bug": {
-  "what": "a promised feature does not work",
-  "not_for": "features never built: there is no Framer export"
-}</pre></div></article>
+      <article class="slide"><div class="sl-l"><span class="sl-n">6 / 7</span><h3>Tips for steering jev</h3><p>There is no system prompt. Everything you would normally say in one goes into the question itself: <code>instructions</code>, the options and rubric levels all accept a string or an object, and jev reads the keys as well as the values.</p><p class="sl-note">So your routing policy is data you can diff. Same message, same two options, only the instructions change: watch the answer move.</p><p class="sl-note">Name keys for what they hold and put the steering in the value. When two labels overlap in plain language, give each option a <code>what</code>, a <code>not_for</code> and <code>examples</code>. Measured in our notebook, single runs.</p></div>
+        <div class="sl-r"><div class="st-msg"><span class="ig-qlab">state</span>"The export button double-charged my credits, so my invoice is wrong this month." <span class="ig-qlab" style="margin-left:12px">options</span>billing · technical</div>
+          <div class="qt-tabs st-tabs" role="tablist"><button role="tab" aria-selected="true" data-st="0">plain string</button><button role="tab" aria-selected="false" data-st="1">focus · root cause</button><button role="tab" aria-selected="false" data-st="2">focus · customer need</button><button role="tab" aria-selected="false" data-st="3">junk key, same text</button></div>
+          <div class="st-pane" data-st="0"><div class="qt-req"><div class="ig-lab">instructions</div><pre>"instructions": "Which team should handle this?"</pre></div><div class="qt-ans"><div class="ig-lab">answer</div><div class="ig-bars"><div class="ig-bar g"><span class="k">billing</span><span class="tr"><i style="--w:91%"></i></span><span class="v">0.91</span></div><div class="ig-bar "><span class="k">technical</span><span class="tr"><i style="--w:9%"></i></span><span class="v">0.09</span></div></div><div class="ig-ans">→ <b>billing</b></div><p class="qt-why">With nothing else said, the invoice is the customer's problem, so billing.</p></div></div><div class="st-pane" data-st="1" hidden><div class="qt-req"><div class="ig-lab">instructions</div><pre>"instructions": {
+  "question": "Which team should handle this?",
+  "focus": "Route to whoever must fix the root cause."
+}</pre></div><div class="qt-ans"><div class="ig-lab">answer</div><div class="ig-bars"><div class="ig-bar "><span class="k">billing</span><span class="tr"><i style="--w:27%"></i></span><span class="v">0.27</span></div><div class="ig-bar g"><span class="k">technical</span><span class="tr"><i style="--w:73%"></i></span><span class="v">0.73</span></div></div><div class="ig-ans">→ <b>technical</b></div><p class="qt-why">One extra line and the same message flips: a bug caused the bad invoice, so technical.</p></div></div><div class="st-pane" data-st="2" hidden><div class="qt-req"><div class="ig-lab">instructions</div><pre>"instructions": {
+  "question": "Which team should handle this?",
+  "focus": "Route to whoever resolves what the customer needs today."
+}</pre></div><div class="qt-ans"><div class="ig-lab">answer</div><div class="ig-bars"><div class="ig-bar g"><span class="k">billing</span><span class="tr"><i style="--w:98%"></i></span><span class="v">0.98</span></div><div class="ig-bar "><span class="k">technical</span><span class="tr"><i style="--w:2%"></i></span><span class="v">0.02</span></div></div><div class="ig-ans">→ <b>billing</b></div><p class="qt-why">Point the focus at the customer's need and it swings back, harder than the plain string.</p></div></div><div class="st-pane" data-st="3" hidden><div class="qt-req"><div class="ig-lab">instructions</div><pre>"instructions": {
+  "question": "Which team should handle this?",
+  "zzq": "Route to whoever must fix the root cause."
+}</pre></div><div class="qt-ans"><div class="ig-lab">answer</div><div class="ig-bars"><div class="ig-bar g"><span class="k">billing</span><span class="tr"><i style="--w:56%"></i></span><span class="v">0.56</span></div><div class="ig-bar "><span class="k">technical</span><span class="tr"><i style="--w:44%"></i></span><span class="v">0.44</span></div></div><div class="ig-ans">→ <b>billing</b></div><p class="qt-why">The same sentence under a meaningless key moves the answer less. The key name is read too: name keys for what they hold.</p></div></div>
+        </div></article>
 
       <article class="slide"><div class="sl-l"><span class="sl-n">7 / 7</span><h3>Where treg comes in</h3><p>jev cannot produce a string and cannot fetch anything. It decides over the state you hand it. treg is the other half: one token for the catalog, so the state is a real X post with its author and replies, a signup with its verification and enrichment, a LinkedIn commenter with their headline. treg fetches, jev decides, your code acts on the numbers.</p><p class="sl-note">Every workflow above is that loop. The prompts in each tab set both up for your agent.</p></div>
         <div class="sl-r"><div class="loop"><div class="lp-step"><svg class="lg" viewBox="0 0 512 512" aria-hidden="true"><rect width="512" height="512" rx="112" fill="#101010"/><rect x="111" y="111" width="140.5" height="140.5" rx="20" fill="#fff"/><rect x="260.5" y="260.5" width="140.5" height="140.5" rx="20" fill="#fff"/></svg><b>treg</b><span>fetch the facts</span></div><i>→</i><div class="lp-step"><img class="lg" src="logos/jev.png" alt=""><b>jev</b><span>typed verdict</span></div><i>→</i><div class="lp-step"><span class="you">you</span><b>your code</b><span>act on the number</span></div></div></div></article>
@@ -1494,6 +1510,8 @@ document.querySelectorAll('.expand-all[data-wrap]').forEach(b => b.onclick = () 
   $('rt-pick').innerHTML = RT.map((m, i) => `<button type="button" aria-pressed="${i === 1}">${m.name}</button>`).join('');
   [...$('rt-pick').children].forEach((b, i) => b.onclick = () => rtShow(i));
   rtShow(1);
+  // slide 6: steering variants
+  document.querySelectorAll('.st-tabs [data-st]').forEach(b => b.onclick = () => { document.querySelectorAll('.st-tabs [data-st]').forEach(x => x.setAttribute('aria-selected', String(x === b))); document.querySelectorAll('.st-pane').forEach(p => p.hidden = p.dataset.st !== b.dataset.st); });
   // slide 2: one question type at a time
   document.querySelectorAll('.qt-tabs [data-qt]').forEach(b => b.onclick = () => { document.querySelectorAll('.qt-tabs [data-qt]').forEach(x => x.setAttribute('aria-selected', String(x === b))); document.querySelectorAll('.qt-pane').forEach(p => p.hidden = p.dataset.qt !== b.dataset.qt); });
   $('dk-prev').onclick = () => go(i - 1); $('dk-next').onclick = () => go(i + 1);
