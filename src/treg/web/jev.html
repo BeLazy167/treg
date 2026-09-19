@@ -202,7 +202,8 @@
   @keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
   .drawer .close { position: absolute; top: 10px; right: 10px; border: 1px solid var(--line); background: #fff; border-radius: 999px; width: 30px; height: 30px; cursor: pointer; font-size: 14px; }
   .verdict { display: flex; gap: 12px; align-items: center; padding-right: 40px; }
-  .mark { width: 46px; height: 44px; border-radius: 10px; flex: 0 0 auto; font-family: var(--mono); font-weight: 500; font-size: 16px; color: #fff; display: flex; align-items: center; justify-content: center; background: var(--muted); }
+  .mark { width: 46px; height: 44px; border-radius: 10px; flex: 0 0 auto; font-family: var(--mono); font-weight: 500; font-size: 16px; color: #fff; display: flex; align-items: center; justify-content: center; background: var(--muted); overflow: hidden; }
+  .mark img { width: 100%; height: 100%; object-fit: cover; }
   .mark.organic, .mark.reach, .mark.dm, .mark.enterprise { background: var(--green); } .mark.paid_promotion, .mark.watch, .mark.user, .mark.influencer_affiliate { background: var(--amber); } .mark.artificial_engagement, .mark.hold, .mark.fraud { background: var(--red); } .mark.smb { background: var(--blue); }
   .verdict .e { font-weight: 600; font-size: 15px; line-height: 1.2; word-break: break-word; }
   .verdict .act { font-family: var(--mono); font-size: 11px; letter-spacing: .06em; text-transform: uppercase; font-weight: 500; margin-top: 3px; color: var(--muted); }
@@ -218,10 +219,15 @@
   @media (max-width: 900px) { .tri-body { grid-template-columns: 1fr; } }
   .queue { display: flex; flex-direction: column; gap: 12px; }
   .list { display: flex; flex-direction: column; margin-top: 6px; }
-  .row { display: grid; grid-template-columns: 8px minmax(0,1fr) auto; gap: 12px; align-items: center; padding: 9px 6px; border-top: 1px solid var(--line); cursor: pointer; background: none; border-left: 0; border-right: 0; border-bottom: 0; font: inherit; color: inherit; text-align: left; width: 100%; }
+  .row { display: grid; grid-template-columns: 30px minmax(0,1fr) auto; gap: 12px; align-items: center; padding: 9px 6px; border-top: 1px solid var(--line); cursor: pointer; background: none; border-left: 0; border-right: 0; border-bottom: 0; font: inherit; color: inherit; text-align: left; width: 100%; }
   .row:first-of-type { border-top: 0; }
   .row:hover { background: var(--card); } .row[aria-current="true"] { background: var(--card); box-shadow: inset 3px 0 0 var(--ink); border-radius: 6px; }
-  .row .stripe { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+  .row .stripe { display: none; }
+  .pav { position: relative; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; font-family: var(--display); font-weight: 600; font-size: 11px; color: #fff; overflow: hidden; flex: 0 0 auto; }
+  .pav img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  .pav.lg { width: 44px; height: 44px; font-size: 16px; border-radius: 10px; }
+  .row .pav::after { content: ""; position: absolute; right: -1px; bottom: -1px; width: 9px; height: 9px; border-radius: 50%; border: 2px solid #fff; background: var(--muted); }
+  .row.enterprise .pav::after { background: var(--green); } .row.fraud .pav::after { background: var(--red); } .row.influencer_affiliate .pav::after { background: var(--amber); } .row.smb .pav::after { background: var(--blue); }
   .row.enterprise .stripe { background: var(--green); } .row.fraud .stripe { background: var(--red); } .row.influencer_affiliate .stripe { background: var(--amber); } .row.smb .stripe { background: var(--blue); }
   .row .e { font-weight: 500; font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .row .why { color: var(--muted); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -741,6 +747,8 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape' && !drawer.hi
   }
   let DATA = [], shown = 0, laneFilter = null, current = 0, timer = null, hours, maxH = 1, dots = {};
   const laneRank = {enterprise:0, smb:1, influencer_affiliate:2, fraud:3, normal:4};
+  const face = r => r.person && r.person.full_name ? `https://i.pravatar.cc/96?u=${encodeURIComponent(r.email)}` : null;
+  const pav = (r, cls) => `<span class="pav ${cls}" style="background:${hue(r.email)}">${face(r) ? `<img src="${face(r)}" alt="" loading="lazy" onerror="this.remove()">` : ''}${esc(r.email[0].toUpperCase())}</span>`;
   const kv = (k, v, cls='') => `<span class="k">${k}</span><span class="v ${cls}">${esc(v)}</span>`;
 
   function renderLanes() {
@@ -774,14 +782,14 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape' && !drawer.hi
       const items = rows.filter(r => r.lane === k).sort((a, b) => k === 'fraud' ? b.fraud - a.fraud : k === 'normal' ? b.usage.spend_usd - a.usage.spend_usd : b.upsell - a.upsell);
       const lim = laneFilter ? 1e9 : LIMIT[k];
       return `<div class="panel"><div class="lbl"><span>${LANES[k].title}</span><span class="n">${items.length}</span></div><div class="list">` +
-        (items.length ? items.slice(0, lim).map(r => { const [a, b] = LANES[k].fig(r); return `<button class="row ${k}" data-i="${r.i}" aria-current="${r.i === current}"><span class="stripe"></span><span><div class="e">${esc(r.email)}</div><div class="why">${esc(reason(r))}</div></span><span class="fig"><b>${esc(a)}</b>${esc(b)}</span></button>`; }).join('') : `<div class="empty">nothing here</div>`) +
+        (items.length ? items.slice(0, lim).map(r => { const [a, b] = LANES[k].fig(r); return `<button class="row ${k}" data-i="${r.i}" aria-current="${r.i === current}">${pav(r, '')}<span><div class="e">${esc(r.email)}</div><div class="why">${esc(reason(r))}</div></span><span class="fig"><b>${esc(a)}</b>${esc(b)}</span></button>`; }).join('') : `<div class="empty">nothing here</div>`) +
         (items.length > lim ? `<div class="more">${items.length - lim} more, click the lane above to see all</div>` : '') + `</div></div>`;
     }).join('');
     $('tr-queue').querySelectorAll('.row').forEach(b => b.onclick = () => select(+b.dataset.i));
   }
   function select(i) {
     current = i; const r = DATA[i], u = r.usage, p = r.person, c = r.company, L = r.lane;
-    $('tr-mark').className = 'mark ' + L; $('tr-mark').textContent = r.email[0].toUpperCase();
+    $('tr-mark').className = 'mark ' + L; $('tr-mark').innerHTML = face(r) ? `<img src="${face(r)}" alt="" onerror="this.remove()">` : esc(r.email[0].toUpperCase());
     $('tr-email').textContent = r.email; $('tr-act').className = 'act ' + L; $('tr-act').textContent = LANES[L].title + (i >= shown ? ' · scoring' : '');
     $('tr-reason').textContent = reason(r);
     const vcls = {ok:'good', catch_all:'warn', unknown:'warn', invalid:'bad', disposable:'bad'}[r.verify.result] || '';
