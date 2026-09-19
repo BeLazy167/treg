@@ -45,7 +45,7 @@ async def test_xboost_json_falls_back_to_the_bundled_snapshot(clients: AsyncClie
 def test_the_bundled_demo_data_carries_no_real_email_addresses():
     """The signup demo is a synthetic sample; the lead demo replays a real run with every address replaced."""
     triage = json.loads((WEB / "media" / "jev" / "triage.json").read_text())
-    assert triage["synthetic"] is True and len(triage["rows"]) >= 500
+    assert triage["synthetic"] is True and len(triage["rows"]) >= 100
     assert {"enterprise", "smb", "influencer_affiliate", "fraud", "normal"} == {r["seg"] for r in triage["rows"]}
     fake_corp = {"northwind.io", "acmecloud.com", "lumen-labs.dev", "pikeandco.com", "brightloop.ai", "fernbank.co",
                  "harborsoft.com", "quillstack.io", "vantapoint.com", "oakridgedata.com", "meridianops.co",

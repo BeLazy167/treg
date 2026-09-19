@@ -147,6 +147,7 @@
   .post .tags .queued { background: var(--card); color: var(--muted); } .post .tags .reading { background: var(--blue-soft); color: var(--blue); } .post .tags .reading::after { content: ''; display: inline-block; width: 0; animation: dots .8s steps(4,end) infinite; }
   @keyframes dots { to { width: 1.2em; } }
   @media (max-width: 860px) { .board, .board.irr-open { grid-template-columns: 1fr; } }
+  .ptitle { font-family: var(--display); font-weight: 600; font-size: 16px; letter-spacing: -.01em; color: var(--ink); line-height: 1.25; }
   .tally { display: grid; gap: 6px; margin-top: 8px; }
   .tv { border: 1px solid var(--line); border-left: 4px solid var(--c); background: var(--card); border-radius: 0 10px 10px 0; padding: 8px 10px; display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 8px; text-align: left; font: inherit; color: inherit; cursor: default; }
   .tv.organic, .tv.reach, .tv.dm, .tv.enterprise { --c: var(--green); } .tv.paid, .tv.watch, .tv.user, .tv.influencer_affiliate { --c: var(--amber); } .tv.hold, .tv.fraud { --c: var(--red); } .tv.smb { --c: var(--blue); } .tv.irrelevant, .tv.none, .tv.skip, .tv.normal { --c: var(--muted); }
@@ -407,7 +408,7 @@
       <div class="xb-note" id="xb-note"></div>
       <div class="demo-body">
       <aside class="demo-side">
-        <div class="panel"><div class="lbl"><span>verdicts</span><span class="n" id="xb-tallymeta"></span></div><div class="spend top" id="xb-spend"></div><div class="stack" id="xb-stack"></div><div class="tally" id="xb-tallybox"></div><div class="xsteps" id="xb-steps"></div></div>
+        <div class="panel"><div class="ptitle" id="xb-tallymeta"></div><div class="spend top" id="xb-spend"></div><div class="stack" id="xb-stack"></div><div class="tally" id="xb-tallybox"></div><div class="xsteps" id="xb-steps"></div></div>
         <div class="panel"><div class="lbl"><span>search phrases</span></div><div class="xtopics" id="xb-topics"></div></div>
       </aside>
       <div class="board" id="xb-board">
@@ -422,7 +423,7 @@
 
 <div class="tab" id="signals" hidden>
     <div class="demo" id="sg-demo">
-      <div class="dh"><div><h3 class="flow"><span><svg class="lg" viewBox="0 0 512 512" aria-hidden="true"><rect width="512" height="512" rx="112" fill="#101010"/><rect x="111" y="111" width="140.5" height="140.5" rx="20" fill="#fff"/><rect x="260.5" y="260.5" width="140.5" height="140.5" rx="20" fill="#fff"/></svg> Relevant LinkedIn post commenters</span><i>→</i><span><img class="lg" src="logos/jev.png" alt=""> Jev qualify</span><i>→</i><span><svg class="lg" viewBox="0 0 512 512" aria-hidden="true"><rect width="512" height="512" rx="112" fill="#101010"/><rect x="111" y="111" width="140.5" height="140.5" rx="20" fill="#fff"/><rect x="260.5" y="260.5" width="140.5" height="140.5" rx="20" fill="#fff"/></svg> Treg enrich</span></h3><div class="receipt" id="sg-receipt"></div></div><div class="acts"><button class="pill sm" id="sg-replay"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg> Replay the run</button><button class="pill sm" id="sg-stop" hidden>Stop</button><div class="pwrap"><button class="pill sm dark pbtn" aria-expanded="false" aria-controls="pop-signals">Prompt for <span class="agents"><img src="media/people-search/claude-code.png" alt="Claude Code"><img src="media/people-search/codex.png" alt="Codex"><img src="media/people-search/openclaw.png" alt="OpenClaw"><img src="media/people-search/hermes.png" alt="Hermes" class="onwhite"></span> <i>▾</i></button>
+      <div class="dh"><div><h3 class="flow"><span><svg class="lg" viewBox="0 0 512 512" aria-hidden="true"><rect width="512" height="512" rx="112" fill="#101010"/><rect x="111" y="111" width="140.5" height="140.5" rx="20" fill="#fff"/><rect x="260.5" y="260.5" width="140.5" height="140.5" rx="20" fill="#fff"/></svg> Relevant LinkedIn post commenters</span><i>→</i><span><img class="lg" src="logos/jev.png" alt=""> Jev qualify and filter</span><i>→</i><span><svg class="lg" viewBox="0 0 512 512" aria-hidden="true"><rect width="512" height="512" rx="112" fill="#101010"/><rect x="111" y="111" width="140.5" height="140.5" rx="20" fill="#fff"/><rect x="260.5" y="260.5" width="140.5" height="140.5" rx="20" fill="#fff"/></svg> Treg enrich</span></h3><div class="receipt" id="sg-receipt"></div></div><div class="acts"><button class="pill sm" id="sg-replay"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg> Replay the run</button><button class="pill sm" id="sg-stop" hidden>Stop</button><div class="pwrap"><button class="pill sm dark pbtn" aria-expanded="false" aria-controls="pop-signals">Prompt for <span class="agents"><img src="media/people-search/claude-code.png" alt="Claude Code"><img src="media/people-search/codex.png" alt="Codex"><img src="media/people-search/openclaw.png" alt="OpenClaw"><img src="media/people-search/hermes.png" alt="Hermes" class="onwhite"></span> <i>▾</i></button>
           <div class="pop" id="pop-signals" hidden><div class="ph"><span>Paste into your agent</span><button class="pill sm dark" data-copy="p-signals">Copy prompt</button></div><pre id="p-signals">Build a signal-first lead finder for &lt;my product&gt; and a page to browse the run.
 
 <b>Setup</b>
@@ -453,7 +454,7 @@
    cards with the on-topic score, the people ranked by fit with role and tier filters, and an
    inspector with the signals, both jev distributions and the contact with which provider hit.
    Show treg and jev spend separately.</pre></div></div></div></div>
-      <div class="demo-body"><aside class="demo-side"><div class="panel"><div class="lbl"><span>people · click to filter</span><span class="n" id="sg-tallymeta"></span></div><div class="spend top" id="sg-spend"></div><div class="stack" id="sg-stack"></div><div class="tally" id="sg-tallybox"></div><div class="xsteps" id="sg-steps"></div></div></aside>
+      <div class="demo-body"><aside class="demo-side"><div class="panel"><div class="ptitle" id="sg-tallymeta"></div><div class="spend top" id="sg-spend"></div><div class="stack" id="sg-stack"></div><div class="tally" id="sg-tallybox"></div><div class="xsteps" id="sg-steps"></div></div></aside>
       <div class="sig-grid">
         <div class="panel"><div class="lbl"><span>step 1 · posts, jev checks each is on topic</span><span class="n" id="sg-postsmeta"></span></div><div class="posts" id="sg-posts"></div></div>
         <div class="panel"><div class="lbl"><span>steps 2 + 3 · people, ranked by jev</span><span class="n" id="sg-listmeta"></span></div><div class="chips" id="sg-filters"></div><div class="leadlist" id="sg-list"></div></div>
@@ -498,7 +499,7 @@
 9. Post reach / hold / watch to Slack with the one-line reason; post nothing on an empty hour.
 10. A review page: four lane counters, signups by hour, the queue per lane, an inspector with
     verify + enrichment + usage and the jev bars.</pre></div></div></div></div>
-      <div class="demo-body"><aside class="demo-side"><div class="panel"><div class="lbl"><span>segments · click to filter</span><span class="n" id="tr-tallymeta"></span></div><div class="spend top" id="tr-spend"></div><div class="stack" id="tr-stack"></div><div class="tally" id="tr-tallybox"></div><div class="xsteps" id="tr-steps"></div></div></aside>
+      <div class="demo-body"><aside class="demo-side"><div class="panel"><div class="ptitle" id="tr-tallymeta"></div><div class="spend top" id="tr-spend"></div><div class="stack" id="tr-stack"></div><div class="tally" id="tr-tallybox"></div><div class="xsteps" id="tr-steps"></div></div></aside>
       <div><div class="panel"><div class="lbl"><span>signups by hour, UTC</span><span class="n" id="tr-tlcount"></span></div><div class="tl" id="tr-tl"></div><div class="axis" id="tr-axis"></div></div>
       <div class="tri-body">
         <div class="queue" id="tr-queue"></div>
@@ -686,7 +687,7 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape' && !drawer.hi
     const seen = subset || posts, n = {organic:0, paid:0, irrelevant:0}; seen.forEach(p => n[LANE(p)]++);
     for (const l in n) $('xb-n-' + l).textContent = n[l];
     const other = seen.filter(p => p.relevance === 'launch_other').length, nota = seen.filter(p => p.relevance === 'not_a_launch').length;
-    $('xb-tallymeta').textContent = subset ? `${seen.length} of ${posts.length} sorted` : `${posts.length} posts`;
+    $('xb-tallymeta').textContent = subset ? `Sorting ${seen.length} of ${posts.length} viral posts…` : `Analysed ${posts.length} viral posts, past 24 hrs`;
     $('xb-stack').innerHTML = `<i class="organic" style="width:${100*n.organic/Math.max(1,posts.length)}%"></i><i class="paid" style="width:${100*n.paid/Math.max(1,posts.length)}%"></i>`;
     $('xb-tallybox').innerHTML = `<div class="tv organic"><div><div class="t">organic launch</div><div class="d">earned reach, worth studying</div></div><div class="n">${n.organic}</div></div>
       <div class="tv paid"><div><div class="t">paid launch</div><div class="d">views bought, engagement thin</div></div><div class="n">${n.paid}</div></div>
@@ -765,7 +766,7 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape' && !drawer.hi
   function renderLanes() {
     const rows = DATA.slice(0, shown), n = {};
     Object.keys(LANES).forEach(k => n[k] = rows.filter(r => r.lane === k).length);
-    $('tr-tallymeta').textContent = `${fmt(rows.length)} signups`;
+    $('tr-tallymeta').textContent = shown < DATA.length ? `Qualifying ${fmt(rows.length)} of ${fmt(DATA.length)} signups…` : `Qualified ${fmt(rows.length)} signups`;
     $('tr-stack').innerHTML = ['enterprise','smb','influencer_affiliate','fraud'].map(k => `<i class="${k}" style="width:${100*n[k]/Math.max(1,DATA.length)}%"></i>`).join('');
     $('tr-tallybox').innerHTML = Object.keys(LANES).map(k => `<button class="tv filter ${k}" data-lane="${k}" aria-pressed="${laneFilter===k}"><div><div class="t">${LANES[k].title}</div><div class="d">${LANES[k].desc}</div></div><div class="n">${fmt(n[k])}</div></button>`).join('');
     $('tr-tallybox').querySelectorAll('.tv').forEach(b => b.onclick = () => { laneFilter = laneFilter === b.dataset.lane ? null : b.dataset.lane; renderLanes(); renderQueue(); renderTL(); });
@@ -823,12 +824,12 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape' && !drawer.hi
   const totalSecs = () => DATA.reduce((a, r) => a + r.secs, 0);
   function replay() {
     stop(); shown = 0; current = 0; $('tr-replay').hidden = true; $('tr-stop').hidden = false;
-    const speed = Math.max(1, totalSecs() / 18);
+    const speed = Math.max(1, totalSecs() / 22);
     const step = () => {
       if (shown >= DATA.length) { stop(); return; }
       select(shown); shown++; renderLanes(); renderTL();
       if (shown % 6 === 0 || shown === DATA.length || DATA[shown-1].lane !== 'normal') renderQueue();
-      timer = setTimeout(step, Math.max(18, DATA[shown-1].secs * 1000 / speed));
+      timer = setTimeout(step, Math.max(50, DATA[shown-1].secs * 1000 / speed));
     };
     step();
   }
@@ -872,7 +873,7 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape' && !drawer.hi
     vis.forEach(l => n[TIER(l.fit)]++);
     const tried = emailed.filter(l => ev.has(l.id)).length, found = emailed.filter(l => ev.has(l.id) && l.contact.email).length;
     const total = isLive() ? vis.length + peoplePending().length : RUN.people_total;
-    $('sg-tallymeta').textContent = `${total} people`;
+    $('sg-tallymeta').textContent = isLive() ? `Analysing ${shown.scanned} posts & ${total} people…` : `Analysed ${posts.length} posts & ${total} people`;
     $('sg-stack').innerHTML = ['dm','user'].map(k => `<i class="${k}" style="width:${100*n[k]/Math.max(1,total)}%"></i>`).join('');
     const desc = {dm: 'fit ≥ 1.5 · heads, VPs, founders', user: 'fit ≥ 0.8 · ICs in growth, ops, data', skip: 'students, recruiters, agencies, vendors'};
     $('sg-tallybox').innerHTML = Object.keys(n).map(k => `<button class="tv filter ${k}" data-tier="${k}" aria-pressed="${tierFilter===k}"><div><div class="t">${TIERNAME[k]}</div><div class="d">${desc[k]}</div></div><div class="n">${n[k]}</div></button>`).join('');
