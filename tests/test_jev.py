@@ -116,3 +116,14 @@ def test_with_manual_dedupes_and_caps():
     out = jev_xboost.with_manual(run, {"id": "3"})
     assert out["manual"][0]["id"] == "3" and len(out["manual"]) == jev_xboost.MANUAL_CAP
     assert [m["id"] for m in out["manual"]].count("3") == 1
+
+
+def test_tikhub_tweet_detail_becomes_a_search_row():
+    data = {"text": "We just launched", "created_at": "Fri Sep 18 15:17:54 +0000 2026", "views": "2437013", "likes": 1034,
+            "retweets": 220, "replies": 173, "quotes": 181, "bookmarks": 428,
+            "author": {"name": "X Q", "screen_name": "quxiaoyin", "blue_verified": True, "sub_count": 37315},
+            "entities": {"media": [{"media_url_https": "https://pbs.twimg.com/a.jpg"}]}}
+    p = jev_xboost._post_from_detail("2100967557314547943", data)
+    assert p["viewCount"] == 2437013 and p["likeCount"] == 1034 and p["authorUsername"] == "quxiaoyin"
+    assert p["createdUtc"] == 1789744674 and p["media"][0]["url"].endswith("a.jpg")
+    assert p["url"] == "https://x.com/quxiaoyin/status/2100967557314547943"

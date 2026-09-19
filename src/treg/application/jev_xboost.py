@@ -232,10 +232,17 @@ class _Treg:
         self.calls: dict[str, int] = {}
 
     async def call(self, endpoint: str, body: dict, kind: str, **headers: str) -> dict:
+        return await self._request("POST", endpoint, kind, json=body, headers=headers)
+
+    async def get(self, endpoint: str, params: dict, kind: str) -> dict:
+        return await self._request("GET", endpoint, kind, params=params)
+
+    async def _request(self, method: str, endpoint: str, kind: str, *, json: dict | None = None,
+                       params: dict | None = None, headers: dict | None = None) -> dict:
         self.calls[kind] = self.calls.get(kind, 0) + 1
         try:
-            r = await self.http.post(f"{self.base}/call/{endpoint}", json=body,
-                                     headers={**self.headers, **headers}, timeout=60)
+            r = await self.http.request(method, f"{self.base}/call/{endpoint}", json=json, params=params,
+                                        headers={**self.headers, **(headers or {})}, timeout=60)
         except httpx.HTTPError as exc:
             raise XboostError(f"treg call failed: {type(exc).__name__}") from exc
         self.cost_usd += int(r.headers.get("X-Treg-Cost-Micro") or 0) / 1e6
@@ -352,38 +359,44 @@ async def run_daily(http: httpx.AsyncClient, *, topics: list[str] | None = None,
     }
 
 
-_PAGES = 3   # AnyAPI answers ~20 posts a page; three pages is a week for most launch accounts
+_DETAIL = "tikhub.x.twitter-web-fetch-tweet-detail"   # the post by id: counts, text, author, media
 
 
-async def _find_post(treg: _Treg, handle: str, post_id: str) -> dict | None:
-    """The post by id from the author's timeline, in the search-row shape the pipeline reads. The
-    AnyAPI row is called directly (not the routed `x.user.posts`) because its tweet shape is the one
-    the daily search run already handles; a routed sibling answers in its own vendor's shape."""
-    cursor = None
-    for _ in range(_PAGES):
-        body = {"handle": handle, "limit": 100, **({"cursor": cursor} if cursor else {})}
-        data = ((await treg.call("anyapi.x.user.posts", body, "posts")).get("output") or {}).get("data") or {}
-        for r in data.get("tweets") or []:
-            if str(r.get("id")) == post_id:
-                return {"id": post_id, "text": r.get("text"), "createdUtc": r.get("createdUtc"), "url": r.get("url"),
-                        "media": r.get("media"), "authorUsername": handle,
-                        "viewCount": r.get("views"), "likeCount": r.get("likes"), "retweetCount": r.get("retweets"),
-                        "replyCount": r.get("replies"), "quoteCount": r.get("quotes"), "bookmarkCount": r.get("bookmarks")}
-        cursor = data.get("nextCursor")
-        if not cursor:
-            break
-    return None
+def _post_from_detail(post_id: str, data: dict) -> dict:
+    """TikHub's tweet-detail row in the search-row shape the pipeline reads."""
+    author = data.get("author") or {}
+    try:
+        created = int(datetime.strptime(data["created_at"], "%a %b %d %H:%M:%S %z %Y").timestamp())
+    except (KeyError, ValueError, TypeError):
+        created = int(time.time())
+    media = [{"url": m.get("media_url_https")} for m in ((data.get("entities") or {}).get("media") or [])
+             if isinstance(m, dict) and m.get("media_url_https")]
+    counts = {k: int(data.get(src) or 0) for k, src in (("viewCount", "views"), ("likeCount", "likes"), ("retweetCount", "retweets"),
+                                                         ("replyCount", "replies"), ("quoteCount", "quotes"), ("bookmarkCount", "bookmarks"))}
+    return {"id": post_id, "text": data.get("text") or data.get("display_text") or "", "createdUtc": created,
+            "url": f"https://x.com/{author.get('screen_name') or 'i'}/status/{post_id}", "media": media,
+            "authorUsername": author.get("screen_name"), "authorName": author.get("name"),
+            "authorVerified": bool(author.get("blue_verified")), **counts}
+
+
+async def _fetch_post(treg: _Treg, post_id: str) -> dict | None:
+    d = await treg.get(_DETAIL, {"tweet_id": post_id}, "post")
+    data = d.get("data") if isinstance(d.get("data"), dict) else None
+    if not data or not data.get("author"):
+        return None
+    return _post_from_detail(post_id, data)
 
 
 async def judge_url(http: httpx.AsyncClient, url: str) -> dict:
-    """A visitor's post: find it in the author's recent posts, then run the same forensics + jev."""
+    """A visitor's post: fetch it by id, then run the same forensics + jev."""
     if not configured():
         raise XboostError("the live demo is not configured on this server")
     handle, post_id = parse_post_url(url)
     treg = _Treg(http)
-    p = await _find_post(treg, handle, post_id)
+    p = await _fetch_post(treg, post_id)
     if p is None:
-        raise XboostError(f"that post is not among @{handle}'s last {_PAGES * 20} posts; the demo reads recent posts only")
+        raise XboostError(f"could not read that post; it may be deleted, protected, or @{handle} may be wrong")
+    p.setdefault("authorUsername", handle)
     j = await _judge(http, treg, p, None)
     j["manual"] = True
     j["treg_cost"] = round(treg.cost_usd, 5)
