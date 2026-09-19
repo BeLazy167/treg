@@ -172,6 +172,13 @@ async def relay(
     # makes httpx frame the request `Transfer-Encoding: chunked`, putting a bogus body-frame on a
     # GET/HEAD/OPTIONS (which strict upstreams reject).
     content = request.body_stream() if request.has_body else None
+    # A streamed body with no length makes httpx frame it `Transfer-Encoding: chunked`. The bytes are
+    # the caller's, unaltered, so the caller's own Content-Length is exact — carry it, and httpx
+    # frames the upstream request with it instead. Meta's Graph API edge does not read a chunked
+    # request body: every JSON/form/multipart POST arrived as a bodyless request, and an ad creative
+    # sent that way failed "Ad incomplete" (live 2026-09-19). A caller who streamed chunked stays chunked.
+    if content is not None and (cl := _header_value(request.raw_headers, "content-length")):
+        headers["content-length"] = cl
     upstream_req = client.build_request(
         request.method, upstream_url, headers=headers, params=params, content=content
     )
