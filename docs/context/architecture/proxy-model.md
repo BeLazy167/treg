@@ -74,6 +74,12 @@ denominators. This does not remove authorization/reserve/settle DB work.
 incl. duplicates, headers, cookies, body bytes):
 1. **hop-by-hop transport headers** - `_HOP_BY_HOP` (host, content-length, connection, keep-alive, te,
    trailers, transfer-encoding, upgrade, proxy-*); re-derived per hop or the stream corrupts.
+   One value is carried, not re-derived: when the caller declared a `Content-Length` for a body,
+   the relay sets the same value on the upstream request. The bytes are the caller's, unaltered, so
+   the length is exact, and without it httpx frames the streamed body `Transfer-Encoding: chunked`,
+   which Meta's Graph API edge does not read (every POST body vanished; an ad creative failed
+   "Ad incomplete" until the spec was moved into the query string). A caller who streamed chunked
+   stays chunked.
 2. **treg's control/infra + edge forwarding headers** - `_CONTROL` (`x-treg-token`, `x-treg-org`,
    `ngrok-skip-browser-warning`, `x-forwarded-*`, `x-real-ip`, `forwarded`, `via`), dropped via
    `_DROP_REQUEST = _HOP_BY_HOP | _CONTROL`, so none leaks upstream. `_scrub_treg_cookies` also strips
@@ -109,7 +115,7 @@ Faithfulness mechanics inside `relay()`:
 - path rebuilt from `request.scope["raw_path"]` (in `call_tool`), not Starlette's URL-decoded path
   param - percent-encoding survives to the upstream (npm's scoped publish `PUT /@scope%2fname` 404s
   if `%2f` is decoded to a literal slash).
-- body streamed via `content=request.stream()` (stream, never buffer). Exception: a caller may
+- body streamed via `content=request.stream()` (stream, never buffer). The caller's `Content-Length`, when declared, rides along so the stream is not re-framed chunked (see the contract above). Exception: a caller may
   base64/gzip-encode the body with `X-Treg-Body-Encoding` to slip SQL/HTML past a hosting-edge WAF;
   `_BodyDecodeMiddleware` (in api.py) then buffers + decodes it *before* `relay()` runs, so the relay
   still forwards the real plaintext bytes verbatim upstream. See [api](../interface/api.md).
