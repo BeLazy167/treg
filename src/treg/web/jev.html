@@ -338,7 +338,8 @@
   .ev { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
   @media (max-width: 560px) { .ev { grid-template-columns: 1fr; } }
   .ev h4 { margin: 0 0 6px; font-family: var(--mono); font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); font-weight: 500; }
-  .sticky { position: sticky; top: 74px; display: flex; flex-direction: column; gap: 12px; }
+  .sticky { display: flex; flex-direction: column; gap: 12px; }
+  .cap-wrap.open .sticky { position: sticky; top: 74px; }
 
   /* ---- signals */
   .sig-grid { display: grid; grid-template-columns: minmax(0,1fr) 400px; gap: 10px; align-items: start; }
