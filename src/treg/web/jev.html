@@ -533,7 +533,7 @@
   .dk-dots { display: flex; justify-content: center; gap: 7px; margin-top: 16px; }
   .dk-dots button { width: 8px; height: 8px; border-radius: 50%; border: 0; background: var(--line2); cursor: pointer; padding: 0; transition: transform .2s, background .2s; }
   .dk-dots button[aria-current="true"] { background: var(--ink); transform: scale(1.3); }
-  @media (max-width: 860px) { .slide { grid-template-columns: 1fr; padding: 22px 20px; height: auto; } .slide .sl-r { overflow: visible; } .dk-arrow.prev { left: 6px; } .dk-arrow.next { right: 6px; } .g-row { grid-template-columns: 90px minmax(0,1fr) 100px; } .loop { flex-wrap: wrap; } }
+  @media (max-width: 860px) { .slide { grid-template-columns: 1fr; padding: 22px 20px; height: auto; } .slide .sl-r { overflow: visible; } .dk-track { align-items: flex-start; } .dk-track .slide:not(.on) { visibility: hidden; height: 0; padding-top: 0; padding-bottom: 0; overflow: hidden; } .dk-arrow.prev { left: 6px; } .dk-arrow.next { right: 6px; } .g-row { grid-template-columns: 90px minmax(0,1fr) 100px; } .loop { flex-wrap: wrap; } }
 
 
   /* ---- deck infographics ---- */
@@ -644,7 +644,7 @@
   .lp2-out .ig-bar { grid-template-columns: 96px minmax(0,1fr) 32px; font-size: 10.5px; } .lp2-out .ig-bar .tr { height: 8px; }
   .lp2-q span { font-family: var(--mono); font-size: 11.5px; padding: 5px 10px; border-radius: 8px; background: var(--blue-soft); color: var(--blue); }
   .loop2-code.top { margin: 0 0 14px; }
-  .ln { display: inline-grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; background: var(--ink); color: #fff; font-family: var(--mono); font-size: 10px; margin-right: 8px; vertical-align: 1px; }
+  .loop2-code .cl { display: block; font-family: var(--mono); font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }
   .loop2-code { margin: 12px 0 0; font-family: var(--mono); font-size: 11.5px; line-height: 1.6; background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 12px 16px; white-space: pre; overflow-x: auto; color: #2a2926; }
   .loop2-code b { color: var(--ink); font-weight: 600; } .loop2-code .c { color: var(--muted); }
   @media (max-width: 860px) { .loop2 { grid-template-columns: 1fr; } .lp2-arrow i { transform: rotate(90deg); } }
@@ -789,6 +789,44 @@
     .demo .acts .pill.sm { padding: 7px 10px; font-size: 12px; }
     .pop { position: fixed; top: 50%; left: 50%; right: auto; transform: translate(-50%, -50%); width: calc(100vw - 24px); z-index: 130; }
     .stage-post .embed iframe { zoom: 1; } .stage-in { gap: 10px; }
+  }
+
+
+  /* deck on phones: each slide its own height, the view follows the current one */
+  @media (max-width: 640px) {
+    .learn-sec h2 { font-size: 26px; }
+    .dk-view { border-radius: 16px; }
+    .dk-track { align-items: flex-start; }
+    .slide { grid-template-columns: 1fr; padding: 18px 14px 22px; gap: 14px; height: auto; }
+    .slide .sl-r { overflow: visible; }
+    .dk-track .slide:not(.on) { visibility: hidden; height: 0; padding-top: 0; padding-bottom: 0; overflow: hidden; }
+    .slide h3 { font-size: 19px; } .slide p { font-size: 13.5px; } .slide .sl-note { font-size: 12.5px; }
+    .slide .pill.sm { margin-top: 4px; }
+    .dk-arrow { width: 34px; height: 34px; top: 24px; transform: none; } .dk-arrow.prev { left: 6px; } .dk-arrow.next { right: 6px; }
+    .dk-dots { margin-top: 12px; }
+    /* slide 1 */
+    .ig-q1 { font-size: 13px; } .ig-vs { grid-template-columns: 1fr; } .ig-bubble { min-height: 0; } .ig-time { font-size: 28px; margin-top: 8px; }
+    /* slide 2 */
+    .ig-flow { grid-template-columns: 1fr; } .ig-step:nth-child(1), .ig-step:nth-child(2), .ig-arrow, .ig-step.out { grid-column: 1; grid-row: auto; } .ig-arrow { flex-direction: row; justify-content: center; } .ig-arrow::after { content: "↓"; }
+    .ig-step pre { font-size: 10.5px; }
+    /* slide 3 */
+    .ig-charts { grid-template-columns: 1fr; } .sl-tab.cmp td, .sl-tab.cmp th { padding: 4px 4px; font-size: 9.5px; } .sl-tab.cmp th .lg { display: none; }
+    /* slide 4 */
+    .qt-tabs { margin-bottom: 10px; } .qt-tabs button { padding: 5px 10px; font-size: 11.5px; }
+    .qt-pane { grid-template-columns: 1fr; } .qt-req pre { font-size: 10px; } .qt-ans { padding: 12px; }
+    .qt-ans .ig-bar { grid-template-columns: minmax(0, 120px) minmax(30px,1fr) 34px; }
+    .qt-ans .ig-gauge { margin: 34px 0 30px; }
+    /* slide 5 */
+    .rt-top { grid-template-columns: 1fr; } .rt-pick button { padding: 4px 8px; font-size: 10.5px; }
+    .rt-code { font-size: 10px; white-space: pre-wrap; }
+    /* slide 6 */
+    .sh-grid { grid-template-columns: 1fr; } .sh-card pre { font-size: 10px; }
+    .st-row { grid-template-columns: 1fr; gap: 8px; } .st-l pre { font-size: 10px; }
+    .st-msg { font-size: 12.5px; }
+    /* slide 7 */
+    .loop2 { grid-template-columns: 1fr; } .lp2-arrow { flex-direction: row; gap: 8px; } .lp2-arrow i { transform: rotate(90deg); }
+    .ai-chips { grid-template-columns: 1fr 1fr; gap: 5px; } .ai-chip { padding: 5px 6px; } .ai-chip b { font-size: 11px; } .ai-chip i { font-size: 9.5px; }
+    .loop2-code { font-size: 10px; white-space: pre-wrap; word-break: break-word; }
   }
 
   /* closing */
@@ -1302,12 +1340,12 @@ action = { jailbreak: block, harmful: block,
         </div></article>
 
       <article class="slide"><div class="sl-l"><span class="sl-n">7 / 7</span><h3>Where treg comes in</h3><p>jev decides. It cannot fetch. treg is one token to 2,896+ data endpoints, and for every job it routes to the cheapest provider that answers, at the provider's own rate with no markup.</p><p class="sl-note">Two calls in your code: ask treg for the facts, hand them to jev, act on the number. Every workflow on this page is that loop.</p></div>
-        <div class="sl-r"><pre class="loop2-code top"><span class="ln">1</span><b>facts</b>   = treg.call("treg.x.post.detail", id=post_id)       <span class="c"># $0.001 · routed to the cheapest</span>
-<span class="ln">2</span><b>verdict</b> = jev.ask(state=facts, questions=LAUNCH_RUBRIC)   <span class="c"># $0.0001 · 0.4 s</span>
-<span class="ln">3</span>if verdict.distribution["paid_promotion"] &gt;= 0.7: lane = "paid"</pre><div class="loop2">
-          <div class="lp2 treg"><div class="lp2-h"><span class="ln">1</span><svg class="lg" viewBox="0 0 512 512" aria-hidden="true"><rect width="512" height="512" rx="112" fill="#101010"/><rect x="111" y="111" width="140.5" height="140.5" rx="20" fill="#fff"/><rect x="260.5" y="260.5" width="140.5" height="140.5" rx="20" fill="#fff"/></svg><b>treg</b><span>fetches the facts</span></div><div class="ai-chips"><span class="ai-chip"><img src="media/people-search/x.png" alt="" onerror="this.src='logos/x.svg'"><span><b>X posts &amp; replies</b><i>$0.0005</i></span></span><span class="ai-chip"><img src="media/people-search/linkedin.png" alt="" onerror="this.src='logos/linkedin.svg'"><span><b>LinkedIn posts &amp; people</b><i>$0.004</i></span></span><span class="ai-chip"><img src="https://www.google.com/s2/favicons?domain=millionverifier.com&amp;sz=64" alt="" loading="lazy"><span><b>Email verify</b><i>$0.0018</i></span></span><span class="ai-chip"><img src="media/people-search/tomba.png" alt="" onerror="this.src='logos/tomba.svg'"><span><b>Person enrich</b><i>$0.009 · hits only</i></span></span><span class="ai-chip"><img src="https://www.google.com/s2/favicons?domain=thecompaniesapi.com&amp;sz=64" alt="" loading="lazy"><span><b>Company enrich</b><i>$0.0019</i></span></span><span class="ai-chip"><img src="media/people-search/dataforseo.png" alt="" onerror="this.src='logos/dataforseo.svg'"><span><b>SEO &amp; SERP</b><i>$0.002</i></span></span><span class="ai-chip"><img src="media/people-search/hunter.png" alt="" onerror="this.src='logos/hunter.svg'"><span><b>Email find</b><i>$0.0089 · hits only</i></span></span><span class="ai-chip"><img src="media/people-search/crunchbase.png" alt="" onerror="this.src='logos/crunchbase.svg'"><span><b>Funding</b><i>$0.01</i></span></span></div><div class="lp2-f">+ 2,880 more · one token · cheapest provider that answers · 0% markup</div></div>
+        <div class="sl-r"><pre class="loop2-code top"><span class="cl">code example · your agent, in Python</span><b>facts</b>   = treg.call("treg.x.post.detail", id=post_id)       <span class="c"># $0.001 · routed to the cheapest</span>
+<b>verdict</b> = jev.ask(state=facts, questions=LAUNCH_RUBRIC)   <span class="c"># $0.0001 · 0.4 s</span>
+if verdict.distribution["paid_promotion"] &gt;= 0.7: lane = "paid"</pre><div class="loop2">
+          <div class="lp2 treg"><div class="lp2-h"><svg class="lg" viewBox="0 0 512 512" aria-hidden="true"><rect width="512" height="512" rx="112" fill="#101010"/><rect x="111" y="111" width="140.5" height="140.5" rx="20" fill="#fff"/><rect x="260.5" y="260.5" width="140.5" height="140.5" rx="20" fill="#fff"/></svg><b>treg</b><span>fetches the facts</span></div><div class="ai-chips"><span class="ai-chip"><img src="media/people-search/x.png" alt="" onerror="this.src='logos/x.svg'"><span><b>X posts &amp; replies</b><i>$0.0005</i></span></span><span class="ai-chip"><img src="media/people-search/linkedin.png" alt="" onerror="this.src='logos/linkedin.svg'"><span><b>LinkedIn posts &amp; people</b><i>$0.004</i></span></span><span class="ai-chip"><img src="https://www.google.com/s2/favicons?domain=millionverifier.com&amp;sz=64" alt="" loading="lazy"><span><b>Email verify</b><i>$0.0018</i></span></span><span class="ai-chip"><img src="media/people-search/tomba.png" alt="" onerror="this.src='logos/tomba.svg'"><span><b>Person enrich</b><i>$0.009 · hits only</i></span></span><span class="ai-chip"><img src="https://www.google.com/s2/favicons?domain=thecompaniesapi.com&amp;sz=64" alt="" loading="lazy"><span><b>Company enrich</b><i>$0.0019</i></span></span><span class="ai-chip"><img src="media/people-search/dataforseo.png" alt="" onerror="this.src='logos/dataforseo.svg'"><span><b>SEO &amp; SERP</b><i>$0.002</i></span></span><span class="ai-chip"><img src="media/people-search/hunter.png" alt="" onerror="this.src='logos/hunter.svg'"><span><b>Email find</b><i>$0.0089 · hits only</i></span></span><span class="ai-chip"><img src="media/people-search/crunchbase.png" alt="" onerror="this.src='logos/crunchbase.svg'"><span><b>Funding</b><i>$0.01</i></span></span></div><div class="lp2-f">+ 2,880 more · one token · cheapest provider that answers · 0% markup</div></div>
           <div class="lp2-arrow"><i>→</i><span>state</span></div>
-          <div class="lp2 jev"><div class="lp2-h"><span class="ln">2</span><img class="lg" src="logos/jev.png" alt=""><b>jev</b><span>decides</span></div><div class="lp2-q"><span>choice</span><span>noul</span><span>score</span></div><div class="lp2-out"><div class="lp2-ol">distribution · choice</div><div class="ig-bars"><div class="ig-bar r"><span class="k">paid_promotion</span><span class="tr"><i style="--w:97%"></i></span><span class="v">0.97</span></div><div class="ig-bar "><span class="k">organic</span><span class="tr"><i style="--w:3%"></i></span><span class="v">0.03</span></div><div class="ig-bar "><span class="k">artificial</span><span class="tr"><i style="--w:0%"></i></span><span class="v">0.00</span></div></div><div class="lp2-ol">+ relevance, is_organic, authenticity in the same call</div></div><div class="lp2-f">probabilities on every option · ~$0.0001 a verdict · under a second</div></div>
+          <div class="lp2 jev"><div class="lp2-h"><img class="lg" src="logos/jev.png" alt=""><b>jev</b><span>decides</span></div><div class="lp2-q"><span>choice</span><span>noul</span><span>score</span></div><div class="lp2-out"><div class="lp2-ol">distribution · choice</div><div class="ig-bars"><div class="ig-bar r"><span class="k">paid_promotion</span><span class="tr"><i style="--w:97%"></i></span><span class="v">0.97</span></div><div class="ig-bar "><span class="k">organic</span><span class="tr"><i style="--w:3%"></i></span><span class="v">0.03</span></div><div class="ig-bar "><span class="k">artificial</span><span class="tr"><i style="--w:0%"></i></span><span class="v">0.00</span></div></div><div class="lp2-ol">+ relevance, is_organic, authenticity in the same call</div></div><div class="lp2-f">probabilities on every option · ~$0.0001 a verdict · under a second</div></div>
         </div>
         </div></article>
 
@@ -1543,7 +1581,7 @@ document.querySelectorAll('.expand-all[data-wrap]').forEach(b => b.onclick = () 
 (() => {
   const track = $('dk-track'), slides = [...track.children], dots = $('dk-dots'); let i = 0, seen = false;
   dots.innerHTML = slides.map((_, k) => `<button type="button" aria-label="Slide ${k + 1}"></button>`).join('');
-  const go = k => { i = (k + slides.length) % slides.length; track.style.transform = `translateX(-${i * 100}%)`; slides.forEach((sl, k2) => sl.classList.toggle('on', k2 === i && (seen || k !== 0))); if (i === 0 && (seen || k !== 0)) race(); [...dots.children].forEach((d, k2) => d.setAttribute('aria-current', String(k2 === i))); };
+  const go = k => { i = (k + slides.length) % slides.length; track.style.transform = `translateX(-${i * 100}%)`; slides.forEach((sl, k2) => sl.classList.toggle('on', k2 === i)); if (i === 0 && seen) race(); [...dots.children].forEach((d, k2) => d.setAttribute('aria-current', String(k2 === i))); };
   [...dots.children].forEach((d, k) => d.onclick = () => go(k));
 
   // slide 1: the chat model types, jev lands at once
@@ -1589,8 +1627,8 @@ document.querySelectorAll('.expand-all[data-wrap]').forEach(b => b.onclick = () 
   $('dk-prev').onclick = () => go(i - 1); $('dk-next').onclick = () => go(i + 1);
   $('deck').addEventListener('keydown', e => { if (e.key === 'ArrowRight') go(i + 1); if (e.key === 'ArrowLeft') go(i - 1); });
   let x0 = null; track.addEventListener('touchstart', e => { x0 = e.touches[0].clientX; }, { passive: true }); track.addEventListener('touchend', e => { if (x0 == null) return; const dx = e.changedTouches[0].clientX - x0; if (Math.abs(dx) > 40) go(i + (dx < 0 ? 1 : -1)); x0 = null; });
-  go(0); slides[0].classList.remove('on');
-  const deckIO = new IntersectionObserver(es => { if (es.some(e => e.isIntersecting)) { seen = true; slides[i].classList.add('on'); if (i === 0) race(); deckIO.disconnect(); } }, { threshold: .2 });
+  go(0);
+  const deckIO = new IntersectionObserver(es => { if (es.some(e => e.isIntersecting)) { seen = true; slides[i].classList.add('anim'); if (i === 0) race(); deckIO.disconnect(); } }, { threshold: .2 });
   deckIO.observe($('deck'));
 })();
 
