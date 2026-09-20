@@ -5,10 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="referrer" content="no-referrer">
 <title>How to use Jev for GTM Automation — Step-by-step guide by treg</title>
-<meta name="description" content="jev answers typed questions (choice, yes/no, score) with probabilities, in under a second, at $0.042 per million tokens. treg feeds it live data from one key. Three agent recipes with prompts to copy: launch radar on X, signup triage, signal-first leads.">
+<meta name="description" content="What is Jev and how to use it: TypeSafe's decision model explained with live examples, use cases, code, and GTM automation recipes you can copy. By treg.">
 <link rel="canonical" href="https://treg.to/jev"/>
 <meta property="og:title" content="How to use Jev for GTM Automation | treg"/>
-<meta property="og:description" content="Typed decisions on live data. Three agent recipes: launch radar on X, signup triage, signal-first leads. Prompts to copy, demos underneath."/>
+<meta property="og:description" content="What Jev is and how to use it: live examples, use cases, code, and GTM automation recipes to copy."/>
 <meta property="og:url" content="https://treg.to/jev"/>
 <meta property="og:type" content="website"/>
 <meta property="og:image" content="https://treg.to/media/og.png"/>
@@ -70,6 +70,7 @@
   .powered { display: inline-flex; align-items: center; gap: 6px; font-family: var(--mono); font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin-bottom: 26px; }
   .powered a { display: inline-flex; align-items: center; gap: 6px; color: var(--ink); text-decoration: none; font-family: var(--display); font-weight: 600; font-size: 14px; letter-spacing: 0; text-transform: none; }
   .powered svg { width: 18px; height: 18px; border-radius: 5px; }
+  .hero-q { font-family: var(--mono); font-weight: 500; font-size: 13px; letter-spacing: .08em; text-transform: uppercase; color: var(--ink); margin: 0 0 8px; }
   .hero p.sub { max-width: 60ch; color: var(--muted); font-size: 18px; margin: 0 auto 28px; text-wrap: pretty; }
   .hero p.sub strong { color: var(--ink); font-weight: 500; }
   .ctas { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
@@ -987,9 +988,10 @@
 </nav>
 
 <header class="hero">
-  <h1>How to use <img class="jev-mark" src="logos/jev.png" alt="jev"> Jev for<br>GTM Automation</h1>
+  <h1>How to use <img class="jev-mark" src="logos/jev.png" alt="jev"> Jev for <br>GTM Automation</h1>
   <div class="powered">Step-by-step guide by <a href="/" aria-label="treg home"><svg viewBox="0 0 512 512" aria-hidden="true"><rect width="512" height="512" rx="112" fill="#101010"/><rect x="111" y="111" width="140.5" height="140.5" rx="20" fill="#fff"/><rect x="260.5" y="260.5" width="140.5" height="140.5" rx="20" fill="#fff"/></svg> Treg</a></div>
-  <p class="sub"><strong>jev</strong> is a decision model: you hand it a JSON state and typed questions (a choice, a yes/no, a score) and it returns probabilities, not prose, in under a second. <strong>treg</strong> hands it the data: X, LinkedIn, email verification, person and company enrichment, one key. Three workflows below, each with a prompt your agent can run and the demo it produces.</p>
+  <h2 class="hero-q">What is Jev?</h2>
+  <p class="sub"><strong>Jev</strong> is a decision model from TypeSafe: you hand it a JSON state and typed questions (a choice, a yes/no, a score) and it returns probabilities, not prose, in under a second. <strong>treg</strong> hands it the data: X, LinkedIn, email verification, person and company enrichment, one key. Below: how it works, use cases with live examples, how to use it in code, and automation recipes your agent can run.</p>
   <div class="ctas"><a class="pill dark" href="/app?ref=jev" id="ctaHero">Set up treg</a><a class="pill" href="#recipes">View automation recipes</a></div>
 </header>
 
@@ -1060,8 +1062,8 @@ usage: 428 tokens in · $0.000018</pre></div></div></div></div></article>
 </section>
 
 <section class="section learn-sec rv" id="uses" style="padding-top:70px;padding-bottom:0">
-  <h2>Where <img class="lg" src="logos/jev.png" alt=""> jev shines</h2>
-  <p class="lede">Four places a fast, typed decision changes what you can build. The game, browser and SQL runs below are ours, judged live by jev; the headline figures for jev-ultrafast and pg-jev are from their READMEs.</p>
+  <h2>Where <img class="lg" src="logos/jev.png" alt=""> jev shines: use cases</h2>
+  <p class="lede">Jev use cases where a fast, typed decision changes what you can build, each with a working example. The game, browser and SQL runs below are ours, judged live by jev; the headline figures for jev-ultrafast and pg-jev are from their READMEs.</p>
   <div class="deck" id="deck2" tabindex="0" aria-roledescription="carousel">
     <button class="dk-arrow prev" aria-label="Previous slide"><svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
     <div class="dk-view"><div class="dk-track">
@@ -1140,7 +1142,7 @@ elements:
 
 <section class="section learn-sec rv" id="guide" style="padding-top:70px;padding-bottom:0">
   <h2>Implementation guide for Jevelopers</h2>
-  <p class="lede">The three things to know before you write your first request: the question types, how to act on the numbers, and how to steer the answer. Use ← → to move.</p>
+  <p class="lede">How to use Jev in code. The three things to know before you write your first request: the question types, how to act on the numbers, and how to steer the answer. Use ← → to move.</p>
   <div class="deck" id="deck3" tabindex="0" aria-roledescription="carousel">
     <button class="dk-arrow prev" aria-label="Previous slide"><svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
     <div class="dk-view"><div class="dk-track">
@@ -1607,7 +1609,7 @@ action = { jailbreak: block, harmful: block,
 
 <section class="section learn-sec rv" id="built" style="padding-top:70px;padding-bottom:0">
   <h2>What other things people are building with <img class="lg" src="logos/jev.png" alt=""> jev</h2>
-  <p class="lede">Runs shared in public, in their authors' own words and numbers. Built something? Post it and tag <a href="https://x.com/treg_ai" target="_blank" rel="noopener">@treg_ai</a>.</p>
+  <p class="lede">Jev examples shared in public, in their authors' own words and numbers. Built something? Post it and tag <a href="https://x.com/treg_ai" target="_blank" rel="noopener">@treg_ai</a>.</p>
   <div class="tws" id="tws"><div class="tw"><blockquote class="twitter-tweet" data-dnt="true" data-conversation="none"><p lang="en" dir="ltr">Jev is WILD for SEO audit. In 45.1 seconds it read all 586 pages on my site and rebuilt the internal link map. Total cost $0.21.</p>&mdash; borja (@borjafat) <a href="https://twitter.com/borjafat/status/2101018783976722479">on X</a></blockquote></div><div class="tw"><blockquote class="twitter-tweet" data-dnt="true" data-conversation="none"><p lang="en" dir="ltr">Jev can serve as better natural language search on websites. It can scan thousands of Zillow listings and classify properties by things you can't normally filter for. Under 20 sec, $0.18.</p>&mdash; Justine Moore (@venturetwins) <a href="https://twitter.com/venturetwins/status/2101341075684434245">on X</a></blockquote></div><div class="tw"><blockquote class="twitter-tweet" data-dnt="true" data-conversation="none"><p lang="en" dir="ltr">Made a real-time slop detector with jev as you scroll.</p>&mdash; Robin Bilgil (@RBilgil) <a href="https://twitter.com/RBilgil/status/2100976648552169805">on X</a></blockquote></div><div class="tw"><blockquote class="twitter-tweet" data-dnt="true" data-conversation="none"><p lang="en" dir="ltr">I gave the Trump vs Kamala debate a live BS meter using Jev. Every sentence, both candidates, 5 yes/no questions each. 1,191 Jev calls, 415 ms median, total cost $0.0497.</p>&mdash; Chetaslua (@chetaslua) <a href="https://twitter.com/chetaslua/status/2100473581251748216">on X</a></blockquote></div><div class="tw"><blockquote class="twitter-tweet" data-dnt="true" data-conversation="none"><p lang="en" dir="ltr">Jev + Kimi K3 for fraud detection. Jev classified 100 emails in 1.42 seconds, then I routed the uncertain cases to Kimi K3. 96/100 correct for ~$0.07.</p>&mdash; Hassan (@nutlope) <a href="https://twitter.com/nutlope/status/2100614659690713543">on X</a></blockquote></div><div class="tw"><blockquote class="twitter-tweet" data-dnt="true" data-conversation="none"><p lang="en" dir="ltr">Experimenting with the first Jev powered websites. When a page is loaded, Jev selects the right copy AND design for each part of the page for that audience segment, in 25 ms.</p>&mdash; brryant (@bryantchou) <a href="https://twitter.com/bryantchou/status/2101485995669770522">on X</a></blockquote></div></div>
 </section>
 
