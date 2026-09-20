@@ -1448,3 +1448,50 @@ async def test_own_key_relays_idempotency_label_verbatim(clients: AsyncClient, m
                                   headers={"Idempotency-Key": "retry-1"})
     assert response.status_code == 201
     assert _upstream_idempotency_keys(relayed) == ["retry-1"]
+
+
+async def test_reapi_auto_duration_reserves_its_resolution_and_settles_reported_credits(
+    clients: AsyncClient, monkeypatch,
+):
+    """The provider REQUIRES `duration: -1` for a video edit. It once matched no price row, so the
+    thirty-second 1080p ceiling was both held and billed. Through the real call path: the hold is
+    thirty seconds at the requested resolution, and the bill is the credits the provider reports."""
+    monkeypatch.setenv("TREG_PLATFORM_KEY_REAPI", "test-platform-token")
+    monkeypatch.setenv("TREG_PLATFORM_PROVIDERS", "reapi")
+    get_settings.cache_clear()
+    try:
+        org_id = (await clients.get("/orgs")).json()[0]["org_id"]
+        async with session_maker() as db:
+            await ledger.grant(db, org_id, amount_micro=5_000_000, kind="reapi_test", once=False)
+            await db.commit()
+            before = await ledger.balance_of(db, org_id)
+
+        async def submitted(*args, **kwargs):
+            return _response(200, {"id": "task_auto_duration", "status": "queued"})
+        monkeypatch.setattr(call_service, "relay", submitted)
+        response = await clients.post("/call/reapi.video-gen.seedance-2-5.unrestricted", json={
+            "model": "doubao-seedance-2.5-face", "content_filter": False, "duration": -1,
+            "resolution": "480p", "prompt": "Replace the face in @video1 with @image1.",
+            "video_urls": ["https://example.invalid/source.mp4"]})
+        assert response.status_code == 200, response.text
+        call_id = response.headers["X-Treg-Call-Id"]
+        async with session_maker() as db:
+            row = await db.get(AsyncTaskRecord, call_id)
+            assert row.reserved_micro == 3_558_000  # 30 s of 480p, not the 13.87 1080p ceiling
+            assert row.settlement_basis["amount"]["unit_micro"] == 1_000  # fx.yaml, frozen
+            row.next_check_at = utcnow_naive() - timedelta(seconds=1)
+            await db.commit()
+
+        async def completed(row, client):
+            return 200, json.dumps({"id": "task_auto_duration", "status": "completed",
+                                    "usage": {"credits": 712},
+                                    "output": {"video_urls": ["https://example.invalid/out.mp4"]}}).encode()
+        monkeypatch.setattr(task_app, "_poll", completed)
+        await task_app.settle_due()
+        async with session_maker() as db:
+            row = await db.get(AsyncTaskRecord, call_id)
+            assert row.status == "settled" and row.settled_micro == 712_000
+            assert await db.get(Hold, call_id) is None
+            assert before - await ledger.balance_of(db, org_id) == 712_000
+    finally:
+        get_settings.cache_clear()
