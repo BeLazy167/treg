@@ -3308,8 +3308,8 @@ async def jev_xboost_judge(request: Request, db: AsyncSession = Depends(get_sess
 # chronological (newest first), not alphabetical.
 _BLOG_LAUNCHES: list[tuple[str, str, str, str]] = [
     # (slug, title, date, one-line blurb)
-    ("/jev", "How to use Jev for GTM Automation", "2026-09-20",
-     "Three agent recipes on treg + jev: launch radar on X, signup triage, signal-first leads."),
+    ("/jev", "How to use Jev", "2026-09-20",
+     "What Jev is and how to use it: live examples, use cases, code, and GTM automation recipes."),
     ("/ugc", "AI UGC Videos for $0.67 a Clip", "2026-09-15",
      "The five-step workflow: trending hooks, a JSON-prompt character, Seedance 2.5, a cloned voice."),
     ("/gpt6", "GPT-6 and treg.to", "2026-09-08",
