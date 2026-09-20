@@ -1573,10 +1573,14 @@ async def _resolve_marketplace_call(
         query.multi_items(), body, path_names=consumed)
     unit_view = cat.cost_view({**raw_cost, "value": 1, "per": 1}, service) if raw_cost else None
     unit_micro = _usd_to_micro(unit_view.get("usd")) if unit_view else 0
+    usage_unit_micro = None
+    if (raw_cost.get("usage") or {}).get("unit") == "credit":
+        # One provider credit in micro-USD, from fx.yaml; the validator guarantees the entry.
+        usage_unit_micro = _usd_to_micro(cat.credit_rates.get(service))
     basis = settlement_basis.derive_basis(
         raw_cost, request=request_data, input_schema=ep.get("input") or {},
         unit_micro=unit_micro, terminal=bool(ep.get("async")),
-        response_estimate_micro=info_est,
+        response_estimate_micro=info_est, usage_unit_micro=usage_unit_micro,
     )
     if basis.get("amount", {}).get("kind") in ("table", "usage"):
         info_est = int(basis["reserve_micro"])
