@@ -562,6 +562,14 @@
     .scrolly .sl-r { border: 1px solid var(--line); border-radius: 20px; background: #fff; padding: 18px 16px; overflow: visible; }
   }
 
+  /* merged first slide: tabs pick the race or the call anatomy */
+  .sl-r:has(.pc-tabs) { justify-content: flex-start; } .pc-tabs { align-self: flex-start; } .sl-r .pc-pane .ig-step pre { font-size: 10.5px; padding: 12px 14px; }
+  /* can / can't as a slide */
+  .cc-slide { grid-template-columns: minmax(0, 250px) minmax(0, 1fr); }
+  .cc-slide .cc { gap: 12px; max-width: none; } .cc-slide .cc-col { padding: 16px 18px 10px; border-radius: 16px; } .cc-slide .cc-tag { font-size: 15px; padding: 4px 10px; margin-bottom: 8px; }
+  .cc-slide .cc-row { padding: 5px 0; grid-template-columns: 14px minmax(0,1fr); gap: 1px 8px; } .cc-slide .cc-row span { font-size: 14px; } .cc-slide .cc-row em { font-size: 10.5px; line-height: 1.35; } .cc-slide .cc-row b { font-size: 14px; }
+  @media (max-width: 860px) { .cc-slide .cc-row span { font-size: 15px; } .cc-slide .cc-row em { font-size: 11.5px; } }
+
   /* ---- deck infographics ---- */
   .ig-bars { display: flex; flex-direction: column; gap: 7px; }
   .ig-bar { display: grid; grid-template-columns: minmax(0, 150px) minmax(0,1fr) 40px; gap: 10px; align-items: center; font-family: var(--mono); font-size: 12px; }
@@ -987,14 +995,11 @@
     <button class="dk-arrow prev" id="dk-prev" aria-label="Previous slide"><svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
     <div class="dk-view"><div class="dk-track" id="dk-track">
 
-      <article class="slide"><div class="sl-l"><span class="sl-n">1 / 6</span><h3>jev predicts probabilities, not text</h3><p>Ask a chat model and it <em>writes</em> an answer, one token after another, which your code then has to read. Ask jev and every option you named gets a probability, all at once, summing to one. Same message, same question:</p><p class="sl-note">The numbers are the answer. Your code compares them to a threshold; nothing is parsed, nothing can be made up outside your list.</p><button class="pill sm" type="button" id="ig-replay1"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg> Play again</button></div>
-        <div class="sl-r"><div class="ig-q1"><span class="ig-qlab">state</span>"Our API integration started returning 500 errors on every request about 20 minutes ago, and we can't process any customer orders until this is fixed."<span class="ig-opts"><span class="ig-qlab">question</span>Which team should handle this: billing, technical or sales?</span></div><div class="ig-vs">
+      <article class="slide"><div class="sl-l"><span class="sl-n">1 / 6</span><div class="pc-txt" data-pc="0"><h3>jev predicts probabilities, not text</h3><p>Ask a chat model and it <em>writes</em> an answer, one token after another, which your code then has to read. Ask jev and every option you named gets a probability, all at once, summing to one. Same message, same question:</p><p class="sl-note">The numbers are the answer. Your code compares them to a threshold; nothing is parsed, nothing can be made up outside your list.</p><button class="pill sm" type="button" id="ig-replay1"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg> Play again</button></div><div class="pc-txt" data-pc="1" hidden><h3>How a call works</h3><p>One HTTP request. You send a <b>state</b>, any JSON or text you want judged, and a set of <b>questions</b>, each with the answers you would accept. jev sends back one answer per question, keyed by the names you chose.</p><p class="sl-note">That is the whole API. No prompt engineering, no output schema to coerce, no retries for malformed JSON.</p></div></div>
+        <div class="sl-r"><div class="qt-tabs pc-tabs" role="tablist"><button type="button" data-pc="0" aria-selected="true">the race</button><button type="button" data-pc="1" aria-selected="false">how a call works</button></div><div class="pc-pane" data-pc="0"><div class="ig-q1"><span class="ig-qlab">state</span>"Our API integration started returning 500 errors on every request about 20 minutes ago, and we can't process any customer orders until this is fixed."<span class="ig-opts"><span class="ig-qlab">question</span>Which team should handle this: billing, technical or sales?</span></div><div class="ig-vs">
           <div class="ig-col llm"><div class="ig-lab">chat model</div><div class="ig-bubble" id="ig-llm"><span class="cur"></span></div><div class="ig-time" id="ig-llm-time">0.0 s</div><div class="ig-foot" id="ig-llm-foot">writing…</div></div>
           <div class="ig-col jev"><div class="ig-lab"><img class="lg" src="logos/jev.png" alt=""> jev</div><div class="ig-bars"><div class="ig-bar g"><span class="k">technical</span><span class="tr"><i style="--w:100%"></i></span><span class="v">1.00</span></div><div class="ig-bar "><span class="k">billing</span><span class="tr"><i style="--w:0%"></i></span><span class="v">0.00</span></div><div class="ig-bar "><span class="k">sales</span><span class="tr"><i style="--w:0%"></i></span><span class="v">0.00</span></div></div><div class="ig-time g" id="ig-jev-time">0.38 s</div><div class="ig-foot" id="ig-jev-foot">0 output tokens · confidence 1.00 · $0.000018</div></div>
-        </div></div></article>
-
-      <article class="slide"><div class="sl-l"><span class="sl-n">2 / 6</span><h3>How a call works</h3><p>One HTTP request. You send a <b>state</b>, any JSON or text you want judged, and a set of <b>questions</b>, each with the answers you would accept. jev sends back one answer per question, keyed by the names you chose.</p><p class="sl-note">That is the whole API. No prompt engineering, no output schema to coerce, no retries for malformed JSON.</p></div>
-        <div class="sl-r"><div class="ig-flow"><div class="ig-step"><div class="ig-lab">1 · state</div><pre>"Our API integration started returning 500
+        </div></div><div class="pc-pane" data-pc="1" hidden><div class="ig-flow"><div class="ig-step"><div class="ig-lab">1 · state</div><pre>"Our API integration started returning 500
  errors on every request about 20 minutes
  ago, and we can't process any customer
  orders until this is fixed."</pre></div><div class="ig-step"><div class="ig-lab">2 · questions</div><pre>{
@@ -1020,10 +1025,29 @@
   }
 }
 
-usage: 428 tokens in · $0.000018</pre></div></div></div></article>
-
-      <article class="slide"><div class="sl-l"><span class="sl-n">3 / 6</span><h3>Much faster and cheaper than the cheapest LLM</h3><p>We sent the same three support questions to jev and to GPT-5.6 Luna, the cheapest chat model we could find, with real support tickets padding the input from 2k to 200k tokens. Where both run, jev is <b>5 to 6× cheaper</b> and <b>5 to 7× faster</b>, and its time barely moves with input because it never writes.</p><p class="sl-note">jev stops at about 30k of its own tokens; above that you split the state. Luna's time is dominated by writing ~80 output tokens, so it sits at 2 to 4 s whatever you send. TypeSafe's own workflow demo claims far more (193.6× faster, 444.6× cheaper); these are our numbers.</p></div>
+usage: 428 tokens in · $0.000018</pre></div></div></div></div></article>
+      <article class="slide"><div class="sl-l"><span class="sl-n">2 / 6</span><h3>Much faster and cheaper than the cheapest LLM</h3><p>We sent the same three support questions to jev and to GPT-5.6 Luna, the cheapest chat model we could find, with real support tickets padding the input from 2k to 200k tokens. Where both run, jev is <b>5 to 6× cheaper</b> and <b>5 to 7× faster</b>, and its time barely moves with input because it never writes.</p><p class="sl-note">jev stops at about 30k of its own tokens; above that you split the state. Luna's time is dominated by writing ~80 output tokens, so it sits at 2 to 4 s whatever you send. TypeSafe's own workflow demo claims far more (193.6× faster, 444.6× cheaper); these are our numbers.</p></div>
         <div class="sl-r"><div class="ig-charts"><div class="ig-chart"><div class="ig-lab">cost per call</div><div class="ig-crow"><span class="k">2k</span><span class="tr"><i class="g" style="--w:1.6%"></i><i style="--w:2.8%"></i></span><span class="v">1.7×</span></div><div class="ig-crow"><span class="k">8k</span><span class="tr"><i class="g" style="--w:4.9%"></i><i style="--w:28.4%"></i></span><span class="v">5.8×</span></div><div class="ig-crow"><span class="k">16k</span><span class="tr"><i class="g" style="--w:9.0%"></i><i style="--w:51.7%"></i></span><span class="v">5.8×</span></div><div class="ig-crow"><span class="k">32k</span><span class="tr"><i class="g" style="--w:17.5%"></i><i style="--w:99.9%"></i></span><span class="v">5.7×</span></div></div><div class="ig-chart"><div class="ig-lab">time per call</div><div class="ig-crow"><span class="k">2k</span><span class="tr"><i class="g" style="--w:13.9%"></i><i style="--w:97.9%"></i></span><span class="v">7.0×</span></div><div class="ig-crow"><span class="k">8k</span><span class="tr"><i class="g" style="--w:14.3%"></i><i style="--w:83.9%"></i></span><span class="v">5.9×</span></div><div class="ig-crow"><span class="k">16k</span><span class="tr"><i class="g" style="--w:14.3%"></i><i style="--w:87.9%"></i></span><span class="v">6.1×</span></div><div class="ig-crow"><span class="k">32k</span><span class="tr"><i class="g" style="--w:18.2%"></i><i style="--w:81.8%"></i></span><span class="v">4.5×</span></div></div><div class="ig-legend"><span><i class="g"></i>jev</span><span><i></i>GPT-5.6 Luna</span></div></div><table class="sl-tab cmp"><thead><tr><th>input</th><th colspan="2"><img class="lg" src="logos/jev.png" alt=""> jev</th><th colspan="2">GPT-5.6 Luna</th></tr></thead><tbody><tr><td>2k</td><td class="g">$0.0000755</td><td class="g">0.39 s</td><td>$0.0001299</td><td>2.74 s</td></tr><tr><td>8k</td><td class="g">$0.0002248</td><td class="g">0.40 s</td><td>$0.0013071</td><td>2.35 s</td></tr><tr><td>16k</td><td class="g">$0.0004122</td><td class="g">0.40 s</td><td>$0.0023791</td><td>2.46 s</td></tr><tr><td>32k</td><td class="g">$0.0008031</td><td class="g">0.51 s</td><td>$0.0045953</td><td>2.29 s</td></tr><tr><td>34k</td><td class="dim">over limit</td><td class="dim"></td><td>$0.0080371</td><td>3.59 s</td></tr><tr><td>100k</td><td class="dim">over limit</td><td class="dim"></td><td>$0.0233656</td><td>3.03 s</td></tr><tr><td>200k</td><td class="dim">over limit</td><td class="dim"></td><td>$0.0467147</td><td>3.89 s</td></tr></tbody></table><div class="ig-foot">real English support tickets from a public dataset · cost as billed by OpenRouter · single runs</div></div></article>
+      <article class="slide cc-slide"><div class="sl-l"><span class="sl-n">3 / 6</span><h3>What jev can, and can't</h3><p>It is a judge, not a writer. Everything on the left is a typed question; everything on the right needs a model that generates text, so you pair the two.</p></div>
+        <div class="sl-r"><div class="cc" id="cc">
+    <div class="cc-col can"><div class="cc-tag">CAN</div>
+      <div class="cc-row"><b>+</b><span>pick an action</span><em>one of your options, a probability on each · the game further down</em></div>
+      <div class="cc-row"><b>+</b><span>classify</span><em>billing 0.99 · technical 0.01 · account 0.00</em></div>
+      <div class="cc-row"><b>+</b><span>score / rank</span><em>368 people in 42.8 s, $0.013</em></div>
+      <div class="cc-row"><b>+</b><span>say yes or no</span><em>jailbreak 0.99, four hazards in one call</em></div>
+      <div class="cc-row"><b>+</b><span>route on confidence</span><em>two thresholds in your code, nothing re-run</em></div>
+      <div class="cc-row"><b>+</b><span>read your JSON as it is</span><em>rows, tables, element lists, ticket histories</em></div>
+      <div class="cc-row"><b>+</b><span>at 5 to 7× a chat model's speed</span><em>and 5 to 6× cheaper, our runs · ≈ $20 per million decisions</em></div>
+    </div>
+    <div class="cc-col cant"><div class="cc-tag">CAN'T</div>
+      <div class="cc-row"><b>−</b><span><s>write a sentence</s></span><em>an LLM writes, jev verifies each field</em></div>
+      <div class="cc-row"><b>−</b><span><s>explain itself</s></span><em>the distribution is the explanation: log it</em></div>
+      <div class="cc-row"><b>−</b><span><s>write code</s></span><em>it can judge code: risky change, needs review</em></div>
+      <div class="cc-row"><b>−</b><span><s>reason step by step</s></span><em>you write the steps as questions, it answers all at once</em></div>
+      <div class="cc-row"><b>−</b><span><s>read past ~30k tokens</s></span><em>chunk the state, or summarise first and judge the summary</em></div>
+      <div class="cc-row"><b>−</b><span><s>fetch anything</s></span><em>that is treg: one token, the catalog, then jev decides</em></div>
+    </div>
+  </div></div></article>
 
       <article class="slide"><div class="sl-l"><span class="sl-n">4 / 6</span><h3>Three kinds of question</h3><p>Every jev question is one of three types, and you can send several in one call. Each returns a full distribution, not just a label, so a close call looks different from a sure one.</p><p class="sl-note"><b>choice</b> picks one of your options and tells you how close it was. <b>noul</b> is a yes/no as a probability, with a playbook for each side when the line is subtle. <b>score</b> is a position on your ordered rubric: the probability on every level plus their weighted mean.</p><p class="sl-note">All three are real answers from our runs.</p></div>
         <div class="sl-r"><div class="qt-tabs" role="tablist"><button role="tab" aria-selected="true" data-qt="choice">choice</button><button role="tab" aria-selected="false" data-qt="noul">noul</button><button role="tab" aria-selected="false" data-qt="score">score</button></div>
@@ -1486,30 +1510,6 @@ action = { jailbreak: block, harmful: block,
   </div>
 </section>
 
-<section class="section learn-sec rv" id="cancant" style="padding-top:70px;padding-bottom:0">
-  <h2>What <img class="lg" src="logos/jev.png" alt=""> jev can, and can't</h2>
-  <p class="lede">It is a judge, not a writer. Everything on the left is a typed question; everything on the right needs a model that generates text, so you pair the two.</p>
-  <div class="cc" id="cc">
-    <div class="cc-col can"><div class="cc-tag">CAN</div>
-      <div class="cc-row"><b>+</b><span>pick an action</span><em>one of your options, a probability on each · the game below</em></div>
-      <div class="cc-row"><b>+</b><span>classify</span><em>billing 0.99 · technical 0.01 · account 0.00</em></div>
-      <div class="cc-row"><b>+</b><span>score / rank</span><em>368 people in 42.8 s, $0.013</em></div>
-      <div class="cc-row"><b>+</b><span>say yes or no</span><em>jailbreak 0.99, four hazards in one call</em></div>
-      <div class="cc-row"><b>+</b><span>route on confidence</span><em>two thresholds in your code, nothing re-run</em></div>
-      <div class="cc-row"><b>+</b><span>read your JSON as it is</span><em>rows, tables, element lists, ticket histories</em></div>
-      <div class="cc-row"><b>+</b><span>at 5 to 7× a chat model's speed</span><em>and 5 to 6× cheaper, our runs · ≈ $20 per million decisions</em></div>
-    </div>
-    <div class="cc-col cant"><div class="cc-tag">CAN'T</div>
-      <div class="cc-row"><b>−</b><span><s>write a sentence</s></span><em>an LLM writes, jev verifies each field</em></div>
-      <div class="cc-row"><b>−</b><span><s>explain itself</s></span><em>the distribution is the explanation: log it</em></div>
-      <div class="cc-row"><b>−</b><span><s>write code</s></span><em>it can judge code: risky change, needs review</em></div>
-      <div class="cc-row"><b>−</b><span><s>reason step by step</s></span><em>you write the steps as questions, it answers all at once</em></div>
-      <div class="cc-row"><b>−</b><span><s>read past ~30k tokens</s></span><em>chunk the state, or summarise first and judge the summary</em></div>
-      <div class="cc-row"><b>−</b><span><s>fetch anything</s></span><em>that is treg: one token, the catalog, then jev decides</em></div>
-    </div>
-  </div>
-</section>
-
 <section class="section learn-sec rv" id="uses" style="padding-top:70px;padding-bottom:0">
   <h2>Where <img class="lg" src="logos/jev.png" alt=""> jev shines</h2>
   <p class="lede">Four places a fast, typed decision changes what you can build. The game, browser and SQL runs below are ours, judged live by jev; the headline figures for jev-ultrafast and pg-jev are from their READMEs.</p>
@@ -1778,6 +1778,7 @@ document.querySelectorAll('.expand-all[data-wrap]').forEach(b => b.onclick = () 
     raceTimer = setTimeout(step, 250);
   };
   $('ig-replay1').onclick = race;
+  document.querySelectorAll('.pc-tabs [data-pc]').forEach(b => b.onclick = () => { document.querySelectorAll('.pc-tabs [data-pc]').forEach(x => x.setAttribute('aria-selected', String(x === b))); document.querySelectorAll('.pc-pane, .pc-txt').forEach(el => el.hidden = el.dataset.pc !== b.dataset.pc); if (b.dataset.pc === '0') race(); else clearTimeout(raceTimer); });
 
   // slide 5: one message walks the guardrail tree
   const RT = [
