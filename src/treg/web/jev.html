@@ -221,6 +221,9 @@
   @keyframes dots { to { width: 1.2em; } }
   @media (max-width: 860px) { .board, .board.irr-open { grid-template-columns: 1fr; } }
   .ptitle { font-family: var(--display); font-weight: 600; font-size: 16px; letter-spacing: -.01em; color: var(--ink); line-height: 1.25; }
+  .lbl.ptitle-row { text-transform: none; letter-spacing: 0; align-items: center; margin-bottom: 4px; }
+  .lbl.ptitle-row .ptitle { font-size: 17px; }
+  .lbl.ptitle-row .n { font-family: var(--mono); font-size: 11px; color: var(--muted); }
   .tally { display: grid; gap: 6px; margin-top: 8px; }
   .tv { border: 1px solid var(--line); border-left: 4px solid var(--c); background: var(--card); border-radius: 0 10px 10px 0; padding: 8px 10px; display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 8px; text-align: left; font: inherit; color: inherit; cursor: default; }
   .tv.organic, .tv.reach, .tv.dm, .tv.enterprise { --c: var(--green); } .tv.paid, .tv.watch, .tv.user, .tv.influencer_affiliate { --c: var(--amber); } .tv.hold, .tv.fraud { --c: var(--red); } .tv.smb { --c: var(--blue); } .tv.irrelevant, .tv.none, .tv.skip, .tv.normal { --c: var(--muted); }
@@ -910,8 +913,8 @@
    Show treg and jev spend separately.</pre></div></div></div></div>
       <div class="demo-body"><aside class="demo-side"><div class="panel"><div class="ptitle" id="sg-tallymeta"></div><div class="spend top" id="sg-spend"></div><div class="stack" id="sg-stack"></div><div class="tally" id="sg-tallybox"></div><div class="xsteps" id="sg-steps"></div></div></aside>
       <div class="cap-wrap" id="sg-wrap"><div class="sig-grid cap-body">
-        <div class="panel"><div class="lbl"><span>step 1 · posts, jev checks each is on topic</span><span class="n" id="sg-postsmeta"></span></div><div class="posts" id="sg-posts"></div></div>
-        <div class="panel"><div class="lbl"><span>steps 2 + 3 · people, ranked by jev</span><span class="n" id="sg-listmeta"></span></div><div class="chips" id="sg-filters"></div><div class="leadlist" id="sg-list"></div></div>
+        <div class="panel"><div class="lbl ptitle-row"><span class="ptitle">Fetch LinkedIn posts around 'Enrichment'</span><span class="n" id="sg-postsmeta"></span></div><div class="posts" id="sg-posts"></div></div>
+        <div class="panel"><div class="lbl ptitle-row"><span class="ptitle">Qualify &amp; enrich commenters</span><span class="n" id="sg-listmeta"></span></div><div class="chips" id="sg-filters"></div><div class="leadlist" id="sg-list"></div></div>
       </div></div></div>
       <div class="setup-strip has-aux"><button class="pill sm expand-all" type="button" data-wrap="sg-wrap" data-label="posts">Show all posts</button><span class="mid"><span class="t">Set up this workflow</span><button class="pill dark pbtn big copy-for" type="button" data-src="p-signals">Copy prompt for <span class="agents"><img src="media/people-search/claude-code.png" alt="Claude Code"><img src="media/people-search/codex.png" alt="Codex"><img src="media/people-search/openclaw.png" alt="OpenClaw"><img src="media/people-search/hermes.png" alt="Hermes" class="onwhite"></span></button></span></div>
 </div>
