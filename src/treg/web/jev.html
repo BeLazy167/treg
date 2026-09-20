@@ -1430,9 +1430,12 @@ document.querySelectorAll('.rv').forEach(el => io.observe(el));
 
 /* tabs: one recipe at a time; the hash picks the tab so the nav anchors keep working */
 const TABS = ['xboost', 'signals', 'triage', 'build'];
+const autoPlayed = new Set();
 function showTab(id, push) {
   if (!TABS.includes(id)) id = 'xboost';
   TABS.forEach(t => { $(t).hidden = t !== id; });
+  const btn = {signals: 'sg-replay', triage: 'tr-replay'}[id];
+  if (btn && !autoPlayed.has(id)) { autoPlayed.add(id); setTimeout(() => { const b = $(btn); if (b && !b.hidden && !b.disabled) b.click(); }, 350); }
   document.querySelectorAll('.tabs [data-tab]').forEach(b => b.setAttribute('aria-selected', String(b.dataset.tab === id)));
   if (push) history.replaceState(null, '', '#' + id);
 }
@@ -1862,7 +1865,7 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape' && !drawer.hi
     step();
   }
   function stop() { clearTimeout(timer); timer = null; shown = DATA.length; $('tr-replay').hidden = false; $('tr-stop').hidden = true; renderAll(); }
-  $('tr-replay').onclick = replay; $('tr-stop').onclick = stop;
+  $('tr-replay').onclick = () => { if (DATA.length) replay(); }; $('tr-stop').onclick = stop;
 
   fetch('media/jev/triage.json', {cache: 'no-cache'}).then(r => r.json()).then(doc => { const rows = doc.rows;
     DATA = rows; let fi = 0; DATA.forEach((r, i) => { r.i = i; r.lane = lane(r); r.hour = new Date(r.usage.signed_up_at + 'Z').getUTCHours(); if (r.person && r.person.full_name) r.faceIdx = fi++; });
@@ -1872,6 +1875,7 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape' && !drawer.hi
     buildTL(); renderAll();
     const first = DATA.slice().sort((a, b) => (laneRank[a.lane] - laneRank[b.lane]) || (b.upsell - a.upsell))[0];
     select(first ? first.i : 0);
+    if (!$('triage').hidden && autoPlayed.has('triage') && !timer) replay();
   });
 })();
 
@@ -1994,7 +1998,7 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape' && !drawer.hi
     timer = setTimeout(tick, 300);
   }
   function stop() { clearTimeout(timer); timer = null; finding.clear(); shown = {posts: posts.length, scanned: posts.length, people: byOrder.length, ranked: byOrder.length, emails: emailed.length}; $('sg-replay').hidden = false; $('sg-stop').hidden = true; if (RUN) renderAll(); }
-  $('sg-replay').onclick = replay; $('sg-stop').onclick = stop;
+  $('sg-replay').onclick = () => { if (RUN) replay(); }; $('sg-stop').onclick = stop;
 
   fetch('media/jev/signals.json', {cache: 'no-cache'}).then(r => r.json()).then(run => {
     RUN = run; posts = run.posts; leads = run.leads.slice().sort((a, b) => b.fit - a.fit);
@@ -2002,6 +2006,7 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape' && !drawer.hi
     const c = run.costs, treg = (c.treg_search||0) + (c.treg_engagement||0) + (c.treg_email||0);
     $('sg-receipt').innerHTML = `<span><b>${run.seconds}s</b> total, jev ranked ${run.people_total} in <b>${run.rank_seconds}s</b></span><span>treg <b>${fmt$(treg)}</b></span><span>jev <b>${fmt$(c.jev||0)}</b></span>`;
     buildPosts(); stop();
+    if (!$('signals').hidden && autoPlayed.has('signals') && !timer) replay();
   });
 })();
 })();
