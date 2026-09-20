@@ -823,19 +823,6 @@
   .gm-btn i { position: absolute; left: 0; bottom: 0; height: 4px; width: var(--w, 0%); background: var(--line2); transition: width .5s cubic-bezier(.2,.8,.2,1); }
   .gm-btn.on { background: #F5C542; } .gm-btn.on i { background: var(--ink); } .gm-btn.on em { color: var(--ink); }
   .gm-foot { grid-column: 1 / -1; font-family: var(--mono); font-size: 11.5px; color: var(--muted); } .gm-foot b { color: var(--ink); font-weight: 500; }
-  /* camera feed */
-  .cm { display: flex; flex-direction: column; gap: 10px; }
-  .cm-strip { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; }
-  .cm-fr { position: relative; aspect-ratio: 9 / 5; background: #1c1b19; border-radius: 8px; overflow: hidden; border: 2px solid transparent; transition: border-color .2s; }
-  .cm-fr.on { border-color: #F5C542; } .cm-fr svg { display: block; width: 100%; height: 100%; }
-  .cm-fr .bx { fill: none; stroke: #F5C542; stroke-width: 6; } .cm-fr .bx.person { stroke: #6FD3A1; } .cm-fr .bx.smoke { stroke: #E0654A; } .cm-fr .bx.forklift { stroke: #7FB3F0; }
-  .cm-fr .lb { position: absolute; left: 6px; bottom: 4px; font: 500 9px var(--mono); color: #cfcbc2; }
-  .cm-fr .al { position: absolute; right: 6px; top: 4px; width: 8px; height: 8px; border-radius: 50%; background: #444; } .cm-fr.alert .al { background: var(--red); box-shadow: 0 0 0 3px rgba(192,54,47,.3); }
-  .cm-body { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; }
-  .cm-det pre { margin: 0; font-family: var(--mono); font-size: 10.5px; line-height: 1.5; background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; white-space: pre; overflow: auto; height: 172px; box-sizing: border-box; color: #2a2926; }
-  .cm-jev { border: 1px solid rgba(230,60,180,.35); border-radius: 12px; background: #fff; padding: 10px 12px; display: flex; flex-direction: column; }
-  .cm-jev .ig-gauge { margin: 6px 0 22px; } .cm-jev .ig-bars { gap: 4px; } .cm-jev .ig-bar { grid-template-columns: 90px minmax(0,1fr) 34px; font-size: 11px; } .cm-jev .ig-bar .tr { height: 8px; } .cm-jev .ig-foot { margin-top: auto; }
-  .cm-count { display: flex; gap: 18px; font-family: var(--mono); font-size: 11px; color: var(--muted); } .cm-count b { color: var(--ink); font-weight: 600; }
   /* web: the jev-ultrafast flow */
   .wb2 { border: 1px solid var(--line); border-radius: 16px; background: #fff; padding: 14px 16px; }
   .wb2-flow { display: grid; grid-template-columns: auto auto auto auto minmax(0, 1fr) minmax(0, 1.1fr); gap: 8px; align-items: center; font-family: var(--mono); }
@@ -859,28 +846,12 @@
   .w3-ans .ig-bars { gap: 4px; margin-bottom: 8px; } .w3-ans .ig-bar { grid-template-columns: 96px minmax(0,1fr) 32px; font-size: 10.5px; gap: 6px; } .w3-ans .ig-bar .tr { height: 8px; }
   .w3-ans .dim { opacity: .45; } .w3-ans .lp2-ol b { color: var(--green); text-transform: none; letter-spacing: 0; }
   .w3-next { margin-top: auto; font-family: var(--mono); font-size: 10.5px; line-height: 1.7; color: var(--ink); border-top: 1px solid var(--line); padding-top: 8px; } .w3-next mark { background: #F5C542; padding: 1px 4px; border-radius: 3px; } .w3-next q { quotes: none; color: var(--blue); }
-  /* automation: signups */
-  .au { display: flex; flex-direction: column; gap: 10px; }
-  .au-flow { display: grid; grid-template-columns: 64px auto auto auto auto auto minmax(0, 1fr); gap: 8px; align-items: center; border: 1px solid var(--line); border-radius: 16px; background: #fff; padding: 14px 16px; font-family: var(--mono); }
-  .au-flow > i { font-style: normal; color: var(--line2); font-size: 20px; text-align: center; }
-  .au-n { display: flex; flex-direction: column; align-items: center; gap: 1px; text-align: center; font-size: 10px; color: var(--muted); padding: 8px 10px; border-radius: 12px; border: 1px solid var(--line); background: var(--card); }
-  .au-n > b { font: 600 22px var(--display); color: var(--ink); letter-spacing: -.02em; } .au-n.treg > b, .au-n.jev > b { font-size: 14px; }
-  .au-n .lg { width: 26px; height: 26px; border-radius: 8px; margin-bottom: 3px; } .au-n.jev { border-color: rgba(230,60,180,.35); background: #fff; }
-  .au-route { display: flex; flex-direction: column; gap: 6px; }
-  .au-r { display: grid; grid-template-columns: minmax(0, 1fr) 34px; gap: 0 8px; align-items: baseline; font-size: 10.5px; color: var(--muted); padding: 5px 10px; border-radius: 8px; border-left: 4px solid var(--line2); background: var(--card); }
-  .au-r span { color: var(--ink); } .au-r b { text-align: right; font-weight: 600; color: var(--ink); font-size: 14px; } .au-r em { grid-column: 1 / -1; font-style: normal; font-size: 9.5px; }
-  .au-r.g { border-left-color: var(--green); } .au-r.a { border-left-color: var(--amber); } .au-r.r { border-left-color: var(--red); }
-  .au-econ { display: grid; grid-template-columns: 1fr 1.2fr; gap: 10px; }
-  .au-e { border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; background: var(--card); } .au-e.on { background: #fff; border-color: var(--ink); }
-  .au-e p { margin: 0; font-size: 12.5px; line-height: 1.45; color: var(--muted); } .au-e.on p { color: var(--ink); } .au-e p b { font-family: var(--mono); font-weight: 600; }
-  .au-seg { display: flex; gap: 4px; height: 26px; border-radius: 8px; overflow: hidden; font-family: var(--mono); font-size: 10px; }
-  .au-seg span { display: flex; align-items: center; justify-content: center; gap: 4px; color: #fff; background: var(--muted); white-space: nowrap; overflow: hidden; min-width: 0; transition: flex-grow .6s; } .au-seg span b { font-weight: 600; }
-  .au-seg .normal { background: #9a9892; } .au-seg .smb { background: var(--blue); } .au-seg .enterprise { background: var(--green); } .au-seg .influencer_affiliate { background: var(--amber); } .au-seg .fraud { background: var(--red); }
+  /* automation: the video */
+  .vd { border: 1px solid var(--line); border-radius: 14px; overflow: hidden; background: #000; line-height: 0; } .vd video { display: block; width: 100%; aspect-ratio: 16 / 9; }
+  .uc-strip a { color: inherit; }
   @media (max-width: 860px) {
-    .cm-strip { grid-template-columns: repeat(3, 1fr); } .cm-body { grid-template-columns: 1fr; } .cm-det pre { height: auto; max-height: 140px; } .cm-count { flex-wrap: wrap; gap: 8px 14px; }
     .sl-r pre.wf-ascii { font-size: 8.5px; padding: 12px 8px; }
     .w3 { grid-template-columns: 1fr; }
-    .au-flow { grid-template-columns: 1fr 1fr; } .au-flow > i { display: none; } .au-route { grid-column: 1 / -1; } .au-econ { grid-template-columns: 1fr; }
   }
   /* pg-jev */
   .pg { display: flex; flex-direction: column; gap: 8px; }
@@ -1518,18 +1489,11 @@ if verdict.distribution["paid_promotion"] &gt;= 0.7: lane = "paid"</pre><div cla
   <div class="deck" id="deck2" tabindex="0" aria-roledescription="carousel">
     <button class="dk-arrow prev" aria-label="Previous slide"><svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
     <div class="dk-view"><div class="dk-track">
-      <article class="slide"><div class="sl-l"><span class="sl-n">real-time · 1 / 2</span><h3>Real-time decisions: a game loop</h3><p>A game only ever has a handful of inputs. That is a <b>choice</b> question with the buttons as options, so jev answers it as a distribution every tick: nothing to parse, nothing invented outside the set, and fast enough to sit inside the loop.</p><p class="sl-note">Seven ticks of a small side-scroller, each judged live by jev from the game state: positions, ammo, the pit, the exit. About 0.35 s and $0.00002 a decision. A chat model writing "I would press jump" took 2.7 s on slide 1.</p><button class="pill sm" type="button" id="gm-replay"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg> Play again</button></div>
+      <article class="slide"><div class="sl-l"><span class="sl-n">real-time decisions</span><h3>Real-time decisions: a game loop</h3><p>A game only ever has a handful of inputs. That is a <b>choice</b> question with the buttons as options, so jev answers it as a distribution every tick: nothing to parse, nothing invented outside the set, and fast enough to sit inside the loop.</p><p class="sl-note">Seven ticks of a small side-scroller, each judged live by jev from the game state: positions, ammo, the pit, the exit. About 0.35 s and $0.00002 a decision. A chat model writing "I would press jump" took 2.7 s on slide 1.</p><button class="pill sm" type="button" id="gm-replay"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg> Play again</button></div>
         <div class="sl-r"><div class="gm">
           <div class="gm-frame"><div class="gm-h"><b>GAME</b><span>state in, action out, every tick</span></div><svg class="gm-svg" id="gm-svg" viewBox="0 0 600 250" aria-hidden="true"></svg></div>
           <div class="gm-acts"><div class="ig-lab">action set · fixed</div><div class="gm-btn" data-a="LEFT"><span>LEFT</span><em></em><i></i></div><div class="gm-btn" data-a="RIGHT"><span>RIGHT</span><em></em><i></i></div><div class="gm-btn" data-a="JUMP"><span>JUMP</span><em></em><i></i></div><div class="gm-btn" data-a="SHOOT"><span>SHOOT</span><em></em><i></i></div></div>
           <div class="gm-foot" id="gm-foot"></div>
-        </div></div></article>
-      <article class="slide"><div class="sl-l"><span class="sl-n">real-time · 2 / 2</span><h3>Real-time decisions: every frame of a feed</h3><p>A detector turns each camera frame into a few lines of JSON: what it saw, where, how close. jev reads that and answers <b>raise an alert?</b> and <b>what is it?</b> for every frame, in parallel, so a thousand frames a second is a thousand calls in flight at about $0.02 a second.</p><p class="sl-note">Six warehouse frames judged live. jev reads the detector's output, not pixels; the same shape fits chat messages, sensor readings, trades, anything that arrives as a stream and needs a verdict now.</p></div>
-        <div class="sl-r"><div class="cm">
-          <div class="cm-strip" id="cm-strip"></div>
-          <div class="cm-body"><div class="cm-det"><div class="ig-lab">detector output · the state</div><pre id="cm-json"></pre></div>
-            <div class="cm-jev"><div class="ig-lab"><img class="lg" src="logos/jev.png" alt=""> two questions per frame</div><div class="lp2-ol">alert?</div><div class="ig-gauge" id="cm-gauge"><i></i><em style="--x:35%" class="lo"><b>review 0.35</b></em><em style="--x:70%"><b>alert 0.70</b></em></div><div class="lp2-ol">what is it</div><div class="ig-bars" id="cm-kind"></div><div class="ig-foot" id="cm-foot"></div></div></div>
-          <div class="cm-count"><span><b id="cm-n">0</b> frames judged</span><span><b id="cm-cost">$0.0000</b> spent</span><span>≈ $0.00002 a frame · <b>1,000 fps ≈ $0.02 / s</b></span></div>
         </div></div></article>
       <article class="slide"><div class="sl-l"><span class="sl-n">web &amp; computer use · 1 / 2</span><h3>Web and computer use</h3><p>browser-use's <b>jev-ultrafast</b> agent never sends a screenshot. It reads the page into a numbered element table and asks jev <b>one request</b>: which operation, plus a target for each kind of operation, all answered at once. It then uses the target that matches. Only a TYPE_TEXT step calls a small LLM, and only for the text itself.</p><p class="sl-note">Their numbers: a one-way Google Flights search end to end in 7.07 s, median 9.45 → 7.09 s across alternating runs, browser protocol calls 1,092 → 101.</p><a class="pill sm" href="https://github.com/browser-use/jev-ultrafast" target="_blank" rel="noopener">browser-use/jev-ultrafast ↗</a></div>
         <div class="sl-r"><div class="wb2"><div class="ig-lab">how jev-ultrafast takes one step · from its README</div><pre class="wf-ascii">                      one TypeSafe request
@@ -1582,13 +1546,9 @@ elements:
             <div class="lp2-ol dim">click_target · ignored</div><div class="ig-bars dim"><div class="ig-bar "><span class="k">#3 One way</span><span class="tr"><i style="--w:91%"></i></span><span class="v">0.91</span></div><div class="ig-bar "><span class="k">#8 Search</span><span class="tr"><i style="--w:5%"></i></span><span class="v">0.05</span></div><div class="ig-bar "><span class="k">#4 Departure</span><span class="tr"><i style="--w:4%"></i></span><span class="v">0.04</span></div></div>
             <div class="w3-next"><mark>TYPE_TEXT [4]</mark> → small LLM → <q>"Sep 20, 2026"</q> → browser</div></div>
         </div></div></article>
-      <article class="slide"><div class="sl-l"><span class="sl-n">automation &amp; data · 1 / 2</span><h3>Automation: judge every one, not a sample</h3><p>At a fraction of a cent and under a second, with a <b>confidence</b> on every answer, the business logic goes in the code: act above one line, ask a person between, hold below. Things that never paid for a human become a rule that runs on every record.</p><p class="sl-note">The signup demo above: 127 signups, each enriched through treg and judged by jev for segment, fraud and upsell. Every credit farmer was caught before the free credit went out, for less than the credit was worth.</p></div>
-        <div class="sl-r"><div class="au">
-          <div class="au-flow"><div class="au-n"><b id="au-n">0</b><span>signups</span></div><i>→</i><div class="au-n treg"><svg class="lg" viewBox="0 0 512 512" aria-hidden="true"><rect width="512" height="512" rx="112" fill="#101010"/><rect x="111" y="111" width="140.5" height="140.5" rx="20" fill="#fff"/><rect x="260.5" y="260.5" width="140.5" height="140.5" rx="20" fill="#fff"/></svg><b>treg</b><span>verify · person · company</span><span>≈ $0.008 each</span></div><i>→</i><div class="au-n jev"><img class="lg" src="logos/jev.png" alt=""><b>jev</b><span>segment · is_fraud · upsell</span><span>≈ $0.00008 each</span></div><i>→</i>
-            <div class="au-route"><div class="au-r g"><span>onboard</span><b id="au-r0">0</b><em>fraud &lt; 0.35</em></div><div class="au-r a"><span>a person looks</span><b id="au-r1">0</b><em>0.35 – 0.70</em></div><div class="au-r r"><span>hold the credit</span><b id="au-r2">0</b><em>fraud ≥ 0.70</em></div></div></div>
-          <div class="au-econ"><div class="au-e"><div class="ig-lab">before</div><p>A person screens a signup in minutes, so only the suspicious ones got looked at, after the free credit was already spent.</p></div><div class="au-e on"><div class="ig-lab">now</div><p><b>$1.06</b> to screen all 127 · <b>21</b> farmers held before their <b>$1</b> credit went out · <b>1</b> sent to a person</p></div></div>
-          <div class="au-seg" id="au-seg"></div>
-        </div></div></article>
+      <article class="slide"><div class="sl-l"><span class="sl-n">automation &amp; data · 1 / 2</span><h3>Automation: judge every one, not a sample</h3><p>At a fraction of a cent and under a second, with a <b>confidence</b> on every answer, the business logic goes in the code, and jobs that never paid for a frontier model become a rule that runs on every record.</p><p class="sl-note">borja's SEO audit: internal linking is not writing, it is 8,790 yes/no calls. Does this page have a real reason to link to that one, and is the anchor text already in the copy? Left column jev, right column Claude Opus 5, same queue, same rubric. The signup recipe above is the same shape.</p><a class="pill sm" href="https://x.com/borjafat/status/2101018783976722479" target="_blank" rel="noopener">@borjafat on X ↗</a></div>
+        <div class="sl-r"><div class="vd"><video id="au-video" src="media/jev/seo-linking-borjafat.mp4" poster="media/jev/seo-linking-borjafat.jpg" muted loop playsinline preload="metadata" controls></video></div>
+        <div class="uc-strip"><span><b>586 pages</b> in 45.1 s</span><span><b>$0.21</b> total</span><span><b>584</b> links placed, 139 pages refused</span><span>Opus 5: <b>21 pages</b>, $1.43</span><span><b>≈ 190×</b> cheaper per page</span><em><a href="https://x.com/borjafat/status/2101018783976722479" target="_blank" rel="noopener">video and figures: @borjafat</a></em></div></div></article>
       <article class="slide"><div class="sl-l"><span class="sl-n">automation &amp; data · 2 / 2</span><h3>Plain-language SQL with pg-jev</h3><p>pg-jev is a Postgres extension that makes <code>jev()</code> a boolean you can put in a <b>WHERE</b>. Rows stream to jev twenty per request, each with its own yes/no question, so a condition written the way you would say it filters, ranks and groups like any other predicate.</p><p class="sl-note">Its README, 2,000 rows: first run ≈ 3.5 s in 100 requests for ≈ $0.012; the same condition again ≈ 50 ms from cache; LIMIT 3 on a new condition ≈ 0.6 s. Batches of 1–20 rows were 100% correct against ground truth, 40 rows 92–98%, 80 rows 77–94%. On the right, ten rows judged live in that shape.</p><a class="pill sm" href="https://github.com/realZachi/pg-jev" target="_blank" rel="noopener">realZachi/pg-jev ↗</a></div>
         <div class="sl-r"><div class="pg"><div class="rt-pick" id="pg-pick"></div><pre class="pg-sql" id="pg-sql"></pre><table class="pg-tab" id="pg-tab"></table><div class="ig-foot" id="pg-foot"></div></div></div></article>
     </div></div>
@@ -1899,9 +1859,7 @@ document.querySelectorAll('.expand-all[data-wrap]').forEach(b => b.onclick = () 
   const UC_GAME = [{"p":4,"e":[8,16],"c":[9,17],"pit":[[12,13]],"a":"SHOOT","pr":{"JUMP":0.04,"RIGHT":0.42,"LEFT":0.01,"SHOOT":0.53},"s":0.58},{"p":4,"e":[15],"c":[9,17],"pit":[[12,13]],"a":"RIGHT","pr":{"LEFT":0,"RIGHT":0.75,"JUMP":0.04,"SHOOT":0.21},"s":0.3},{"p":9,"e":[14],"c":[9,17],"pit":[[12,13]],"a":"JUMP","pr":{"RIGHT":0.04,"LEFT":0,"SHOOT":0.2,"JUMP":0.76},"s":0.4},{"p":11,"e":[13],"c":[17],"pit":[[12,13]],"a":"SHOOT","pr":{"JUMP":0.06,"RIGHT":0.04,"LEFT":0.07,"SHOOT":0.83},"s":0.34},{"p":10,"e":[],"c":[17],"pit":[[12,13]],"a":"RIGHT","pr":{"JUMP":0.24,"LEFT":0.01,"SHOOT":0,"RIGHT":0.75},"s":0.35},{"p":11,"e":[],"c":[17],"pit":[[12,13]],"a":"JUMP","pr":{"RIGHT":0.04,"LEFT":0,"JUMP":0.96,"SHOOT":0},"s":0.3},{"p":22,"e":[],"c":[],"pit":[],"a":"RIGHT","pr":{"JUMP":0,"SHOOT":0,"RIGHT":1,"LEFT":0},"s":0.47}];
 const UC_WEB = [{"els":[[1,"combobox","Where from?",""],[2,"combobox","Where to?",""],[3,"button","Round trip","Round trip"],[4,"textbox","Departure",""],[5,"textbox","Return",""],[6,"button","1 passenger",""],[7,"button","Economy",""],[8,"button","Search",""]],"op":"TYPE_TEXT","opp":{"TYPE_TEXT":0.56,"SELECT":0.23,"CLICK":0.21},"t":"8","tp":{"8":0.34,"3":0.32,"1":0.27},"s":0.35,"tok":839},{"els":[[1,"combobox","Where from?","Zurich"],[2,"combobox","Where to?",""],[3,"button","Round trip","Round trip"],[4,"textbox","Departure",""],[5,"textbox","Return",""],[6,"button","1 passenger",""],[7,"button","Economy",""],[8,"button","Search",""]],"op":"TYPE_TEXT","opp":{"TYPE_TEXT":0.83,"CLICK":0.09,"SELECT":0.08},"t":"2","tp":{"2":0.65,"1":0.27,"3":0.06},"s":0.33,"tok":859},{"els":[[1,"combobox","Where from?","Zurich"],[2,"combobox","Where to?","London"],[3,"button","Round trip","Round trip"],[4,"textbox","Departure",""],[5,"textbox","Return",""],[6,"button","1 passenger",""],[7,"button","Economy",""],[8,"button","Search",""]],"op":"CLICK","opp":{"CLICK":0.53,"SELECT":0.33,"TYPE_TEXT":0.14},"t":"4","tp":{"4":0.48,"3":0.39,"8":0.09},"s":0.29,"tok":874},{"els":[[1,"combobox","Where from?","Zurich"],[2,"combobox","Where to?","London"],[3,"button","One way","One way"],[4,"textbox","Departure",""],[6,"button","1 passenger",""],[7,"button","Economy",""],[8,"button","Search",""]],"op":"TYPE_TEXT","opp":{"TYPE_TEXT":0.67,"CLICK":0.32,"SELECT":0.01},"t":"4","tp":{"4":0.56,"3":0.33,"8":0.09},"s":0.4,"tok":838},{"els":[[1,"combobox","Where from?","Zurich"],[2,"combobox","Where to?","London"],[3,"button","One way","One way"],[4,"textbox","Departure","Sep 20, 2026"],[6,"button","1 passenger",""],[7,"button","Economy",""],[8,"button","Search",""]],"op":"CLICK","opp":{"CLICK":0.99,"DONE":0.01,"WAIT":0},"t":"8","tp":{"8":0.79,"3":0.11,"4":0.08},"s":0.35,"tok":880}];
 const UC_PG = {"rows":[["Matteo Ricci","Bologna","Backend engineer"],["Aiko Tanaka","Osaka","Product designer"],["Sven Lindqvist","Malmö","Data analyst"],["Priya Raman","Bengaluru","Engineering manager"],["Léa Fontaine","Lyon","Growth lead"],["Carlos Mendes","Porto","Sales engineer"],["Grace Okafor","Lagos","RevOps"],["Tomasz Nowak","Kraków","CTO"],["Hannah Cole","Austin","Founder"],["Ewa Kowalczyk","Gdańsk","Support lead"]],"conds":{"the name is European":{"p":[0.98,0.02,0.98,0.03,0.96,0.96,0.03,0.97,0.71,0.95],"s":0.35,"tok":827},"this person decides what tools the team buys":{"p":[0.08,0.09,0.06,0.51,0.18,0.09,0.16,0.76,0.71,0.08],"s":0.31,"tok":831}}};
-  const UC_CAM = [{"cam":"dock 3","t":"11.03","det":[{"l":"forklift","b":[120,200,340,420],"z":null,"p":null},{"l":"person","b":[700,210,760,430],"z":"walkway","p":null}],"dist":6.4,"alert":0.31,"kind":"routine","kp":{"routine":0.96,"near_miss":0.04,"fall":0},"s":0.91},{"cam":"dock 3","t":"11.07","det":[{"l":"forklift","b":[300,200,520,420],"z":null,"p":null},{"l":"person","b":[560,210,620,430],"z":"loading bay","p":null}],"dist":1.2,"alert":0.83,"kind":"zone_breach","kp":{"zone_breach":0.92,"near_miss":0.07,"routine":0.01},"s":0.32},{"cam":"dock 3","t":"11.10","det":[{"l":"person","b":[200,380,330,440],"z":"walkway","p":"horizontal"}],"dist":null,"alert":0.74,"kind":"fall","kp":{"fall":0.99,"routine":0.01,"zone_breach":0},"s":0.3},{"cam":"aisle 12","t":"11.13","det":[{"l":"smoke","b":[400,0,520,160],"z":null,"p":null},{"l":"shelf","b":[0,100,900,500],"z":null,"p":null}],"dist":null,"alert":0.92,"kind":"fire_smoke","kp":{"fire_smoke":1,"fall":0,"near_miss":0},"s":0.37},{"cam":"aisle 12","t":"11.17","det":[{"l":"person","b":[300,150,360,420],"z":"aisle","p":"upright"},{"l":"pallet","b":[500,300,700,480],"z":null,"p":null}],"dist":null,"alert":0.08,"kind":"routine","kp":{"routine":1,"fire_smoke":0,"zone_breach":0},"s":0.39},{"cam":"dock 3","t":"11.20","det":[{"l":"person","b":[620,190,690,430],"z":"loading bay","p":"upright"}],"dist":null,"alert":0.78,"kind":"zone_breach","kp":{"zone_breach":1,"fire_smoke":0,"near_miss":0},"s":0.31}];
-const UC_TRI = {"n":127,"hold":20,"review":1,"pass":106,"cost":1.06,"seg":{"normal":60,"fraud":21,"smb":26,"enterprise":11,"influencer_affiliate":9},"jev_avg":8.2e-05};
-
+  
   /* real-time 1: the game, seven ticks, one choice each */
   const TS = 24, FL = 196, svg = $('gm-svg'), gmFoot = $('gm-foot'), gmBtns = [...root.querySelectorAll('.gm-btn')];
   const face = (x, y, cls) => `<rect class="${cls}" x="${x}" y="${y}" width="28" height="28" rx="1"/><rect class="eye" x="${x + 7}" y="${y + 10}" width="5" height="5"/><rect class="eye" x="${x + 16}" y="${y + 10}" width="5" height="5"/>`;
@@ -1926,28 +1884,6 @@ const UC_TRI = {"n":127,"hold":20,"review":1,"pass":106,"cost":1.06,"seg":{"norm
   $('gm-replay').onclick = () => { stopAll(); gmPlay(); };
   gmTick(0);
 
-  /* real-time 2: six camera frames, detector output in, verdict out */
-  const frameSvg = f => `<svg viewBox="0 0 900 500" aria-hidden="true">${f.det.map(d => `<rect class="bx ${d.l}" x="${d.b[0]}" y="${d.b[1]}" width="${d.b[2] - d.b[0]}" height="${d.b[3] - d.b[1]}"/>`).join('')}</svg>`;
-  $('cm-strip').innerHTML = UC_CAM.map((f, k) => `<div class="cm-fr" data-k="${k}">${frameSvg(f)}<span class="lb">${f.cam} · ${f.t}</span><span class="al"></span></div>`).join('');
-  let cmSeen = 0;
-  const cmShow = k => {
-    const f = UC_CAM[k];
-    [...$('cm-strip').children].forEach((el, j) => { el.classList.toggle('on', j === k); if (j <= k) el.classList.toggle('alert', UC_CAM[j].alert >= .7); });
-    $('cm-json').textContent = JSON.stringify({ camera: f.cam, t: f.t, detections: f.det.map(d => ({ label: d.l, bbox: d.b, ...(d.z ? { zone: d.z } : {}), ...(d.p ? { posture: d.p } : {}) })), min_person_vehicle_distance_m: f.dist }, null, 1).replace(/\n\s*(\d)/g, ' $1').replace(/\[\s+/g, '[').replace(/\s+\]/g, ']');
-    const g = $('cm-gauge').firstElementChild; g.style.setProperty('--w', Math.round(f.alert * 100) + '%'); g.style.width = Math.round(f.alert * 100) + '%'; g.style.background = f.alert >= .7 ? 'var(--red)' : f.alert >= .35 ? 'var(--amber)' : 'var(--green)';
-    $('cm-kind').innerHTML = Object.entries(f.kp).map(([k2, p], j) => bar(k2, p, j ? '' : f.alert >= .7 ? 'r' : 'g')).join('');
-    $('cm-foot').innerHTML = `alert <b>${f.alert.toFixed(2)}</b> · <b>${f.kind}</b> · ${f.s.toFixed(2)} s`;
-    cmSeen = Math.max(cmSeen, k + 1); $('cm-n').textContent = cmSeen; $('cm-cost').textContent = '$' + (cmSeen * 0.0000236).toFixed(4);
-  };
-  const cmPlay = () => { let k = 0; cmSeen = 0; cmShow(0); every(() => { k = (k + 1) % UC_CAM.length; if (k === 0) [...$('cm-strip').children].forEach(el => el.classList.remove('alert')); cmShow(k); }, 1300); };
-  cmShow(0);
-
-  /* automation: 127 signups routed by the fraud probability */
-  const auPlay = () => {
-    const T = UC_TRI, R = [T.pass, T.review, T.hold]; $('au-n').textContent = '0'; R.forEach((_, j) => $('au-r' + j).textContent = '0'); $('au-seg').innerHTML = '';
-    let n = 0; every(() => { n = Math.min(T.n, n + 3); $('au-n').textContent = n; R.forEach((v, j) => $('au-r' + j).textContent = Math.round(v * n / T.n)); if (n === T.n) { stopAll(); $('au-seg').innerHTML = Object.entries(T.seg).sort((a, b) => b[1] - a[1]).map(([k, v]) => `<span class="${k}" style="flex-grow:${v}"><b>${v}</b> ${k.replace('_', ' / ')}</span>`).join(''); } }, 40);
-  };
-
   /* automation 2: pg-jev, two conditions over the same ten rows */
   const SQL = { 'the name is European': `<b>SELECT</b> name, city, job_title\n<b>FROM</b> people\n<b>WHERE</b> jev(people, <q>'the name is European'</q>);`,
                 'this person decides what tools the team buys': `<b>SELECT</b> name, job_title,\n       jev_prob(people, <q>'this person decides what tools the team buys'</q>) <b>AS</b> p\n<b>FROM</b> people <b>ORDER BY</b> p <b>DESC LIMIT</b> 5;` };
@@ -1964,7 +1900,8 @@ const UC_TRI = {"n":127,"hold":20,"review":1,"pass":106,"cost":1.06,"seg":{"norm
   $('pg-pick').innerHTML = CONDS.map((c, j) => `<button type="button" aria-pressed="${j === 0}">${c}</button>`).join('');
   [...$('pg-pick').children].forEach((b, j) => b.onclick = () => { stopAll(); pgShow(j); });
 
-  function onSlide(k) { stopAll(); if (!seen) return; [gmPlay, cmPlay, () => {}, () => {}, auPlay, () => pgShow(pgCur)][k](); }
+  const vid = $('au-video');
+  function onSlide(k) { stopAll(); vid.pause(); if (!seen) return; [gmPlay, () => {}, () => {}, () => { vid.currentTime = 0; vid.play().catch(() => {}); }, () => pgShow(pgCur)][k](); }
   go(0);
   const io = new IntersectionObserver(es => { if (es.some(e => e.isIntersecting)) { seen = true; onSlide(i); io.disconnect(); } }, { threshold: .25 });
   io.observe(root);
