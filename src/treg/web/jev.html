@@ -855,7 +855,9 @@
   }
   /* pg-jev */
   .pg { display: flex; flex-direction: column; gap: 8px; }
-  .sl-r:has(.pg) { justify-content: flex-start; }
+  .sl-r:has(.pg) { justify-content: flex-start; } .sl-r:has(.sr-pane) { justify-content: flex-start; } .sr-pane .vd { background: var(--card); text-align: center; } .sr-pane .vd video { display: inline-block; width: auto; max-width: 100%; height: 350px; aspect-ratio: 1126 / 720; }
+  .sr-pane .pg { gap: 6px; } .sr-pane .pg-tab td { padding: 2px 10px; } .sr-pane .pg-tab th { padding: 4px 10px; } .sr-pane .pg-sql { font-size: 11px; line-height: 1.5; padding: 8px 14px; }
+  @media (max-width: 860px) { .sr-pane .vd video { height: auto; width: 100%; } }
   .pg-sql { margin: 0; font-family: var(--mono); font-size: 12px; line-height: 1.6; background: var(--ink); color: #EDEBE6; border-radius: 12px; padding: 10px 14px; white-space: pre; overflow-x: auto; } .pg-sql b { color: #F5C542; font-weight: 500; } .pg-sql q { color: #9FD8B4; quotes: none; }
   .pg-tab { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 11.5px; background: #fff; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
   .pg-tab th { text-align: left; font-weight: 500; color: var(--muted); padding: 6px 10px; background: var(--card); border-bottom: 1px solid var(--line); font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase; }
@@ -1536,11 +1538,15 @@ elements:
             <div class="lp2-ol dim">click_target · ignored</div><div class="ig-bars dim"><div class="ig-bar "><span class="k">#3 One way</span><span class="tr"><i style="--w:91%"></i></span><span class="v">0.91</span></div><div class="ig-bar "><span class="k">#8 Search</span><span class="tr"><i style="--w:5%"></i></span><span class="v">0.05</span></div><div class="ig-bar "><span class="k">#4 Departure</span><span class="tr"><i style="--w:4%"></i></span><span class="v">0.04</span></div></div>
             <div class="w3-next"><mark>TYPE_TEXT [4]</mark> → small LLM → <q>"Sep 20, 2026"</q> → browser</div></div>
         </div></div></article>
-      <article class="slide"><div class="sl-l"><span class="sl-n">automation &amp; data · 1 / 2</span><h3>Automation: judge every one, not a sample</h3><p>At a fraction of a cent and under a second, with a <b>confidence</b> on every answer, the business logic goes in the code, and jobs that never paid for a frontier model become a rule that runs on every record.</p><p class="sl-note">borja's SEO audit: internal linking is not writing, it is 8,790 yes/no calls. Does this page have a real reason to link to that one, and is the anchor text already in the copy? Left column jev, right column Claude Opus 5, same queue, same rubric. The signup recipe above is the same shape.</p><a class="pill sm" href="https://x.com/borjafat/status/2101018783976722479" target="_blank" rel="noopener">@borjafat on X ↗</a></div>
+      <article class="slide"><div class="sl-l"><span class="sl-n">automation &amp; data</span><h3>Automation: judge every one, not a sample</h3><p>At a fraction of a cent and under a second, with a <b>confidence</b> on every answer, the business logic goes in the code, and jobs that never paid for a frontier model become a rule that runs on every record.</p><p class="sl-note">borja's SEO audit: internal linking is not writing, it is 8,790 yes/no calls. Does this page have a real reason to link to that one, and is the anchor text already in the copy? Left column jev, right column Claude Opus 5, same queue, same rubric. The signup recipe above is the same shape.</p><a class="pill sm" href="https://x.com/borjafat/status/2101018783976722479" target="_blank" rel="noopener">@borjafat on X ↗</a></div>
         <div class="sl-r"><div class="vd"><video id="au-video" src="media/jev/seo-linking-borjafat.mp4" poster="media/jev/seo-linking-borjafat.jpg" muted loop playsinline preload="metadata" controls></video></div>
         <div class="uc-strip"><span><b>586 pages</b> in 45.1 s</span><span><b>$0.21</b> total</span><span><b>584</b> links placed, 139 pages refused</span><span>Opus 5: <b>21 pages</b>, $1.43</span><span><b>≈ 190×</b> cheaper per page</span><em><a href="https://x.com/borjafat/status/2101018783976722479" target="_blank" rel="noopener">video and figures: @borjafat</a></em></div></div></article>
-      <article class="slide"><div class="sl-l"><span class="sl-n">automation &amp; data · 2 / 2</span><h3>Plain-language SQL with pg-jev</h3><p>pg-jev is a Postgres extension that makes <code>jev()</code> a boolean you can put in a <b>WHERE</b>. Rows stream to jev twenty per request, each with its own yes/no question, so a condition written the way you would say it filters, ranks and groups like any other predicate.</p><p class="sl-note">Its README, 2,000 rows: first run ≈ 3.5 s in 100 requests for ≈ $0.012; the same condition again ≈ 50 ms from cache; LIMIT 3 on a new condition ≈ 0.6 s. Batches of 1–20 rows were 100% correct against ground truth, 40 rows 92–98%, 80 rows 77–94%. On the right, ten rows judged live in that shape.</p><a class="pill sm" href="https://github.com/realZachi/pg-jev" target="_blank" rel="noopener">realZachi/pg-jev ↗</a></div>
-        <div class="sl-r"><div class="pg"><div class="rt-pick" id="pg-pick"></div><pre class="pg-sql" id="pg-sql"></pre><table class="pg-tab" id="pg-tab"></table><div class="ig-foot" id="pg-foot"></div></div></div></article>
+      <article class="slide"><div class="sl-l"><span class="sl-n">search</span><h3>A search model: filters nobody built</h3><p>Search usually means the filters someone indexed in advance. With jev the query is a sentence and every record is judged against it, so you can filter and rank by things no column holds: architecture, renovation status, who actually decides. No index, no embeddings, no vector column.</p><p class="sl-note" id="sr-note"></p><a class="pill sm" id="sr-link" href="#" target="_blank" rel="noopener"></a></div>
+        <div class="sl-r"><div class="rt-pick" id="sr-pick"><button type="button" aria-pressed="true">Zillow listings · @venturetwins</button><button type="button" aria-pressed="false">Postgres · pg-jev</button></div>
+          <div class="sr-pane" data-sr="0"><div class="vd"><video id="sr-video" src="media/jev/zillow-search-venturetwins.mp4" poster="media/jev/zillow-search-venturetwins.jpg" muted loop playsinline preload="metadata" controls></video></div>
+            <div class="uc-strip"><span><b>thousands</b> of listings scanned</span><span><b>&lt; 20 s</b></span><span><b>$0.18</b></span><span>filters: architecture · renovation status · freeway proximity</span><em><a href="https://x.com/venturetwins/status/2101341075684434245" target="_blank" rel="noopener">video and figures: @venturetwins</a></em></div></div>
+          <div class="sr-pane" data-sr="1" hidden><div class="pg"><div class="rt-pick" id="pg-pick"></div><pre class="pg-sql" id="pg-sql"></pre><table class="pg-tab" id="pg-tab"></table><div class="ig-foot" id="pg-foot"></div></div></div>
+        </div></article>
     </div></div>
     <button class="dk-arrow next" aria-label="Next slide"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></button>
     <div class="dk-dots"></div>
@@ -1874,7 +1880,7 @@ const UC_PG = {"rows":[["Matteo Ricci","Bologna","Backend engineer"],["Aiko Tana
   $('gm-replay').onclick = () => { stopAll(); gmPlay(); };
   gmTick(0);
 
-  /* automation 2: pg-jev, two conditions over the same ten rows */
+  /* search: two examples, a community video and pg-jev over ten rows */
   const SQL = { 'the name is European': `<b>SELECT</b> name, city, job_title\n<b>FROM</b> people\n<b>WHERE</b> jev(people, <q>'the name is European'</q>);`,
                 'this person decides what tools the team buys': `<b>SELECT</b> name, job_title,\n       jev_prob(people, <q>'this person decides what tools the team buys'</q>) <b>AS</b> p\n<b>FROM</b> people <b>ORDER BY</b> p <b>DESC LIMIT</b> 5;` };
   const CONDS = Object.keys(SQL); let pgCur = 0;
@@ -1890,8 +1896,13 @@ const UC_PG = {"rows":[["Matteo Ricci","Bologna","Backend engineer"],["Aiko Tana
   $('pg-pick').innerHTML = CONDS.map((c, j) => `<button type="button" aria-pressed="${j === 0}">${c}</button>`).join('');
   [...$('pg-pick').children].forEach((b, j) => b.onclick = () => { stopAll(); pgShow(j); });
 
-  const vid = $('au-video');
-  function onSlide(k) { stopAll(); vid.pause(); if (!seen) return; [gmPlay, () => {}, () => {}, () => { vid.currentTime = 0; vid.play().catch(() => {}); }, () => pgShow(pgCur)][k](); }
+  const vid = $('au-video'), srVid = $('sr-video'); let srCur = 0;
+  const SR = [{ note: "Justine Moore's run: jev scans thousands of Zillow listings and classifies each by things the site has no filter for. Under 20 seconds, $0.18.", link: 'https://x.com/venturetwins/status/2101341075684434245', label: '@venturetwins on X ↗' },
+              { note: "pg-jev makes jev() a boolean you can put in a WHERE; rows stream twenty per request, each with its own yes/no question. Its README, 2,000 rows: first run ≈ 3.5 s in 100 requests for ≈ $0.012, the same condition again ≈ 50 ms from cache, LIMIT 3 ≈ 0.6 s. Batches of 1–20 rows were 100% correct against ground truth. On the right, ten rows judged live in that shape.", link: 'https://github.com/realZachi/pg-jev', label: 'realZachi/pg-jev ↗' }];
+  const srShow = (c, play) => { srCur = c; [...$('sr-pick').children].forEach((b, j) => b.setAttribute('aria-pressed', String(j === c))); root.querySelectorAll('.sr-pane').forEach(pn => pn.hidden = +pn.dataset.sr !== c); $('sr-note').textContent = SR[c].note; $('sr-link').href = SR[c].link; $('sr-link').textContent = SR[c].label; srVid.pause(); if (c === 0) { if (play) { srVid.currentTime = 0; srVid.play().catch(() => {}); } } else pgShow(pgCur); };
+  [...$('sr-pick').children].forEach((b, j) => b.onclick = () => { stopAll(); srShow(j, true); });
+  srShow(0, false);
+  function onSlide(k) { stopAll(); vid.pause(); srVid.pause(); if (!seen) return; [gmPlay, () => {}, () => {}, () => { vid.currentTime = 0; vid.play().catch(() => {}); }, () => srShow(srCur, true)][k](); }
   go(0);
   const io = new IntersectionObserver(es => { if (es.some(e => e.isIntersecting)) { seen = true; onSlide(i); io.disconnect(); } }, { threshold: .25 });
   io.observe(root);
