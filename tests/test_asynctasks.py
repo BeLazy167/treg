@@ -1032,6 +1032,32 @@ def test_basis_derivation_and_settlement_table_vs_usage():
     # The provider's reported cost settles even when it exceeds the reserve (Wan 3.0's minimum).
     assert settlement.settle(cheap, {"terminal": {"usage": {"cost": 0.2125}}}) == 212_500
 
+    # A provider that meters in its own credits settles the reported credits at the rate frozen
+    # into the basis; a sentinel the provider demands (`duration: -1`, auto) is priced by its own
+    # row, so it neither multiplies the rate negative nor turns the ceiling into the bill.
+    credits = {"settle": "usage", "usage": {"path": "usage.credits", "unit": "credit"},
+               "table": [{"when": {"body.resolution": "480p", "body.duration": -1}, "value": 3.558},
+                         {"when": {"body.resolution": "480p"}, "value": 0.1186,
+                          "times": "body.duration", "times_min": 4}],
+               "fallback": {"value": 13.87}}
+    schema = {"body": {"resolution": {"type": "string"},
+                       "duration": {"type": "integer", "min": -1, "max": 30}}}
+    auto = settlement.derive_basis(
+        credits, request={"body": {"resolution": "480p", "duration": -1}}, input_schema=schema,
+        unit_micro=1_000_000, terminal=True, usage_unit_micro=1_000)
+    assert auto["reserve_micro"] == 3_558_000
+    assert settlement.settle(auto, {"terminal": {"usage": {"credits": 712}}}) == 712_000
+    # A declared minimum of -1 never lets zero multiply a rate: the ceiling is held instead.
+    zero = settlement.derive_basis(
+        credits, request={"body": {"resolution": "480p", "duration": 0}}, input_schema=schema,
+        unit_micro=1_000_000, terminal=True, usage_unit_micro=1_000)
+    assert zero["reserve_micro"] == 13_870_000
+    # A credit meter with no frozen rate cannot be priced: the reserve settles, not credits-as-USD.
+    unrated = settlement.derive_basis(
+        credits, request={"body": {"resolution": "480p", "duration": 5}}, input_schema=schema,
+        unit_micro=1_000_000, terminal=True)
+    assert settlement.settle(unrated, {"terminal": {"usage": {"credits": 712}}}) == 593_000
+
     request = settlement.request_evidence(
         [("id", "42"), ("count", "2")], b"{}", path_names={"id"})
     path_table = {"table": [{"when": {"pathParams.id": 42}, "value": 0.01,

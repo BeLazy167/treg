@@ -826,7 +826,10 @@ and image rows replace it whole for `output.image_urls`. PiAPI wraps its task ro
 its OpenAI-shaped `/api/v1/images/generations/async` route answers the bare task object, so those
 two rows override both `id_from` and `expect` (`error.code` 0). PiAPI's `meta.usage` counts
 "points" at ten million per dollar; it is read for the evidence ledger, not settled on, because
-`usd` is the only usage unit the settlement engine accepts.
+points carry no fx rate: the settlement engine accepts `usd` and a provider `credit` priced in
+fx.yaml. reAPI's Seedance rows settle that way, on the terminal body's `usage.credits`, and price
+the provider's `duration: -1` (auto, mandatory when the prompt edits a video reference) with flat
+rows ahead of the per-second rows: thirty seconds at the requested resolution, as a reserve only.
 
 OpenRouter ingest reads `/api/v1/videos/models`, emits one extended row per model on the shared
 `POST /videos` route, and converts duration-based `pricing_skus` into price tables with
@@ -1066,13 +1069,16 @@ ones; the validator rejects a later condition shadowed by an earlier subset, dup
 unknown row/fallback keys, non-finite values, values outside input enum/min/max, and simultaneous
 `cost.value` plus `cost.table`. `fallback` is a hand-written, explained global upper bound, checked
 against every row's maximum computable price. A `times` value outside the field's declared range
-(or non-finite, or non-positive when no minimum is declared) matches no row and prices at the
+(or non-finite, or non-positive) matches no row and prices at the
 fallback, so a request cannot reserve zero or bill past the ceiling. With `settle: table`, the
 matched row is reserved and settled (fallback when unmatched). With `settle: usage`, the matched
 row is reserved as the rate-card estimate and the terminal `usage.path` figure settles, which may
 exceed the reserve (OpenRouter's unpublished minimums); `settle: usage` therefore requires an async
-descriptor, exactly a dotted `usage.path` and a supported `usage.unit`, and `settle: table` rejects
-a stray usage block. The money fragment describes the settlement itself.
+descriptor, exactly a dotted `usage.path` and a supported `usage.unit` (`usd`, or `credit` when
+fx.yaml prices that provider's credit), and `settle: table` rejects a stray usage block. A `times`
+value is never non-positive, whatever minimum the field declares, so a field that admits a sentinel
+such as `-1` cannot multiply a rate by it; the sentinel is priced by a flat row that pins it, and
+that row is left out of the advertised per-second rate span. The money fragment describes the settlement itself.
 
 `value` + `currency` + `per` answer *how much*; `type` + `unit` answer *per what*; `source` +
 `source_url` + `checked` + `confidence` answer *says who, and how sure*. All four questions have to

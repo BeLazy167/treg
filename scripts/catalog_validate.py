@@ -83,7 +83,7 @@ ASYNC_PARAM_LOCATIONS = {"pathParams", "queryParams"}
 JSON_PATH = re.compile(r"(?:[A-Za-z_][A-Za-z0-9_-]*|[0-9]+)(?:\.(?:[A-Za-z_][A-Za-z0-9_-]*|[0-9]+))*")
 # Only the unit real traffic has settled (OpenRouter's `usage.cost` in dollars). A token unit
 # returns with the first metered token-priced listing, together with its fx rule and a live test.
-USAGE_UNITS = {"usd"}
+USAGE_UNITS = {"usd", "credit"}  # credit: the provider's fx.yaml credit_rates_usd rate
 # the section heading an endpoint files under on its platform page — one lowercase word
 DOMAIN = re.compile(r"[a-z][a-z0-9_]*")
 HOST = re.compile(
@@ -280,7 +280,8 @@ def check_platform_auth(ep: dict, where: str, errors: list[str]) -> None:
         fail(errors, where, "platform_auth anonymous cannot create or retrieve shared async resources")
 
 
-def check_cost_table(cost: dict, input_schema: object, where: str, errors: list[str]) -> None:
+def check_cost_table(cost: dict, input_schema: object, where: str, errors: list[str],
+                     provider: str | None = None) -> None:
     """Validate a first-match AIGC price table and its explicit reserve upper bound."""
     table = cost.get("table")
     if not isinstance(table, list) or not table:
@@ -388,6 +389,9 @@ def check_cost_table(cost: dict, input_schema: object, where: str, errors: list[
                 or not isinstance(usage.get("path"), str) or not JSON_PATH.fullmatch(usage["path"]) \
                 or usage.get("unit") not in USAGE_UNITS:
             fail(errors, where, "cost.settle 'usage' requires usage.path and usage.unit")
+        elif usage.get("unit") == "credit" and not _finite_number(_credit_rate(provider)):
+            fail(errors, where, f"usage.unit 'credit' needs a numeric fx.yaml credit_rates_usd entry "
+                                f"for '{provider}'")
     elif usage is not None:
         fail(errors, where, "cost.usage is only valid with settle: usage")
 
@@ -545,8 +549,14 @@ def check_resource_ownership(rule: object, where: str, input_schema: object,
                     fail(errors, where, "each resource_ownership.produces item needs exactly kind and JSON path")
 
 
+def _credit_rate(provider: str | None) -> object:
+    fx = yaml.safe_load((CATALOG / "fx.yaml").read_text()) or {}
+    entry = (fx.get("credit_rates_usd") or {}).get(provider or "")
+    return entry.get("usd") if isinstance(entry, dict) else entry
+
+
 def check_cost(cost: dict, where: str, errors: list[str], warnings: list[str],
-               input_schema: object = None) -> None:
+               input_schema: object = None, provider: str | None = None) -> None:
     """The price block's own rules — the ones that make a figure BILLABLE rather than decorative.
 
     A platform key spends treg's money on a caller's behalf, so every number here has to answer
@@ -630,7 +640,7 @@ def check_cost(cost: dict, where: str, errors: list[str], warnings: list[str],
     if has_table:
         if "value" in cost:
             fail(errors, where, "cost.value and cost.table are mutually exclusive")
-        check_cost_table(cost, input_schema, where, errors)
+        check_cost_table(cost, input_schema, where, errors, provider)
     if (settle := cost.get("settle")) is not None and not has_table \
             and settle not in ("base", "modifiers"):
         fail(errors, where, "cost.settle currently supports only 'base' or 'modifiers'")
@@ -971,7 +981,7 @@ def main(argv: list[str]) -> int:
                 if not isinstance(cost, dict):
                     fail(errors, where, f"cost.type missing or not one of {sorted(COST_TYPES)}")
                 else:
-                    check_cost(cost, where, errors, warnings, inp)
+                    check_cost(cost, where, errors, warnings, inp, provider)
             effective_async = effective_async_descriptor(data.get("async"), ep.get("async"))
             if effective_async is not None:
                 check_async_descriptor(effective_async, where, str(service), endpoint_index,

@@ -316,6 +316,14 @@ def test_cost_table_accepts_subset_rows_times_bounds_and_usage_settlement():
     usage = _valid_table() | {
         "settle": "usage", "usage": {"path": "usage.cost", "unit": "usd"}}
     assert _table_errors(usage) == []
+    # A credit meter is only billable when fx.yaml prices that provider's credit.
+    credit = _valid_table() | {
+        "settle": "usage", "usage": {"path": "usage.credits", "unit": "credit"}}
+    errors: list[str] = []
+    validator.check_cost(credit, "demo.yaml:submit", errors, [], _valid_input(), "reapi")
+    assert errors == []
+    validator.check_cost(credit, "demo.yaml:submit", errors, [], _valid_input(), "no-such-provider")
+    assert any("needs a numeric fx.yaml credit_rates_usd entry" in e for e in errors)
 
 
 @pytest.mark.parametrize(("mutate", "message"), [

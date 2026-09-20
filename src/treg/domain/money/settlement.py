@@ -88,18 +88,20 @@ def _spec_for(input_schema: dict, dotted: str) -> dict:
 
 
 def _bounded_multiplier(value: object, spec: dict) -> float | None:
-    """A `times` value the table may multiply by: a finite number inside the field's declared
-    range (positive when no minimum is declared). Anything else is None - the row does not price
-    that request and the explicit fallback does, so a caller cannot reserve zero with
-    `duration: 0` or bill past the validated ceiling with `duration: 100`."""
+    """A `times` value the table may multiply by: a finite POSITIVE number inside the field's
+    declared range. Anything else is None - the row does not price that request and the explicit
+    fallback does, so a caller cannot reserve zero with `duration: 0` or bill past the validated
+    ceiling with `duration: 100`. Positive holds even when the declared minimum is not: a field
+    that admits a sentinel (Seedance's `-1` auto duration) has it priced by a flat row of its own,
+    never multiplied."""
     if not isinstance(value, (int, float)) or isinstance(value, bool) or not math.isfinite(value):
+        return None
+    if value <= 0:
         return None
     low, high = spec.get("min"), spec.get("max")
     if isinstance(low, (int, float)) and not isinstance(low, bool) and value < low:
         return None
     if isinstance(high, (int, float)) and not isinstance(high, bool) and value > high:
-        return None
-    if not isinstance(low, (int, float)) and value <= 0:
         return None
     return float(value)
 
@@ -122,9 +124,12 @@ def table_amount_micro(cost: dict, request: dict, input_schema: dict, unit_micro
 
 def derive_basis(
     cost: dict, *, request: dict, input_schema: dict, unit_micro: int,
-    terminal: bool, response_estimate_micro: int = 0,
+    terminal: bool, response_estimate_micro: int = 0, usage_unit_micro: int | None = None,
 ) -> dict:
-    """Freeze when and how a reserved call will settle using catalog data only."""
+    """Freeze when and how a reserved call will settle using catalog data only.
+
+    `usage_unit_micro` is the micro-USD worth of one unit of the provider's `usage.path` meter,
+    frozen here so a later fx edit cannot re-price a task already in flight. `usd` needs none."""
     if cost.get("table") or cost.get("settle") == "usage":
         fallback = _micro(float(cost["fallback"]["value"]), unit_micro)
         if cost.get("settle") == "usage":
@@ -133,6 +138,10 @@ def derive_basis(
             # and may exceed the reserve; the ledger takes the difference from the balance, and the
             # next reserve is the gate. reconcile lists every overrun (`async_task_settlement`).
             amount = {"kind": "usage", **dict(cost["usage"])}
+            if amount.get("unit") == "usd":
+                amount["unit_micro"] = 1_000_000
+            elif isinstance(usage_unit_micro, int) and usage_unit_micro > 0:
+                amount["unit_micro"] = usage_unit_micro
             reserve = table_amount_micro(cost, request, input_schema, unit_micro)
         else:
             amount = {"kind": "table", "cost": cost, "input": input_schema,
@@ -169,12 +178,13 @@ def settle(basis: dict, evidence: dict[str, Any]) -> int:
             amount["cost"], amount["request"], amount["input"], int(amount["unit_micro"]))
     if kind == "usage":
         value = usage_evidence(basis, evidence)
-        if value is not None:
-            if amount.get("unit") == "usd":
-                return _micro(float(value), 1_000_000)
-        # A successful task whose terminal response no longer carries the usage field: the caller
-        # got their result, so they pay - the reserve (the rate-card estimate), not the ceiling.
-        # The worker marks the row for review; the provider changed its shape.
+        # Bases frozen before `unit_micro` existed carry only `unit: usd`.
+        per_unit = amount.get("unit_micro") or (1_000_000 if amount.get("unit") == "usd" else None)
+        if value is not None and isinstance(per_unit, int) and per_unit > 0:
+            return _micro(float(value), per_unit)
+        # A successful task whose terminal response no longer carries the usage field (or whose
+        # meter has no frozen rate): the caller got their result, so they pay - the reserve (the
+        # rate-card estimate), not the ceiling. The worker marks the row for review.
         return max(0, int(basis.get("reserve_micro") or 0))
     if kind == "observed":
         observed = evidence.get("observed_micro")
