@@ -851,6 +851,14 @@
   .wf-path.on { border: 1.5px solid var(--ink); background: var(--card); color: var(--ink); } .wf-path.on b, .wf-path.on span { color: var(--ink); } .wf-path.on span { background: #F5C542; padding: 0 5px; border-radius: 4px; }
   .wb2 .ig-foot { margin-top: 10px; }
   .sl-r pre.wf-ascii { margin: 0; font-family: Menlo, Consolas, 'DejaVu Sans Mono', monospace; font-size: 14.5px; line-height: 1.45; white-space: pre; overflow-x: auto; color: var(--ink); background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 22px 20px; } .wf-ascii b { font-weight: 400; color: var(--blue); } .wf-ascii mark { background: #F5C542; color: var(--ink); padding: 1px 3px; border-radius: 3px; }
+  /* web 2: one real request */
+  .w3 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, .95fr); gap: 10px; align-items: stretch; }
+  .w3-c { display: flex; flex-direction: column; min-width: 0; } .w3-c .ig-lab { margin-bottom: 6px; }
+  .sl-r .w3-c pre { flex: 1; font-size: 10.5px; line-height: 1.5; padding: 12px; box-sizing: border-box; } .sl-r .w3-c pre b { color: var(--blue); font-weight: 600; }
+  .w3-ans { border: 1px solid rgba(230,60,180,.35); border-radius: 14px; background: #fff; padding: 12px 14px; gap: 3px; }
+  .w3-ans .ig-bars { gap: 4px; margin-bottom: 8px; } .w3-ans .ig-bar { grid-template-columns: 96px minmax(0,1fr) 32px; font-size: 10.5px; gap: 6px; } .w3-ans .ig-bar .tr { height: 8px; }
+  .w3-ans .dim { opacity: .45; } .w3-ans .lp2-ol b { color: var(--green); text-transform: none; letter-spacing: 0; }
+  .w3-next { margin-top: auto; font-family: var(--mono); font-size: 10.5px; line-height: 1.7; color: var(--ink); border-top: 1px solid var(--line); padding-top: 8px; } .w3-next mark { background: #F5C542; padding: 1px 4px; border-radius: 3px; } .w3-next q { quotes: none; color: var(--blue); }
   /* automation: signups */
   .au { display: flex; flex-direction: column; gap: 10px; }
   .au-flow { display: grid; grid-template-columns: 64px auto auto auto auto auto minmax(0, 1fr); gap: 8px; align-items: center; border: 1px solid var(--line); border-radius: 16px; background: #fff; padding: 14px 16px; font-family: var(--mono); }
@@ -871,6 +879,7 @@
   @media (max-width: 860px) {
     .cm-strip { grid-template-columns: repeat(3, 1fr); } .cm-body { grid-template-columns: 1fr; } .cm-det pre { height: auto; max-height: 140px; } .cm-count { flex-wrap: wrap; gap: 8px 14px; }
     .sl-r pre.wf-ascii { font-size: 8.5px; padding: 12px 8px; }
+    .w3 { grid-template-columns: 1fr; }
     .au-flow { grid-template-columns: 1fr 1fr; } .au-flow > i { display: none; } .au-route { grid-column: 1 / -1; } .au-econ { grid-template-columns: 1fr; }
   }
   /* pg-jev */
@@ -1522,7 +1531,7 @@ if verdict.distribution["paid_promotion"] &gt;= 0.7: lane = "paid"</pre><div cla
             <div class="cm-jev"><div class="ig-lab"><img class="lg" src="logos/jev.png" alt=""> two questions per frame</div><div class="lp2-ol">alert?</div><div class="ig-gauge" id="cm-gauge"><i></i><em style="--x:35%" class="lo"><b>review 0.35</b></em><em style="--x:70%"><b>alert 0.70</b></em></div><div class="lp2-ol">what is it</div><div class="ig-bars" id="cm-kind"></div><div class="ig-foot" id="cm-foot"></div></div></div>
           <div class="cm-count"><span><b id="cm-n">0</b> frames judged</span><span><b id="cm-cost">$0.0000</b> spent</span><span>≈ $0.00002 a frame · <b>1,000 fps ≈ $0.02 / s</b></span></div>
         </div></div></article>
-      <article class="slide"><div class="sl-l"><span class="sl-n">web &amp; computer use</span><h3>Web and computer use</h3><p>browser-use's <b>jev-ultrafast</b> agent never sends a screenshot. It reads the page into a numbered element table and asks jev <b>one request</b>: which operation, plus a target for each kind of operation, all answered at once. It then uses the target that matches. Only a TYPE_TEXT step calls a small LLM, and only for the text itself.</p><p class="sl-note">Their numbers: a one-way Google Flights search end to end in 7.07 s, median 9.45 → 7.09 s across alternating runs, browser protocol calls 1,092 → 101.</p><a class="pill sm" href="https://github.com/browser-use/jev-ultrafast" target="_blank" rel="noopener">browser-use/jev-ultrafast ↗</a></div>
+      <article class="slide"><div class="sl-l"><span class="sl-n">web &amp; computer use · 1 / 2</span><h3>Web and computer use</h3><p>browser-use's <b>jev-ultrafast</b> agent never sends a screenshot. It reads the page into a numbered element table and asks jev <b>one request</b>: which operation, plus a target for each kind of operation, all answered at once. It then uses the target that matches. Only a TYPE_TEXT step calls a small LLM, and only for the text itself.</p><p class="sl-note">Their numbers: a one-way Google Flights search end to end in 7.07 s, median 9.45 → 7.09 s across alternating runs, browser protocol calls 1,092 → 101.</p><a class="pill sm" href="https://github.com/browser-use/jev-ultrafast" target="_blank" rel="noopener">browser-use/jev-ultrafast ↗</a></div>
         <div class="sl-r"><div class="wb2"><div class="ig-lab">how jev-ultrafast takes one step · from its README</div><pre class="wf-ascii">                      one TypeSafe request
                      ┌───────────────────────────┐
 page → element table → <b>operation</b>                 │
@@ -1536,6 +1545,43 @@ page → element table → <b>operation</b>                 │
              <mark>TYPE_TEXT [3]</mark> ────────┘
                        ↓
              small LLM → text → browser</pre></div><div class="uc-strip"><span><b>7.07 s</b> flight search, end to end</span><span><b>1,092 → 101</b> browser calls per task</span><span><b>2.8 s</b> open a Wikipedia article</span><span><b>1.9 s</b> hotel search and filter</span><em>jev-ultrafast README · single runs</em></div></div></article>
+      <article class="slide"><div class="sl-l"><span class="sl-n">web &amp; computer use · 2 / 2</span><h3>One step, one real request</h3><p>The origin, the destination and "One way" are already set. The state is the task, what has been done, and the numbered controls. Three questions go out together; jev answers all of them in <b>0.28 s</b> for <b>$0.00004</b>.</p><p class="sl-note">The operation is TYPE_TEXT, so the agent reads <code>type_text_target</code> and ignores <code>click_target</code>, which cost almost nothing to ask and saved a second round trip. jev stops there: a small LLM writes "Sep 20, 2026" and the browser types it into #4. Our re-creation on a mock page, judged live; jev-ultrafast's own instructions are longer and carry its policy.</p></div>
+        <div class="sl-r"><div class="w3">
+          <div class="w3-c"><div class="ig-lab">1 · state</div><pre>task: "Find one-way flights from
+  Zurich to London on Sep 20, 2026."
+history:
+  TYPE_TEXT #1 "Zurich"
+  TYPE_TEXT #2 "London"
+  CLICK     #3 "One way"
+elements:
+  1 combobox Where from? = "Zurich"
+  2 combobox Where to?   = "London"
+  3 button   One way
+  <b>4 textbox  Departure   = ""</b>
+  6 button   1 passenger
+  7 button   Economy
+  8 button   Search</pre></div>
+          <div class="w3-c"><div class="ig-lab">2 · questions, one request</div><pre>"operation": { "type": "choice",
+  "criteria": { "CLICK", "TYPE_TEXT",
+    "SELECT", "SCROLL_DOWN",
+    "SCROLL_UP", "WAIT", "DONE",
+    "BLOCKED" } }
+
+"click_target": { "type": "choice",
+  "instructions": "If the operation
+    is CLICK, which element?",
+  "criteria": { "1" … "8" } }
+
+"type_text_target": { "type": "choice",
+  "instructions": "If the operation
+    is TYPE_TEXT, which field?",
+  "criteria": { "1", "2", "4" } }</pre></div>
+          <div class="w3-c w3-ans"><div class="ig-lab"><img class="lg" src="logos/jev.png" alt=""> 3 · answers</div>
+            <div class="lp2-ol">operation</div><div class="ig-bars"><div class="ig-bar g"><span class="k">TYPE_TEXT</span><span class="tr"><i style="--w:91%"></i></span><span class="v">0.91</span></div><div class="ig-bar "><span class="k">CLICK</span><span class="tr"><i style="--w:8%"></i></span><span class="v">0.08</span></div><div class="ig-bar "><span class="k">SELECT</span><span class="tr"><i style="--w:1%"></i></span><span class="v">0.01</span></div></div>
+            <div class="lp2-ol">type_text_target <b>· used</b></div><div class="ig-bars"><div class="ig-bar g"><span class="k">#4 Departure</span><span class="tr"><i style="--w:71%"></i></span><span class="v">0.71</span></div><div class="ig-bar "><span class="k">#1 Where from?</span><span class="tr"><i style="--w:27%"></i></span><span class="v">0.27</span></div><div class="ig-bar "><span class="k">#2 Where to?</span><span class="tr"><i style="--w:2%"></i></span><span class="v">0.02</span></div></div>
+            <div class="lp2-ol dim">click_target · ignored</div><div class="ig-bars dim"><div class="ig-bar "><span class="k">#3 One way</span><span class="tr"><i style="--w:91%"></i></span><span class="v">0.91</span></div><div class="ig-bar "><span class="k">#8 Search</span><span class="tr"><i style="--w:5%"></i></span><span class="v">0.05</span></div><div class="ig-bar "><span class="k">#4 Departure</span><span class="tr"><i style="--w:4%"></i></span><span class="v">0.04</span></div></div>
+            <div class="w3-next"><mark>TYPE_TEXT [4]</mark> → small LLM → <q>"Sep 20, 2026"</q> → browser</div></div>
+        </div></div></article>
       <article class="slide"><div class="sl-l"><span class="sl-n">automation &amp; data · 1 / 2</span><h3>Automation: judge every one, not a sample</h3><p>At a fraction of a cent and under a second, with a <b>confidence</b> on every answer, the business logic goes in the code: act above one line, ask a person between, hold below. Things that never paid for a human become a rule that runs on every record.</p><p class="sl-note">The signup demo above: 127 signups, each enriched through treg and judged by jev for segment, fraud and upsell. Every credit farmer was caught before the free credit went out, for less than the credit was worth.</p></div>
         <div class="sl-r"><div class="au">
           <div class="au-flow"><div class="au-n"><b id="au-n">0</b><span>signups</span></div><i>→</i><div class="au-n treg"><svg class="lg" viewBox="0 0 512 512" aria-hidden="true"><rect width="512" height="512" rx="112" fill="#101010"/><rect x="111" y="111" width="140.5" height="140.5" rx="20" fill="#fff"/><rect x="260.5" y="260.5" width="140.5" height="140.5" rx="20" fill="#fff"/></svg><b>treg</b><span>verify · person · company</span><span>≈ $0.008 each</span></div><i>→</i><div class="au-n jev"><img class="lg" src="logos/jev.png" alt=""><b>jev</b><span>segment · is_fraud · upsell</span><span>≈ $0.00008 each</span></div><i>→</i>
@@ -1918,7 +1964,7 @@ const UC_TRI = {"n":127,"hold":20,"review":1,"pass":106,"cost":1.06,"seg":{"norm
   $('pg-pick').innerHTML = CONDS.map((c, j) => `<button type="button" aria-pressed="${j === 0}">${c}</button>`).join('');
   [...$('pg-pick').children].forEach((b, j) => b.onclick = () => { stopAll(); pgShow(j); });
 
-  function onSlide(k) { stopAll(); if (!seen) return; [gmPlay, cmPlay, () => {}, auPlay, () => pgShow(pgCur)][k](); }
+  function onSlide(k) { stopAll(); if (!seen) return; [gmPlay, cmPlay, () => {}, () => {}, auPlay, () => pgShow(pgCur)][k](); }
   go(0);
   const io = new IntersectionObserver(es => { if (es.some(e => e.isIntersecting)) { seen = true; onSlide(i); io.disconnect(); } }, { threshold: .25 });
   io.observe(root);
