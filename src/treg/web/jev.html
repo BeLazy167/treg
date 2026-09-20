@@ -792,6 +792,17 @@
   }
 
 
+  /* ---- can / can't ---- */
+  .cc { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; max-width: 1240px; margin: 0 auto; }
+  .cc-col { border: 1px solid var(--line); border-radius: 20px; background: #fff; padding: 26px 28px 22px; }
+  .cc-tag { display: inline-block; font: 700 22px var(--mono); letter-spacing: .04em; padding: 6px 14px; border-radius: 4px; margin-bottom: 18px; }
+  .can .cc-tag { background: #F5C542; color: var(--ink); } .cant .cc-tag { background: var(--red-soft); color: var(--ink); }
+  .cc-row { display: grid; grid-template-columns: 18px minmax(0, 1fr); gap: 2px 10px; align-items: baseline; padding: 9px 0; border-top: 1px solid var(--line); opacity: 0; transform: translateX(-8px); transition: opacity .4s, transform .4s; }
+  .cc.in .cc-row { opacity: 1; transform: none; }
+  .cc-row b { font: 700 18px var(--mono); line-height: 1; } .can .cc-row b { color: var(--ink); } .cant .cc-row b { color: var(--red); }
+  .cc-row span { font: 500 18px var(--mono); color: var(--ink); letter-spacing: -.01em; } .cc-row s { color: var(--muted); text-decoration-thickness: 2px; text-decoration-color: var(--muted); }
+  .cc-row em { grid-column: 2; font: 400 12px var(--mono); font-style: normal; color: var(--muted); line-height: 1.4; }
+  @media (max-width: 860px) { .cc { grid-template-columns: 1fr; gap: 12px; } .cc-col { padding: 20px 18px 16px; } .cc-row span { font-size: 16px; } .cc-tag { font-size: 18px; } }
   /* ---- where jev shines ---- */
   .uc-strip { display: flex; flex-wrap: wrap; gap: 6px 18px; align-items: baseline; margin-top: 12px; font-family: var(--mono); font-size: 11px; color: var(--muted); }
   .uc-strip b { color: var(--ink); font-weight: 600; font-size: 13px; margin-right: 4px; } .uc-strip em { font-style: normal; margin-left: auto; font-size: 10px; }
@@ -1450,6 +1461,30 @@ if verdict.distribution["paid_promotion"] &gt;= 0.7: lane = "paid"</pre><div cla
   </div>
 </section>
 
+<section class="section learn-sec rv" id="cancant" style="padding-top:70px;padding-bottom:0">
+  <h2>What <img class="lg" src="logos/jev.png" alt=""> jev can, and can't</h2>
+  <p class="lede">It is a judge, not a writer. Everything on the left is a typed question; everything on the right needs a model that generates text, so you pair the two.</p>
+  <div class="cc" id="cc">
+    <div class="cc-col can"><div class="cc-tag">CAN</div>
+      <div class="cc-row"><b>+</b><span>pick an action</span><em>one of your options, a probability on each · the game above</em></div>
+      <div class="cc-row"><b>+</b><span>classify</span><em>billing 0.99 · technical 0.01 · account 0.00</em></div>
+      <div class="cc-row"><b>+</b><span>score / rank</span><em>368 people in 42.8 s, $0.013</em></div>
+      <div class="cc-row"><b>+</b><span>say yes or no</span><em>jailbreak 0.99, four hazards in one call</em></div>
+      <div class="cc-row"><b>+</b><span>route on confidence</span><em>two thresholds in your code, nothing re-run</em></div>
+      <div class="cc-row"><b>+</b><span>read your JSON as it is</span><em>rows, tables, element lists, ticket histories</em></div>
+      <div class="cc-row"><b>+</b><span>at 5 to 7× a chat model's speed</span><em>and 5 to 6× cheaper, our runs · ≈ $20 per million decisions</em></div>
+    </div>
+    <div class="cc-col cant"><div class="cc-tag">CAN'T</div>
+      <div class="cc-row"><b>−</b><span><s>write a sentence</s></span><em>an LLM writes, jev verifies each field</em></div>
+      <div class="cc-row"><b>−</b><span><s>explain itself</s></span><em>the distribution is the explanation: log it</em></div>
+      <div class="cc-row"><b>−</b><span><s>write code</s></span><em>it can judge code: risky change, needs review</em></div>
+      <div class="cc-row"><b>−</b><span><s>reason step by step</s></span><em>you write the steps as questions, it answers all at once</em></div>
+      <div class="cc-row"><b>−</b><span><s>read past ~30k tokens</s></span><em>chunk the state, or summarise first and judge the summary</em></div>
+      <div class="cc-row"><b>−</b><span><s>fetch anything</s></span><em>that is treg: one token, the catalog, then jev decides</em></div>
+    </div>
+  </div>
+</section>
+
 <section class="section learn-sec rv" id="uses" style="padding-top:70px;padding-bottom:0">
   <h2>Where <img class="lg" src="logos/jev.png" alt=""> jev shines</h2>
   <p class="lede">Four places a fast, typed decision changes what you can build. The game, browser and SQL runs below are ours, judged live by jev; the headline figures for jev-ultrafast and pg-jev are from their READMEs.</p>
@@ -1761,6 +1796,9 @@ document.querySelectorAll('.expand-all[data-wrap]').forEach(b => b.onclick = () 
   const deckIO = new IntersectionObserver(es => { if (es.some(e => e.isIntersecting)) { seen = true; slides[i].classList.add('anim'); if (i === 0) race(); deckIO.disconnect(); } }, { threshold: .2 });
   deckIO.observe($('deck'));
 })();
+
+/* can / can't: rows step in as the section scrolls into view */
+(() => { const cc = $('cc'); if (!cc) return; [...cc.querySelectorAll('.cc-row')].forEach((r, k) => r.style.transitionDelay = (k % 7) * 70 + 'ms'); const io = new IntersectionObserver(es => { if (es.some(e => e.isIntersecting)) { cc.classList.add('in'); io.disconnect(); } }, { threshold: .25 }); io.observe(cc); })();
 
 /* where jev shines: a second deck, four live-judged demos */
 (() => {
