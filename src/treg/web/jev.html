@@ -541,17 +541,16 @@
   .scrolly .dk-view { overflow: visible; border: 0; border-radius: 0; background: none; }
   .scrolly .dk-track { transition: none; transform: none !important; }
   @media (min-width: 861px) {
-    #learn { --off: max(8px, calc((100vh - 72px - 640px) / 2)); }   /* header + card are centred as one group */
-    .scrolly .dk-view { margin-top: calc(-1 * (var(--off) + 50px)); }
-    .scrolly .dk-track { position: sticky; top: 72px; height: calc(100vh - 72px); box-sizing: border-box; padding-top: calc(var(--off) + 66px); display: grid; align-items: start; }
-    .scrolly .slide { grid-area: 1 / 1; height: auto; min-height: 560px; max-height: calc(100vh - 72px - 66px - 12px); box-sizing: border-box; background: #fff; border: 1px solid var(--line); border-radius: 20px; padding: 34px 38px;
+    #learn { --hd: 78px; --off: max(6px, calc((100vh - 72px - 560px - var(--hd)) / 2)); }   /* header + card are centred as one group */
+    .scrolly .dk-stage { position: sticky; top: 72px; height: calc(100vh - 72px); box-sizing: border-box; padding-top: var(--off); display: flex; flex-direction: column; }
+    .scrolly .dk-h { margin: 0; height: var(--hd); flex: 0 0 auto; }
+    .scrolly .dk-track { display: grid; align-items: start; }
+    .scrolly .slide { grid-area: 1 / 1; height: auto; min-height: 560px; max-height: calc(100vh - 72px - var(--hd) - 8px); box-sizing: border-box; background: #fff; border: 1px solid var(--line); border-radius: 20px; padding: 34px 38px;
       opacity: 0; visibility: hidden; transform: translateY(26px) scale(.985); transition: opacity .45s, transform .55s cubic-bezier(.2,.8,.2,1), visibility 0s .45s; }
     .scrolly .slide.on { opacity: 1; visibility: visible; transform: none; transition: opacity .45s, transform .55s cubic-bezier(.2,.8,.2,1), visibility 0s; }
     .scrolly .sl-l h3 { font-size: 30px; line-height: 1.08; letter-spacing: -.03em; }
     .scrolly .dk-dots { position: fixed; right: 20px; top: 50%; transform: translateY(-50%); flex-direction: column; gap: 10px; margin: 0; opacity: 0; pointer-events: none; transition: opacity .3s; z-index: 5; }
     .scrolly.pinned .dk-dots { opacity: 1; pointer-events: auto; }
-    #learn > h2 { position: sticky; top: calc(72px + var(--off) + 8px); z-index: 1; line-height: 1.2; font-size: clamp(26px, 2.6vw, 34px); margin: 0; pointer-events: none; }
-    #learn > h2 .lg { width: .95em; height: .95em; }
   }
   @media (max-width: 860px) {
     .scrolly .dk-dots { display: none; }
@@ -995,11 +994,10 @@
 </header>
 
 <!-- ============================================================= the three recipes, as tabs -->
-<section class="section learn-sec" id="learn" style="padding-top:30px;padding-bottom:0">
-  <h2 style="margin-bottom:0">Quick <img class="lg" src="logos/jev.png" alt=""> Jev 101</h2>
+<section class="section learn-sec" id="learn" style="padding-top:60px;padding-bottom:0">
   <div class="deck scrolly" id="deck">
     <button class="dk-arrow prev" id="dk-prev" aria-label="Previous slide"><svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
-    <div class="dk-view"><div class="dk-track" id="dk-track">
+    <div class="dk-view"><div class="dk-stage"><h2 class="dk-h">Quick <img class="lg" src="logos/jev.png" alt=""> Jev 101</h2><div class="dk-track" id="dk-track">
 
       <article class="slide"><div class="sl-l"><span class="sl-n">1 / 4</span><div class="pc-txt" data-pc="0"><h3>jev predicts probabilities, not text</h3><p>Ask a chat model and it <em>writes</em> an answer, one token after another, which your code then has to read. Ask jev and every option you named gets a probability, all at once, summing to one. Same message, same question:</p><p class="sl-note">The numbers are the answer. Your code compares them to a threshold; nothing is parsed, nothing can be made up outside your list.</p><button class="pill sm" type="button" id="ig-replay1"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg> Play again</button></div><div class="pc-txt" data-pc="1" hidden><h3>How a call works</h3><p>One HTTP request. You send a <b>state</b>, any JSON or text you want judged, and a set of <b>questions</b>, each with the answers you would accept. jev sends back one answer per question, keyed by the names you chose.</p><p class="sl-note">That is the whole API. No prompt engineering, no output schema to coerce, no retries for malformed JSON.</p></div></div>
         <div class="sl-r"><div class="qt-tabs pc-tabs" role="tablist"><button type="button" data-pc="0" aria-selected="true">the race: LLM vs Jev</button><button type="button" data-pc="1" aria-selected="false">how a call works</button></div><div class="pc-pane" data-pc="0"><div class="ig-q1"><span class="ig-qlab">state</span>"Our API integration started returning 500 errors on every request about 20 minutes ago, and we can't process any customer orders until this is fixed."<span class="ig-opts"><span class="ig-qlab">question</span>Which team should handle this: billing, technical or sales?</span></div><div class="ig-vs">
@@ -1111,7 +1109,7 @@ usage: 428 tokens in · $0.000018</pre></div></div></div></div></article>
   ]
 }</pre></div><div class="qt-ans"><div class="ig-lab">answer</div><div class="ig-bars"><div class="ig-bar "><span class="k">0 clearly manipulated</span><span class="tr"><i style="--w:1%"></i></span><span class="v">0.01</span></div><div class="ig-bar "><span class="k">1 suspicious</span><span class="tr"><i style="--w:6%"></i></span><span class="v">0.06</span></div><div class="ig-bar a"><span class="k">2 probably organic</span><span class="tr"><i style="--w:19%"></i></span><span class="v">0.19</span></div><div class="ig-bar g"><span class="k">3 clearly organic</span><span class="tr"><i style="--w:74%"></i></span><span class="v">0.74</span></div></div><div class="ig-ans">→ score <b>2.67</b> · 0.01×0 + 0.06×1 + 0.19×2 + 0.74×3</div><p class="qt-why">Mass leans hard on "clearly organic" with a fifth left on "probably": the rates are ordinary, but 10× more views than followers is unusual for a personal account. The score of 2.67 carries that hesitation; a hard label would have thrown it away. From the launch radar above, judged live.</p></div></div>
         </div></article>
-    </div></div>
+    </div></div></div>
     <button class="dk-arrow next" id="dk-next" aria-label="Next slide"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></button>
     <div class="dk-dots" id="dk-dots"></div>
   </div>
@@ -1826,7 +1824,7 @@ document.querySelectorAll('.expand-all[data-wrap]').forEach(b => b.onclick = () 
   $('deck').addEventListener('keydown', e => { if (e.key === 'ArrowRight') go(i + 1); if (e.key === 'ArrowLeft') go(i - 1); });
   let x0 = null; track.addEventListener('touchstart', e => { x0 = e.touches[0].clientX; }, { passive: true }); track.addEventListener('touchend', e => { if (x0 == null) return; const dx = e.changedTouches[0].clientX - x0; if (Math.abs(dx) > 40) go(i + (dx < 0 ? 1 : -1)); x0 = null; });
   if (scrolly && matchMedia('(min-width: 861px)').matches) {   // on the page: the stage pins and scroll moves through the slides
-    const deck = $('deck'), view = track.parentElement, NAV = 72; let cur = -1;
+    const deck = $('deck'), view = track.closest('.dk-view'), NAV = 72; let cur = -1;
     view.style.height = slides.length * 100 + 'vh';
     const show = idx => { if (idx === cur) return; cur = idx; slides.forEach((sl, k2) => sl.classList.toggle('on', k2 === idx)); slides[idx].classList.add('anim'); [...dots.children].forEach((d, k2) => d.setAttribute('aria-current', String(k2 === idx))); if (idx < 1) { seen = true; race(); } };
     const span = () => view.offsetHeight - (innerHeight - NAV);
