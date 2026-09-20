@@ -565,9 +565,10 @@
   /* merged first slide: tabs pick the race or the call anatomy */
   .sl-r:has(.pc-tabs) { justify-content: flex-start; } .pc-tabs { align-self: flex-start; } .sl-r .pc-pane .ig-step pre { font-size: 10.5px; padding: 12px 14px; }
   /* can / can't as a slide */
-  .cc-slide { grid-template-columns: minmax(0, 250px) minmax(0, 1fr); }
-  .cc-slide .cc { gap: 12px; max-width: none; } .cc-slide .cc-col { padding: 16px 18px 10px; border-radius: 16px; } .cc-slide .cc-tag { font-size: 15px; padding: 4px 10px; margin-bottom: 8px; }
-  .cc-slide .cc-row { padding: 5px 0; grid-template-columns: 14px minmax(0,1fr); gap: 1px 8px; } .cc-slide .cc-row span { font-size: 14px; } .cc-slide .cc-row em { font-size: 10.5px; line-height: 1.35; } .cc-slide .cc-row b { font-size: 14px; }
+  .cc-slide { grid-template-columns: minmax(0, 270px) minmax(0, 1fr); }
+  .cc-slide .sl-r { justify-content: stretch; } .cc-slide .cc { gap: 14px; max-width: none; flex: 1; align-items: stretch; }
+  .cc-slide .cc-col { padding: 18px 22px 8px; border-radius: 16px; display: flex; flex-direction: column; } .cc-slide .cc-tag { align-self: flex-start; font-size: 17px; padding: 5px 12px; margin-bottom: 10px; }
+  .cc-slide .cc-row { flex: 1; align-content: center; padding: 6px 0; grid-template-columns: 16px minmax(0,1fr); gap: 2px 10px; } .cc-slide .cc-row span { font-size: 15.5px; } .cc-slide .cc-row em { font-size: 11.5px; line-height: 1.35; } .cc-slide .cc-row b { font-size: 15px; }
   @media (max-width: 860px) { .cc-slide .cc-row span { font-size: 15px; } .cc-slide .cc-row em { font-size: 11.5px; } }
 
   /* ---- deck infographics ---- */
@@ -995,8 +996,8 @@
     <button class="dk-arrow prev" id="dk-prev" aria-label="Previous slide"><svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
     <div class="dk-view"><div class="dk-track" id="dk-track">
 
-      <article class="slide"><div class="sl-l"><span class="sl-n">1 / 6</span><div class="pc-txt" data-pc="0"><h3>jev predicts probabilities, not text</h3><p>Ask a chat model and it <em>writes</em> an answer, one token after another, which your code then has to read. Ask jev and every option you named gets a probability, all at once, summing to one. Same message, same question:</p><p class="sl-note">The numbers are the answer. Your code compares them to a threshold; nothing is parsed, nothing can be made up outside your list.</p><button class="pill sm" type="button" id="ig-replay1"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg> Play again</button></div><div class="pc-txt" data-pc="1" hidden><h3>How a call works</h3><p>One HTTP request. You send a <b>state</b>, any JSON or text you want judged, and a set of <b>questions</b>, each with the answers you would accept. jev sends back one answer per question, keyed by the names you chose.</p><p class="sl-note">That is the whole API. No prompt engineering, no output schema to coerce, no retries for malformed JSON.</p></div></div>
-        <div class="sl-r"><div class="qt-tabs pc-tabs" role="tablist"><button type="button" data-pc="0" aria-selected="true">the race</button><button type="button" data-pc="1" aria-selected="false">how a call works</button></div><div class="pc-pane" data-pc="0"><div class="ig-q1"><span class="ig-qlab">state</span>"Our API integration started returning 500 errors on every request about 20 minutes ago, and we can't process any customer orders until this is fixed."<span class="ig-opts"><span class="ig-qlab">question</span>Which team should handle this: billing, technical or sales?</span></div><div class="ig-vs">
+      <article class="slide"><div class="sl-l"><span class="sl-n">1 / 3</span><div class="pc-txt" data-pc="0"><h3>jev predicts probabilities, not text</h3><p>Ask a chat model and it <em>writes</em> an answer, one token after another, which your code then has to read. Ask jev and every option you named gets a probability, all at once, summing to one. Same message, same question:</p><p class="sl-note">The numbers are the answer. Your code compares them to a threshold; nothing is parsed, nothing can be made up outside your list.</p><button class="pill sm" type="button" id="ig-replay1"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg> Play again</button></div><div class="pc-txt" data-pc="1" hidden><h3>How a call works</h3><p>One HTTP request. You send a <b>state</b>, any JSON or text you want judged, and a set of <b>questions</b>, each with the answers you would accept. jev sends back one answer per question, keyed by the names you chose.</p><p class="sl-note">That is the whole API. No prompt engineering, no output schema to coerce, no retries for malformed JSON.</p></div></div>
+        <div class="sl-r"><div class="qt-tabs pc-tabs" role="tablist"><button type="button" data-pc="0" aria-selected="true">the race: LLM vs Jev</button><button type="button" data-pc="1" aria-selected="false">how a call works</button></div><div class="pc-pane" data-pc="0"><div class="ig-q1"><span class="ig-qlab">state</span>"Our API integration started returning 500 errors on every request about 20 minutes ago, and we can't process any customer orders until this is fixed."<span class="ig-opts"><span class="ig-qlab">question</span>Which team should handle this: billing, technical or sales?</span></div><div class="ig-vs">
           <div class="ig-col llm"><div class="ig-lab">chat model</div><div class="ig-bubble" id="ig-llm"><span class="cur"></span></div><div class="ig-time" id="ig-llm-time">0.0 s</div><div class="ig-foot" id="ig-llm-foot">writing…</div></div>
           <div class="ig-col jev"><div class="ig-lab"><img class="lg" src="logos/jev.png" alt=""> jev</div><div class="ig-bars"><div class="ig-bar g"><span class="k">technical</span><span class="tr"><i style="--w:100%"></i></span><span class="v">1.00</span></div><div class="ig-bar "><span class="k">billing</span><span class="tr"><i style="--w:0%"></i></span><span class="v">0.00</span></div><div class="ig-bar "><span class="k">sales</span><span class="tr"><i style="--w:0%"></i></span><span class="v">0.00</span></div></div><div class="ig-time g" id="ig-jev-time">0.38 s</div><div class="ig-foot" id="ig-jev-foot">0 output tokens · confidence 1.00 · $0.000018</div></div>
         </div></div><div class="pc-pane" data-pc="1" hidden><div class="ig-flow"><div class="ig-step"><div class="ig-lab">1 · state</div><pre>"Our API integration started returning 500
@@ -1026,9 +1027,9 @@
 }
 
 usage: 428 tokens in · $0.000018</pre></div></div></div></div></article>
-      <article class="slide"><div class="sl-l"><span class="sl-n">2 / 6</span><h3>Much faster and cheaper than the cheapest LLM</h3><p>We sent the same three support questions to jev and to GPT-5.6 Luna, the cheapest chat model we could find, with real support tickets padding the input from 2k to 200k tokens. Where both run, jev is <b>5 to 6× cheaper</b> and <b>5 to 7× faster</b>, and its time barely moves with input because it never writes.</p><p class="sl-note">jev stops at about 30k of its own tokens; above that you split the state. Luna's time is dominated by writing ~80 output tokens, so it sits at 2 to 4 s whatever you send. TypeSafe's own workflow demo claims far more (193.6× faster, 444.6× cheaper); these are our numbers.</p></div>
+      <article class="slide"><div class="sl-l"><span class="sl-n">2 / 3</span><h3>Much faster and cheaper than the cheapest LLM</h3><p>We sent the same three support questions to jev and to GPT-5.6 Luna, the cheapest chat model we could find, with real support tickets padding the input from 2k to 200k tokens. Where both run, jev is <b>5 to 6× cheaper</b> and <b>5 to 7× faster</b>, and its time barely moves with input because it never writes.</p><p class="sl-note">jev stops at about 30k of its own tokens; above that you split the state. Luna's time is dominated by writing ~80 output tokens, so it sits at 2 to 4 s whatever you send. TypeSafe's own workflow demo claims far more (193.6× faster, 444.6× cheaper); these are our numbers.</p></div>
         <div class="sl-r"><div class="ig-charts"><div class="ig-chart"><div class="ig-lab">cost per call</div><div class="ig-crow"><span class="k">2k</span><span class="tr"><i class="g" style="--w:1.6%"></i><i style="--w:2.8%"></i></span><span class="v">1.7×</span></div><div class="ig-crow"><span class="k">8k</span><span class="tr"><i class="g" style="--w:4.9%"></i><i style="--w:28.4%"></i></span><span class="v">5.8×</span></div><div class="ig-crow"><span class="k">16k</span><span class="tr"><i class="g" style="--w:9.0%"></i><i style="--w:51.7%"></i></span><span class="v">5.8×</span></div><div class="ig-crow"><span class="k">32k</span><span class="tr"><i class="g" style="--w:17.5%"></i><i style="--w:99.9%"></i></span><span class="v">5.7×</span></div></div><div class="ig-chart"><div class="ig-lab">time per call</div><div class="ig-crow"><span class="k">2k</span><span class="tr"><i class="g" style="--w:13.9%"></i><i style="--w:97.9%"></i></span><span class="v">7.0×</span></div><div class="ig-crow"><span class="k">8k</span><span class="tr"><i class="g" style="--w:14.3%"></i><i style="--w:83.9%"></i></span><span class="v">5.9×</span></div><div class="ig-crow"><span class="k">16k</span><span class="tr"><i class="g" style="--w:14.3%"></i><i style="--w:87.9%"></i></span><span class="v">6.1×</span></div><div class="ig-crow"><span class="k">32k</span><span class="tr"><i class="g" style="--w:18.2%"></i><i style="--w:81.8%"></i></span><span class="v">4.5×</span></div></div><div class="ig-legend"><span><i class="g"></i>jev</span><span><i></i>GPT-5.6 Luna</span></div></div><table class="sl-tab cmp"><thead><tr><th>input</th><th colspan="2"><img class="lg" src="logos/jev.png" alt=""> jev</th><th colspan="2">GPT-5.6 Luna</th></tr></thead><tbody><tr><td>2k</td><td class="g">$0.0000755</td><td class="g">0.39 s</td><td>$0.0001299</td><td>2.74 s</td></tr><tr><td>8k</td><td class="g">$0.0002248</td><td class="g">0.40 s</td><td>$0.0013071</td><td>2.35 s</td></tr><tr><td>16k</td><td class="g">$0.0004122</td><td class="g">0.40 s</td><td>$0.0023791</td><td>2.46 s</td></tr><tr><td>32k</td><td class="g">$0.0008031</td><td class="g">0.51 s</td><td>$0.0045953</td><td>2.29 s</td></tr><tr><td>34k</td><td class="dim">over limit</td><td class="dim"></td><td>$0.0080371</td><td>3.59 s</td></tr><tr><td>100k</td><td class="dim">over limit</td><td class="dim"></td><td>$0.0233656</td><td>3.03 s</td></tr><tr><td>200k</td><td class="dim">over limit</td><td class="dim"></td><td>$0.0467147</td><td>3.89 s</td></tr></tbody></table><div class="ig-foot">real English support tickets from a public dataset · cost as billed by OpenRouter · single runs</div></div></article>
-      <article class="slide cc-slide"><div class="sl-l"><span class="sl-n">3 / 6</span><h3>What jev can, and can't</h3><p>It is a judge, not a writer. Everything on the left is a typed question; everything on the right needs a model that generates text, so you pair the two.</p></div>
+      <article class="slide cc-slide"><div class="sl-l"><span class="sl-n">3 / 3</span><h3>What jev can, and can't</h3><p>It is a judge, not a writer. Everything on the left is a typed question; everything on the right needs a model that generates text, so you pair the two.</p></div>
         <div class="sl-r"><div class="cc" id="cc">
     <div class="cc-col can"><div class="cc-tag">CAN</div>
       <div class="cc-row"><b>+</b><span>pick an action</span><em>one of your options, a probability on each · the game further down</em></div>
@@ -1046,10 +1047,101 @@ usage: 428 tokens in · $0.000018</pre></div></div></div></div></article>
       <div class="cc-row"><b>−</b><span><s>reason step by step</s></span><em>you write the steps as questions, it answers all at once</em></div>
       <div class="cc-row"><b>−</b><span><s>read past ~30k tokens</s></span><em>chunk the state, or summarise first and judge the summary</em></div>
       <div class="cc-row"><b>−</b><span><s>fetch anything</s></span><em>that is treg: one token, the catalog, then jev decides</em></div>
+      <div class="cc-row"><b>−</b><span><s>remember the last call</s></span><em>every request is stateless: put the history in the state</em></div>
     </div>
   </div></div></article>
+    </div></div>
+    <button class="dk-arrow next" id="dk-next" aria-label="Next slide"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></button>
+    <div class="dk-dots" id="dk-dots"></div>
+  </div>
+</section>
 
-      <article class="slide"><div class="sl-l"><span class="sl-n">4 / 6</span><h3>Three kinds of question</h3><p>Every jev question is one of three types, and you can send several in one call. Each returns a full distribution, not just a label, so a close call looks different from a sure one.</p><p class="sl-note"><b>choice</b> picks one of your options and tells you how close it was. <b>noul</b> is a yes/no as a probability, with a playbook for each side when the line is subtle. <b>score</b> is a position on your ordered rubric: the probability on every level plus their weighted mean.</p><p class="sl-note">All three are real answers from our runs.</p></div>
+<section class="section learn-sec rv" id="uses" style="padding-top:70px;padding-bottom:0">
+  <h2>Where <img class="lg" src="logos/jev.png" alt=""> jev shines</h2>
+  <p class="lede">Four places a fast, typed decision changes what you can build. The game, browser and SQL runs below are ours, judged live by jev; the headline figures for jev-ultrafast and pg-jev are from their READMEs.</p>
+  <div class="deck" id="deck2" tabindex="0" aria-roledescription="carousel">
+    <button class="dk-arrow prev" aria-label="Previous slide"><svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
+    <div class="dk-view"><div class="dk-track">
+      <article class="slide"><div class="sl-l"><span class="sl-n">real-time decisions · 1 / 2</span><h3>Real-time decisions: a game loop</h3><p>A game only ever has a handful of inputs. That is a <b>choice</b> question with the buttons as options, so jev answers it as a distribution every tick: nothing to parse, nothing invented outside the set, and fast enough to sit inside the loop.</p><p class="sl-note">Seven ticks of a small side-scroller, each judged live by jev from the game state: positions, ammo, the pit, the exit. About 0.35 s and $0.00002 a decision. A chat model writing "I would press jump" took 2.7 s in the race at the top.</p><button class="pill sm" type="button" id="gm-replay"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg> Play again</button></div>
+        <div class="sl-r"><div class="gm">
+          <div class="gm-frame"><div class="gm-h"><b>GAME</b><span>state in, action out, every tick</span></div><svg class="gm-svg" id="gm-svg" viewBox="0 0 600 250" aria-hidden="true"></svg></div>
+          <div class="gm-acts"><div class="ig-lab">action set · fixed</div><div class="gm-btn" data-a="LEFT"><span>LEFT</span><em></em><i></i></div><div class="gm-btn" data-a="RIGHT"><span>RIGHT</span><em></em><i></i></div><div class="gm-btn" data-a="JUMP"><span>JUMP</span><em></em><i></i></div><div class="gm-btn" data-a="SHOOT"><span>SHOOT</span><em></em><i></i></div></div>
+          <div class="gm-foot" id="gm-foot"></div>
+        </div></div></article>
+      <article class="slide"><div class="sl-l"><span class="sl-n">real-time decisions · 2 / 2</span><h3>Real-time decisions: a page that picks itself</h3><p>A decision fast enough to run <b>while the page loads</b>. Bryant Chou's Ploy reads a site's conversion data and enriched visitors, forms hypotheses per audience segment, and at load time jev selects the copy and the design for each part of the page for that visitor, then tracks the result and improves the hypotheses.</p><p class="sl-note">His figure: the selection takes 25 ms, with no real impact on LCP. Each section is a choice among variants you wrote, so nothing is generated on the fly and nothing off-brand can appear.</p><a class="pill sm" href="https://x.com/bryantchou/status/2101485995669770522" target="_blank" rel="noopener">@bryantchou on X ↗</a></div>
+        <div class="sl-r"><div class="vd rt"><video id="rt-video" src="media/jev/realtime-site-bryantchou.mp4" poster="media/jev/realtime-site-bryantchou.jpg" muted loop playsinline preload="metadata" controls></video></div>
+        <div class="uc-strip"><span><b>25 ms</b> per page load</span><span><b>no real impact</b> on LCP</span><span>copy <b>and</b> design, per section, per segment</span><span>results tracked in real time</span><em><a href="https://x.com/bryantchou/status/2101485995669770522" target="_blank" rel="noopener">video and figures: @bryantchou</a></em></div></div></article>
+      <article class="slide"><div class="sl-l"><span class="sl-n">web &amp; computer use</span><h3>Web and computer use</h3><p>browser-use's <b>jev-ultrafast</b> agent never sends a screenshot. It reads the page into a numbered element table and asks jev <b>one request</b>: which operation, plus a target for each kind of operation, all answered at once. It then uses the target that matches. Only a TYPE_TEXT step calls a small LLM, and only for the text itself.</p><p class="sl-note" id="wu-note"></p><a class="pill sm" href="https://github.com/browser-use/jev-ultrafast" target="_blank" rel="noopener">browser-use/jev-ultrafast ↗</a></div>
+        <div class="sl-r"><div class="rt-pick" id="wu-pick"><button type="button" aria-pressed="true">how it works</button><button type="button" aria-pressed="false">one real request</button></div><div class="wu-pane" data-wu="0"><div class="wb2"><div class="ig-lab">how jev-ultrafast takes one step · from its README</div><pre class="wf-ascii">                      one TypeSafe request
+                     ┌───────────────────────────┐
+page → element table → <b>operation</b>                 │
+                     │ <b>click_target</b>              │
+                     │ <b>type_text_target</b>          │
+                     │ <b>select_target</b>, if present │
+                     └─────────────┬─────────────┘
+                        use the matching target
+                                   │
+                 <mark>CLICK [7]</mark> ────────┼──→ browser
+             <mark>TYPE_TEXT [3]</mark> ────────┘
+                       ↓
+             small LLM → text → browser</pre></div><div class="uc-strip"><span><b>7.07 s</b> flight search, end to end</span><span><b>1,092 → 101</b> browser calls per task</span><span><b>2.8 s</b> open a Wikipedia article</span><span><b>1.9 s</b> hotel search and filter</span><em>jev-ultrafast README · single runs</em></div></div><div class="wu-pane" data-wu="1" hidden><div class="w3">
+          <div class="w3-c"><div class="ig-lab">1 · state</div><pre>task: "Find one-way flights from
+  Zurich to London on Sep 20, 2026."
+history:
+  TYPE_TEXT #1 "Zurich"
+  TYPE_TEXT #2 "London"
+  CLICK     #3 "One way"
+elements:
+  1 combobox Where from? = "Zurich"
+  2 combobox Where to?   = "London"
+  3 button   One way
+  <b>4 textbox  Departure   = ""</b>
+  6 button   1 passenger
+  7 button   Economy
+  8 button   Search</pre></div>
+          <div class="w3-c"><div class="ig-lab">2 · questions, one request</div><pre>"operation": { "type": "choice",
+  "criteria": { "CLICK", "TYPE_TEXT",
+    "SELECT", "SCROLL_DOWN",
+    "SCROLL_UP", "WAIT", "DONE",
+    "BLOCKED" } }
+
+"click_target": { "type": "choice",
+  "instructions": "If the operation
+    is CLICK, which element?",
+  "criteria": { "1" … "8" } }
+
+"type_text_target": { "type": "choice",
+  "instructions": "If the operation
+    is TYPE_TEXT, which field?",
+  "criteria": { "1", "2", "4" } }</pre></div>
+          <div class="w3-c w3-ans"><div class="ig-lab"><img class="lg" src="logos/jev.png" alt=""> 3 · answers</div>
+            <div class="lp2-ol">operation</div><div class="ig-bars"><div class="ig-bar g"><span class="k">TYPE_TEXT</span><span class="tr"><i style="--w:91%"></i></span><span class="v">0.91</span></div><div class="ig-bar "><span class="k">CLICK</span><span class="tr"><i style="--w:8%"></i></span><span class="v">0.08</span></div><div class="ig-bar "><span class="k">SELECT</span><span class="tr"><i style="--w:1%"></i></span><span class="v">0.01</span></div></div>
+            <div class="lp2-ol">type_text_target <b>· used</b></div><div class="ig-bars"><div class="ig-bar g"><span class="k">#4 Departure</span><span class="tr"><i style="--w:71%"></i></span><span class="v">0.71</span></div><div class="ig-bar "><span class="k">#1 Where from?</span><span class="tr"><i style="--w:27%"></i></span><span class="v">0.27</span></div><div class="ig-bar "><span class="k">#2 Where to?</span><span class="tr"><i style="--w:2%"></i></span><span class="v">0.02</span></div></div>
+            <div class="lp2-ol dim">click_target · ignored</div><div class="ig-bars dim"><div class="ig-bar "><span class="k">#3 One way</span><span class="tr"><i style="--w:91%"></i></span><span class="v">0.91</span></div><div class="ig-bar "><span class="k">#8 Search</span><span class="tr"><i style="--w:5%"></i></span><span class="v">0.05</span></div><div class="ig-bar "><span class="k">#4 Departure</span><span class="tr"><i style="--w:4%"></i></span><span class="v">0.04</span></div></div>
+            <div class="w3-next"><mark>TYPE_TEXT [4]</mark> → small LLM → <q>"Sep 20, 2026"</q> → browser</div></div>
+        </div></div></div></article>
+      <article class="slide"><div class="sl-l"><span class="sl-n">automation &amp; data</span><h3>Automation: judge every one, not a sample</h3><p>At a fraction of a cent and under a second, with a <b>confidence</b> on every answer, the business logic goes in the code, and jobs that never paid for a frontier model become a rule that runs on every record.</p><p class="sl-note">borja's SEO audit: internal linking is not writing, it is 8,790 yes/no calls. Does this page have a real reason to link to that one, and is the anchor text already in the copy? Left column jev, right column Claude Opus 5, same queue, same rubric. The signup recipe below is the same shape.</p><a class="pill sm" href="https://x.com/borjafat/status/2101018783976722479" target="_blank" rel="noopener">@borjafat on X ↗</a></div>
+        <div class="sl-r"><div class="vd"><video id="au-video" src="media/jev/seo-linking-borjafat.mp4" poster="media/jev/seo-linking-borjafat.jpg" muted loop playsinline preload="metadata" controls></video></div>
+        <div class="uc-strip"><span><b>586 pages</b> in 45.1 s</span><span><b>$0.21</b> total</span><span><b>584</b> links placed, 139 pages refused</span><span>Opus 5: <b>21 pages</b>, $1.43</span><span><b>≈ 190×</b> cheaper per page</span><em><a href="https://x.com/borjafat/status/2101018783976722479" target="_blank" rel="noopener">video and figures: @borjafat</a></em></div></div></article>
+      <article class="slide"><div class="sl-l"><span class="sl-n">search</span><h3>A search model: filters nobody built</h3><p>Search usually means the filters someone indexed in advance. With jev the query is a sentence and every record is judged against it, so you can filter and rank by things no column holds: architecture, renovation status, who actually decides. No index, no embeddings, no vector column.</p><p class="sl-note" id="sr-note"></p><a class="pill sm" id="sr-link" href="#" target="_blank" rel="noopener"></a></div>
+        <div class="sl-r"><div class="rt-pick" id="sr-pick"><button type="button" aria-pressed="true">Zillow listings · @venturetwins</button><button type="button" aria-pressed="false">Postgres · pg-jev</button></div>
+          <div class="sr-pane" data-sr="0"><div class="vd"><video id="sr-video" src="media/jev/zillow-search-venturetwins.mp4" poster="media/jev/zillow-search-venturetwins.jpg" muted loop playsinline preload="metadata" controls></video></div>
+            <div class="uc-strip"><span><b>thousands</b> of listings scanned</span><span><b>&lt; 20 s</b></span><span><b>$0.18</b></span><span>filters: architecture · renovation status · freeway proximity</span><em><a href="https://x.com/venturetwins/status/2101341075684434245" target="_blank" rel="noopener">video and figures: @venturetwins</a></em></div></div>
+          <div class="sr-pane" data-sr="1" hidden><div class="pg"><div class="rt-pick" id="pg-pick"></div><pre class="pg-sql" id="pg-sql"></pre><table class="pg-tab" id="pg-tab"></table><div class="ig-foot" id="pg-foot"></div></div></div>
+        </div></article>
+    </div></div>
+    <button class="dk-arrow next" aria-label="Next slide"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></button>
+    <div class="dk-dots"></div>
+  </div>
+</section>
+
+<section class="section learn-sec rv" id="guide" style="padding-top:70px;padding-bottom:0">
+  <h2>Implementation guide for Jevelopers</h2>
+  <p class="lede">The three things to know before you write your first request: the question types, how to act on the numbers, and how to steer the answer. Use ← → to move.</p>
+  <div class="deck" id="deck3" tabindex="0" aria-roledescription="carousel">
+    <button class="dk-arrow prev" aria-label="Previous slide"><svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
+    <div class="dk-view"><div class="dk-track">
+      <article class="slide"><div class="sl-l"><span class="sl-n">1 / 3</span><h3>Three kinds of question</h3><p>Every jev question is one of three types, and you can send several in one call. Each returns a full distribution, not just a label, so a close call looks different from a sure one.</p><p class="sl-note"><b>choice</b> picks one of your options and tells you how close it was. <b>noul</b> is a yes/no as a probability, with a playbook for each side when the line is subtle. <b>score</b> is a position on your ordered rubric: the probability on every level plus their weighted mean.</p><p class="sl-note">All three are real answers from our runs.</p></div>
         <div class="sl-r"><div class="qt-tabs" role="tablist"><button role="tab" aria-selected="true" data-qt="choice">choice</button><button role="tab" aria-selected="false" data-qt="noul">noul</button><button role="tab" aria-selected="false" data-qt="score">score</button></div>
           <div class="qt-pane" data-qt="choice"><div class="qt-req"><div class="ig-lab">state · a support enquiry</div><pre class="st wrap">"The export button double-charged my credits, so my invoice is wrong this month."</pre><div class="ig-lab">question</div><pre>"department": {
   "type": "choice",
@@ -1106,7 +1198,7 @@ usage: 428 tokens in · $0.000018</pre></div></div></div></div></article>
 }</pre></div><div class="qt-ans"><div class="ig-lab">answer</div><div class="ig-bars"><div class="ig-bar "><span class="k">0 clearly manipulated</span><span class="tr"><i style="--w:1%"></i></span><span class="v">0.01</span></div><div class="ig-bar "><span class="k">1 suspicious</span><span class="tr"><i style="--w:6%"></i></span><span class="v">0.06</span></div><div class="ig-bar a"><span class="k">2 probably organic</span><span class="tr"><i style="--w:19%"></i></span><span class="v">0.19</span></div><div class="ig-bar g"><span class="k">3 clearly organic</span><span class="tr"><i style="--w:74%"></i></span><span class="v">0.74</span></div></div><div class="ig-ans">→ score <b>2.67</b> · 0.01×0 + 0.06×1 + 0.19×2 + 0.74×3</div><p class="qt-why">Mass leans hard on "clearly organic" with a fifth left on "probably": the rates are ordinary, but 10× more views than followers is unusual for a personal account. The score of 2.67 carries that hesitation; a hard label would have thrown it away. From the launch radar above, judged live.</p></div></div>
         </div></article>
 
-      <article class="slide"><div class="sl-l"><span class="sl-n">5 / 6</span><h3>Route based on confidence</h3><p>jev hands back probabilities; your code owns the decision. In TypeSafe's guardrail cookbook the whole policy is two thresholds and a map from hazard to action. Pick a message and watch it walk the tree.</p><p class="sl-note">One jev call per message, four hazard nouls plus a severity score, about $0.00002. Edit the two numbers and the same assessments route differently, nothing is re-run.</p><pre class="rt-code">review_threshold = 0.35
+      <article class="slide"><div class="sl-l"><span class="sl-n">2 / 3</span><h3>Route based on confidence</h3><p>jev hands back probabilities; your code owns the decision. In TypeSafe's guardrail cookbook the whole policy is two thresholds and a map from hazard to action. Pick a message and watch it walk the tree.</p><p class="sl-note">One jev call per message, four hazard nouls plus a severity score, about $0.00002. Edit the two numbers and the same assessments route differently, nothing is re-run.</p><pre class="rt-code">review_threshold = 0.35
 action_threshold = 0.70
 severity_block   = 2.0
 action = { jailbreak: block, harmful: block,
@@ -1131,7 +1223,7 @@ action = { jailbreak: block, harmful: block,
 </svg>
         <div class="ig-foot" id="rt-foot"></div></div></article>
 
-      <article class="slide"><div class="sl-l"><span class="sl-n">6 / 6</span><h3>Tips for steering jev</h3><p>There is no system prompt. Everything you would say in one goes into the question itself, and every field that takes text also takes structure: <code>instructions</code>, each option under <code>criteria</code>, each level of a score. jev reads the keys as well as the values.</p><p class="sl-note"><b>Shapes</b> shows the same question written three ways. <b>Effect</b> keeps one message and changes only the instructions; the numbers are from our notebook, single runs.</p><p class="sl-note">Name keys for what they hold and put the steering in the value. When two labels overlap in plain language, give each option a <code>what</code>, a <code>not_for</code> and <code>examples</code>.</p></div>
+      <article class="slide"><div class="sl-l"><span class="sl-n">3 / 3</span><h3>Tips for steering jev</h3><p>There is no system prompt. Everything you would say in one goes into the question itself, and every field that takes text also takes structure: <code>instructions</code>, each option under <code>criteria</code>, each level of a score. jev reads the keys as well as the values.</p><p class="sl-note"><b>Shapes</b> shows the same question written three ways. <b>Effect</b> keeps one message and changes only the instructions; the numbers are from our notebook, single runs.</p><p class="sl-note">Name keys for what they hold and put the steering in the value. When two labels overlap in plain language, give each option a <code>what</code>, a <code>not_for</code> and <code>examples</code>.</p></div>
         <div class="sl-r"><div class="qt-tabs st-tabs" role="tablist"><button role="tab" aria-selected="true" data-st="shapes">shapes</button><button role="tab" aria-selected="false" data-st="effect">effect</button></div>
           <div class="st-pane" data-st="shapes"><div class="sh-grid">
             <div class="sh-card"><div class="st-name">1 · a string</div><pre>"department": {
@@ -1173,10 +1265,9 @@ action = { jailbreak: block, harmful: block,
   "zzq": "Route to whoever must fix
           the root cause." }</pre></div><div class="st-r"><div class="st-bars"><div class="ig-bar g"><span class="k">billing</span><span class="tr"><i style="--w:56%"></i></span><span class="v">0.56</span></div><div class="ig-bar "><span class="k">technical</span><span class="tr"><i style="--w:44%"></i></span><span class="v">0.44</span></div></div><div class="st-why">moves less: the key name is read too</div></div></div></div></div>
         </div></article>
-
     </div></div>
-    <button class="dk-arrow next" id="dk-next" aria-label="Next slide"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></button>
-    <div class="dk-dots" id="dk-dots"></div>
+    <button class="dk-arrow next" aria-label="Next slide"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></button>
+    <div class="dk-dots"></div>
   </div>
 </section>
 
@@ -1510,85 +1601,6 @@ action = { jailbreak: block, harmful: block,
   </div>
 </section>
 
-<section class="section learn-sec rv" id="uses" style="padding-top:70px;padding-bottom:0">
-  <h2>Where <img class="lg" src="logos/jev.png" alt=""> jev shines</h2>
-  <p class="lede">Four places a fast, typed decision changes what you can build. The game, browser and SQL runs below are ours, judged live by jev; the headline figures for jev-ultrafast and pg-jev are from their READMEs.</p>
-  <div class="deck" id="deck2" tabindex="0" aria-roledescription="carousel">
-    <button class="dk-arrow prev" aria-label="Previous slide"><svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
-    <div class="dk-view"><div class="dk-track">
-      <article class="slide"><div class="sl-l"><span class="sl-n">real-time decisions · 1 / 2</span><h3>Real-time decisions: a game loop</h3><p>A game only ever has a handful of inputs. That is a <b>choice</b> question with the buttons as options, so jev answers it as a distribution every tick: nothing to parse, nothing invented outside the set, and fast enough to sit inside the loop.</p><p class="sl-note">Seven ticks of a small side-scroller, each judged live by jev from the game state: positions, ammo, the pit, the exit. About 0.35 s and $0.00002 a decision. A chat model writing "I would press jump" took 2.7 s in the race at the top.</p><button class="pill sm" type="button" id="gm-replay"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg> Play again</button></div>
-        <div class="sl-r"><div class="gm">
-          <div class="gm-frame"><div class="gm-h"><b>GAME</b><span>state in, action out, every tick</span></div><svg class="gm-svg" id="gm-svg" viewBox="0 0 600 250" aria-hidden="true"></svg></div>
-          <div class="gm-acts"><div class="ig-lab">action set · fixed</div><div class="gm-btn" data-a="LEFT"><span>LEFT</span><em></em><i></i></div><div class="gm-btn" data-a="RIGHT"><span>RIGHT</span><em></em><i></i></div><div class="gm-btn" data-a="JUMP"><span>JUMP</span><em></em><i></i></div><div class="gm-btn" data-a="SHOOT"><span>SHOOT</span><em></em><i></i></div></div>
-          <div class="gm-foot" id="gm-foot"></div>
-        </div></div></article>
-      <article class="slide"><div class="sl-l"><span class="sl-n">real-time decisions · 2 / 2</span><h3>Real-time decisions: a page that picks itself</h3><p>A decision fast enough to run <b>while the page loads</b>. Bryant Chou's Ploy reads a site's conversion data and enriched visitors, forms hypotheses per audience segment, and at load time jev selects the copy and the design for each part of the page for that visitor, then tracks the result and improves the hypotheses.</p><p class="sl-note">His figure: the selection takes 25 ms, with no real impact on LCP. Each section is a choice among variants you wrote, so nothing is generated on the fly and nothing off-brand can appear.</p><a class="pill sm" href="https://x.com/bryantchou/status/2101485995669770522" target="_blank" rel="noopener">@bryantchou on X ↗</a></div>
-        <div class="sl-r"><div class="vd rt"><video id="rt-video" src="media/jev/realtime-site-bryantchou.mp4" poster="media/jev/realtime-site-bryantchou.jpg" muted loop playsinline preload="metadata" controls></video></div>
-        <div class="uc-strip"><span><b>25 ms</b> per page load</span><span><b>no real impact</b> on LCP</span><span>copy <b>and</b> design, per section, per segment</span><span>results tracked in real time</span><em><a href="https://x.com/bryantchou/status/2101485995669770522" target="_blank" rel="noopener">video and figures: @bryantchou</a></em></div></div></article>
-      <article class="slide"><div class="sl-l"><span class="sl-n">web &amp; computer use</span><h3>Web and computer use</h3><p>browser-use's <b>jev-ultrafast</b> agent never sends a screenshot. It reads the page into a numbered element table and asks jev <b>one request</b>: which operation, plus a target for each kind of operation, all answered at once. It then uses the target that matches. Only a TYPE_TEXT step calls a small LLM, and only for the text itself.</p><p class="sl-note" id="wu-note"></p><a class="pill sm" href="https://github.com/browser-use/jev-ultrafast" target="_blank" rel="noopener">browser-use/jev-ultrafast ↗</a></div>
-        <div class="sl-r"><div class="rt-pick" id="wu-pick"><button type="button" aria-pressed="true">how it works</button><button type="button" aria-pressed="false">one real request</button></div><div class="wu-pane" data-wu="0"><div class="wb2"><div class="ig-lab">how jev-ultrafast takes one step · from its README</div><pre class="wf-ascii">                      one TypeSafe request
-                     ┌───────────────────────────┐
-page → element table → <b>operation</b>                 │
-                     │ <b>click_target</b>              │
-                     │ <b>type_text_target</b>          │
-                     │ <b>select_target</b>, if present │
-                     └─────────────┬─────────────┘
-                        use the matching target
-                                   │
-                 <mark>CLICK [7]</mark> ────────┼──→ browser
-             <mark>TYPE_TEXT [3]</mark> ────────┘
-                       ↓
-             small LLM → text → browser</pre></div><div class="uc-strip"><span><b>7.07 s</b> flight search, end to end</span><span><b>1,092 → 101</b> browser calls per task</span><span><b>2.8 s</b> open a Wikipedia article</span><span><b>1.9 s</b> hotel search and filter</span><em>jev-ultrafast README · single runs</em></div></div><div class="wu-pane" data-wu="1" hidden><div class="w3">
-          <div class="w3-c"><div class="ig-lab">1 · state</div><pre>task: "Find one-way flights from
-  Zurich to London on Sep 20, 2026."
-history:
-  TYPE_TEXT #1 "Zurich"
-  TYPE_TEXT #2 "London"
-  CLICK     #3 "One way"
-elements:
-  1 combobox Where from? = "Zurich"
-  2 combobox Where to?   = "London"
-  3 button   One way
-  <b>4 textbox  Departure   = ""</b>
-  6 button   1 passenger
-  7 button   Economy
-  8 button   Search</pre></div>
-          <div class="w3-c"><div class="ig-lab">2 · questions, one request</div><pre>"operation": { "type": "choice",
-  "criteria": { "CLICK", "TYPE_TEXT",
-    "SELECT", "SCROLL_DOWN",
-    "SCROLL_UP", "WAIT", "DONE",
-    "BLOCKED" } }
-
-"click_target": { "type": "choice",
-  "instructions": "If the operation
-    is CLICK, which element?",
-  "criteria": { "1" … "8" } }
-
-"type_text_target": { "type": "choice",
-  "instructions": "If the operation
-    is TYPE_TEXT, which field?",
-  "criteria": { "1", "2", "4" } }</pre></div>
-          <div class="w3-c w3-ans"><div class="ig-lab"><img class="lg" src="logos/jev.png" alt=""> 3 · answers</div>
-            <div class="lp2-ol">operation</div><div class="ig-bars"><div class="ig-bar g"><span class="k">TYPE_TEXT</span><span class="tr"><i style="--w:91%"></i></span><span class="v">0.91</span></div><div class="ig-bar "><span class="k">CLICK</span><span class="tr"><i style="--w:8%"></i></span><span class="v">0.08</span></div><div class="ig-bar "><span class="k">SELECT</span><span class="tr"><i style="--w:1%"></i></span><span class="v">0.01</span></div></div>
-            <div class="lp2-ol">type_text_target <b>· used</b></div><div class="ig-bars"><div class="ig-bar g"><span class="k">#4 Departure</span><span class="tr"><i style="--w:71%"></i></span><span class="v">0.71</span></div><div class="ig-bar "><span class="k">#1 Where from?</span><span class="tr"><i style="--w:27%"></i></span><span class="v">0.27</span></div><div class="ig-bar "><span class="k">#2 Where to?</span><span class="tr"><i style="--w:2%"></i></span><span class="v">0.02</span></div></div>
-            <div class="lp2-ol dim">click_target · ignored</div><div class="ig-bars dim"><div class="ig-bar "><span class="k">#3 One way</span><span class="tr"><i style="--w:91%"></i></span><span class="v">0.91</span></div><div class="ig-bar "><span class="k">#8 Search</span><span class="tr"><i style="--w:5%"></i></span><span class="v">0.05</span></div><div class="ig-bar "><span class="k">#4 Departure</span><span class="tr"><i style="--w:4%"></i></span><span class="v">0.04</span></div></div>
-            <div class="w3-next"><mark>TYPE_TEXT [4]</mark> → small LLM → <q>"Sep 20, 2026"</q> → browser</div></div>
-        </div></div></div></article>
-      <article class="slide"><div class="sl-l"><span class="sl-n">automation &amp; data</span><h3>Automation: judge every one, not a sample</h3><p>At a fraction of a cent and under a second, with a <b>confidence</b> on every answer, the business logic goes in the code, and jobs that never paid for a frontier model become a rule that runs on every record.</p><p class="sl-note">borja's SEO audit: internal linking is not writing, it is 8,790 yes/no calls. Does this page have a real reason to link to that one, and is the anchor text already in the copy? Left column jev, right column Claude Opus 5, same queue, same rubric. The signup recipe above is the same shape.</p><a class="pill sm" href="https://x.com/borjafat/status/2101018783976722479" target="_blank" rel="noopener">@borjafat on X ↗</a></div>
-        <div class="sl-r"><div class="vd"><video id="au-video" src="media/jev/seo-linking-borjafat.mp4" poster="media/jev/seo-linking-borjafat.jpg" muted loop playsinline preload="metadata" controls></video></div>
-        <div class="uc-strip"><span><b>586 pages</b> in 45.1 s</span><span><b>$0.21</b> total</span><span><b>584</b> links placed, 139 pages refused</span><span>Opus 5: <b>21 pages</b>, $1.43</span><span><b>≈ 190×</b> cheaper per page</span><em><a href="https://x.com/borjafat/status/2101018783976722479" target="_blank" rel="noopener">video and figures: @borjafat</a></em></div></div></article>
-      <article class="slide"><div class="sl-l"><span class="sl-n">search</span><h3>A search model: filters nobody built</h3><p>Search usually means the filters someone indexed in advance. With jev the query is a sentence and every record is judged against it, so you can filter and rank by things no column holds: architecture, renovation status, who actually decides. No index, no embeddings, no vector column.</p><p class="sl-note" id="sr-note"></p><a class="pill sm" id="sr-link" href="#" target="_blank" rel="noopener"></a></div>
-        <div class="sl-r"><div class="rt-pick" id="sr-pick"><button type="button" aria-pressed="true">Zillow listings · @venturetwins</button><button type="button" aria-pressed="false">Postgres · pg-jev</button></div>
-          <div class="sr-pane" data-sr="0"><div class="vd"><video id="sr-video" src="media/jev/zillow-search-venturetwins.mp4" poster="media/jev/zillow-search-venturetwins.jpg" muted loop playsinline preload="metadata" controls></video></div>
-            <div class="uc-strip"><span><b>thousands</b> of listings scanned</span><span><b>&lt; 20 s</b></span><span><b>$0.18</b></span><span>filters: architecture · renovation status · freeway proximity</span><em><a href="https://x.com/venturetwins/status/2101341075684434245" target="_blank" rel="noopener">video and figures: @venturetwins</a></em></div></div>
-          <div class="sr-pane" data-sr="1" hidden><div class="pg"><div class="rt-pick" id="pg-pick"></div><pre class="pg-sql" id="pg-sql"></pre><table class="pg-tab" id="pg-tab"></table><div class="ig-foot" id="pg-foot"></div></div></div>
-        </div></article>
-    </div></div>
-    <button class="dk-arrow next" aria-label="Next slide"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></button>
-    <div class="dk-dots"></div>
-  </div>
-</section>
-
 <section class="section learn-sec rv" id="built" style="padding-top:70px;padding-bottom:0">
   <h2>What people are building with <img class="lg" src="logos/jev.png" alt=""> jev</h2>
   <p class="lede">Runs shared in public, in their authors' own words and numbers. Built something? Post it and tag <a href="https://x.com/treg_ai" target="_blank" rel="noopener">@treg_ai</a>.</p>
@@ -1836,6 +1848,24 @@ document.querySelectorAll('.expand-all[data-wrap]').forEach(b => b.onclick = () 
 /* can / can't: rows step in as the section scrolls into view */
 (() => { const cc = $('cc'); if (!cc) return; [...cc.querySelectorAll('.cc-row')].forEach((r, k) => r.style.transitionDelay = (k % 7) * 70 + 'ms'); const io = new IntersectionObserver(es => { if (es.some(e => e.isIntersecting)) { cc.classList.add('in'); io.disconnect(); } }, { threshold: .25 }); io.observe(cc); })();
 
+/* implementation guide: a plain carousel; its slides' own widgets are wired by the explainer script above */
+(() => {
+  const root = $('deck3'); if (!root) return;
+  const track = root.querySelector('.dk-track'), slides = [...track.children], dots = root.querySelector('.dk-dots'); let i = 0;
+  dots.innerHTML = slides.map((_, k) => `<button type="button" aria-label="Slide ${k + 1}"></button>`).join('');
+  const go = k => { i = (k + slides.length) % slides.length; track.style.transform = `translateX(-${i * 100}%)`; slides.forEach((sl, k2) => sl.classList.toggle('on', k2 === i)); [...dots.children].forEach((d, k2) => d.setAttribute('aria-current', String(k2 === i))); };
+  [...dots.children].forEach((d, k) => d.onclick = () => go(k));
+  root.querySelector('.dk-arrow.prev').onclick = () => go(i - 1); root.querySelector('.dk-arrow.next').onclick = () => go(i + 1);
+  let x0 = null; track.addEventListener('touchstart', e => { x0 = e.touches[0].clientX; }, { passive: true }); track.addEventListener('touchend', e => { if (x0 == null) return; const dx = e.changedTouches[0].clientX - x0; if (Math.abs(dx) > 40) go(i + (dx < 0 ? 1 : -1)); x0 = null; });
+  go(0);
+})();
+/* ← → move whichever carousel is on screen */
+document.addEventListener('keydown', e => {
+  if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight' || e.target.matches('input, textarea, select') || e.metaKey || e.ctrlKey || e.altKey) return;
+  const mid = innerHeight / 2, deck = [...document.querySelectorAll('#deck2, #deck3')].find(d => { const r = d.getBoundingClientRect(); return r.top < mid && r.bottom > mid; });
+  if (deck) { e.preventDefault(); deck.querySelector(e.key === 'ArrowRight' ? '.dk-arrow.next' : '.dk-arrow.prev').click(); }
+});
+
 /* where jev shines: a second deck, five live-judged demos */
 (() => {
   const root = $('deck2'); if (!root) return;
@@ -1844,7 +1874,6 @@ document.querySelectorAll('.expand-all[data-wrap]').forEach(b => b.onclick = () 
   const go = k => { i = (k + slides.length) % slides.length; track.style.transform = `translateX(-${i * 100}%)`; slides.forEach((sl, k2) => sl.classList.toggle('on', k2 === i)); [...dots.children].forEach((d, k2) => d.setAttribute('aria-current', String(k2 === i))); onSlide(i); };
   [...dots.children].forEach((d, k) => d.onclick = () => go(k));
   root.querySelector('.dk-arrow.prev').onclick = () => go(i - 1); root.querySelector('.dk-arrow.next').onclick = () => go(i + 1);
-  root.addEventListener('keydown', e => { if (e.key === 'ArrowRight') go(i + 1); if (e.key === 'ArrowLeft') go(i - 1); });
   let x0 = null; track.addEventListener('touchstart', e => { x0 = e.touches[0].clientX; }, { passive: true }); track.addEventListener('touchend', e => { if (x0 == null) return; const dx = e.changedTouches[0].clientX - x0; if (Math.abs(dx) > 40) go(i + (dx < 0 ? 1 : -1)); x0 = null; });
   const timers = []; const later = (f, ms) => timers.push(setTimeout(f, ms)); const every = (f, ms) => timers.push(setInterval(f, ms));
   const stopAll = () => { while (timers.length) { const t = timers.pop(); clearTimeout(t); clearInterval(t); } };
