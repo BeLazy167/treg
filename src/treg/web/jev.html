@@ -536,22 +536,30 @@
   @media (max-width: 860px) { .slide { grid-template-columns: 1fr; padding: 22px 20px; height: auto; } .slide .sl-r { overflow: visible; } .dk-track { align-items: flex-start; } .dk-track .slide:not(.on) { visibility: hidden; height: 0; padding-top: 0; padding-bottom: 0; overflow: hidden; } .dk-arrow.prev { left: 6px; } .dk-arrow.next { right: 6px; } .g-row { grid-template-columns: 90px minmax(0,1fr) 100px; } .loop { flex-wrap: wrap; } }
 
 
-  /* ---- explainer as page sections: one header per slide, revealed on scroll ---- */
-  .scrolly .dk-arrow, .scrolly .dk-dots, .scrolly .sl-n { display: none; }
+  /* ---- explainer on the page: a pinned stage, one slide per screen of scroll (stacked sections on phones) ---- */
+  .scrolly .dk-arrow, .scrolly .sl-n { display: none; }
   .scrolly .dk-view { overflow: visible; border: 0; border-radius: 0; background: none; }
-  .scrolly .dk-track { display: block; transition: none; transform: none !important; }
-  .scrolly .slide { display: block; height: auto; padding: 110px 0 0; opacity: 0; transform: translateY(28px); transition: opacity .7s, transform .7s cubic-bezier(.2,.8,.2,1); }
-  .scrolly .slide.on { opacity: 1; transform: none; }
-  .scrolly .slide:first-child { padding-top: 50px; }
-  .scrolly .sl-l { max-width: 780px; margin: 0 auto 32px; text-align: center; }
-  .scrolly .sl-l h3 { font-family: var(--display); font-weight: 600; font-size: clamp(30px, 4.2vw, 46px); line-height: 1.05; letter-spacing: -.035em; margin: 0 0 16px; }
-  .scrolly .sl-l p { font-size: 17px; line-height: 1.5; color: var(--muted); margin: 0 auto 10px; max-width: 680px; } .scrolly .sl-l p b { color: var(--ink); font-weight: 500; }
-  .scrolly .slide .sl-note { font-size: 13.5px; max-width: 640px; }
-  .scrolly .sl-l pre { display: inline-block; text-align: left; } .scrolly .sl-l .pill { margin-top: 6px; }
-  .scrolly .sl-r { border: 1px solid var(--line); border-radius: 20px; background: #fff; padding: 30px 34px; overflow: visible; }
+  .scrolly .dk-track { transition: none; transform: none !important; }
+  @media (min-width: 861px) {
+    .scrolly .dk-track { position: sticky; top: 72px; height: calc(100vh - 72px); display: grid; align-items: center; }
+    .scrolly .slide { grid-area: 1 / 1; height: auto; min-height: 560px; max-height: calc(100vh - 110px); box-sizing: border-box; background: #fff; border: 1px solid var(--line); border-radius: 20px; padding: 34px 38px;
+      opacity: 0; visibility: hidden; transform: translateY(26px) scale(.985); transition: opacity .45s, transform .55s cubic-bezier(.2,.8,.2,1), visibility 0s .45s; }
+    .scrolly .slide.on { opacity: 1; visibility: visible; transform: none; transition: opacity .45s, transform .55s cubic-bezier(.2,.8,.2,1), visibility 0s; }
+    .scrolly .sl-l h3 { font-size: 30px; line-height: 1.08; letter-spacing: -.03em; }
+    .scrolly .dk-dots { position: fixed; right: 20px; top: 50%; transform: translateY(-50%); flex-direction: column; gap: 10px; margin: 0; opacity: 0; pointer-events: none; transition: opacity .3s; z-index: 5; }
+    .scrolly.pinned .dk-dots { opacity: 1; pointer-events: auto; }
+  }
   @media (max-width: 860px) {
-    .scrolly .dk-track .slide:not(.on) { visibility: visible; height: auto; padding: 70px 0 0; overflow: visible; }
-    .scrolly .slide { padding: 70px 0 0; } .scrolly .sl-l h3 { font-size: 28px; } .scrolly .sl-l p { font-size: 15px; } .scrolly .sl-r { padding: 18px 16px; }
+    .scrolly .dk-dots { display: none; }
+    .scrolly .dk-track { display: block; }
+    .scrolly .dk-track .slide, .scrolly .dk-track .slide:not(.on) { display: block; visibility: visible; height: auto; overflow: visible; padding: 70px 0 0; opacity: 0; transform: translateY(28px); transition: opacity .7s, transform .7s cubic-bezier(.2,.8,.2,1); }
+    .scrolly .dk-track .slide.on { opacity: 1; transform: none; }
+    .scrolly .slide:first-child { padding-top: 30px; }
+    .scrolly .sl-l { margin: 0 auto 24px; text-align: center; }
+    .scrolly .sl-l h3 { font-family: var(--display); font-weight: 600; font-size: 28px; line-height: 1.05; letter-spacing: -.035em; margin: 0 0 14px; }
+    .scrolly .sl-l p { font-size: 15px; line-height: 1.5; color: var(--muted); margin: 0 auto 10px; } .scrolly .sl-l p b { color: var(--ink); font-weight: 500; }
+    .scrolly .sl-l pre { display: inline-block; text-align: left; } .scrolly .sl-l .pill { margin-top: 6px; }
+    .scrolly .sl-r { border: 1px solid var(--line); border-radius: 20px; background: #fff; padding: 18px 16px; overflow: visible; }
   }
 
   /* ---- deck infographics ---- */
@@ -974,7 +982,7 @@
 </header>
 
 <!-- ============================================================= the three recipes, as tabs -->
-<section class="section learn-sec" id="learn" style="padding-top:0;padding-bottom:60px">
+<section class="section learn-sec" id="learn" style="padding-top:0;padding-bottom:0">
   <div class="deck scrolly" id="deck">
     <button class="dk-arrow prev" id="dk-prev" aria-label="Previous slide"><svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
     <div class="dk-view"><div class="dk-track" id="dk-track">
@@ -1800,8 +1808,18 @@ document.querySelectorAll('.expand-all[data-wrap]').forEach(b => b.onclick = () 
   $('dk-prev').onclick = () => go(i - 1); $('dk-next').onclick = () => go(i + 1);
   $('deck').addEventListener('keydown', e => { if (e.key === 'ArrowRight') go(i + 1); if (e.key === 'ArrowLeft') go(i - 1); });
   let x0 = null; track.addEventListener('touchstart', e => { x0 = e.touches[0].clientX; }, { passive: true }); track.addEventListener('touchend', e => { if (x0 == null) return; const dx = e.changedTouches[0].clientX - x0; if (Math.abs(dx) > 40) go(i + (dx < 0 ? 1 : -1)); x0 = null; });
-  if (scrolly) {   // on the page every slide is its own section: it wakes up when scrolled to, and stays
-    const slideIO = new IntersectionObserver(es => es.forEach(e => { if (!e.isIntersecting) return; const idx = slides.indexOf(e.target); e.target.classList.add('on', 'anim'); slideIO.unobserve(e.target); if (idx < 1) { seen = true; race(); } }), { threshold: .3 });
+  if (scrolly && matchMedia('(min-width: 861px)').matches) {   // on the page: the stage pins and scroll moves through the slides
+    const deck = $('deck'), view = track.parentElement, NAV = 72; let cur = -1;
+    view.style.height = slides.length * 100 + 'vh';
+    const show = idx => { if (idx === cur) return; cur = idx; slides.forEach((sl, k2) => sl.classList.toggle('on', k2 === idx)); slides[idx].classList.add('anim'); [...dots.children].forEach((d, k2) => d.setAttribute('aria-current', String(k2 === idx))); if (idx < 1) { seen = true; race(); } };
+    const span = () => view.offsetHeight - (innerHeight - NAV);
+    const tick = () => { const r = view.getBoundingClientRect(); deck.classList.toggle('pinned', r.top <= NAV + 1 && r.bottom >= innerHeight - 1); if (r.top > innerHeight * .7) return; show(Math.min(slides.length - 1, Math.max(0, Math.floor((NAV - r.top) / span() * slides.length)))); };
+    [...dots.children].forEach((d, k) => d.onclick = () => scrollTo({ top: view.getBoundingClientRect().top + scrollY - NAV + span() * (k + .5) / slides.length, behavior: reduced ? 'auto' : 'smooth' }));
+    addEventListener('scroll', tick, { passive: true }); addEventListener('resize', tick); tick();
+    return;
+  }
+  if (scrolly) {   // phones: every slide is its own section, revealed when scrolled to
+    const slideIO = new IntersectionObserver(es => es.forEach(e => { if (!e.isIntersecting) return; const idx = slides.indexOf(e.target); e.target.classList.add('on', 'anim'); slideIO.unobserve(e.target); if (idx < 1) { seen = true; race(); } }), { threshold: .2 });
     slides.forEach(sl => slideIO.observe(sl));
     return;
   }
