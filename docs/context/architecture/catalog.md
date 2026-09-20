@@ -1340,7 +1340,7 @@ successor must be a different, existing, live catalog id. A marked id is therefo
 not an alias chain or a route treg will still spend against.
 
 The marker is not TikHub-specific, and the provider does not have to answer 404 for a row to be
-dead. `lusha.x.decision-makers` (2026-09-09) is the second shape: Lusha removed
+dead. `lusha.x.decision-makers` (2026-09-19) is the second shape: Lusha removed
 `POST /v3/contacts/decision-makers` on 2026-08-12 in favour of `/v3/contacts/buying-group`, the only
 operation that accepts `contactsLimit` and `personas` - but a legacy handler kept answering
 companies-only bodies on the old path and rejected the cap parameter with a 400. A route that still
