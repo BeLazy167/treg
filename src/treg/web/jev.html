@@ -541,14 +541,16 @@
   .scrolly .dk-view { overflow: visible; border: 0; border-radius: 0; background: none; }
   .scrolly .dk-track { transition: none; transform: none !important; }
   @media (min-width: 861px) {
-    .scrolly .dk-track { position: sticky; top: 72px; height: calc(100vh - 72px); display: grid; align-items: center; }
-    .scrolly .slide { grid-area: 1 / 1; height: auto; min-height: 560px; max-height: calc(100vh - 110px); box-sizing: border-box; background: #fff; border: 1px solid var(--line); border-radius: 20px; padding: 34px 38px;
+    #learn { --off: max(8px, calc((100vh - 72px - 640px) / 2)); }   /* header + card are centred as one group */
+    .scrolly .dk-view { margin-top: calc(-1 * (var(--off) + 50px)); }
+    .scrolly .dk-track { position: sticky; top: 72px; height: calc(100vh - 72px); box-sizing: border-box; padding-top: calc(var(--off) + 66px); display: grid; align-items: start; }
+    .scrolly .slide { grid-area: 1 / 1; height: auto; min-height: 560px; max-height: calc(100vh - 72px - 66px - 12px); box-sizing: border-box; background: #fff; border: 1px solid var(--line); border-radius: 20px; padding: 34px 38px;
       opacity: 0; visibility: hidden; transform: translateY(26px) scale(.985); transition: opacity .45s, transform .55s cubic-bezier(.2,.8,.2,1), visibility 0s .45s; }
     .scrolly .slide.on { opacity: 1; visibility: visible; transform: none; transition: opacity .45s, transform .55s cubic-bezier(.2,.8,.2,1), visibility 0s; }
     .scrolly .sl-l h3 { font-size: 30px; line-height: 1.08; letter-spacing: -.03em; }
     .scrolly .dk-dots { position: fixed; right: 20px; top: 50%; transform: translateY(-50%); flex-direction: column; gap: 10px; margin: 0; opacity: 0; pointer-events: none; transition: opacity .3s; z-index: 5; }
     .scrolly.pinned .dk-dots { opacity: 1; pointer-events: auto; }
-    #learn > h2 { position: sticky; top: 86px; z-index: 1; font-size: clamp(26px, 2.6vw, 34px); margin: 0; pointer-events: none; }
+    #learn > h2 { position: sticky; top: calc(72px + var(--off) + 8px); z-index: 1; line-height: 1.2; font-size: clamp(26px, 2.6vw, 34px); margin: 0; pointer-events: none; }
     #learn > h2 .lg { width: .95em; height: .95em; }
   }
   @media (max-width: 860px) {
