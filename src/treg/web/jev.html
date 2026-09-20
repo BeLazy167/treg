@@ -1534,11 +1534,16 @@ document.querySelectorAll('.rv').forEach(el => io.observe(el));
 /* tabs: one recipe at a time; the hash picks the tab so the nav anchors keep working */
 const TABS = ['signals', 'triage', 'xboost', 'build'];
 const autoPlayed = new Set();
+const autoIO = new IntersectionObserver(es => es.forEach(e => {
+  const id = e.target.id; if (!e.isIntersecting || e.target.hidden || autoPlayed.has(id)) return;
+  autoPlayed.add(id); autoIO.unobserve(e.target);
+  const b = $({signals: 'sg-replay', triage: 'tr-replay'}[id]); if (b && !b.hidden && !b.disabled) b.click();
+}), { rootMargin: '0px 0px -40% 0px', threshold: 0 });   // fires once the panel's top passes 60% of the viewport
 function showTab(id, push) {
   if (!TABS.includes(id)) id = 'signals';
   TABS.forEach(t => { $(t).hidden = t !== id; });
   const btn = {signals: 'sg-replay', triage: 'tr-replay'}[id];
-  if (btn && !autoPlayed.has(id)) { autoPlayed.add(id); setTimeout(() => { const b = $(btn); if (b && !b.hidden && !b.disabled) b.click(); }, 350); }
+  if (btn && !autoPlayed.has(id)) autoIO.observe($(id));   // first replay starts when the demo scrolls into view, not on load
   document.querySelectorAll('.tabs [data-tab]').forEach(b => b.setAttribute('aria-selected', String(b.dataset.tab === id)));
   if (push) history.replaceState(null, '', '#' + id);
 }
