@@ -849,6 +849,8 @@
   /* automation: the video */
   .vd { border: 1px solid var(--line); border-radius: 14px; overflow: hidden; background: #000; line-height: 0; } .vd video { display: block; width: 100%; aspect-ratio: 16 / 9; }
   .uc-strip a { color: inherit; }
+  .vd.rt { background: var(--card); text-align: center; } .vd.rt video { display: inline-block; width: auto; max-width: 100%; height: 370px; aspect-ratio: 1200 / 720; }
+  @media (max-width: 860px) { .vd.rt video { height: auto; width: 100%; } }
   @media (max-width: 860px) {
     .sl-r pre.wf-ascii { font-size: 8.5px; padding: 12px 8px; }
     .w3 { grid-template-columns: 1fr; }
@@ -1481,12 +1483,15 @@ action = { jailbreak: block, harmful: block,
   <div class="deck" id="deck2" tabindex="0" aria-roledescription="carousel">
     <button class="dk-arrow prev" aria-label="Previous slide"><svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
     <div class="dk-view"><div class="dk-track">
-      <article class="slide"><div class="sl-l"><span class="sl-n">real-time decisions</span><h3>Real-time decisions: a game loop</h3><p>A game only ever has a handful of inputs. That is a <b>choice</b> question with the buttons as options, so jev answers it as a distribution every tick: nothing to parse, nothing invented outside the set, and fast enough to sit inside the loop.</p><p class="sl-note">Seven ticks of a small side-scroller, each judged live by jev from the game state: positions, ammo, the pit, the exit. About 0.35 s and $0.00002 a decision. A chat model writing "I would press jump" took 2.7 s on slide 1.</p><button class="pill sm" type="button" id="gm-replay"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg> Play again</button></div>
+      <article class="slide"><div class="sl-l"><span class="sl-n">real-time decisions · 1 / 2</span><h3>Real-time decisions: a game loop</h3><p>A game only ever has a handful of inputs. That is a <b>choice</b> question with the buttons as options, so jev answers it as a distribution every tick: nothing to parse, nothing invented outside the set, and fast enough to sit inside the loop.</p><p class="sl-note">Seven ticks of a small side-scroller, each judged live by jev from the game state: positions, ammo, the pit, the exit. About 0.35 s and $0.00002 a decision. A chat model writing "I would press jump" took 2.7 s on slide 1.</p><button class="pill sm" type="button" id="gm-replay"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg> Play again</button></div>
         <div class="sl-r"><div class="gm">
           <div class="gm-frame"><div class="gm-h"><b>GAME</b><span>state in, action out, every tick</span></div><svg class="gm-svg" id="gm-svg" viewBox="0 0 600 250" aria-hidden="true"></svg></div>
           <div class="gm-acts"><div class="ig-lab">action set · fixed</div><div class="gm-btn" data-a="LEFT"><span>LEFT</span><em></em><i></i></div><div class="gm-btn" data-a="RIGHT"><span>RIGHT</span><em></em><i></i></div><div class="gm-btn" data-a="JUMP"><span>JUMP</span><em></em><i></i></div><div class="gm-btn" data-a="SHOOT"><span>SHOOT</span><em></em><i></i></div></div>
           <div class="gm-foot" id="gm-foot"></div>
         </div></div></article>
+      <article class="slide"><div class="sl-l"><span class="sl-n">real-time decisions · 2 / 2</span><h3>Real-time decisions: a page that picks itself</h3><p>A decision fast enough to run <b>while the page loads</b>. Bryant Chou's Ploy reads a site's conversion data and enriched visitors, forms hypotheses per audience segment, and at load time jev selects the copy and the design for each part of the page for that visitor, then tracks the result and improves the hypotheses.</p><p class="sl-note">His figure: the selection takes 25 ms, with no real impact on LCP. Each section is a choice among variants you wrote, so nothing is generated on the fly and nothing off-brand can appear.</p><a class="pill sm" href="https://x.com/bryantchou/status/2101485995669770522" target="_blank" rel="noopener">@bryantchou on X ↗</a></div>
+        <div class="sl-r"><div class="vd rt"><video id="rt-video" src="media/jev/realtime-site-bryantchou.mp4" poster="media/jev/realtime-site-bryantchou.jpg" muted loop playsinline preload="metadata" controls></video></div>
+        <div class="uc-strip"><span><b>25 ms</b> per page load</span><span><b>no real impact</b> on LCP</span><span>copy <b>and</b> design, per section, per segment</span><span>results tracked in real time</span><em><a href="https://x.com/bryantchou/status/2101485995669770522" target="_blank" rel="noopener">video and figures: @bryantchou</a></em></div></div></article>
       <article class="slide"><div class="sl-l"><span class="sl-n">web &amp; computer use · 1 / 2</span><h3>Web and computer use</h3><p>browser-use's <b>jev-ultrafast</b> agent never sends a screenshot. It reads the page into a numbered element table and asks jev <b>one request</b>: which operation, plus a target for each kind of operation, all answered at once. It then uses the target that matches. Only a TYPE_TEXT step calls a small LLM, and only for the text itself.</p><p class="sl-note">Their numbers: a one-way Google Flights search end to end in 7.07 s, median 9.45 → 7.09 s across alternating runs, browser protocol calls 1,092 → 101.</p><a class="pill sm" href="https://github.com/browser-use/jev-ultrafast" target="_blank" rel="noopener">browser-use/jev-ultrafast ↗</a></div>
         <div class="sl-r"><div class="wb2"><div class="ig-lab">how jev-ultrafast takes one step · from its README</div><pre class="wf-ascii">                      one TypeSafe request
                      ┌───────────────────────────┐
@@ -1896,13 +1901,13 @@ const UC_PG = {"rows":[["Matteo Ricci","Bologna","Backend engineer"],["Aiko Tana
   $('pg-pick').innerHTML = CONDS.map((c, j) => `<button type="button" aria-pressed="${j === 0}">${c}</button>`).join('');
   [...$('pg-pick').children].forEach((b, j) => b.onclick = () => { stopAll(); pgShow(j); });
 
-  const vid = $('au-video'), srVid = $('sr-video'); let srCur = 0;
+  const vid = $('au-video'), srVid = $('sr-video'), rtVid = $('rt-video'); let srCur = 0;
   const SR = [{ note: "Justine Moore's run: jev scans thousands of Zillow listings and classifies each by things the site has no filter for. Under 20 seconds, $0.18.", link: 'https://x.com/venturetwins/status/2101341075684434245', label: '@venturetwins on X ↗' },
               { note: "pg-jev makes jev() a boolean you can put in a WHERE; rows stream twenty per request, each with its own yes/no question. Its README, 2,000 rows: first run ≈ 3.5 s in 100 requests for ≈ $0.012, the same condition again ≈ 50 ms from cache, LIMIT 3 ≈ 0.6 s. Batches of 1–20 rows were 100% correct against ground truth. On the right, ten rows judged live in that shape.", link: 'https://github.com/realZachi/pg-jev', label: 'realZachi/pg-jev ↗' }];
   const srShow = (c, play) => { srCur = c; [...$('sr-pick').children].forEach((b, j) => b.setAttribute('aria-pressed', String(j === c))); root.querySelectorAll('.sr-pane').forEach(pn => pn.hidden = +pn.dataset.sr !== c); $('sr-note').textContent = SR[c].note; $('sr-link').href = SR[c].link; $('sr-link').textContent = SR[c].label; srVid.pause(); if (c === 0) { if (play) { srVid.currentTime = 0; srVid.play().catch(() => {}); } } else pgShow(pgCur); };
   [...$('sr-pick').children].forEach((b, j) => b.onclick = () => { stopAll(); srShow(j, true); });
   srShow(0, false);
-  function onSlide(k) { stopAll(); vid.pause(); srVid.pause(); if (!seen) return; [gmPlay, () => {}, () => {}, () => { vid.currentTime = 0; vid.play().catch(() => {}); }, () => srShow(srCur, true)][k](); }
+  function onSlide(k) { stopAll(); vid.pause(); srVid.pause(); rtVid.pause(); if (!seen) return; [gmPlay, () => { rtVid.currentTime = 0; rtVid.play().catch(() => {}); }, () => {}, () => {}, () => { vid.currentTime = 0; vid.play().catch(() => {}); }, () => srShow(srCur, true)][k](); }
   go(0);
   const io = new IntersectionObserver(es => { if (es.some(e => e.isIntersecting)) { seen = true; onSlide(i); io.disconnect(); } }, { threshold: .25 });
   io.observe(root);
