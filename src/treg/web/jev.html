@@ -870,80 +870,12 @@
 <section class="sec" id="recipes">
   <div class="wrap">
     <div class="tabs" role="tablist" id="tabs">
-      <button role="tab" data-tab="xboost" aria-selected="true"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231 5.451-6.231Zm-1.161 17.52h1.833L7.084 4.126H5.117l11.966 15.644Z"/></svg>Viral posts monitor</button>
-      <button role="tab" data-tab="signals" aria-selected="false"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="10" cy="10" r="1.6" fill="currentColor" stroke="none"/><path d="M7.2 12.8a4 4 0 0 1 0-5.6M12.8 7.2a4 4 0 0 1 0 5.6M4.7 15.3a7.5 7.5 0 0 1 0-10.6M15.3 4.7a7.5 7.5 0 0 1 0 10.6"/></svg>Buyer signal</button>
+      <button role="tab" data-tab="signals" aria-selected="true"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="10" cy="10" r="1.6" fill="currentColor" stroke="none"/><path d="M7.2 12.8a4 4 0 0 1 0-5.6M12.8 7.2a4 4 0 0 1 0 5.6M4.7 15.3a7.5 7.5 0 0 1 0-10.6M15.3 4.7a7.5 7.5 0 0 1 0 10.6"/></svg>Buyer signal</button>
       <button role="tab" data-tab="triage" aria-selected="false"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8.5 10.5a3.25 3.25 0 1 0 0-6.5 3.25 3.25 0 0 0 0 6.5z"/><path d="M2.5 17.5a6 6 0 0 1 12 0"/><path d="M15.4 8.2l.85 1.75 1.9.28-1.38 1.35.33 1.9-1.7-.9-1.7.9.33-1.9-1.38-1.35 1.9-.28z" fill="currentColor" stroke="none"/></svg>Signup lead score</button>
+      <button role="tab" data-tab="xboost" aria-selected="false"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231 5.451-6.231Zm-1.161 17.52h1.833L7.084 4.126H5.117l11.966 15.644Z"/></svg>Viral posts monitor</button>
       <button role="tab" data-tab="build" aria-selected="false"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 3v14M3 10h14"/></svg>Build your own</button>
     </div>
-<div class="tab" id="xboost">
-    <div class="demo" id="xb-demo">
-      <div class="dh"><div><h3 class="flow"><span><svg class="lg" viewBox="0 0 512 512" aria-hidden="true"><rect width="512" height="512" rx="112" fill="#101010"/><rect x="111" y="111" width="140.5" height="140.5" rx="20" fill="#fff"/><rect x="260.5" y="260.5" width="140.5" height="140.5" rx="20" fill="#fff"/></svg> Viral X posts &amp; comments</span><i>→</i><span><img class="lg" src="logos/jev.png" alt=""> Jev classify</span></h3><div class="receipt" id="xb-receipt">loading the latest run…</div></div><div class="acts"><button class="pill sm" id="xb-replay"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg> Replay the run</button><button class="pill sm" id="xb-stop" hidden>Stop</button><div class="pwrap"><button class="pill sm dark pbtn" aria-expanded="false" aria-controls="pop-xboost">Prompt for <span class="agents"><img src="media/people-search/claude-code.png" alt="Claude Code"><img src="media/people-search/codex.png" alt="Codex"><img src="media/people-search/openclaw.png" alt="OpenClaw"><img src="media/people-search/hermes.png" alt="Hermes" class="onwhite"></span> <i>▾</i></button>
-          <div class="pop" id="pop-xboost" hidden><div class="ph"><span>Paste into your agent</span><span style="display:flex;align-items:center"><button class="pill sm dark" data-copy="p-xboost">Copy prompt</button><button class="xclose" type="button" aria-label="Close">✕</button></span></div><pre id="p-xboost">Build me a daily "launch radar" for X and a page to browse it.
-
-<b>Setup</b>
-1. Install treg and log in: `curl -fsSL https://treg.to/install.sh | sh`, then `treg login`.
-   treg is one token for 2,600+ data endpoints; calls are `treg call &lt;endpoint&gt; --data '{...}'`.
-2. Get a Vercel AI Gateway key (https://vercel.com/ai-gateway) and put it in .env as AI_GATEWAY_API_KEY.
-   jev is called with POST https://ai-gateway.vercel.sh/v4/ai/evaluation-model, headers
-   Authorization: Bearer $AI_GATEWAY_API_KEY, ai-model-id: typesafe-ai/jev,
-   ai-evaluation-model-specification-version: 4, ai-gateway-protocol-version: 0.0.1,
-   body {"state": {...}, "questions": {...}}. Question types: choice (criteria = named options),
-   boolean, score (criteria = ordered rubric levels). Answers come back with probabilities.
-
-<b>Pipeline (run once a day, keep the last run as JSON)</b>
-3. For each phrase in ["introducing", "launching today", "now available", "we just shipped",
-   "open source", "AI agent", "Claude Code", "MCP server", "developer tool"]:
-   `treg call treg.x.search.posts --data '{"q": "\"&lt;phrase&gt;\" min_faves:150 since:&lt;yesterday&gt; -filter:replies", "limit": 20}'`
-   Keep posts under 24h old, dedupe by id, keep the top 60 by viewCount.
-4. For each post: `treg.x.user.profile` (username) for followers/bio, and `treg.x.post.comments`
-   (tweet_id, limit 20) for the first replies.
-5. Compute forensics: likes, replies, reposts, bookmarks, quotes each divided by views;
-   views / followers; share of replies posted within 10 min, under 6 words, or generic praise.
-6. Ask jev five questions in one call over {post, rates, views_per_follower, replies_sample, author}:
-   relevance: choice inspiring_launch / launch_other / not_a_launch (a maker announcing their own AI
-   or developer product, vs a launch by someone else or not a launch at all);
-   launch_type: choice model / agent / dev_tool / api_infra / open_source / consumer_app / none;
-   distribution: choice organic / paid_promotion / artificial_engagement, with the typical organic
-   ranges in the instructions (likes 0.3–4% of views, replies 0.02–0.5%, reposts 0.05–1.5%,
-   views 0.1–3× followers; 20×+ views with likes under 0.3% is the shape of paid reach);
-   is_organic: boolean; authenticity: score over clearly manipulated / suspicious / probably organic /
-   clearly organic.
-7. Lane = irrelevant unless relevance is inspiring_launch; then paid if distribution is
-   paid_promotion, else organic.
-
-<b>Page</b>
-8. One HTML file: three lanes (organic / paid / irrelevant), X-style cards with the counts and a
-   per-view rate strip, a drawer with the rate bands, the author, the reply sample and every jev
-   distribution. Show the bill: treg spend from the X-Treg-Cost-Micro header, jev at
-   $0.042 per 1M input tokens.
-9. Add an input that takes a post link, finds the post via `treg.x.user.posts` (handle, limit 50),
-   runs steps 4–7 on it and drops the card into its lane.</pre></div></div></div></div>
-      <div class="xb-top">
-        <form class="judge" id="xb-form"><input id="xb-url" type="url" placeholder="Paste a post link, e.g. https://x.com/handle/status/…" aria-label="Post link" required><button class="pill dark sm" id="xb-go" type="submit">Analyse post</button></form>
-        <div class="receipt" id="xb-tally" hidden></div>
-      </div>
-      <div class="xb-note" id="xb-note"></div>
-      <div class="stage" id="xb-stage" hidden><div class="stage-in">
-        <div class="stage-post"><div class="embed" id="xb-embed"></div></div>
-        <div class="stage-side"><div class="lbl"><span>analysing</span><span class="n" id="xb-stage-meta"></span></div><div class="stage-steps" id="xb-stage-steps"></div><div class="stage-verdict" id="xb-stage-verdict" hidden></div></div>
-      </div></div>
-      <div class="cap-wrap" id="xb-wrap"><div class="demo-body cap-body">
-      <aside class="demo-side">
-        <div class="panel"><div class="ptitle" id="xb-tallymeta"></div><div class="spend top" id="xb-spend"></div><div class="stack" id="xb-stack"></div><div class="tally" id="xb-tallybox"></div><div class="xsteps" id="xb-steps"></div></div>
-        <div class="panel"><div class="lbl"><span>search phrases</span></div><div class="xtopics" id="xb-topics"></div></div>
-      </aside>
-      <div class="board" id="xb-board">
-        <div class="kcol inbox"><div class="kh"><span><span class="t">Inbox</span><span class="d">top posts from search, waiting for jev</span></span><span class="n" id="xb-n-inbox">0</span></div><div class="kb" id="xb-kb-inbox"></div></div>
-        <div class="kcol organic"><div class="kh"><span><span class="t">Organic launch</span><span class="d">reach earned, study these</span></span><span class="n" id="xb-n-organic">0</span></div><div class="kb" id="xb-kb-organic"></div></div>
-        <div class="kcol paid"><div class="kh"><span><span class="t">Paid launch</span><span class="d">reach bought, engagement thin</span></span><span class="n" id="xb-n-paid">0</span></div><div class="kb" id="xb-kb-paid"></div></div>
-        <div class="kcol irrelevant"><div class="kh"><span><span class="t">Irrelevant</span><span class="d">not a launch, or not our space</span></span><span class="n" id="xb-n-irrelevant">0</span></div><div class="kb" id="xb-kb-irrelevant"></div></div>
-      </div>
-    </div></div>
-        <div class="setup-strip has-aux"><button class="pill sm expand-all" type="button" data-wrap="xb-wrap" data-label="posts">Show all posts</button><span class="mid"><span class="t">Set up this workflow</span><button class="pill dark pbtn big copy-for" type="button" data-src="p-xboost">Copy prompt for <span class="agents"><img src="media/people-search/claude-code.png" alt="Claude Code"><img src="media/people-search/codex.png" alt="Codex"><img src="media/people-search/openclaw.png" alt="OpenClaw"><img src="media/people-search/hermes.png" alt="Hermes" class="onwhite"></span></button></span></div>
-</div>
-</div>
-
-<div class="tab" id="signals" hidden>
+<div class="tab" id="signals">
     <div class="demo" id="sg-demo">
       <div class="dh"><div><h3 class="flow"><span><svg class="lg" viewBox="0 0 512 512" aria-hidden="true"><rect width="512" height="512" rx="112" fill="#101010"/><rect x="111" y="111" width="140.5" height="140.5" rx="20" fill="#fff"/><rect x="260.5" y="260.5" width="140.5" height="140.5" rx="20" fill="#fff"/></svg> Relevant LinkedIn post commenters</span><i>→</i><span><img class="lg" src="logos/jev.png" alt=""> Jev qualify and score</span><i>→</i><span><svg class="lg" viewBox="0 0 512 512" aria-hidden="true"><rect width="512" height="512" rx="112" fill="#101010"/><rect x="111" y="111" width="140.5" height="140.5" rx="20" fill="#fff"/><rect x="260.5" y="260.5" width="140.5" height="140.5" rx="20" fill="#fff"/></svg> Treg enrich</span></h3><div class="receipt" id="sg-receipt"></div></div><div class="acts"><button class="pill sm" id="sg-replay"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg> Replay the run</button><button class="pill sm" id="sg-stop" hidden>Stop</button><div class="pwrap"><button class="pill sm dark pbtn" aria-expanded="false" aria-controls="pop-signals">Prompt for <span class="agents"><img src="media/people-search/claude-code.png" alt="Claude Code"><img src="media/people-search/codex.png" alt="Codex"><img src="media/people-search/openclaw.png" alt="OpenClaw"><img src="media/people-search/hermes.png" alt="Hermes" class="onwhite"></span> <i>▾</i></button>
           <div class="pop" id="pop-signals" hidden><div class="ph"><span>Paste into your agent</span><span style="display:flex;align-items:center"><button class="pill sm dark" data-copy="p-signals">Copy prompt</button><button class="xclose" type="button" aria-label="Close">✕</button></span></div><pre id="p-signals">Build a signal-first lead finder for &lt;my product&gt; and a page to browse the run.
@@ -1036,6 +968,74 @@
         <div class="setup-strip has-aux"><button class="pill sm expand-all" type="button" data-wrap="tr-wrap" data-label="signups">Show all signups</button><span class="mid"><span class="t">Set up this workflow</span><button class="pill dark pbtn big copy-for" type="button" data-src="p-triage">Copy prompt for <span class="agents"><img src="media/people-search/claude-code.png" alt="Claude Code"><img src="media/people-search/codex.png" alt="Codex"><img src="media/people-search/openclaw.png" alt="OpenClaw"><img src="media/people-search/hermes.png" alt="Hermes" class="onwhite"></span></button></span></div>
     </div>
 </div>
+<div class="tab" id="xboost" hidden>
+    <div class="demo" id="xb-demo">
+      <div class="dh"><div><h3 class="flow"><span><svg class="lg" viewBox="0 0 512 512" aria-hidden="true"><rect width="512" height="512" rx="112" fill="#101010"/><rect x="111" y="111" width="140.5" height="140.5" rx="20" fill="#fff"/><rect x="260.5" y="260.5" width="140.5" height="140.5" rx="20" fill="#fff"/></svg> Viral X posts &amp; comments</span><i>→</i><span><img class="lg" src="logos/jev.png" alt=""> Jev classify</span></h3><div class="receipt" id="xb-receipt">loading the latest run…</div></div><div class="acts"><button class="pill sm" id="xb-replay"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg> Replay the run</button><button class="pill sm" id="xb-stop" hidden>Stop</button><div class="pwrap"><button class="pill sm dark pbtn" aria-expanded="false" aria-controls="pop-xboost">Prompt for <span class="agents"><img src="media/people-search/claude-code.png" alt="Claude Code"><img src="media/people-search/codex.png" alt="Codex"><img src="media/people-search/openclaw.png" alt="OpenClaw"><img src="media/people-search/hermes.png" alt="Hermes" class="onwhite"></span> <i>▾</i></button>
+          <div class="pop" id="pop-xboost" hidden><div class="ph"><span>Paste into your agent</span><span style="display:flex;align-items:center"><button class="pill sm dark" data-copy="p-xboost">Copy prompt</button><button class="xclose" type="button" aria-label="Close">✕</button></span></div><pre id="p-xboost">Build me a daily "launch radar" for X and a page to browse it.
+
+<b>Setup</b>
+1. Install treg and log in: `curl -fsSL https://treg.to/install.sh | sh`, then `treg login`.
+   treg is one token for 2,600+ data endpoints; calls are `treg call &lt;endpoint&gt; --data '{...}'`.
+2. Get a Vercel AI Gateway key (https://vercel.com/ai-gateway) and put it in .env as AI_GATEWAY_API_KEY.
+   jev is called with POST https://ai-gateway.vercel.sh/v4/ai/evaluation-model, headers
+   Authorization: Bearer $AI_GATEWAY_API_KEY, ai-model-id: typesafe-ai/jev,
+   ai-evaluation-model-specification-version: 4, ai-gateway-protocol-version: 0.0.1,
+   body {"state": {...}, "questions": {...}}. Question types: choice (criteria = named options),
+   boolean, score (criteria = ordered rubric levels). Answers come back with probabilities.
+
+<b>Pipeline (run once a day, keep the last run as JSON)</b>
+3. For each phrase in ["introducing", "launching today", "now available", "we just shipped",
+   "open source", "AI agent", "Claude Code", "MCP server", "developer tool"]:
+   `treg call treg.x.search.posts --data '{"q": "\"&lt;phrase&gt;\" min_faves:150 since:&lt;yesterday&gt; -filter:replies", "limit": 20}'`
+   Keep posts under 24h old, dedupe by id, keep the top 60 by viewCount.
+4. For each post: `treg.x.user.profile` (username) for followers/bio, and `treg.x.post.comments`
+   (tweet_id, limit 20) for the first replies.
+5. Compute forensics: likes, replies, reposts, bookmarks, quotes each divided by views;
+   views / followers; share of replies posted within 10 min, under 6 words, or generic praise.
+6. Ask jev five questions in one call over {post, rates, views_per_follower, replies_sample, author}:
+   relevance: choice inspiring_launch / launch_other / not_a_launch (a maker announcing their own AI
+   or developer product, vs a launch by someone else or not a launch at all);
+   launch_type: choice model / agent / dev_tool / api_infra / open_source / consumer_app / none;
+   distribution: choice organic / paid_promotion / artificial_engagement, with the typical organic
+   ranges in the instructions (likes 0.3–4% of views, replies 0.02–0.5%, reposts 0.05–1.5%,
+   views 0.1–3× followers; 20×+ views with likes under 0.3% is the shape of paid reach);
+   is_organic: boolean; authenticity: score over clearly manipulated / suspicious / probably organic /
+   clearly organic.
+7. Lane = irrelevant unless relevance is inspiring_launch; then paid if distribution is
+   paid_promotion, else organic.
+
+<b>Page</b>
+8. One HTML file: three lanes (organic / paid / irrelevant), X-style cards with the counts and a
+   per-view rate strip, a drawer with the rate bands, the author, the reply sample and every jev
+   distribution. Show the bill: treg spend from the X-Treg-Cost-Micro header, jev at
+   $0.042 per 1M input tokens.
+9. Add an input that takes a post link, finds the post via `treg.x.user.posts` (handle, limit 50),
+   runs steps 4–7 on it and drops the card into its lane.</pre></div></div></div></div>
+      <div class="xb-top">
+        <form class="judge" id="xb-form"><input id="xb-url" type="url" placeholder="Paste a post link, e.g. https://x.com/handle/status/…" aria-label="Post link" required><button class="pill dark sm" id="xb-go" type="submit">Analyse post</button></form>
+        <div class="receipt" id="xb-tally" hidden></div>
+      </div>
+      <div class="xb-note" id="xb-note"></div>
+      <div class="stage" id="xb-stage" hidden><div class="stage-in">
+        <div class="stage-post"><div class="embed" id="xb-embed"></div></div>
+        <div class="stage-side"><div class="lbl"><span>analysing</span><span class="n" id="xb-stage-meta"></span></div><div class="stage-steps" id="xb-stage-steps"></div><div class="stage-verdict" id="xb-stage-verdict" hidden></div></div>
+      </div></div>
+      <div class="cap-wrap" id="xb-wrap"><div class="demo-body cap-body">
+      <aside class="demo-side">
+        <div class="panel"><div class="ptitle" id="xb-tallymeta"></div><div class="spend top" id="xb-spend"></div><div class="stack" id="xb-stack"></div><div class="tally" id="xb-tallybox"></div><div class="xsteps" id="xb-steps"></div></div>
+        <div class="panel"><div class="lbl"><span>search phrases</span></div><div class="xtopics" id="xb-topics"></div></div>
+      </aside>
+      <div class="board" id="xb-board">
+        <div class="kcol inbox"><div class="kh"><span><span class="t">Inbox</span><span class="d">top posts from search, waiting for jev</span></span><span class="n" id="xb-n-inbox">0</span></div><div class="kb" id="xb-kb-inbox"></div></div>
+        <div class="kcol organic"><div class="kh"><span><span class="t">Organic launch</span><span class="d">reach earned, study these</span></span><span class="n" id="xb-n-organic">0</span></div><div class="kb" id="xb-kb-organic"></div></div>
+        <div class="kcol paid"><div class="kh"><span><span class="t">Paid launch</span><span class="d">reach bought, engagement thin</span></span><span class="n" id="xb-n-paid">0</span></div><div class="kb" id="xb-kb-paid"></div></div>
+        <div class="kcol irrelevant"><div class="kh"><span><span class="t">Irrelevant</span><span class="d">not a launch, or not our space</span></span><span class="n" id="xb-n-irrelevant">0</span></div><div class="kb" id="xb-kb-irrelevant"></div></div>
+      </div>
+    </div></div>
+        <div class="setup-strip has-aux"><button class="pill sm expand-all" type="button" data-wrap="xb-wrap" data-label="posts">Show all posts</button><span class="mid"><span class="t">Set up this workflow</span><button class="pill dark pbtn big copy-for" type="button" data-src="p-xboost">Copy prompt for <span class="agents"><img src="media/people-search/claude-code.png" alt="Claude Code"><img src="media/people-search/codex.png" alt="Codex"><img src="media/people-search/openclaw.png" alt="OpenClaw"><img src="media/people-search/hermes.png" alt="Hermes" class="onwhite"></span></button></span></div>
+</div>
+</div>
+
 <div class="tab" id="build" hidden>
     <div class="demo build">
       <div class="dh"><div><h3>Build your own</h3><div class="receipt"><span>every aisle below is one token away, and jev can read any of it</span></div></div><div class="acts"><div class="pwrap"><button class="pill sm dark pbtn" aria-expanded="false" aria-controls="pop-build">Prompt for <span class="agents"><img src="media/people-search/claude-code.png" alt="Claude Code"><img src="media/people-search/codex.png" alt="Codex"><img src="media/people-search/hermes.png" alt="Hermes" class="onwhite"><img src="media/people-search/openclaw.png" alt="OpenClaw"></span> <i>▾</i></button>
@@ -1504,10 +1504,10 @@ const io = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting
 document.querySelectorAll('.rv').forEach(el => io.observe(el));
 
 /* tabs: one recipe at a time; the hash picks the tab so the nav anchors keep working */
-const TABS = ['xboost', 'signals', 'triage', 'build'];
+const TABS = ['signals', 'triage', 'xboost', 'build'];
 const autoPlayed = new Set();
 function showTab(id, push) {
-  if (!TABS.includes(id)) id = 'xboost';
+  if (!TABS.includes(id)) id = 'signals';
   TABS.forEach(t => { $(t).hidden = t !== id; });
   const btn = {signals: 'sg-replay', triage: 'tr-replay'}[id];
   if (btn && !autoPlayed.has(id)) { autoPlayed.add(id); setTimeout(() => { const b = $(btn); if (b && !b.hidden && !b.disabled) b.click(); }, 350); }
