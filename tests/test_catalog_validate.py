@@ -519,6 +519,19 @@ def test_reported_charge_requires_supported_units_and_path(rule):
     assert bool(errors) is (rule != {'path': 'billing.charge', 'unit': 'usd'})
 
 
+def test_reported_credit_charge_accepts_priced_provider_and_cost_table():
+    cost = dict(catalog_store.load().by_id['tavily.web.search']['cost'])
+    errors = []
+    validator.check_cost(cost, 'test', errors, [],
+                         catalog_store.load().by_id['tavily.web.search']['input'], 'tavily')
+    assert errors == []
+
+    errors = []
+    validator.check_cost(cost, 'test', errors, [],
+                         catalog_store.load().by_id['tavily.web.search']['input'], 'no-such-provider')
+    assert any('needs a numeric fx.yaml credit_rates_usd entry' in error for error in errors)
+
+
 @pytest.mark.parametrize('rule,valid', [
     ({'body.realtime': True}, True),
     ({'body.realtime': 1}, False),
@@ -531,6 +544,23 @@ def test_platform_request_requires_declared_fixed_body_value(rule, valid):
     errors = []
     validator.check_platform_request(rule, {'body': {
         'realtime': {'type': 'boolean', 'enum': [True]},
+    }}, 'test', errors)
+    assert (not errors) is valid
+
+
+@pytest.mark.parametrize('rule,valid', [
+    ({'body.limit': {'min': 1, 'max': 20}}, True),
+    ({'body.limit': {'min': 0, 'max': 20}}, False),
+    ({'body.limit': {'min': 1, 'max': 51}}, False),
+    ({'body.limit': {'min': 20, 'max': 1}}, False),
+    ({'body.name': {'min': 1, 'max': 20}}, False),
+    ({'queryParams.limit': {'min': 1, 'max': 20}}, False),
+])
+def test_platform_bounds_require_declared_numeric_body_range(rule, valid):
+    errors = []
+    validator.check_platform_bounds(rule, {'body': {
+        'limit': {'type': 'integer', 'min': 1, 'max': 50},
+        'name': {'type': 'string'},
     }}, 'test', errors)
     assert (not errors) is valid
 
@@ -610,6 +640,8 @@ def test_contactout_person_routes_cannot_recapture_pii():
 @pytest.mark.parametrize('display,valid', [
     ({'unit':'records','grouped':True,'round_up':True}, True),
     ({'unit':'item','variable':True}, True),
+    ({'unit':'call','maximum':True}, True),
+    ({'unit':'call','maximum':'yes'}, False),
     ({'unit':'records','round_up':True}, False),
     ({'unit':'item','variable':'yes'}, False),
     ({'unit':''}, False),
@@ -622,6 +654,20 @@ def test_generic_price_display_metadata(display, valid):
     errors = []
     validator.check_cost(cost, 'test', errors, [])
     assert (not errors) == valid
+
+
+def test_price_table_may_disclose_its_validated_maximum_only():
+    base = {'type':'per_success', 'table':[{'when':{'body.mode':'basic'}, 'value':1}],
+            'fallback':{'value':2, 'note':'documented upper bound'}, 'currency':'USD', 'unit':'call',
+            'source':'docs', 'source_url':'https://example.com', 'checked':'2026-09-21',
+            'confidence':'documented'}
+    input_schema = {'body': {'mode': {'type':'string', 'required':True, 'enum':['basic']}}}
+    errors = []
+    validator.check_cost(base | {'display':{'unit':'call', 'maximum':True}}, 'test', errors, [], input_schema)
+    assert not errors
+    errors = []
+    validator.check_cost(base | {'display':{'unit':'call'}}, 'test', errors, [], input_schema)
+    assert any('table maximum' in error for error in errors)
 
 
 @pytest.mark.parametrize('patch,valid', [

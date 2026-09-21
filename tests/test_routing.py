@@ -125,6 +125,65 @@ def test_openmart_tools_are_direct_only_not_routed():
     assert "openmart.companies.enrich" not in cat.by_id["treg.companies.enrich"]["routed_children"]
 
 
+def test_tavily_routes_only_search_and_keeps_group_billed_tools_direct():
+    cat = catalog_store.load()
+    assert "tavily.web.search" in cat.by_id["treg.web.search"]["routed_children"]
+    assert cat.adapters["tavily.web.search"].verified
+    direct = {
+        "tavily.web.extract": "treg.web.extract",
+        "tavily.web.map": "treg.web.map",
+        "tavily.web.crawl": "treg.web.crawl",
+    }
+    for child, parent in direct.items():
+        assert child not in cat.adapters
+        assert parent not in cat.by_id or child not in cat.by_id[parent]["routed_children"]
+        assert cat.platform_eligible(cat.by_id[child])
+
+
+async def test_tavily_routed_empty_search_is_a_paid_miss_then_falls_through(
+    clients, monkeypatch,
+):
+    monkeypatch.setenv("TREG_PLATFORM_KEY_TAVILY", "PLATFORM-TAVILY")
+    monkeypatch.setenv("TREG_PLATFORM_KEY_EXA", "PLATFORM-EXA")
+    monkeypatch.setenv("TREG_PLATFORM_PROVIDERS", "tavily,exa")
+    get_settings.cache_clear()
+    seen = []
+    monkeypatch.setattr(call_service, "relay", _relay_by_provider({
+        "tavily": [(200, {"results": [], "usage": {"credits": 1}})],
+        "exa": [(200, {
+            "results": [{"title": "Example", "url": "https://example.com"}],
+            "costDollars": {"total": 0.007},
+        })],
+    }, seen))
+
+    before = await _balance(clients)
+    response = await clients.post(
+        "/call/treg.web.search",
+        json={"q": "example query", "limit": 3},
+        headers={"X-Treg-Route-Prefer": "tavily,exa"},
+    )
+    assert response.status_code == 200, response.text
+    data = response.json()
+    assert data["_treg"]["served_by"] == "exa.web.search"
+    assert [attempt["outcome"] for attempt in data["_treg"]["tried"]] == ["miss", "hit"]
+    assert [attempt["charged_micro"] for attempt in data["_treg"]["tried"]] == [8_000, 7_000]
+    assert data["_treg"]["charged_micro"] == 15_000
+    assert before - await _balance(clients) == 15_000
+    assert [row[0] for row in seen] == ["tavily", "exa"]
+    assert seen[0][3] == {
+        "query": "example query", "max_results": 3,
+        "search_depth": "basic", "include_usage": True,
+    }
+    async with session_maker() as db:
+        assert (await db.execute(select(Hold))).scalars().all() == []
+        entries = (await db.execute(select(LedgerEntry))).scalars().all()
+    call_id = response.headers["X-Treg-Call-Id"]
+    assert {entry.call_id for entry in entries if entry.kind == "settle"} == {
+        call_id + ":r0", call_id + ":r1",
+    }
+    get_settings.cache_clear()
+
+
 def test_dropleads_routing_surface_contains_only_verified_single_record_tools():
     catalog = catalog_store.load()
     expected = {

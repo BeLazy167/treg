@@ -49,7 +49,7 @@ def test_every_provider_is_registered():
         # API-key providers (auth_kind="key")
         "anyapi", "apollo", "pdl", "akta", "hunter", "sumble", "moltsets", "openmart", "harvestapi", "dropleads", "quickenrich", "prospeo", "aiark", "wiza", "limadata", "getleadsio", "scrubby", "zerobounce", "datagma", "contactout", "millionverifier", "bounceban", "trykitt", "crunchbase", "tikhub", "brightdata", "semrush", "justoneapi",
         "scrapecreators",
-        "dataforseo", "seranking", "moz", "majestic", "serpstat", "exa",
+        "dataforseo", "seranking", "moz", "majestic", "serpstat", "exa", "tavily",
         "cloro",
         "lusha", "coresignal", "diffbot", "thecompaniesapi", "leadmagic", "fiber-ai",
         "companyenrich", "oceanio", "tomba", "trestleiq", "predictleads", "findymail", "branddev",
@@ -61,6 +61,14 @@ def test_every_provider_is_registered():
         # BYOK token providers
         "minimax", "openrouter", "replicate", "reapi", "piapi",
     }
+
+
+def test_tavily_uses_bearer_auth_and_the_internal_usage_probe():
+    provider = P.REGISTRY["tavily"]
+    assert provider.base_url == "https://api.tavily.com"
+    assert provider.token_header == "Authorization"
+    assert provider.token_format == "Bearer {secret}"
+    assert provider.probe_path == "/usage"
 
 
 def test_default_capability_is_the_broadest():

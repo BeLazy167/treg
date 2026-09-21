@@ -2389,6 +2389,32 @@ EXA = OAuthProvider(
     probe_json={"urls": ["https://example.com"], "text": {"maxCharacters": 1}},
 )
 
+TAVILY = OAuthProvider(
+    service="tavily",
+    display_name="Tavily",
+    auth_kind="key",
+    token_label="API key",
+    token_placeholder="tvly-…",
+    setup_url="https://app.tavily.com/home",
+    setup_action_label="Get your Tavily API key",
+    setup_steps=(
+        "Sign in to Tavily and open the API Keys section.",
+        "Create or copy a key.",
+    ),
+    setup_note=(
+        "Search, Extract, Map and Crawl spend Tavily API credits. treg checks the free Usage "
+        "endpoint when you connect the key."
+    ),
+    auth_uri="", token_uri="",
+    scopes={},
+    client_id_setting="", client_secret_setting="",
+    category="SEO",
+    summary="Search the open web, extract pages, map sites and crawl page content.",
+    base_url="https://api.tavily.com",
+    docs_url="https://docs.tavily.com/documentation/api-reference",
+    probe_path="/usage",
+)
+
 CLORO = OAuthProvider(
     service="cloro",
     display_name="cloro",
@@ -3307,7 +3333,7 @@ REGISTRY: dict[str, OAuthProvider] = {
         TIKHUB, BRIGHTDATA, SEMRUSH, JUSTONEAPI,
         SCRAPECREATORS,
         # SEO API-key providers
-        DATAFORSEO, SERANKING, MOZ, MAJESTIC, SERPSTAT, EXA, CLORO,
+        DATAFORSEO, SERANKING, MOZ, MAJESTIC, SERPSTAT, EXA, TAVILY, CLORO,
         # more Enrichment API-key providers
         LUSHA, CORESIGNAL, DIFFBOT, THECOMPANIESAPI, LEADMAGIC, FIBER_AI, CRUSTDATA, AVIATO,
         COMPANYENRICH, OCEANIO, TOMBA, TRESTLEIQ, PREDICTLEADS, FINDYMAIL, BRANDDEV, ICYPEAS, LEADSFORGE,

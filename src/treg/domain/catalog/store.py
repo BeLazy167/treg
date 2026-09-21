@@ -163,6 +163,7 @@ class Catalog:
             if display.get("round_up"):
                 out["display_unit"] = "started " + out["display_unit"]
             out["display_suffix"] = "+" if display.get("variable") else ""
+            out["display_prefix"] = "up to " if display.get("maximum") else ""
         # A table prices out as a RANGE: `usd` stays the validated ceiling (what reserve and
         # eligibility read), `usd_min` is the cheapest row so a display never shows only the
         # worst case as "the price" (an H3 video is $0.25 typical against a $1.96 ceiling).
@@ -649,6 +650,7 @@ def _normalize(raw: dict, provider: str, directory: Path) -> dict:
         # enforces `requires`; the buffered successful response persists every `produces` path.
         "resource_ownership": raw.get("resource_ownership") or None,
         "platform_request": raw.get("platform_request") or None,
+        "platform_bounds": raw.get("platform_bounds") or None,
         # How treg serves the catalog fallback after the team's own tool/credential ladder misses.
         # Absent means the provider credential is required. `anonymous` means the verified public
         # upstream route is called with no injected credential; catalog validation limits that

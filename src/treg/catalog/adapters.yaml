@@ -2614,3 +2614,40 @@ adapters:
     in_expr: {body.gl: "lower(country)", body.hl: language}
     out: {keywords: output.data.suggestions, count: "len(output.data.suggestions)"}
     miss: "coalesce(output.data.suggestions, []) == []"
+
+  # ---- open web -----------------------------------------------------------------------------
+  tavily.web.search:
+    accepts: [[q]]
+    in: {q: body.query}
+    in_expr: {body.max_results: limit}
+    const: {body.search_depth: basic, body.include_usage: true}
+    out: {results: results, count: "len(results)"}
+    miss: "coalesce(results, []) == []"
+  exa.web.search:
+    accepts: [[q]]
+    in: {q: body.query}
+    in_expr: {body.numResults: limit}
+    const: {body.type: auto}
+    out: {results: results, count: "len(results)"}
+    miss: "coalesce(results, []) == []"
+
+  exa.web.contents.get:
+    accepts: [[urls]]
+    in: {urls: body.urls}
+    const: {body.text: true}
+    out: {pages: results, count: "len(results)"}
+    miss: "coalesce(results, []) == []"
+
+  anyapi.web.map:
+    accepts: [[url]]
+    in: {url: body.url}
+    in_expr: {body.limit: limit}
+    out: {results: output.data.results, count: "len(output.data.results)"}
+    miss: "coalesce(output.data.results, []) == []"
+
+  anyapi.web.crawl:
+    accepts: [[url]]
+    in: {url: body.url}
+    in_expr: {body.limit: limit}
+    out: {pages: output.data.items, count: "len(output.data.items)"}
+    miss: "coalesce(output.data.items, []) == []"

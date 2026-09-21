@@ -4747,7 +4747,7 @@ def _cost_label(cost) -> str:
     if not isinstance(cost, dict):
         return "-"
     if cost.get("display_unit") and cost.get("display_usd") is not None:
-        return (f"${cost['display_usd']:.3g}" + cost.get("display_suffix", "")
+        return (cost.get("display_prefix", "") + f"${cost['display_usd']:.3g}" + cost.get("display_suffix", "")
                 + "/" + cost["display_unit"])
     kind = (cost.get("type") or "").replace("_", " ")
     value, currency = cost.get("value"), cost.get("currency") or ""
@@ -4971,7 +4971,7 @@ def _cost_usd(cost: dict | None) -> str:
     if not isinstance(cost, dict):
         return "-"
     if cost.get("display_unit") and cost.get("display_usd") is not None:
-        return (f"${cost['display_usd']:.3g}" + cost.get("display_suffix", "")
+        return (cost.get("display_prefix", "") + f"${cost['display_usd']:.3g}" + cost.get("display_suffix", "")
                 + "/" + cost["display_unit"])
     usd = cost.get("usd")
     if usd is None:

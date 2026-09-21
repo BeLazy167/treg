@@ -40,6 +40,39 @@ async def _tikhub(c, key):
     return {"value": (d.get("user_data") or {}).get("balance"), "unit": "USD", "note": ""}
 
 
+async def _tavily(c, key):
+    d = await _get(c, "https://api.tavily.com/usage",
+                   headers={"Authorization": f"Bearer {key}"})
+
+    def remaining(meter, used_name, limit_name):
+        used, limit = meter.get(used_name), meter.get(limit_name)
+        if (isinstance(used, (int, float)) and not isinstance(used, bool)
+                and isinstance(limit, (int, float)) and not isinstance(limit, bool)
+                and math.isfinite(float(used)) and math.isfinite(float(limit))
+                and used >= 0 and limit >= 0):
+            return max(0, limit - used)
+        return None
+
+    meter = d.get("key") or {}
+    key_remaining = remaining(meter, "usage", "limit")
+    if key_remaining is not None:
+        return {"value": key_remaining, "unit": "API credits",
+                "note": f"key usage {meter['usage']:g} of {meter['limit']:g}; account pools are informational"}
+    # A key with no configured per-key cap returns `limit: null` even though its account plan has a
+    # finite pool. That is the normal shape of an unrestricted Tavily key, not an unknown balance.
+    account = d.get("account") or {}
+    plan = remaining(account, "plan_usage", "plan_limit")
+    paygo = remaining(account, "paygo_usage", "paygo_limit")
+    known = [value for value in (plan, paygo) if value is not None]
+    if known:
+        pools = ", ".join(name for name, value in (("plan", plan), ("PAYGO", paygo))
+                          if value is not None)
+        return {"value": sum(known), "unit": "API credits",
+                "note": f"key has no finite cap; remaining {pools} account pool(s)"}
+    return {"value": None, "unit": "API credits",
+            "note": "Usage response did not contain a finite key or account limit"}
+
+
 async def _scrapecreators(c, key):
     d = await _get(c, "https://api.scrapecreators.com/v1/account/credit-balance",
                    headers={"x-api-key": key})
@@ -641,6 +674,7 @@ BALANCE_ROUTES = {
     "tomba": _tomba,
     "dataforseo": _dataforseo,
     "tikhub": _tikhub,
+    "tavily": _tavily,
     "scrapecreators": _scrapecreators,
     "serpapi": _serpapi,
     "moz": _moz,
