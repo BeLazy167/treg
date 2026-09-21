@@ -1238,7 +1238,12 @@ async def use_case_job_page(request: Request, job: str,
                 md += [f"**{head}**", "", f'> "{quote}" ({who}: {url})', "",
                        f"What this page can do about it: {answer}", ""]
         md += ["", "## What actually differs", ""] + [f"- {x}" for x in spec["notes"]]
-        md += ["", f"## {spec.get('what_is_heading', 'What is this?')}", "", spec["what_is"], "", "## Questions", ""]
+        md += ["", f"## {spec.get('what_is_heading', 'What is this?')}", "", spec["what_is"]]
+        if spec.get("failure_modes"):
+            md += ["", "## Where it goes wrong", ""]
+            for h, p in spec["failure_modes"]:
+                md += [f"**{h}** {p}", ""]
+        md += ["", "## Questions", ""]
         for q, a in spec["faq"]:
             md += [f"**{q}** {a}", ""]
         md += [f"HTML version: {base}/use-cases/{job_slug}"]
@@ -1429,6 +1434,10 @@ async def use_case_job_page(request: Request, job: str,
     related += "".join(_extra_link_card(lbl, href, desc)
                        for lbl, href, desc in spec.get("extra_links", ()))
     faq_html = "".join(f'<h3>{_esc_html(q)}</h3><p>{_esc_html(a)}</p>' for q, a in spec["faq"])
+    # Optional on a use-case page (a workflow page always has one): the same "Where it goes wrong"
+    # block, between the background and the FAQ.
+    failures = "".join(f'<h3>{_esc_html(h)}</h3><p>{_esc_html(p)}</p>'
+                       for h, p in spec.get("failure_modes", ()))
 
     # The "instead of" anchor: what the same job costs on subscriptions from the providers on this
     # page whose plan prices are recorded in marketing/landing/_facts.md, against a real run here.
@@ -1503,6 +1512,9 @@ async def use_case_job_page(request: Request, job: str,
         + f'<section id="what"><div class="wrap"><div class="seclab">Background</div>'
           f'<h2>{_esc_html(spec.get("what_is_heading", "What is this?"))}</h2>'
           f'<p>{_esc_html(spec["what_is"])}</p></div></section>'
+
+        + (f'<section id="failures"><div class="wrap"><div class="seclab">The detail</div>'
+           f'<h2>Where it goes wrong</h2>{failures}</div></section>' if failures else "")
 
         + f'<section id="faq"><div class="wrap"><div class="seclab">Questions</div>'
           f'<h2>Before you start</h2>{faq_html}</div></section>'
@@ -2119,7 +2131,9 @@ async def tools_provider(service: str, db: AsyncSession = Depends(get_session),
                 "Your own key always wins and treg does not meter those calls.")
     if oauth_metered:
         kicker = f"{len(eps)} tools · OAuth connection · metered"
-        lede = (f"{_esc_html(blurb)} Connect your own {esc_d} account. "
+        # The H1 above still says "MCP" for an MCP-intent provider, so the lede must too.
+        lede = (f"{_esc_html(blurb)} {'One MCP server for the whole catalog. ' if mcp_intent else ''}"
+                f"Connect your own {esc_d} account. "
                 "Calls through treg's OAuth app are metered under this server's billing policy.")
     hero = (
         '<div class="hero"><div class="wrap">'
@@ -2373,8 +2387,9 @@ async def tools_provider(service: str, db: AsyncSession = Depends(get_session),
         title = (f"{display}: {len(eps)} tools from {cheapest} | treg.to" if cheapest
                  else f"{display}: {len(eps)} tools | treg.to")
         if len(title) > _TITLE_MAX:
+            # Both branches must be shorter than the primary; the H1 still starts with `display`.
             title = (f"{display}: from {cheapest} | treg.to" if cheapest
-                     else f"{display}: {len(eps)} tools | treg.to")
+                     else f"{display} | treg.to")
         desc = (f"{display} API pricing at the provider's own rate, with no {display} signup: {len(eps)} tools "
                 f"{'from ' + cheapest + ' ' if cheapest else ''}through one treg.to key or MCP server"
                 f"{', ' + measured if measured else ''}. Use it from Claude Code, ChatGPT or any agent.")
@@ -2389,7 +2404,11 @@ async def tools_provider(service: str, db: AsyncSession = Depends(get_session),
         desc = (f"{display} on treg: {len(platform_eps)} tools with platform or your own key, "
                 f"{byok_only} BYOK only. Compare access, billing units and live verification for every tool.")
     if oauth_metered:
-        desc = (f"Use {display} through your OAuth connection. Calls through treg's OAuth app "
+        # Same shape as the H1/title: an MCP-intent provider keeps "MCP" in its description.
+        desc = (f"{display} MCP server: connect your own account and call {len(eps)} tools through "
+                "treg.to. Calls through treg's OAuth app are metered under this server's billing policy."
+                if mcp_intent else
+                f"Use {display} through your OAuth connection. Calls through treg's OAuth app "
                 "are metered under this server's billing policy.")
     ld = [
         {"@context": "https://schema.org", "@type": "BreadcrumbList", "itemListElement": [
@@ -3612,7 +3631,7 @@ async def blog_work_email_finding_bench():
         '<h2 style="margin-top:32px;font-size:1.1em">What the numbers say</h2>'
         '<ul style="margin:16px 0;padding-left:24px">'
         '<li style="margin:8px 0"><strong>Quality is a tie.</strong> treg, Clay and Freckle land at '
-        '262, 262 and 263 exact matches; the difference is noise.</li>'
+        '264, 262 and 263 exact matches; the difference is noise.</li>'
         '<li style="margin:8px 0"><strong>Different-from-published is mostly not invalid.</strong> '
         'Many returned addresses are valid aliases. Exact-match is a floor, not a ceiling.</li>'
         '<li style="margin:8px 0"><strong>Cost is structural.</strong> Credit-based waterfalls run '

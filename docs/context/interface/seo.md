@@ -469,7 +469,9 @@ seven seconds apart. `voices` renders in HTML and in the `.md` mirror, and is op
 (two of the first seven pages ship without it), so `test_no_use_case_page_ships_with_an_empty_section`
 requires `voices` and `voices_intro` together rather than requiring either.
 
-**The section order is comparison, then voices, then notes, then FAQ.** Copy inside `voices`,
+**The section order is comparison, then voices, then notes, then background, then FAQ**, with an
+optional "Where it goes wrong" block (`failure_modes`, the workflow pages' shape, at least four)
+between background and FAQ on the pages that carry one. Copy inside `voices`,
 `notes` and `faq` that says "the comparison below" is pointing backwards; the first written pages
 say it anyway. Write position-neutral ("the comparison above", "the prices here") or the sentence
 is wrong for every reader who scrolls.
@@ -671,7 +673,8 @@ endpoint the worked run used, its `cost_view` price per billing unit, how many p
 step, observed success rate and p50 when there are samples, and a link to the step's use-case page
 resolved through `USE_CASES` by capability — or the category anchor on the default agent page when
 no page is written), a worst-case total (`price × rows_in` if every call hits), then **the receipt**
-of a real run (`id="run"`), `WHY_TREG`, the failure modes, the FAQ, and four related cards.
+of a real run (`id="run"`), `WHY_TREG`, the failure modes (at least four), the FAQ (four to six
+entries; a use-case page stays at exactly four), and four related cards.
 JSON-LD: BreadcrumbList, a `HowTo` whose steps are the table rows, and a FAQPage. `.md` mirrors it
 all, ending with `HTML version: …`. Hosted-only, sitemapped (hub 0.8, page 0.7) and case-folded to
 the canonical slug with a 301, exactly like the use-case pages.
@@ -742,7 +745,8 @@ workflow is cross-linked the moment it is routed, and nothing is listed by hand.
 `/tools/<provider>` titles match their H1s:
 
 - Metered: `{Provider}: {n} tools from {price} | treg.to` (falls back to `{Provider}: from {price} | treg.to`
-  or `{Provider}: {n} tools | treg.to` past 65 characters)
+  past 65 characters; with no price the primary is `{Provider}: {n} tools | treg.to` and the fallback is
+  `{Provider} | treg.to`, which the H1 still starts with)
 - Mixed (platform + BYOK): `{Provider}: {n} tools, platform or your own key | treg.to` (falls back to
   `{Provider}: {n} tools, platform + BYOK | treg.to` or `{Provider}: platform + BYOK | treg.to` past 65 characters)
 - Own-account: `{Provider}: connect your own account | treg.to`
@@ -758,7 +762,7 @@ read through `_observed_or_empty`. Descriptions go through `_serp_desc` (sentenc
 Google's cut) and may still mention pricing intent. The HowTo's steps mirror the visible setup section
 in order — the one-line install first, direct MCP second — because schema describing a different
 flow than the page shows is the mismatch Google treats as a violation. The setup line on these
-pages is the canonical `set up treg - {base}/llms.txt` (the em-dash is the documented exception,
+pages is the canonical `set up treg — {base}/llms.txt` (the em-dash is the documented exception,
 and a colon variant that shipped briefly forked the product's one paste-line).
 - compare-form job titles get `, from $X` appended when the hand-written title carries no price and
   the result stays within `_TITLE_MAX` (65); " compared" is dropped to make room.

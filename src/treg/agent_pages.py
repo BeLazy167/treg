@@ -1014,7 +1014,7 @@ USE_CASE_PAGES["people-search"] = {
 
 USE_CASE_PAGES["enrich-a-company"] = {
     "label": "Enrich a company from its domain",
-    "sentence": "Company enrichment API: domain to firmographics with {n} providers compared",
+    "sentence": "Company enrichment API: domain to firmographics, providers compared on price and fill",
     "title": "Company Enrichment API: {n} Providers Compared | treg.to",
     "lede": (
         "Turn a domain into firmographics: industry, headcount, location, founding year, tech stack, "
