@@ -136,6 +136,10 @@ class OAuthProvider:
     # limits call). `probe_method` defaults to GET; `probe_json` is sent as the JSON body when set.
     probe_method: str = "GET"
     probe_json: dict | None = None
+    # Provider-wallet cost of one successful pasted-key verification. Zero is the normal case.
+    # A positive value makes the probe connect-only: it is disclosed from typed data in the UI and
+    # is never persisted as a Tool health check, so `health --run` cannot quietly spend BYOK funds.
+    probe_cost_micro: int = 0
     # Encode the pasted secret before storing: "base64" turns a pasted `login:password` into the Base64
     # blob HTTP Basic needs (DataForSEO, Moz), so `token_format="Basic {secret}"` renders correctly and
     # the stored value injects the same way on every proxy call.
@@ -2561,6 +2565,35 @@ TOMBA = OAuthProvider(
     probe_path="/v1/usage",
 )
 
+TRESTLEIQ = OAuthProvider(
+    service="trestleiq",
+    display_name="TrestleIQ",
+    auth_kind="key",
+    token_label="API key",
+    token_placeholder="your TrestleIQ API key",
+    token_header="x-api-key",
+    token_format="{secret}",
+    setup_url="https://portal.trestleiq.com/",
+    setup_action_label="Get your TrestleIQ API key",
+    setup_steps=(
+        "Sign in to the Trestle Developer Portal and open API keys.",
+        "Create or copy an API key and paste it here.",
+    ),
+    setup_note=(
+        "Phone, contact, and address validation are billed for every HTTP 200 response, including "
+        "negative results. Missing required inputs are rejected by treg before reaching Trestle."
+    ),
+    auth_uri="", token_uri="", scopes={}, client_id_setting="", client_secret_setting="",
+    category="Enrichment",
+    summary="Validate phone numbers, contact details, and US postal addresses.",
+    base_url="https://api.trestleiq.com",
+    docs_url="https://docs.trestleiq.com/api-reference",
+    # Live 2026-09-21: a bogus key returned 403; this provider-owned invalid-number sandbox
+    # fixture returned 200. Trestle bills the probe as one Phone Validation query.
+    probe_path="/3.0/phone_intel?phone=%2B13005550100&is_sandbox=true",
+    probe_cost_micro=15_000,
+)
+
 
 PREDICTLEADS = OAuthProvider(
     service="predictleads",
@@ -3277,7 +3310,7 @@ REGISTRY: dict[str, OAuthProvider] = {
         DATAFORSEO, SERANKING, MOZ, MAJESTIC, SERPSTAT, EXA, CLORO,
         # more Enrichment API-key providers
         LUSHA, CORESIGNAL, DIFFBOT, THECOMPANIESAPI, LEADMAGIC, FIBER_AI, CRUSTDATA, AVIATO,
-        COMPANYENRICH, OCEANIO, TOMBA, PREDICTLEADS, FINDYMAIL, BRANDDEV, ICYPEAS, LEADSFORGE,
+        COMPANYENRICH, OCEANIO, TOMBA, TRESTLEIQ, PREDICTLEADS, FINDYMAIL, BRANDDEV, ICYPEAS, LEADSFORGE,
         INFLUENCERSCLUB,
         # Market data API-key providers
         COINGECKO, POLYGON, FINNHUB, TWELVEDATA, FMP, EODHD, MARKETSTACK, TIINGO,
@@ -3508,6 +3541,7 @@ def listing() -> list[dict]:
             "setup_action_label": p.setup_action_label,
             "setup_steps": list(p.setup_steps),
             "setup_note": p.setup_note,
+            "probe_cost_micro": p.probe_cost_micro,
             "extra_credential_note": p.extra_credential_note,
             "extra_credential_label": p.extra_credential_label,
             "needs_extra_credential": p.needs_extra_credential,

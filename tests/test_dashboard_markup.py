@@ -22,6 +22,12 @@ TUTORIAL = (Path(api.__file__).parent / "web" / "tutorial.html").read_text(encod
 SHARED_DIALOGS = ["tokenAsk", "capAsk", "methodAsk", "resPick"]
 
 
+def test_paid_key_probe_warning_is_rendered_from_typed_provider_data():
+    assert 'v-if="tokenAsk.provider.probe_cost_micro"' in INDEX
+    assert "money(tokenAsk.provider.probe_cost_micro)" in INDEX
+    assert "treg will not reuse this paid request for health checks" in INDEX
+
+
 def test_oauth_entry_opens_the_existing_sign_in_modal_without_minting_a_sandbox():
     assert "qs.get('signin')==='oauth'" in INDEX
     assert "else this.demo.signin=true;  // OAuth returns, use-case CTA arrivals (?ref=)" in INDEX

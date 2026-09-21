@@ -3211,6 +3211,10 @@ product, including per-customer usage tracking and billing.</pre>
                  @keyup.enter="submitToken"/>
         </div>
         <p v-if="tokenAsk.provider.setup_note" class="sub" style="margin:10px 0 0;font-size:11.5px">{{tokenAsk.provider.setup_note}}</p>
+        <p v-if="tokenAsk.provider.probe_cost_micro" class="mk-notice" style="margin:10px 0 0">
+          Verifying this key makes one provider-billed test call costing {{money(tokenAsk.provider.probe_cost_micro)}}.
+          treg will not reuse this paid request for health checks.
+        </p>
         <div v-if="tokenAsk.err" class="banner" style="margin-top:10px">{{tokenAsk.err}}</div>
         <div style="margin-top:14px;text-align:right;display:flex;gap:8px;justify-content:flex-end">
           <button class="btn sm" @click="tokenAsk=null">Cancel</button>

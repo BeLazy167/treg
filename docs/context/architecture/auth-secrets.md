@@ -13,6 +13,7 @@ sources:
   - src/treg/infra/oauth_exchange.py
   - src/treg/infra/oauth_refresh.py
   - src/treg/oauth_providers.py
+  - src/treg/web/index.html
   - src/treg/health.py
   - src/treg/application/connect.py
   - src/treg/routers/connections.py
@@ -27,6 +28,7 @@ sources:
   - tests/test_oauth_refresh.py
   - tests/test_financialdatasets.py
   - tests/test_key_providers.py
+  - tests/test_dashboard_markup.py
   - src/treg/config.py
 related:
   - architecture/proxy-model.md
@@ -36,34 +38,37 @@ related:
 
 # Auth & secrets
 
+`TRESTLEIQ` uses a pasted raw `x-api-key` header. Its connection probe calls a provider-owned
+invalid-number sandbox fixture. The typed `probe_cost_micro=15000` marks the first paid key probe;
+the connect dialog renders the warning from that field, and provisioning deliberately omits it from
+the tool health check so later health runs cannot spend the team's provider wallet.
+`TREG_PLATFORM_KEY_TRESTLEIQ` supplies the optional shared binding; a team's own key still wins.
+
 `LIMADATA` uses a pasted raw `x-api-key` header. Its free connection probe sends an invalid empty
 web-search body: the assigned key returns HTTP 400 and a bogus key returns 401. The real local
 connection flow accepted the former and rejected the latter. `TREG_PLATFORM_KEY_LIMADATA` is the
-separate optional shared binding; a team's key still wins and remains unmetered. See
-[LimaData](limadata.md).
+separate optional shared binding; a team's key still wins and remains unmetered.
 
 BounceBan uses a pasted raw `Authorization` header with no `Bearer` prefix. The free
 `GET /v1/account` probe rejected a bogus key with HTTP 401 and accepted the supplied key with HTTP
 200 through the real connection flow. `TREG_PLATFORM_KEY_BOUNCEBAN` supplies the optional shared
 binding; a team's key still wins and remains unmetered. Provisioning includes the standard API tool
-and its explicit waterfall-host companion without exposing the credential. See
-[BounceBan](bounceban.md).
+and its explicit waterfall-host companion without exposing the credential.
 
 ZeroBounce uses the standard pasted-key flow with an `api_key` query parameter. Its free usage
 probe rejects bad keys with HTTP 403 and accepts the supplied key with HTTP 200. The probe does not
 use the balance route because that route can answer a bad key with HTTP 200 and `Credits=-1`.
 `TREG_PLATFORM_KEY_ZEROBOUNCE` supplies the optional shared binding; a team's key still wins and
-remains unmetered. See [ZeroBounce](zerobounce.md).
+remains unmetered.
 
 `MOLTSETS` is a pasted Bearer-key provider whose free `POST /get_account` probe validates both team
-and optional platform credentials. The existing own-key-first ladder and deployment allow-list apply;
-see [MoltSets](moltsets.md).
+and optional platform credentials. The existing own-key-first ladder and deployment allow-list apply.
 
-`SUMBLE` uses the standard pasted Bearer-key path and a free technology-search miss probe; garbage-key rejection was verified through the local connection API. See [Sumble](sumble.md).
+`SUMBLE` uses the standard pasted Bearer-key path and a free technology-search miss probe; garbage-key rejection was verified through the local connection API.
 
 `GETLEADSIO` uses the standard pasted Bearer-key path at `app.getleads.io`. Its free fair-use probe
 rejects bad keys with 401 and accepts a valid zero-credit account. The same route supplies capacity
-data; it is not a public catalog tool. See [GetLeads.io](getleadsio.md).
+data; it is not a public catalog tool.
 
 Financial Datasets uses the standard pasted-key and platform-key paths with a raw `X-API-KEY`
 header. `OAuthProvider.probe_url` points at the smallest practical price-snapshot request and
@@ -491,12 +496,12 @@ platform-provider allow-list is also required. Own keys always take precedence.
 
 `oauth_providers.CONTACTOUT` verifies against `/v1/stats` and requires `status_code: 200` as well
 as HTTP success. Its binding injects the raw `token` header. Both garbage rejection and valid
-connection creation were tested live; see [ContactOut](contactout.md).
+connection creation were tested live.
 
 
 ## HarvestAPI integration
 
-`HARVESTAPI` uses a pasted `X-API-Key` and internal `/users/my-api-user` probe. The wallet endpoint is not a catalog tool. See [HarvestAPI](harvestapi.md) for own-key priority and platform configuration.
+`HARVESTAPI` uses a pasted `X-API-Key` and internal `/users/my-api-user` probe. The wallet endpoint is not a catalog tool.
 
 
 ## Dropleads key connection
@@ -507,7 +512,6 @@ zero balance. One connection provisions the primary `dropleads` tool and the `dr
 companion tool; both bind the same secret. `CatalogTarget` separately permits catalog calls to the
 companion host. `platform_key_dropleads` supplies the optional shared key, and the platform-provider
 allow-list remains required. An organization's own key has priority and is never metered by treg.
-See [Dropleads](dropleads.md) for the approved hosts and public tool surface.
 
 
 ## Prospeo key connection
@@ -517,4 +521,3 @@ See [Dropleads](dropleads.md) for the approved hosts and public tool surface.
 account and rejects a garbage key with `INVALID_API_KEY`; the account route remains internal rather
 than becoming a catalog tool. `platform_key_prospeo` supplies the optional shared key, gated by the
 platform-provider allow-list. An organization's own key keeps priority and is never metered by treg.
-See [Prospeo](prospeo.md) for the public surface and live verification evidence.

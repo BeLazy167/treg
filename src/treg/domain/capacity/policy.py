@@ -38,6 +38,9 @@ _KNOWN: dict[str, tuple[str, str, str]] = {
     "aiark": ("monthly_quota", "quota_reset", "api"),
     "wiza": ("credits", "manual", "api"),
     "limadata": ("credits", "auto_recharge", "manual"),
+    # Manually verified in the Developer Portal: vendor auto-recharge is enabled. treg neither
+    # reads nor changes that setting, so the observation source remains manual.
+    "trestleiq": ("cash", "auto_recharge", "manual"),
     "getleadsio": ("credits", "manual", "api"),
     "sumble": ("monthly_quota", "quota_reset", "api"),
     "moltsets": ("rolling_quota", "subscription", "api"),
@@ -99,6 +102,7 @@ _RATE_LIMITS: dict[str, dict] = {
     # The Basic v2 docs set a shared one-request/second default. Several routes are exempt, but
     # provider-wide smoothing cannot express that difference, so shared-key service stays at 1/s.
     "limadata": {"limit": 1, "window_s": 1, "source": "docs"},
+    "trestleiq": {"limit": 10, "window_s": 1, "source": "docs"},
     # Routing-friendly shared-key pace. The 5,000-request/5h rolling allowance is capacity, not a
     # burst rate; encoding it here would make the spacer add 3.6s before every routed attempt.
     "moltsets": {"limit": 10, "window_s": 1, "source": "policy"},

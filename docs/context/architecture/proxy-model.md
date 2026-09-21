@@ -550,4 +550,4 @@ CLI output, boundaries, Range, disconnects, settlement evidence, archive and rep
 
 ## HarvestAPI integration
 
-Catalog entries can opt into `strict_query`: `_enforce_catalog_query` rejects bodies, undeclared/duplicate query parameters, missing required inputs and unsupported enum values before credential selection. It applies to catalog calls on every tier, leaves unmarked entries unchanged and does not rewrite requests or constrain arbitrary raw own-tool relays. See [HarvestAPI](harvestapi.md).
+Catalog entries can opt into `strict_query`: `_enforce_catalog_query` rejects bodies, undeclared/duplicate query parameters, missing required inputs and unsupported enum values before credential selection. It applies to catalog calls on every tier, leaves unmarked entries unchanged and does not rewrite requests or constrain arbitrary raw own-tool relays.

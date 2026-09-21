@@ -153,6 +153,15 @@ def limadata_platform_on(monkeypatch):
     get_settings.cache_clear()
 
 
+@pytest.fixture
+def trestleiq_platform_on(monkeypatch):
+    monkeypatch.setenv("TREG_PLATFORM_KEY_TRESTLEIQ", "PLATFORM-TRESTLEIQ")
+    monkeypatch.setenv("TREG_PLATFORM_PROVIDERS", "trestleiq")
+    get_settings.cache_clear()
+    yield
+    get_settings.cache_clear()
+
+
 async def _balance(clients: AsyncClient) -> int:
     org_id = (await clients.get("/orgs")).json()[0]["org_id"]
     return (await clients.get(f"/orgs/{org_id}/balance")).json()["balance_micro"]
@@ -3814,3 +3823,81 @@ async def test_prospeo_mobile_uses_fixed_ten_credit_platform_price_and_byok_is_u
     assert seen == ["OWN-PROSPEO"]
     assert "x-treg-cost-micro" not in result.headers
     assert await _balance(clients) == before
+
+
+@pytest.mark.parametrize(("endpoint", "params", "negative", "cost_micro"), [
+    (
+        "trestleiq.people.phone.verify",
+        {"phone": "+13005550100"},
+        {
+            "phone_number": "+13005550100", "is_valid": False,
+            "activity_score": None, "line_type": None, "carrier": None,
+            "warnings": ["Invalid Input"],
+        },
+        15_000,
+    ),
+    (
+        "trestleiq.people.contact.verify",
+        {"name": "Jon Snow", "phone": "300-555-0103"},
+        {
+            "phone": {"contact_grade": "F", "is_valid": False},
+            "email": {"contact_grade": None, "is_valid": None},
+            "warnings": ["Invalid Input"],
+        },
+        30_000,
+    ),
+    (
+        "trestleiq.people.address.verify",
+        {"street_line_1": "1 This Address Does Not Exist"},
+        {"is_valid": False, "warnings": ["Address Not Found"]},
+        10_000,
+    ),
+])
+async def test_trestleiq_negative_platform_result_is_billed_and_byok_wins(
+    clients, trestleiq_platform_on, monkeypatch, endpoint, params, negative, cost_micro,
+):
+    monkeypatch.setattr(call_service, "relay", _fake_relay(200, json.dumps(negative).encode()))
+    before = await _balance(clients)
+    response = await clients.get(f"/call/{endpoint}", params=params)
+    assert response.status_code == 200, response.text
+    assert response.headers["x-treg-cost-micro"] == str(cost_micro)
+    assert await _balance(clients) == before - cost_micro
+
+    await clients.post("/secrets", json={"name": "trestleiq", "value": "OWN-TRESTLEIQ"})
+    before_byok = await _balance(clients)
+    response = await clients.get(f"/call/{endpoint}", params=params)
+    assert response.status_code == 200
+    assert "x-treg-cost-micro" not in response.headers
+    assert await _balance(clients) == before_byok
+
+
+@pytest.mark.parametrize(("endpoint", "params"), [
+    ("trestleiq.people.phone.verify", {"phone": "+13005550103"}),
+    ("trestleiq.people.contact.verify", {"name": "Jon Snow", "phone": "300-555-0103"}),
+    ("trestleiq.people.address.verify", {"street_line_1": "800 Bellevue Way NE"}),
+])
+async def test_trestleiq_strict_query_blocks_paid_add_ons_for_every_tier(
+    clients, trestleiq_platform_on, endpoint, params,
+):
+    response = await clients.get(f"/call/{endpoint}", params={**params, "add_ons": "paid"})
+    assert response.status_code == 400
+    await clients.post("/secrets", json={"name": "trestleiq", "value": "OWN-TRESTLEIQ"})
+    response = await clients.get(f"/call/{endpoint}", params={**params, "add_ons": "paid"})
+    assert response.status_code == 400
+
+
+@pytest.mark.parametrize("endpoint", [
+    "trestleiq.people.phone.verify",
+    "trestleiq.people.contact.verify",
+    "trestleiq.people.address.verify",
+])
+async def test_trestleiq_missing_required_input_never_reaches_upstream(
+    clients, trestleiq_platform_on, monkeypatch, endpoint,
+):
+    async def unexpected_relay(*args, **kwargs):
+        raise AssertionError("missing required input reached Trestle")
+
+    monkeypatch.setattr(call_service, "relay", unexpected_relay)
+    assert (await clients.get(f"/call/{endpoint}")).status_code == 400
+    await clients.post("/secrets", json={"name": "trestleiq", "value": "OWN-TRESTLEIQ"})
+    assert (await clients.get(f"/call/{endpoint}")).status_code == 400
