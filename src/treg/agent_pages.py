@@ -1014,12 +1014,13 @@ USE_CASE_PAGES["people-search"] = {
 
 USE_CASE_PAGES["enrich-a-company"] = {
     "label": "Enrich a company from its domain",
-    "sentence": "Clearbit alternative: company enrichment API from a domain",
-    "title": "Clearbit Alternative: Company Enrichment API | treg.to",
+    "sentence": "Company enrichment API: domain to firmographics with {n} providers compared",
+    "title": "Company Enrichment API: {n} Providers Compared | treg.to",
     "lede": (
-        "Clearbit alternative with {n} providers. Give your agent a domain and get firmographics: "
-        "industry, headcount, location, founding year, tech stack, funding. Clearbit pricing is per "
-        "record; here you compare providers and pay per call with no seat."),
+        "Turn a domain into firmographics: industry, headcount, location, founding year, tech stack, "
+        "funding. {n} providers do this job through one treg.to key, from {cheapest} a call, with no "
+        "seat fee and no annual contract. Your agent compares them on price and measured fill rate, "
+        "picks one, and you pay only for the calls it makes."),
     "prompt": "Using treg, enrich these 30 domains into a table: company name, industry, headcount, "
               "country, founded year and tech stack. Show me the price first, and mark any field that came back empty.",
     "prompt_why": [
@@ -1075,6 +1076,29 @@ USE_CASE_PAGES["enrich-a-company"] = {
          "r/Data_Enrichment", "https://www.reddit.com/r/Data_Enrichment/comments/1vrl2q4/data_enrichment_pricing_2026_august_update/",
          "Which is why every price on this page is in dollars per call, converted from each "
          "provider's own unit at their published rate, with the date we last verified it."),
+        ("Seat pricing kills small teams",
+         "For a 5-person team, they quoted 15k-30k/year minimum. The pricing games are brutal.",
+         "r/coldemail", "https://www.reddit.com/r/coldemail/comments/1tplckc/what_are_you_actually_paying_for_zoominfo_vs/",
+         "Seat-based enrichment tools bill whether or not you pull a record. Every provider here "
+         "bills per call with no seat, so a quiet month costs nothing and a busy one scales."),
+    ],
+    "failure_modes": [
+        ("Inferred headcount is often wrong",
+         "Most providers model employee count from job postings, LinkedIn, and traffic signals. "
+         "Subsidiaries, international companies, and fast-growing teams are frequently misclassified. "
+         "Treat headcount as a range, not a fact, and validate any record that will drive routing."),
+        ("Empty vs guessed fields",
+         "Some providers return a blank when they have no data; others return an inferred value with "
+         "no flag. A confidently wrong industry or revenue estimate does more damage than a gap. Ask "
+         "the agent to surface blanks, and know which providers distinguish observed from modelled."),
+        ("Fuzzy name match returns the wrong company",
+         "A company name like 'Acme' matches dozens of records; the provider picks one and you pay. "
+         "A domain is deterministic: one input, one company, no ambiguity. Use the by-domain route "
+         "when you have it."),
+        ("Billing units differ wildly",
+         "One provider charges per section of the record you request; another per company found; "
+         "another only when name, size and location all return. Compare in dollars per call, not in "
+         "credits, because a credit means something different at every vendor."),
     ],
     "faq": [
         ("What do I send in?",
@@ -1094,6 +1118,11 @@ USE_CASE_PAGES["enrich-a-company"] = {
     ],
     "related": ("Build a company list by industry, size or tech", "Hiring, headcount and news signals",
                 "Find people by role, company or location", "A company's funding rounds"),
+    "extra_links": (
+        ("Pricing", "/pricing", "How treg.to pricing works"),
+        ("Verified lead list workflow", "/workflows/find-and-verify-a-lead-list", "Build a list with the receipt from a real run"),
+        ("People search", "/people-search", "Find and enrich people by role, company or location"),
+    ),
 }
 
 
@@ -4435,13 +4464,14 @@ USE_CASE_PAGES["keyword-volume-cpc-and-competition"] = {
 WORKFLOWS: dict[str, dict] = {}
 
 WORKFLOWS["find-and-verify-a-lead-list"] = {
-    "sentence": "AI lead generation: build a verified lead list from one prompt",
-    "title": "AI lead generation: a verified lead list in {n} calls | treg.to",
+    "sentence": "Verified lead list: company search, person finder, email, verify, news in one prompt",
+    "title": "Verified Lead List: Build One From a Single Prompt | treg.to",
     "lede": (
-        "Give your agent one prompt and get back a lead list with a named person, a verified work "
-        "email and a reason to write, for every company that matched. {steps} steps, each a "
-        "metered call through one treg.to key, with the price printed before the agent spends it. "
-        "The numbers on this page come from running it, not from a rate card."),
+        "One prompt, five steps, a CSV at the end: company list, person at each one, work email, "
+        "verification, and a news opener. {steps} calls through one treg.to key. The agent sees "
+        "every provider for each step with its price and success rate, picks the one that fits, "
+        "and you pay only for the calls it makes. The numbers on this page come from running it, "
+        "not from a rate card."),
     "prompt": (
         "Using treg, build me a lead list: 50 US software companies with 51 to 200 staff that raised "
         "a Series A. For each one find the VP or Head of Marketing, find their work email with the "
@@ -4529,8 +4559,10 @@ WORKFLOWS["find-and-verify-a-lead-list"] = {
          "LeadMagic's people search answered \"query too broad\" for a single domain with six titles, at no charge. Findymail by title returned a person for 27 of 47 companies and LeadMagic's role finder for 13 of the remaining 20. Nobody's database has a marketing lead for every 100-person company; the miss rate is the workflow, not a bug."),
         ("The cheapest provider is out of credit",
          "Akta answered all 31 news calls with an insufficient-credits error on treg.to's own key, at no charge, and the run fell back to PredictLeads at four times the price. A provider outage shows up as a price change, so ask the agent for the price before each step, not once at the start."),
-        ("Catch-all domains",
-         "A verifier cannot resolve an address on a domain that accepts everything. Expect a fifth of a B2B list to land in that bucket, and decide once, per campaign, whether to send to it."),
+        ("Catch-all domains pass verification but may still bounce",
+         "A verifier cannot resolve an address on a domain that accepts everything. Expect a fifth of a B2B list to land in the catch-all bucket. SMTP checks confirm domain acceptance, not that a specific inbox exists. Treat catch-alls as a separate risky segment and send them in small batches with dedicated monitoring."),
+        ("Verification is a separate step, not a side effect of finding",
+         "Most email finders return addresses without verifying them. An address that passes SMTP can still be recycled, role-based, or stale. Verification must happen at execution time, as a distinct call, to catch addresses that would pass find but fail send."),
     ],
     "faq": [
         ("How much does the whole workflow cost?",
@@ -4547,6 +4579,8 @@ WORKFLOWS["find-and-verify-a-lead-list"] = {
     "extra_links": (
         ("Run with your agent", "/people-search", "The people search launch page"),
         ("Waterfall enrichment", "/use-cases/lead-enrichment-for-ai-agents", "Find, enrich and verify in one agent run"),
+        ("Company enrichment", "/use-cases/enrich-a-company", "Turn a domain into firmographics"),
+        ("Pricing", "/pricing", "How treg.to pricing works"),
     ),
 }
 
