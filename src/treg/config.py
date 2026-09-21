@@ -57,8 +57,11 @@ class Settings(BaseSettings):
 
     # SQLite locally, Postgres on Render — same code path, just swap the URL.
     database_url: str = "sqlite+aiosqlite:///./treg.db"
+    # Optional SQLite / PostgreSQL datasource for explicitly opted-in, lag-tolerant reads.
+    # Empty keeps read_session_maker on the existing primary pool.
+    read_database_url: str = ""
 
-    @field_validator("database_url")
+    @field_validator("database_url", "read_database_url")
     @classmethod
     def _async_pg_driver(cls, v: str) -> str:
         # Some hosts inject a bare `postgres://`/`postgresql://` URL, but
@@ -68,6 +71,13 @@ class Settings(BaseSettings):
             v = "postgresql://" + v[len("postgres://") :]
         if v.startswith("postgresql://"):
             v = "postgresql+asyncpg://" + v[len("postgresql://") :]
+        return v
+
+    @field_validator("read_database_url")
+    @classmethod
+    def _read_database_driver(cls, v: str) -> str:
+        if v and not v.startswith(("sqlite+aiosqlite://", "postgresql+asyncpg://")):
+            raise ValueError("read_database_url must use sqlite+aiosqlite or postgresql+asyncpg, or be empty")
         return v
 
     # Pool sizing overrides, e.g. "admin.pool_size=4,background.pool_size=12". Empty = the defaults

@@ -131,6 +131,45 @@ SQLite aliases all three makers to one engine. It has no pool to protect and fil
 it cannot share, so separate engines would only manufacture lock failures. Tests pin routing rather
 than SQLite isolation.
 
+### Optional read replica
+
+`TREG_READ_DATABASE_URL` adds a datasource exposed as `read_session_maker`. Its supported drivers
+match the project's SQLite / PostgreSQL support: `sqlite+aiosqlite` and `postgresql+asyncpg`.
+Bare `postgres://` and `postgresql://` URLs normalize to `postgresql+asyncpg`, as for the primary;
+other read URL drivers fail settings validation. This does not add support for MySQL or other
+SQLAlchemy dialects. When empty, the read maker aliases `session_maker`, with the primary's existing
+transaction behavior (including writes) and no additional pool. Connections are opened only when used.
+
+A configured URL always gets an independent engine, even when it names the primary database:
+
+- PostgreSQL uses a `read` pool defaulting to two connections with no overflow;
+  `TREG_DB_POOL_OVERRIDES` accepts `read.pool_size` and `read.max_overflow`. Each connection sets
+  `default_transaction_read_only=on` through asyncpg's `server_settings`.
+- SQLite retains the driver's default pool behavior and sets `PRAGMA query_only=ON` on every new
+  read connection, including after reconnection. The primary's connections remain writable. For an
+  existing file, `sqlite+aiosqlite:///file:replica.db?mode=ro&uri=true` additionally opens the file
+  read-only and fails if it is missing. A plain SQLite URL retains SQLite's usual file-opening
+  behavior, including creating a missing file; `query_only` guards SQL changes, not file creation.
+  A separate in-memory SQLite URL starts empty and cannot serve as a copy of the primary.
+
+These connection settings guard accidental writes; they are not an authorization boundary and can
+be disabled by deliberate SQL. Use a physical replica/read-only database role or filesystem access
+controls as appropriate. Connection/query failures propagate without primary fallback.
+
+`pool_snapshot()` includes a separate `read` entry for a configured PostgreSQL datasource; SQLite
+engines are omitted as for the primary. `connection_budget()` describes only the primary pools;
+budget the read pool against its target database, including process count and deployment overlap.
+If both URLs target the same server, add both budgets against that server's limit.
+`dispose_engine()` also disposes the read engine. Schema upgrades, startup verification and test
+schema resets continue to target the primary.
+
+This datasource is opt-in infrastructure: no application query or worker currently uses it.
+Adopting callers must tolerate replica lag and keep writes, cursor advancement and concurrency
+control on the primary. Operators must provision and synchronize a compatible schema and data;
+setting a URL does not establish replication, translate dialect-specific queries, or migrate any
+Cron job's workload. Configure it in a private local `.env` or the hosting service's environment;
+`.env.example` contains no secrets.
+
 ## Configuration (`config.py`)
 
 `Settings` uses the `TREG_` prefix, reads `.env`, and is cached by `get_settings()`.

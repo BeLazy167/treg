@@ -401,6 +401,17 @@ Shared request-time conversions live in `timeutil.utcnow_naive` and `timeutil.as
 temporarily as `api._utcnow_naive` and `api._as_naive` during the staged router migration. Query
 parameters compared with timestamp columns follow the same constraint as inserted or updated values.
 
+`TREG_READ_DATABASE_URL` optionally adds a separate SQLite / PostgreSQL engine and
+`read_session_maker`. PostgreSQL defaults its transactions to read-only; SQLite enables
+`PRAGMA query_only` on dedicated read connections without affecting the primary. These guard
+accidental writes, not deliberate SQL that disables the settings. The engine is included in
+disposal, but never schema writes; PostgreSQL also exposes its `read` pool in telemetry.
+An empty URL aliases the existing primary session maker with unchanged write behavior;
+configured datasource failures propagate without primary fallback. No business caller uses this
+datasource yet. Provisioning/replication, replica lag and each caller's write boundaries must be
+handled before opting in; a URL alone does not synchronize databases or add other dialect support.
+See [deploy](../ops/deploy.md) § Optional read replica for configuration and connection budgeting.
+
 ## Alembic execution and the adoption floor
 
 Alembic owns all production schema execution through `maintenance._upgrade_schema`. An empty or stamped
