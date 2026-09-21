@@ -163,3 +163,11 @@ def test_generic_reply_check_is_linear_and_keeps_its_verdicts():
     assert not _is_generic("great " * 5000 + "x")
     assert time.perf_counter() - t0 < 0.5
 
+
+def test_every_recipe_prompt_sets_treg_up_through_llms_txt():
+    """Same front door as every other landing: the agent reads llms.txt, which owns the install and
+    login steps. A prompt that pipes install.sh into a shell skips everything llms.txt tells it."""
+    page = (Path(__file__).parent.parent / "src/treg/web/jev.html").read_text()
+    assert page.count("read https://treg.to/llms.txt") == 4
+    assert "install.sh" not in page
+

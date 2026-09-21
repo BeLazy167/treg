@@ -1274,7 +1274,7 @@ action = { jailbreak: block, harmful: block,
           <div class="pop" id="pop-signals" hidden><div class="ph"><span>Paste into your agent</span><span style="display:flex;align-items:center"><button class="pill sm dark" data-copy="p-signals">Copy prompt</button><button class="xclose" type="button" aria-label="Close">✕</button></span></div><pre id="p-signals">Build a signal-first lead finder for &lt;my product&gt; and a page to browse the run.
 
 <b>Setup</b>
-1. Install treg and log in: `curl -fsSL https://treg.to/install.sh | sh`, then `treg login`.
+1. Set up treg: read https://treg.to/llms.txt and follow it (install the CLI, then `treg login`).
 2. Vercel AI Gateway key in .env as AI_GATEWAY_API_KEY. jev: POST
    https://ai-gateway.vercel.sh/v4/ai/evaluation-model with headers Authorization: Bearer $KEY,
    ai-model-id: typesafe-ai/jev, ai-evaluation-model-specification-version: 4,
@@ -1316,7 +1316,7 @@ action = { jailbreak: block, harmful: block,
           <div class="pop" id="pop-triage" hidden><div class="ph"><span>Paste into your agent</span><span style="display:flex;align-items:center"><button class="pill sm dark" data-copy="p-triage">Copy prompt</button><button class="xclose" type="button" aria-label="Close">✕</button></span></div><pre id="p-triage">Build a signup triage that runs every hour over new signups and posts the interesting ones to Slack.
 
 <b>Setup</b>
-1. Install treg and log in: `curl -fsSL https://treg.to/install.sh | sh`, then `treg login`.
+1. Set up treg: read https://treg.to/llms.txt and follow it (install the CLI, then `treg login`).
 2. Vercel AI Gateway key in .env as AI_GATEWAY_API_KEY. jev: POST
    https://ai-gateway.vercel.sh/v4/ai/evaluation-model with headers Authorization: Bearer $KEY,
    ai-model-id: typesafe-ai/jev, ai-evaluation-model-specification-version: 4,
@@ -1367,7 +1367,7 @@ action = { jailbreak: block, harmful: block,
           <div class="pop" id="pop-xboost" hidden><div class="ph"><span>Paste into your agent</span><span style="display:flex;align-items:center"><button class="pill sm dark" data-copy="p-xboost">Copy prompt</button><button class="xclose" type="button" aria-label="Close">✕</button></span></div><pre id="p-xboost">Build me a daily "launch radar" for X and a page to browse it.
 
 <b>Setup</b>
-1. Install treg and log in: `curl -fsSL https://treg.to/install.sh | sh`, then `treg login`.
+1. Set up treg: read https://treg.to/llms.txt and follow it (install the CLI, then `treg login`).
    treg is one token for 2,600+ data endpoints; calls are `treg call &lt;endpoint&gt; --data '{...}'`.
 2. Get a Vercel AI Gateway key (https://vercel.com/ai-gateway) and put it in .env as AI_GATEWAY_API_KEY.
    jev is called with POST https://ai-gateway.vercel.sh/v4/ai/evaluation-model, headers
@@ -1435,7 +1435,7 @@ action = { jailbreak: block, harmful: block,
           <div class="pop" id="pop-build" hidden><div class="ph"><span>Paste into your agent, then describe the workflow</span><span style="display:flex;align-items:center"><button class="pill sm dark" data-copy="p-build">Copy prompt</button><button class="xclose" type="button" aria-label="Close">✕</button></span></div><pre id="p-build">Set up treg and jev for me, then build the workflow I describe at the end.
 
 <b>Setup</b>
-1. Install treg and log in: `curl -fsSL https://treg.to/install.sh | sh`, then `treg login`.
+1. Set up treg: read https://treg.to/llms.txt and follow it (install the CLI, then `treg login`).
    treg is one token for 2,600+ data endpoints. Discover with `treg search "&lt;what I want to do&gt;"`,
    inspect with `treg get &lt;endpoint&gt;` (parameters, price, reliability), call with
    `treg call &lt;endpoint&gt; --data '{...}'`. Every response reports its exact charge in X-Treg-Cost-Micro.
