@@ -41,6 +41,7 @@ _KNOWN: dict[str, tuple[str, str, str]] = {
     # Manually verified in the Developer Portal: vendor auto-recharge is enabled. treg neither
     # reads nor changes that setting, so the observation source remains manual.
     "trestleiq": ("cash", "auto_recharge", "manual"),
+    "tavily": ("credits", "manual", "api"),
     "getleadsio": ("credits", "manual", "api"),
     "sumble": ("monthly_quota", "quota_reset", "api"),
     "moltsets": ("rolling_quota", "subscription", "api"),
@@ -103,6 +104,10 @@ _RATE_LIMITS: dict[str, dict] = {
     # provider-wide smoothing cannot express that difference, so shared-key service stays at 1/s.
     "limadata": {"limit": 1, "window_s": 1, "source": "docs"},
     "trestleiq": {"limit": 10, "window_s": 1, "source": "docs"},
+    # Development keys allow 100/minute; production keys allow 1,000/minute. Use the lower
+    # documented tier until the shared key's environment is verified. Crawl has the same 100/minute
+    # ceiling on both tiers, so this provider-wide pace is safe for all four catalog tools.
+    "tavily": {"limit": 100, "window_s": 60, "source": "docs"},
     # Routing-friendly shared-key pace. The 5,000-request/5h rolling allowance is capacity, not a
     # burst rate; encoding it here would make the spacer add 3.6s before every routed attempt.
     "moltsets": {"limit": 10, "window_s": 1, "source": "policy"},

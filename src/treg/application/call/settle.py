@@ -328,9 +328,13 @@ def _observed_cost_micro(mk: MarketplaceCall, body: bytes, headers=None) -> int 
         amount = _dig(doc, reported["path"])
         if isinstance(amount, (int, float, str)) and not isinstance(amount, bool):
             try:
-                dollars = Decimal(str(amount))
-                if dollars.is_finite() and dollars >= 0:
-                    return int((dollars * 1_000_000).quantize(Decimal("1"), rounding=ROUND_HALF_UP))
+                value = Decimal(str(amount))
+                if value.is_finite() and value >= 0:
+                    unit_micro = (1_000_000 if reported["unit"] == "usd"
+                                  else mk.reported_charge_unit_micro)
+                    if unit_micro > 0:
+                        return int((value * unit_micro).quantize(
+                            Decimal("1"), rounding=ROUND_HALF_UP))
             except (InvalidOperation, ValueError, OverflowError):
                 pass
         # Missing or invalid charge evidence leaves the normal miss/base rules in force.

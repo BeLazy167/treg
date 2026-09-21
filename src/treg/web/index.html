@@ -6013,7 +6013,7 @@ createApp({
     // "free", "—". The provider's own figure follows as a muted suffix (see `costNative`).
     costLabel(c){
       if(!c || !c.type) return '—';
-      if(c.display_unit && typeof c.display_usd==='number') return '$'+this.usdNum(c.display_usd)+(c.display_suffix||'')+'/'+c.display_unit;
+      if(c.display_unit && typeof c.display_usd==='number') return (c.display_prefix||'')+'$'+this.usdNum(c.display_usd)+(c.display_suffix||'')+'/'+c.display_unit;
       if(c.type==='free') return 'free';
       // Known billing unit, unpublished number: say which, and where the number lives. A bare
       // "per success" reads as free, and "—" hides that we do know how it's metered.

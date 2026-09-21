@@ -325,6 +325,7 @@ class MarketplaceCall:
     # is metered anyway. Set by `_billed_marketplace` after the bound secrets are known.
     billed_oauth: bool = False
     unit_micro: int = 0             # RAW per-resource price for a per_result settle-by-count
+    reported_charge_unit_micro: int = 0  # RAW value of one response-reported provider credit
     # treg's own account is marked exhausted AND an overflow route is enabled: skip the direct
     # attempt (no hold, no vendor 402) and go straight to the child cycle (plan §4 ladder).
     skip_direct: bool = False
@@ -1221,7 +1222,8 @@ def _enforce_platform_request(ep: dict, body: bytes) -> None:
             allowed = spec.get("enum") if spec else None
             if isinstance(allowed, list) and len(allowed) == 1:
                 selectors[relative] = allowed[0]
-    if not selectors:
+    bounds = ep.get("platform_bounds") or {}
+    if not selectors and not bounds:
         return
     document = _strict_json_object(body, ep["id"])
     for path, expected in sorted(selectors.items()):
@@ -1236,6 +1238,24 @@ def _enforce_platform_request(ep: dict, body: bytes) -> None:
                     "message": (
                         f"{ep['id']} fixes body.{path} to {expected!r}; "
                         "use the required value for a platform call"
+                    ),
+                },
+            )
+    for path, rule in sorted(bounds.items()):
+        relative = str(path).removeprefix("body.")
+        actual = _document_value(document, relative)
+        minimum, maximum = rule.get("min"), rule.get("max")
+        if (not isinstance(actual, (int, float)) or isinstance(actual, bool)
+                or actual < minimum or actual > maximum):
+            raise ResolutionFailed(
+                "catalog_parameter_invalid", status_code=400, detail={
+                    "error": "catalog_parameter_invalid",
+                    "endpoint_id": ep["id"],
+                    "parameter": str(path),
+                    "expected": f"a number from {minimum} to {maximum}",
+                    "message": (
+                        f"Platform calls require {path} from {minimum} to {maximum}; "
+                        "connect your own key for the upstream limit"
                     ),
                 },
             )
@@ -1577,12 +1597,17 @@ async def _resolve_marketplace_call(
     if (raw_cost.get("usage") or {}).get("unit") == "credit":
         # One provider credit in micro-USD, from fx.yaml; the validator guarantees the entry.
         usage_unit_micro = _usd_to_micro(cat.credit_rates.get(service))
+    reported_charge_unit_micro = 0
+    if (raw_cost.get("reported_charge") or {}).get("unit") == "credit":
+        reported_charge_unit_micro = _usd_to_micro(cat.credit_rates.get(service))
     basis = settlement_basis.derive_basis(
         raw_cost, request=request_data, input_schema=ep.get("input") or {},
         unit_micro=unit_micro, terminal=bool(ep.get("async")),
         response_estimate_micro=info_est, usage_unit_micro=usage_unit_micro,
     )
-    if basis.get("amount", {}).get("kind") in ("table", "usage"):
+    # A table computes the request-specific hold even when the response's generic reported charge
+    # will decide settlement. Do not leave `estimate_micro` at the table's fallback ceiling.
+    if raw_cost.get("table") or basis.get("amount", {}).get("kind") == "usage":
         info_est = int(basis["reserve_micro"])
     common = dict(
         upstream=upstream, consumed=consumed, endpoint_id=ep["id"], provider=service,
@@ -1591,7 +1616,8 @@ async def _resolve_marketplace_call(
         # The per-ROW price, carried on every tier (settle only reads it on metered calls):
         # a `per_result` settle that can't count rows can only ever bill the estimate,
         # which is how 6,000 delivered Bright Data records once billed as one (2026-08-24).
-        unit_micro=info_unit, settlement_basis=basis, request_data=request_data,
+        unit_micro=info_unit, reported_charge_unit_micro=reported_charge_unit_micro,
+        settlement_basis=basis, request_data=request_data,
         async_descriptor=ep.get("async"), resource_ownership=ep.get("resource_ownership"),
     )
     if chosen_tool is not None:

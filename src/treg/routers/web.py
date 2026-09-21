@@ -83,7 +83,7 @@ def _price_label(cost: dict | None) -> str:
     if not isinstance(cost, dict):
         return ""
     if cost.get("display_unit") and cost.get("display_usd") is not None:
-        return (_usd_short(cost["display_usd"]) + cost.get("display_suffix", "")
+        return (cost.get("display_prefix", "") + _usd_short(cost["display_usd"]) + cost.get("display_suffix", "")
                 + "/" + cost["display_unit"])
     usd = cost.get("usd")
     if usd is None:

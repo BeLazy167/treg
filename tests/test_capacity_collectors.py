@@ -38,6 +38,62 @@ async def test_openmart_balance_collector_and_policy():
     assert capacity.rate_limit == {"limit": 15, "window_s": 1, "source": "docs"}
 
 
+async def test_tavily_capacity_uses_key_credit_remainder_and_conservative_rate():
+    def probe(request):
+        assert request.method == "GET"
+        assert request.url == "https://api.tavily.com/usage"
+        assert request.headers["authorization"] == "Bearer test"
+        return httpx.Response(200, json={
+            "key": {"usage": 125, "limit": 1000},
+            "account": {"plan_usage": 125, "plan_limit": 1000,
+                        "paygo_usage": 0, "paygo_limit": 5000},
+        })
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(probe)) as client:
+        row = await collectors._tavily(client, "test")
+    assert row == {
+        "value": 875,
+        "unit": "API credits",
+        "note": "key usage 125 of 1000; account pools are informational",
+    }
+    capacity = policy.default_policy("tavily", has_key=True)
+    assert capacity.capacity_type == "credits"
+    assert capacity.funding_mode == "manual"
+    assert capacity.source == "api"
+    assert capacity.rate_limit == {"limit": 100, "window_s": 60, "source": "docs"}
+
+
+async def test_tavily_capacity_uses_account_pool_when_key_has_no_limit():
+    payload = {
+        "key": {"usage": 0, "limit": None},
+        "account": {"plan_usage": 12, "plan_limit": 1000,
+                    "paygo_usage": 3, "paygo_limit": 100},
+    }
+    async with httpx.AsyncClient(transport=httpx.MockTransport(
+        lambda request: httpx.Response(200, json=payload)
+    )) as client:
+        row = await collectors._tavily(client, "test")
+    assert row == {
+        "value": 1085,
+        "unit": "API credits",
+        "note": "key has no finite cap; remaining plan, PAYGO account pool(s)",
+    }
+
+
+@pytest.mark.parametrize("payload", [
+    {}, {"key": {"usage": True, "limit": 1000}},
+    {"key": {"usage": -1, "limit": 1000}},
+    {"key": {"usage": 1, "limit": "1000"}},
+])
+async def test_tavily_capacity_rejects_uncertain_usage(payload):
+    async with httpx.AsyncClient(transport=httpx.MockTransport(
+        lambda request: httpx.Response(200, json=payload)
+    )) as client:
+        row = await collectors._tavily(client, "test")
+    assert row["value"] is None
+    assert row["unit"] == "API credits"
+
+
 @pytest.mark.parametrize("value,expected", [(0, 0), (71, 71), ("5000", 5000)])
 async def test_zerobounce_balance_accepts_nonnegative_integer_values(monkeypatch, value, expected):
     monkeypatch.setenv("TREG_PLATFORM_KEY_ZEROBOUNCE", "private-test-key")

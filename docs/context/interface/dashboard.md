@@ -654,8 +654,10 @@ platform without opening it, and every field comes off the `/catalog/platforms` 
 
 **Prices are unified USD.** Every price the marketplace displays — the card footer, the capability card's
 "from", and the per-endpoint cost chip — comes from the server's price object on `cost` / `price_from`:
-normally its computed **`usd`**, or its equivalent grouped **`display_usd` / `display_unit`** pair,
-formatted by `usdNum`: two significant figures under a dollar (`$0.015`, `$0.00015`), cents at or above one.
+normally its computed **`usd`**, or its equivalent **`display_usd` / `display_unit`** pair,
+with `display_prefix: "up to "` when that figure is a validated maximum hold rather than a typical
+settled charge. `usdNum` formats two significant figures under a dollar (`$0.015`, `$0.00015`),
+and cents at or above one.
 The FX table lives in the catalog (`fx.yaml`) so a rate refresh re-prices every surface at once, and the
 dashboard carries **no** conversion constant of its own — one here would drift from the CLI the moment the
 table changed. Wherever the provider bills in something else, the native figure follows as a muted
@@ -777,7 +779,7 @@ Lusha, Diffbot…) bill in their own credits, so their price *is* documented, ju
 is the whole People/Company half of the catalog.
 
 Each `.lep` block is provider logo + name, `METHOD path` (mono), a compact cost chip (`costLabel`:
-`$0.015/success (¥0.10)`, `1 row`, `free`, and `per success · price in provider dashboard` when the
+`$0.015/success (¥0.10)`, `up to $0.064/call`, `1 row`, `free`, and `per success · price in provider dashboard` when the
 billing unit is known but the rate is not published), a `verified <date>` / `unverified` chip, a **scope**
 chip, and a tier chip. Scope is the load-bearing distinction in a mixed list: `own_account` rows (the
 OAuth providers) read **`your account`** in teal with the hint "reads the account YOU connect via OAuth,

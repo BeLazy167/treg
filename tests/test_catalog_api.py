@@ -19,6 +19,33 @@ from treg.domain.catalog import store as cs
 from treg import oauth_providers as P
 
 
+def test_tavily_surface_keeps_only_safe_synchronous_data_tools():
+    cat = cs.load()
+    rows = {ep["id"]: ep for ep in cat.for_provider("tavily")}
+    assert set(rows) == {
+        "tavily.web.search", "tavily.web.extract", "tavily.web.map", "tavily.web.crawl",
+    }
+    assert all(ep["platform"] == "web" and ep["scope"] == "any_account" for ep in rows.values())
+    assert all(cat.platform_eligible(ep) for ep in rows.values())
+    assert rows["tavily.web.extract"]["input"]["body"]["urls"]["maxItems"] == 20
+    assert all(ep["verified"] == "2026-09-21" and ep["example_file"] for ep in rows.values())
+    assert cat.credit_rates["tavily"] == 0.008
+    shown = {eid: cat.cost_view(ep["cost"], "tavily") for eid, ep in rows.items()}
+    assert "display_prefix" not in shown["tavily.web.search"]
+    assert {
+        eid: (cost["display_prefix"], cost["display_usd"], cost["display_unit"])
+        for eid, cost in shown.items() if eid != "tavily.web.search"
+    } == {
+        "tavily.web.extract": ("up to ", 0.064, "call"),
+        "tavily.web.map": ("up to ", 0.032, "call"),
+        "tavily.web.crawl": ("up to ", 0.096, "call"),
+    }
+    serialized = json.dumps(rows).lower()
+    assert not any(term in serialized for term in (
+        "research task", "account usage", "key management", "feedback endpoint", "export endpoint",
+    ))
+
+
 def test_trestleiq_surface_is_three_direct_single_record_tools():
     cat = cs.load()
     rows = {ep["id"]: ep for ep in cat.for_provider("trestleiq")}
@@ -1553,6 +1580,9 @@ def test_generic_display_prices_match_web_and_cli():
     cost = cat.cost_view({'type': 'per_result', 'currency': 'USD', 'value': 2,
                          'display': {'unit': 'item', 'variable': True}}, 'another-provider')
     assert _price_label(cost) == _cost_usd(cost) == _cost_label(cost) == '$2+/item'
+    maximum = cat.cost_view({'type': 'per_call', 'currency': 'USD', 'value': 0.064,
+                             'display': {'unit': 'call', 'maximum': True}}, 'another-provider')
+    assert _price_label(maximum) == _cost_usd(maximum) == _cost_label(maximum) == 'up to $0.064/call'
 
 
 def test_hunter_domain_search_advertises_one_search_credit():

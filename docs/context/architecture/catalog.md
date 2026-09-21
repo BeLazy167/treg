@@ -2,6 +2,14 @@
 title: Endpoint catalog — what you can DO with a connected key, and which provider should do it
 status: shipped
 sources:
+  - src/treg/catalog/tavily.yaml
+  - src/treg/catalog/exa.yaml
+  - src/treg/catalog/anyapi.extended.yaml
+  - src/treg/catalog/examples/tavily.web.search.json
+  - src/treg/catalog/examples/tavily.web.extract.json
+  - src/treg/catalog/examples/tavily.web.map.json
+  - src/treg/catalog/examples/tavily.web.crawl.json
+  - src/treg/web/logos/tavily.svg
   - src/treg/catalog/trestleiq.yaml
   - src/treg/catalog/examples/trestleiq.people.phone.verify.json
   - src/treg/catalog/examples/trestleiq.people.contact.verify.json
@@ -189,6 +197,34 @@ related:
 ---
 
 # Endpoint catalog — platform-grouped operations per provider
+
+## Tavily web tools (2026-09-21)
+
+Tavily contributes exactly four public data tools: Search, Extract, Map, and Crawl. Research,
+account usage, logs, feedback, organization usage, and key-management routes are not catalogued.
+All four are verified catalog tools supporting a team's own Bearer key and the optional platform
+key, but only Search joins the automated `treg.web.search` route. Extract, Map, and
+Crawl remain direct-only: their grouped account-level debit can land on a later call, and their
+bounded shared-key holds are materially less competitive than the existing automatic choices.
+None is an Enrich Arena task because Arena is limited to its declared enrichment jobs.
+
+Shared-key calls force `include_usage: true` so settlement can use Tavily's response-reported
+`usage.credits`. Map and Crawl additionally require an explicit `limit` from 1 through 20 on the
+platform key. That bound caps the maximum hold while leaving Tavily's accepted range unchanged for
+BYOK. Search reserves at most two credits; Extract, Map, and Crawl reserve their documented
+request-specific ceilings. A finite nonnegative reported charge, including zero, wins at settle;
+missing or malformed evidence falls back to the hold. The credit conversion uses Tavily's stable
+PAYGO replacement rate from `fx.yaml`, not free monthly credits or a discounted subscription tier.
+
+The four redacted hit fixtures were captured from live calls. Separate live probes established a
+charged Search hit, a charged empty Search miss, a charged Extract hit, a free failed Extract URL,
+empty Map/Crawl responses, HTTP 422 for missing required input, and HTTP 401 for a bogus key. No
+Tavily 4xx is classified as a routing miss: honest misses are successful envelopes with an empty
+`results` array (or Extract `failed_results`). Tavily may report zero credits before a grouped
+Extract/Map/Crawl threshold and debit the whole group on a later response; treg deliberately bills
+the exact response-reported debit rather than inventing an allocation. `/usage` may lag that
+evidence. A controlled burst did not reproduce the documented 429, and exhausting the funded
+account was not forced; 429, 432, and 433 therefore retain documented rather than observed status.
 
 TrestleIQ adds three synchronous, non-bulk direct tools for phone numbers, contact details, and US
 addresses. All three support own keys and the platform key. None has a routing adapter, so TrestleIQ
@@ -1129,6 +1165,19 @@ and state the break-even volume, and `fee_usd_month` must be present as data (th
 `check_fx` enforces all of it). The rate is reviewed monthly against `reconcile.shared_plan_recovery`
 and edited by hand. The full ladder: docs/SHARED-PLAN-PRICING-PLAN.md; the billing side (429 never
 billable, the recovery report): architecture/money.md.
+
+For synchronous providers that disclose the exact charge in the response, a paid cost may declare
+`reported_charge: {path: ..., unit: usd|credit}`. The catalog estimate still reserves a safe
+ceiling. A finite nonnegative response value settles the call at that amount; missing, invalid, or
+non-finite evidence falls back to the normal estimate/miss rules. Credit-denominated evidence
+requires a provider rate in `fx.yaml`, and the request freezes that conversion before relay so a
+later rate edit cannot re-price the in-flight call. `reported_charge` is generic catalog metadata,
+not a provider-specific billing branch, and cannot be combined with `cost.settle`.
+
+`platform_request` fixes exact body values needed only on the shared credential. The complementary
+`platform_bounds` mapping requires a declared numeric body field and a finite in-schema min/max;
+resolution rejects a missing, Boolean, non-finite, or out-of-range value before reserve. These
+controls never narrow a team's own credential.
 
 A second treg-set kind, **`kind: treg_trial`**, prices a provider at exactly **$0** with a
 `trial_calls_per_team_day` allowance as data beside the zero: a capped taste served on treg's own
@@ -2613,10 +2662,14 @@ retain verified adapters. Profile-only LinkedIn enrichment costs $0.02 when foun
 
 `Catalog.cost_view` reads optional provider-neutral `cost.display` metadata. `unit` names the
 shown unit; `grouped` displays the price for `cost.per` units; `round_up` labels a started block;
-`variable` adds a plus sign for selected additions. It returns computed display USD/unit/suffix
+`variable` adds a plus sign for selected additions; and `maximum` labels a validated reserve
+ceiling as **up to**, rather than presenting it as the normal settled price. A maximum display may
+wrap a price table because its fallback is already the validated global upper bound. It returns
+computed display USD/unit/prefix/suffix
 fields without changing `usd` or settlement. The CLI and web formatters consume those fields;
 `Catalog.advertised_usd` prefers `display_usd` so MCP `usd_per_call` quotes the chargeable event.
-The validator checks flags and requires grouped prices to declare a positive integer `per`.
+The validator checks flags, requires grouped prices to declare a positive integer `per`, and
+refuses a table display unless it explicitly describes the maximum.
 Hunter Domain Search is the credit-block case (`1` credit / `10` emails → `$0.0245/started 10
 emails`). Sumble keeps its billing rules in the existing provider-module pattern, separate from
 display rules.

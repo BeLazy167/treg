@@ -775,6 +775,11 @@ def test_a_metered_endpoint_with_no_published_rate_says_where_the_price_lives():
     assert "per '+per+' · price in provider dashboard'" in cost
 
 
+def test_maximum_price_disclosure_is_rendered_as_up_to():
+    cost = INDEX[INDEX.index("costLabel(c){") :][:500]
+    assert "(c.display_prefix||'')+'$'" in cost
+
+
 def test_the_ledger_rows_and_their_detail_live_in_the_platform_view():
     assert _enclosing_views('v-for="r in sec.rows"') == ["platform"]
     assert _enclosing_views('<tr v-if="platOpen[r.key]"') == ["platform"]

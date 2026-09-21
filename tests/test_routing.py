@@ -125,6 +125,21 @@ def test_openmart_tools_are_direct_only_not_routed():
     assert "openmart.companies.enrich" not in cat.by_id["treg.companies.enrich"]["routed_children"]
 
 
+def test_tavily_routes_only_search_and_keeps_group_billed_tools_direct():
+    cat = catalog_store.load()
+    assert "tavily.web.search" in cat.by_id["treg.web.search"]["routed_children"]
+    assert cat.adapters["tavily.web.search"].verified
+    direct = {
+        "tavily.web.extract": "treg.web.extract",
+        "tavily.web.map": "treg.web.map",
+        "tavily.web.crawl": "treg.web.crawl",
+    }
+    for child, parent in direct.items():
+        assert child not in cat.adapters
+        assert parent not in cat.by_id or child not in cat.by_id[parent]["routed_children"]
+        assert cat.platform_eligible(cat.by_id[child])
+
+
 def test_dropleads_routing_surface_contains_only_verified_single_record_tools():
     catalog = catalog_store.load()
     expected = {

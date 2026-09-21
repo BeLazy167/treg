@@ -44,6 +44,19 @@ related:
 
 # Provider capacity
 
+Tavily's internal collector calls `GET /usage` with the platform Bearer key. A finite `key.limit`
+is preferred when present. When the key has no independent cap, the collector sums the finite
+remaining account pools (`account.plan_limit - account.plan_usage` plus PAYGO when that pool has a
+finite limit); absent or malformed pools remain unknown rather than becoming zero. The policy is
+`credits / manual / api`, with conservative shared-key smoothing at the documented development
+limit of 100 requests per minute. HTTP 432 is a documented plan-cap quota signal and HTTP 433 is a
+PAYGO-cap quota signal. `/usage` is capacity evidence only: it is not a catalog tool and may lag the
+per-response `usage.credits` used for settlement. The included plan allowance renews monthly;
+raising or enabling the separate PAYGO ceiling is an operator action, and treg assumes no automatic
+top-up. A controlled `/usage` burst did not reproduce its documented 10-per-10-minute 429, so the
+rate policy remains documentation-derived. The funded account was not deliberately exhausted;
+432/433 signatures are documentation-derived rather than live-observed.
+
 TrestleIQ publishes no free balance or usage API. Capacity reports the wallet as Developer
 Portal-only and does not spend a validation query to read it. The policy records cash with vendor
 auto recharge, manually verified as enabled in the portal, and a documented 10 requests/second

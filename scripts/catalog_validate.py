@@ -256,6 +256,32 @@ def check_platform_request(rule: object, input_schema: object, where: str,
             fail(errors, where, "platform_request value must match the field's singleton enum")
 
 
+def check_platform_bounds(rule: object, input_schema: object, where: str,
+                          errors: list[str]) -> None:
+    """Validate platform-only numeric request limits; BYOK keeps the upstream range."""
+    if not isinstance(rule, dict) or not rule:
+        fail(errors, where, "platform_bounds must be a non-empty mapping")
+        return
+    fields = _input_fields(input_schema)
+    for path, bounds in rule.items():
+        spec = fields.get(path) if isinstance(path, str) else None
+        if (not isinstance(path, str) or not path.startswith("body.") or spec is None
+                or spec.get("type") not in ("integer", "number")):
+            fail(errors, where, "platform_bounds must name a declared numeric body field")
+            continue
+        if (not isinstance(bounds, dict) or set(bounds) != {"min", "max"}
+                or not _finite_number(bounds.get("min"))
+                or not _finite_number(bounds.get("max"))
+                or bounds["min"] > bounds["max"]):
+            fail(errors, where, "platform_bounds values require finite min <= max")
+            continue
+        declared_min, declared_max = spec.get("min"), spec.get("max")
+        if _finite_number(declared_min) and bounds["min"] < declared_min:
+            fail(errors, where, "platform_bounds min cannot be below the input min")
+        if _finite_number(declared_max) and bounds["max"] > declared_max:
+            fail(errors, where, "platform_bounds max cannot exceed the input max")
+
+
 def check_platform_auth(ep: dict, where: str, errors: list[str]) -> None:
     """Anonymous platform fallback is intentionally narrow: proven public GETs that cost zero."""
     mode = ep.get("platform_auth")
@@ -581,26 +607,29 @@ def check_cost(cost: dict, where: str, errors: list[str], warnings: list[str],
     if reported is not None:
         if (not isinstance(reported, dict) or set(reported) != {"path", "unit"}
                 or not isinstance(reported.get("path"), str)
-                or not JSON_PATH.fullmatch(reported["path"]) or reported.get("unit") != "usd"):
-            fail(errors, where, "cost.reported_charge requires a JSON path and unit: usd")
-        if "table" in cost or "settle" in cost or cost.get("type") == "free":
-            fail(errors, where, "cost.reported_charge requires a paid scalar price without cost.settle")
+                or not JSON_PATH.fullmatch(reported["path"])
+                or reported.get("unit") not in {"usd", "credit"}):
+            fail(errors, where, "cost.reported_charge requires a JSON path and unit: usd or credit")
+        if reported.get("unit") == "credit" and not _finite_number(_credit_rate(provider)):
+            fail(errors, where, "cost.reported_charge unit credit needs a numeric fx.yaml credit_rates_usd entry")
+        if "settle" in cost or cost.get("type") == "free":
+            fail(errors, where, "cost.reported_charge requires a paid price without cost.settle")
     if "display" in cost:
         display = cost["display"]
         if (not isinstance(display, dict) or not isinstance(display.get("unit"), str)
                 or not display["unit"].strip() or len(display["unit"]) > 40
-                or set(display) - {"unit", "grouped", "round_up", "variable"}):
-            fail(errors, where, "cost.display requires a short unit and optional grouped/round_up/variable flags")
+                or set(display) - {"unit", "grouped", "round_up", "variable", "maximum"}):
+            fail(errors, where, "cost.display requires a short unit and optional grouped/round_up/variable/maximum flags")
         else:
-            for flag in {"grouped", "round_up", "variable"} & set(display):
+            for flag in {"grouped", "round_up", "variable", "maximum"} & set(display):
                 if type(display[flag]) is not bool:
                     fail(errors, where, f"cost.display.{flag} must be boolean")
             if display.get("round_up") and not display.get("grouped"):
                 fail(errors, where, "cost.display.round_up requires grouped")
             if display.get("grouped") and (type(cost.get("per")) is not int or cost["per"] <= 0):
                 fail(errors, where, "cost.display.grouped requires positive integer cost.per")
-        if cost.get("type") == "free" or "table" in cost:
-            fail(errors, where, "cost.display requires a scalar paid price")
+        if cost.get("type") == "free" or ("table" in cost and not display.get("maximum")):
+            fail(errors, where, "cost.display requires a scalar paid price unless it labels a table maximum")
     if "sumble" in cost:
         rule = cost["sumble"]
         modes = {"single": set(), "results": {"reserve_results"},
@@ -967,6 +996,8 @@ def main(argv: list[str]) -> int:
             check_platform_auth(ep, where, errors)
             if "platform_request" in ep:
                 check_platform_request(ep["platform_request"], inp, where, errors)
+            if "platform_bounds" in ep:
+                check_platform_bounds(ep["platform_bounds"], inp, where, errors)
             default_array_encoding = inp.get("queryArrayEncoding")
             if (default_array_encoding is not None
                     and default_array_encoding not in QUERY_ARRAY_ENCODINGS):

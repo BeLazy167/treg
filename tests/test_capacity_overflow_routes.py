@@ -221,6 +221,20 @@ def test_moz_spent_row_quota_is_a_quota_mark():
     assert S.classify("moz", 403, None, b'{"error":"forbidden"}') is None
 
 
+def test_tavily_documents_separate_plan_and_paygo_quota_statuses():
+    plan = S.classify(
+        "tavily", 432, None,
+        b'{"detail":{"error":"This request exceeds your plan\'s set usage limit."}}',
+    )
+    paygo = S.classify(
+        "tavily", 433, None,
+        b'{"detail":{"error":"This request exceeds the pay-as-you-go limit."}}',
+    )
+    assert plan is not None and plan.kind == "quota" and S.is_exhausting(plan)
+    assert paygo is not None and paygo.kind == "quota" and S.is_exhausting(paygo)
+    assert S.classify("tavily", 432, None, b'{"detail":{"error":"bad query"}}') is None
+
+
 def test_an_unrecorded_vendor_phrase_is_a_tripwire_never_a_mark():
     """The next Apollo: a 4xx no row matched whose body still names credits/quota/balance. It is
     logged and counted (`capacity_signal=unrecorded`) and does nothing else."""

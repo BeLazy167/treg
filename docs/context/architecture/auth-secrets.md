@@ -38,6 +38,12 @@ related:
 
 # Auth & secrets
 
+Tavily uses a pasted Bearer key at `https://api.tavily.com`. Its free internal `GET /usage` probe
+rejects invalid credentials and validates both team-owned and optional platform credentials without
+exposing usage as a catalog tool. `TREG_PLATFORM_KEY_TAVILY` supplies the server-held fallback; the
+existing own-key-first ladder means a team's key always wins and remains unmetered. The public
+surface is limited to Search, Extract, Map, and Crawl.
+
 `TRESTLEIQ` uses a pasted raw `x-api-key` header. Its connection probe calls a provider-owned
 invalid-number sandbox fixture. The typed `probe_cost_micro=15000` marks the first paid key probe;
 the connect dialog renders the warning from that field, and provisioning deliberately omits it from
