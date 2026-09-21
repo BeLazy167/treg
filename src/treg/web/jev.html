@@ -1273,12 +1273,28 @@ action = { jailbreak: block, harmful: block,
       <div class="dh"><div><h3 class="flow"><span><svg class="lg" viewBox="0 0 512 512" aria-hidden="true"><rect width="512" height="512" rx="112" fill="#101010"/><rect x="111" y="111" width="140.5" height="140.5" rx="20" fill="#fff"/><rect x="260.5" y="260.5" width="140.5" height="140.5" rx="20" fill="#fff"/></svg> Relevant LinkedIn post commenters</span><i>→</i><span><img class="lg" src="logos/jev.png" alt=""> Jev qualify and score</span><i>→</i><span><svg class="lg" viewBox="0 0 512 512" aria-hidden="true"><rect width="512" height="512" rx="112" fill="#101010"/><rect x="111" y="111" width="140.5" height="140.5" rx="20" fill="#fff"/><rect x="260.5" y="260.5" width="140.5" height="140.5" rx="20" fill="#fff"/></svg> Treg enrich</span></h3><div class="receipt" id="sg-receipt"></div></div><div class="acts"><button class="pill sm" id="sg-replay"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg> Replay the run</button><button class="pill sm" id="sg-stop" hidden>Stop</button><div class="pwrap"><button class="pill sm dark pbtn" aria-expanded="false" aria-controls="pop-signals">Prompt for <span class="agents"><img src="media/people-search/claude-code.png" alt="Claude Code"><img src="media/people-search/codex.png" alt="Codex"><img src="media/people-search/openclaw.png" alt="OpenClaw"><img src="media/people-search/hermes.png" alt="Hermes" class="onwhite"></span> <i>▾</i></button>
           <div class="pop" id="pop-signals" hidden><div class="ph"><span>Paste into your agent</span><span style="display:flex;align-items:center"><button class="pill sm dark" data-copy="p-signals">Copy prompt</button><button class="xclose" type="button" aria-label="Close">✕</button></span></div><pre id="p-signals">Build a signal-first lead finder for &lt;my product&gt; and a page to browse the run.
 
+<b>Before you build</b>
+Treat every step below as a reference implementation, not a spec. Ask me first, a few
+short questions at a time: my product and who buys it, the topics those buyers post
+about, which networks to read, how many leads one run should produce, and where they
+should land (a page, a CSV, my CRM). Then tell me the plan and what one run should
+cost, wait for my go-ahead, and build for MY answers rather than the examples written
+here.
+
 <b>Setup</b>
-1. Set up treg: read https://treg.to/llms.txt and follow it (install the CLI, then `treg login`).
-2. Vercel AI Gateway key in .env as AI_GATEWAY_API_KEY. jev: POST
+1. Set up treg: read https://treg.to/llms.txt and follow it (install the CLI,
+   then `treg login`).
+2. jev, optional to start. If I have a Vercel AI Gateway key
+   (https://vercel.com/ai-gateway), put it in .env as AI_GATEWAY_API_KEY. jev: POST
    https://ai-gateway.vercel.sh/v4/ai/evaluation-model with headers Authorization: Bearer $KEY,
    ai-model-id: typesafe-ai/jev, ai-evaluation-model-specification-version: 4,
    ai-gateway-protocol-version: 0.0.1; body {"state", "questions"}. Types: choice, boolean, score.
+   No key yet? Ask me whether to get one now or start without it. Without it, make
+   each judgement yourself behind the same interface: take the same {"state",
+   "questions"}, return the same shape with your own probabilities, and label those
+   results judge: agent. Keep it to one function so switching to jev later is a one-
+   line change, and tell me it is a stand-in: slower, dearer per decision and not
+   calibrated the way jev is.
 
 <b>Pipeline</b>
 3. Topics: &lt;4 phrases buyers post about, e.g. "enrichment waterfall", "RevOps tooling"&gt;.
@@ -1315,12 +1331,27 @@ action = { jailbreak: block, harmful: block,
       <div class="dh"><div><h3 class="flow"><span>Signup</span><i>→</i><span><svg class="lg" viewBox="0 0 512 512" aria-hidden="true"><rect width="512" height="512" rx="112" fill="#101010"/><rect x="111" y="111" width="140.5" height="140.5" rx="20" fill="#fff"/><rect x="260.5" y="260.5" width="140.5" height="140.5" rx="20" fill="#fff"/></svg> Treg enrich &amp; verify</span><i>→</i><span><img class="lg" src="logos/jev.png" alt=""> Jev classify</span><em>synthetic sample</em></h3><div class="receipt" id="tr-receipt"></div></div><div class="acts"><button class="pill sm" id="tr-replay"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg> Replay the run</button><button class="pill sm" id="tr-stop" hidden>Stop</button><div class="pwrap"><button class="pill sm dark pbtn" aria-expanded="false" aria-controls="pop-triage">Prompt for <span class="agents"><img src="media/people-search/claude-code.png" alt="Claude Code"><img src="media/people-search/codex.png" alt="Codex"><img src="media/people-search/openclaw.png" alt="OpenClaw"><img src="media/people-search/hermes.png" alt="Hermes" class="onwhite"></span> <i>▾</i></button>
           <div class="pop" id="pop-triage" hidden><div class="ph"><span>Paste into your agent</span><span style="display:flex;align-items:center"><button class="pill sm dark" data-copy="p-triage">Copy prompt</button><button class="xclose" type="button" aria-label="Close">✕</button></span></div><pre id="p-triage">Build a signup triage that runs every hour over new signups and posts the interesting ones to Slack.
 
+<b>Before you build</b>
+Treat every step below as a reference implementation, not a spec. Ask me first, a few
+short questions at a time: where my signups come from (a webhook, a database, a CSV),
+what makes one worth a human's time, which lanes I want, where alerts should go and
+how often it should run. Then tell me the plan and what one run should cost, wait for
+my go-ahead, and build for MY answers rather than the examples written here.
+
 <b>Setup</b>
-1. Set up treg: read https://treg.to/llms.txt and follow it (install the CLI, then `treg login`).
-2. Vercel AI Gateway key in .env as AI_GATEWAY_API_KEY. jev: POST
+1. Set up treg: read https://treg.to/llms.txt and follow it (install the CLI,
+   then `treg login`).
+2. jev, optional to start. If I have a Vercel AI Gateway key
+   (https://vercel.com/ai-gateway), put it in .env as AI_GATEWAY_API_KEY. jev: POST
    https://ai-gateway.vercel.sh/v4/ai/evaluation-model with headers Authorization: Bearer $KEY,
    ai-model-id: typesafe-ai/jev, ai-evaluation-model-specification-version: 4,
    ai-gateway-protocol-version: 0.0.1; body {"state", "questions"}. Types: choice, boolean, score.
+   No key yet? Ask me whether to get one now or start without it. Without it, make
+   each judgement yourself behind the same interface: take the same {"state",
+   "questions"}, return the same shape with your own probabilities, and label those
+   results judge: agent. Keep it to one function so switching to jev later is a one-
+   line change, and tell me it is a stand-in: slower, dearer per decision and not
+   calibrated the way jev is.
 
 <b>Per signup (email + usage: calls, refused calls, spend, onboarded, referrer, similar signups)</b>
 3. `treg call millionverifier.people.email.verify --query email=&lt;email&gt;` → result (ok / catch_all /
@@ -1366,15 +1397,30 @@ action = { jailbreak: block, harmful: block,
       <div class="dh"><div><h3 class="flow"><span><svg class="lg" viewBox="0 0 512 512" aria-hidden="true"><rect width="512" height="512" rx="112" fill="#101010"/><rect x="111" y="111" width="140.5" height="140.5" rx="20" fill="#fff"/><rect x="260.5" y="260.5" width="140.5" height="140.5" rx="20" fill="#fff"/></svg> Viral X posts &amp; comments</span><i>→</i><span><img class="lg" src="logos/jev.png" alt=""> Jev classify</span></h3><div class="receipt" id="xb-receipt">loading the latest run…</div></div><div class="acts"><button class="pill sm" id="xb-replay"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg> Replay the run</button><button class="pill sm" id="xb-stop" hidden>Stop</button><div class="pwrap"><button class="pill sm dark pbtn" aria-expanded="false" aria-controls="pop-xboost">Prompt for <span class="agents"><img src="media/people-search/claude-code.png" alt="Claude Code"><img src="media/people-search/codex.png" alt="Codex"><img src="media/people-search/openclaw.png" alt="OpenClaw"><img src="media/people-search/hermes.png" alt="Hermes" class="onwhite"></span> <i>▾</i></button>
           <div class="pop" id="pop-xboost" hidden><div class="ph"><span>Paste into your agent</span><span style="display:flex;align-items:center"><button class="pill sm dark" data-copy="p-xboost">Copy prompt</button><button class="xclose" type="button" aria-label="Close">✕</button></span></div><pre id="p-xboost">Build me a daily "launch radar" for X and a page to browse it.
 
+<b>Before you build</b>
+Treat every step below as a reference implementation, not a spec. Ask me first, a few
+short questions at a time: which topics or accounts to watch, what counts as worth
+flagging, how often it should run and where I want to read it. Then tell me the plan
+and what one run should cost, wait for my go-ahead, and build for MY answers rather
+than the examples written here.
+
 <b>Setup</b>
-1. Set up treg: read https://treg.to/llms.txt and follow it (install the CLI, then `treg login`).
+1. Set up treg: read https://treg.to/llms.txt and follow it (install the CLI,
+   then `treg login`).
    treg is one token for 2,600+ data endpoints; calls are `treg call &lt;endpoint&gt; --data '{...}'`.
-2. Get a Vercel AI Gateway key (https://vercel.com/ai-gateway) and put it in .env as AI_GATEWAY_API_KEY.
+2. jev, optional to start. If I have a Vercel AI Gateway key
+   (https://vercel.com/ai-gateway), put it in .env as AI_GATEWAY_API_KEY.
    jev is called with POST https://ai-gateway.vercel.sh/v4/ai/evaluation-model, headers
    Authorization: Bearer $AI_GATEWAY_API_KEY, ai-model-id: typesafe-ai/jev,
    ai-evaluation-model-specification-version: 4, ai-gateway-protocol-version: 0.0.1,
    body {"state": {...}, "questions": {...}}. Question types: choice (criteria = named options),
    boolean, score (criteria = ordered rubric levels). Answers come back with probabilities.
+   No key yet? Ask me whether to get one now or start without it. Without it, make
+   each judgement yourself behind the same interface: take the same {"state",
+   "questions"}, return the same shape with your own probabilities, and label those
+   results judge: agent. Keep it to one function so switching to jev later is a one-
+   line change, and tell me it is a stand-in: slower, dearer per decision and not
+   calibrated the way jev is.
 
 <b>Pipeline (run once a day, keep the last run as JSON)</b>
 3. For each phrase in ["introducing", "launching today", "now available", "we just shipped",
@@ -1434,18 +1480,33 @@ action = { jailbreak: block, harmful: block,
       <div class="dh"><div><h3>Build your own</h3><div class="receipt"><span>every aisle below is one token away, and jev can read any of it</span></div></div><div class="acts"><div class="pwrap"><button class="pill sm dark pbtn" aria-expanded="false" aria-controls="pop-build">Prompt for <span class="agents"><img src="media/people-search/claude-code.png" alt="Claude Code"><img src="media/people-search/codex.png" alt="Codex"><img src="media/people-search/hermes.png" alt="Hermes" class="onwhite"><img src="media/people-search/openclaw.png" alt="OpenClaw"></span> <i>▾</i></button>
           <div class="pop" id="pop-build" hidden><div class="ph"><span>Paste into your agent, then describe the workflow</span><span style="display:flex;align-items:center"><button class="pill sm dark" data-copy="p-build">Copy prompt</button><button class="xclose" type="button" aria-label="Close">✕</button></span></div><pre id="p-build">Set up treg and jev for me, then build the workflow I describe at the end.
 
+<b>Before you build</b>
+Treat every step below as a reference implementation, not a spec. Ask me first, a few
+short questions at a time: the trigger, the data to pull, the decision jev should make
+and what happens on each outcome (use what I wrote under "The workflow I want", and
+ask about whatever it leaves out). Then tell me the plan and what one run should cost,
+wait for my go-ahead, and build for MY answers rather than the examples written here.
+
 <b>Setup</b>
-1. Set up treg: read https://treg.to/llms.txt and follow it (install the CLI, then `treg login`).
+1. Set up treg: read https://treg.to/llms.txt and follow it (install the CLI,
+   then `treg login`).
    treg is one token for 2,600+ data endpoints. Discover with `treg search "&lt;what I want to do&gt;"`,
    inspect with `treg get &lt;endpoint&gt;` (parameters, price, reliability), call with
    `treg call &lt;endpoint&gt; --data '{...}'`. Every response reports its exact charge in X-Treg-Cost-Micro.
-2. Get a Vercel AI Gateway key (https://vercel.com/ai-gateway) and put it in .env as AI_GATEWAY_API_KEY.
+2. jev, optional to start. If I have a Vercel AI Gateway key
+   (https://vercel.com/ai-gateway), put it in .env as AI_GATEWAY_API_KEY.
    jev is called with POST https://ai-gateway.vercel.sh/v4/ai/evaluation-model, headers
    Authorization: Bearer $AI_GATEWAY_API_KEY, ai-model-id: typesafe-ai/jev,
    ai-evaluation-model-specification-version: 4, ai-gateway-protocol-version: 0.0.1,
    body {"state": {...}, "questions": {...}}. Question types: choice (criteria = named options with
    what each means and its signals), boolean, score (criteria = ordered rubric levels). Answers come
    back with probabilities on every option, so use them for thresholds instead of parsing prose.
+   No key yet? Ask me whether to get one now or start without it. Without it, make
+   each judgement yourself behind the same interface: take the same {"state",
+   "questions"}, return the same shape with your own probabilities, and label those
+   results judge: agent. Keep it to one function so switching to jev later is a one-
+   line change, and tell me it is a stand-in: slower, dearer per decision and not
+   calibrated the way jev is.
 
 <b>How to design the workflow</b>
 3. treg fetches; jev decides. Put the raw facts jev needs into one JSON state per item and ask all

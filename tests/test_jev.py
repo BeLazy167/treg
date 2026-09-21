@@ -171,3 +171,13 @@ def test_every_recipe_prompt_sets_treg_up_through_llms_txt():
     assert page.count("read https://treg.to/llms.txt") == 4
     assert "install.sh" not in page
 
+
+def test_every_recipe_prompt_asks_first_and_treats_jev_as_optional():
+    """The steps are a reference, not a spec: the agent asks about the reader's own workflow before it
+    builds, and a reader with no jev access yet still gets a working build behind the same interface."""
+    page = (Path(__file__).parent.parent / "src/treg/web/jev.html").read_text()
+    assert page.count("<b>Before you build</b>") == 4
+    assert page.count("reference implementation, not a spec") == 4
+    assert page.count("jev, optional to start") == 4
+    assert page.count("No key yet?") == 4 and page.count("judge: agent") == 4
+
