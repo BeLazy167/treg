@@ -2813,6 +2813,7 @@ _SITEMAP_PAGES: tuple[tuple[str, str, str], ...] = (
     ("/fable", "fable-gtm.html", "0.8"),
     ("/gpt6", "astra.html", "0.8"),
     ("/ugc", "ugc.html", "0.8"),
+    ("/jev", "jev.html", "0.8"),
     ("/terms", "terms.html", "0.2"),
     ("/privacy", "privacy.html", "0.2"),
     # The outcome pages. Listed WITHOUT a trailing slash on purpose: `/use-cases/<slug>/` 307s to
@@ -3219,11 +3220,96 @@ async def people_search_page():
     return FileResponse(page, headers={"Cache-Control": "no-cache"})
 
 
+@app.get("/jev", include_in_schema=False)
+async def jev_page():
+    """Landing page for jev + treg ("jev for GTM engineers"): three agent recipes, each with a prompt
+    to copy and a demo under it. The X launch-radar demo is live (`/jev/xboost.json`, judged daily by
+    `treg-worker jev xboost`, plus visitor-submitted posts); the signup-triage and signal-leads demos
+    replay bundled, anonymised runs. Indexed like /ugc: canonical, OG meta, in the sitemap, no-cache."""
+    page = _WEB_DIR / "jev.html"
+    if not page.exists():
+        raise HTTPException(status_code=404, detail="jev.html not bundled")
+    return FileResponse(page, headers={"Cache-Control": "no-cache"})
+
+
+_JEV_JUDGE_NS = "jev_judge"
+
+
+@app.get("/jev/xboost.json", include_in_schema=False)
+async def jev_xboost_json(db: AsyncSession = Depends(get_session)):
+    """The latest launch-radar run: the worker's stored document, else the bundled snapshot so the
+    page renders on a fresh or unconfigured server."""
+    from .. import ratestore
+    from ..application import jev_xboost
+
+    run = await _xboost_run(db)
+    run["live"] = jev_xboost.configured()
+    return JSONResponse(run, headers={"Cache-Control": "no-cache"})
+
+
+async def _xboost_run(db: AsyncSession) -> dict:
+    """The worker's stored run, else the bundled snapshot marked `snapshot: true`."""
+    from .. import ratestore
+    from ..application import jev_xboost
+
+    run = await ratestore.kv_get(db, jev_xboost.KV_NS, jev_xboost.KV_KEY)
+    if run is None:
+        seed = _MEDIA_DIR / "jev" / "xboost-seed.json"
+        run = json.loads(seed.read_text(encoding="utf-8")) if seed.exists() else {"posts": [], "manual": []}
+        run["snapshot"] = True
+    return run
+
+
+@app.post("/jev/xboost/judge", include_in_schema=False)
+async def jev_xboost_judge(request: Request, db: AsyncSession = Depends(get_session)):
+    """A visitor pastes a post link; the same forensics + jev run on it and the verdict joins the
+    board. Unauthenticated, so per-IP and global sliding-window limits (ratestore) bound the spend:
+    every judge is a few treg calls on the demo team's token plus one jev call."""
+    from .. import ratestore
+    from ..application import jev_xboost
+    from .auth import _client_ip
+
+    if not jev_xboost.configured():
+        raise HTTPException(status_code=503, detail="the live demo is not configured on this server")
+    try:
+        body = await request.json()
+    except ValueError:
+        body = {}
+    url = (body or {}).get("url") if isinstance(body, dict) else None
+    try:
+        jev_xboost.parse_post_url(url or "")
+    except jev_xboost.XboostError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from None
+    # A post already on the board (daily run or an earlier visitor) answers from the store: no
+    # second fetch, no second bill, no duplicate card.
+    _, post_id = jev_xboost.parse_post_url(url)
+    run = await _xboost_run(db)
+    for known in [*(run.get("manual") or []), *(run.get("posts") or [])]:
+        if str(known.get("id")) == post_id:
+            return {**known, "cached": True}
+    ok = await ratestore.rate_check(db, _JEV_JUDGE_NS, [(f"ip:{_client_ip(request)}", 5), ("all", 60)], window_s=3600)
+    await db.commit()
+    if not ok:
+        raise HTTPException(status_code=429, detail="that is enough for this hour; the daily run continues")
+    try:
+        judged = await jev_xboost.judge_url(request.app.state.http, url)
+    except jev_xboost.XboostError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from None
+    # A visitor may judge before the first daily run: keep the snapshot's board under their card.
+    run = await _xboost_run(db)
+    await ratestore.kv_put(db, jev_xboost.KV_NS, jev_xboost.KV_KEY, jev_xboost.with_manual(run, judged),
+                           ttl_s=jev_xboost.KV_TTL_S)
+    await db.commit()
+    return judged
+
+
 # The launch pages grouped into a thin index. Routes stay where they are; this is a directory, not
 # a move. The list is hand-maintained because each launch has its own framing and the order is
 # chronological (newest first), not alphabetical.
 _BLOG_LAUNCHES: list[tuple[str, str, str, str]] = [
     # (slug, title, date, one-line blurb)
+    ("/jev", "How to use Jev", "2026-09-20",
+     "What Jev is and how to use it: live examples, use cases, code, and GTM automation recipes."),
     ("/ugc", "AI UGC Videos for $0.67 a Clip", "2026-09-15",
      "The five-step workflow: trending hooks, a JSON-prompt character, Seedance 2.5, a cloned voice."),
     ("/gpt6", "GPT-6 and treg.to", "2026-09-08",

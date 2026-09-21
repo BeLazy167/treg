@@ -280,6 +280,10 @@ without importing the heavy database stack into the light `treg` CLI.
 - `treg-worker arena insights` folds new audit rows into the rolling Arena aggregate
   (`--max-seconds`, default 110, bounds one pass; schedule it every two minutes).
 - `treg-worker catalog stats` folds new audit rows into per-endpoint, per-day reliability buckets
+- `treg-worker jev xboost` runs the `/jev` launch-radar demo once a day: it calls treg's own `/call/` API
+  with `TREG_JEV_TREG_TOKEN` (a member token of the demo team, so the spend is an ordinary bill) and jev
+  through the Vercel AI Gateway (`TREG_AI_GATEWAY_API_KEY`), and stores the run under Ephemeral for the page.
+  Both variables also belong on the web service, which needs them for the visitor judge endpoint.
   (`--max-rows`, default 500,000, bounds one pass; schedule it every few minutes). The catalog keeps
   computing observations live until this command has caught up once, so it can be scheduled after
   the application deploys, and a self-hosted registry that never schedules it loses nothing.
