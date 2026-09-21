@@ -19,6 +19,29 @@ from treg.domain.catalog import store as cs
 from treg import oauth_providers as P
 
 
+def test_trestleiq_surface_is_three_direct_single_record_tools():
+    cat = cs.load()
+    rows = {ep["id"]: ep for ep in cat.for_provider("trestleiq")}
+    assert set(rows) == {
+        "trestleiq.people.phone.verify",
+        "trestleiq.people.contact.verify",
+        "trestleiq.people.address.verify",
+    }
+    assert all(ep["platform"] == "people" for ep in rows.values())
+    assert all(ep["method"] == "GET" and ep["strict_query"] for ep in rows.values())
+    assert all(cat.platform_eligible(ep) for ep in rows.values())
+    assert cat.cost_view(rows["trestleiq.people.phone.verify"]["cost"], "trestleiq")["usd"] == 0.015
+    assert cat.cost_view(rows["trestleiq.people.contact.verify"]["cost"], "trestleiq")["usd"] == 0.03
+    assert cat.cost_view(rows["trestleiq.people.address.verify"]["cost"], "trestleiq")["usd"] == 0.01
+    assert all(ep["cost"]["source"] == "observed" for ep in rows.values())
+    assert all(ep["cost"]["confidence"] == "verified" for ep in rows.values())
+    serialized = json.dumps(rows)
+    assert "add_ons" not in serialized
+    assert not any("bulk" in eid or "reverse" in eid for eid in rows)
+    assert not any(eid.startswith("trestleiq.") for eid in cat.adapters)
+    assert "treg.people.phone.verify" not in cat.by_id
+
+
 def test_openmart_surface_separates_platform_reads_from_byok_lifecycles():
     cat = cs.load()
     rows = cat.for_provider("openmart")

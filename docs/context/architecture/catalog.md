@@ -2,6 +2,11 @@
 title: Endpoint catalog — what you can DO with a connected key, and which provider should do it
 status: shipped
 sources:
+  - src/treg/catalog/trestleiq.yaml
+  - src/treg/catalog/examples/trestleiq.people.phone.verify.json
+  - src/treg/catalog/examples/trestleiq.people.contact.verify.json
+  - src/treg/catalog/examples/trestleiq.people.address.verify.json
+  - src/treg/web/logos/trestleiq.svg
   - src/treg/catalog/financialdatasets.yaml
   - src/treg/catalog/examples/financialdatasets.company.facts.json
   - src/treg/catalog/examples/financialdatasets.company.facts.ciks.json
@@ -185,11 +190,17 @@ related:
 
 # Endpoint catalog — platform-grouped operations per provider
 
+TrestleIQ adds three synchronous, non-bulk direct tools for phone numbers, contact details, and US
+addresses. All three support own keys and the platform key. None has a routing adapter, so TrestleIQ
+does not appear in automated `treg.*` routes or Enrich Arena. Paid add-ons and gated products stay
+out of the catalog. Trestle returns a billable HTTP 200 for missing required inputs; catalog-required
+selectors and `strict_query` reject those malformed calls before relay on both the platform key and
+a team's own key.
+
 LimaData exposes 21 of 24 Basic v2 operations. Fourteen fixed, synchronous operations can use the
 shared key; variable and 404-billed operations require a team's own key. Account-scoped batch
 submission and result operations are omitted. Six
-fixture-verified adapters join existing routing and Enrich Arena contracts. See
-[LimaData](limadata.md) for the full boundary and live evidence.
+fixture-verified adapters join existing routing and Enrich Arena contracts.
 
 ## BounceBan email verification (2026-09-16)
 
@@ -203,8 +214,7 @@ omitted until an explicit cost-confirmation and owned-job workflow exists.
 
 The verified adapter adds only the standard endpoint to `treg.people.email.verify`; routing and
 Arena discover it from that adapter. Multipart upload, destructive bulk deletion, and the separately
-funded Check API are not catalog tools. See [BounceBan](bounceban.md) for the endpoint evidence,
-credential shape, capacity policy, and exclusions.
+funded Check API are not catalog tools.
 
 ## Datagma single-record enrichment (2026-09-18)
 
@@ -216,8 +226,7 @@ routed tools and Enrich Arena tasks. Mobile stays direct-only because its verifi
 is not competitive for automatic routing; job-change detection has no corresponding route.
 
 The credit rate is the assigned prepaid acquisition cost converted at the dated ECB reference
-rate. Responses settle from Datagma's `creditBurn`, including zero-cost cached hits. See
-[Datagma](datagma.md) for the exact surface, exclusions, live evidence, and privacy boundary.
+rate. Responses settle from Datagma's `creditBurn`, including zero-cost cached hits.
 
 ## ZeroBounce email verification (2026-09-17)
 
@@ -226,14 +235,12 @@ the only platform-eligible tool. Its one-credit `per_success` price uses the sup
 replacement rate. The verified adapter adds it to `treg.people.email.verify`: unknown is a free
 routed miss, while invalid and risk verdicts remain answers. Batch is excluded because live tests
 showed that it needs the key in its JSON body, which the faithful relay does not rewrite. File,
-state-changing, and ambiguous-price operations are also outside the safe first surface. See
-[ZeroBounce](zerobounce.md) for the inventory and evidence.
+state-changing, and ambiguous-price operations are also outside the safe first surface.
 
 MoltSets adds 12 verified data tools: nine single-result shared-plan offers and three BYOK-only
-variable-result searches. Five hybrid scalar/batch email and phone operations are omitted. See
-[MoltSets](moltsets.md) for the boundary and evidence.
+variable-result searches. Five hybrid scalar/batch email and phone operations are omitted.
 
-Sumble adds the full v9 surface with verified platform operations and explicit BYOK restrictions. See [Sumble](sumble.md) for schemas, pricing rules, routing and live evidence.
+Sumble adds the full v9 surface with verified platform operations and explicit BYOK restrictions.
 
 GetLeads.io adds 11 direct contact-data tools. Every tool accepts BYOK or a $0 platform trial with
 five successful credit-using calls per team per day; its two free discovery tools do not consume
@@ -241,8 +248,7 @@ that allowance. Three enrichment tools keep the upstream `items` array but opt i
 with exactly one item. `_enforce_catalog_body` rejects invalid cardinality on every credential tier
 without rewriting an accepted request. The allowance counts calls rather than returned records or
 upstream credits. Internal
-account routes, stateful exports and monitoring are excluded. See [GetLeads.io](getleadsio.md) for
-the boundary and evidence.
+account routes, stateful exports and monitoring are excluded.
 
 ## Financial Datasets v1 and v2 (2026-09-15)
 
@@ -401,7 +407,7 @@ service, and `credits` is a delayed balance; neither is per-call usage.
 ContactOut also joins this contract via `contactout.people.email.verify`. Its direct price is free
 under the agreed commercial terms. The captured `accept_all` response verifies the adapter; only
 `valid` confirms deliverability, other status words remain intact, and unsuccessful envelopes or
-missing verdicts fall through. See `architecture/contactout.md` for capture evidence and tests.
+missing verdicts fall through.
 
 Bulk upload, file info/list/download, stop and delete are excluded: those operations use
 `bulkapi.millionverifier.com` with `key` auth and a multipart file lifecycle, rather than this
@@ -2604,7 +2610,6 @@ and phone lookup use reserved-value structural fixtures and verified adapters fo
 People routes. Personal email remains direct-only because the shared email contract is work-only;
 people search/profile adapters remain omitted. Company search/enrichment and email verification
 retain verified adapters. Profile-only LinkedIn enrichment costs $0.02 when found.
-See [ContactOut](contactout.md) for request limitations, derived settlement and live evidence.
 
 `Catalog.cost_view` reads optional provider-neutral `cost.display` metadata. `unit` names the
 shown unit; `grouped` displays the price for `cost.per` units; `round_up` labels a started block;
@@ -2638,7 +2643,7 @@ The single verified adapter is usable by Arena; the two-provider public routing 
 
 ## HarvestAPI integration
 
-`harvestapi.yaml` adds API-key-only LinkedIn reads with opt-in `strict_query` contracts and three profile variants. See [HarvestAPI](harvestapi.md) for the verified surface, billed misses, pagination traps and adapters.
+`harvestapi.yaml` adds API-key-only LinkedIn reads with opt-in `strict_query` contracts and three profile variants.
 
 
 ## Dropleads integration
@@ -2648,7 +2653,7 @@ route stay outside the public catalog. Seven verified adapters add email finding
 email verification, people search and enrichment, and company search and enrichment to the existing
 routed tools and Enrich Arena. Count tools stay direct; two ten-person bulk tools are omitted. The provider uses
 the existing `CatalogTarget` allow-list for its second API host; catalog data cannot send a
-credential to another host. See [Dropleads](dropleads.md) for the surface, prices and live evidence.
+credential to another host.
 
 
 ## Prospeo integration
@@ -2658,8 +2663,7 @@ adapters add email finding, phone finding, person/company enrichment and person/
 the routed tools and Enrich Arena; search suggestions stay direct-only and bulk enrichment is omitted. Search
 pages are fixed at 25 upstream, so adapters cannot forward the contract `limit`; they expose
 Prospeo's `pagination.total_count` while relaying the native result page. The account-information
-route remains internal for key verification and capacity. See [Prospeo](prospeo.md) for pricing,
-settlement, plan limits and live evidence.
+route remains internal for key verification and capacity.
 
 
 ### Verified additional routing categories

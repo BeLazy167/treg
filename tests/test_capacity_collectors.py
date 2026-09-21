@@ -314,7 +314,7 @@ async def test_akta_collector_marks_enterprise_accounts():
 
 def test_no_balance_api_includes_expected_providers():
     """Verify the vendors that have no free balance API are documented."""
-    expected = {"aviato", "coresignal", "exa", "financialdatasets", "finnhub", "justoneapi", "limadata", "marketstack", "scrubby", "tiingo"}
+    expected = {"aviato", "coresignal", "exa", "financialdatasets", "finnhub", "justoneapi", "limadata", "marketstack", "scrubby", "tiingo", "trestleiq"}
     assert expected == set(collectors.NO_BALANCE_API.keys())
 
 
@@ -325,6 +325,22 @@ def test_limadata_policy_uses_auto_recharge_and_the_documented_rate():
     assert row.auto_funding_enabled is True
     assert row.source == "manual"
     assert row.rate_limit == {"limit": 1, "window_s": 1, "source": "docs"}
+
+
+async def test_trestleiq_capacity_is_portal_only_with_manually_verified_auto_recharge(monkeypatch):
+    monkeypatch.setenv("TREG_PLATFORM_KEY_TRESTLEIQ", "PLATFORM-TRESTLEIQ")
+    collectors.get_settings.cache_clear()
+    try:
+        row = await collectors.provider_balance("trestleiq")
+        assert row["no_api"] is True and row["value"] is None
+        capacity = policy.default_policy("trestleiq", has_key=True)
+        assert capacity.capacity_type == "cash"
+        assert capacity.funding_mode == "auto_recharge"
+        assert capacity.auto_funding_enabled is True
+        assert capacity.source == "manual"
+        assert capacity.rate_limit == {"limit": 10, "window_s": 1, "source": "docs"}
+    finally:
+        collectors.get_settings.cache_clear()
 
 
 def test_implemented_collectors_are_registered_and_do_not_overlap_absent_list():

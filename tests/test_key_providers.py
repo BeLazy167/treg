@@ -60,6 +60,55 @@ def test_key_providers_appear_in_the_marketplace_listing():
     assert "Market data" in P.CATEGORY_ORDER
 
 
+def test_paid_key_verification_probe_is_typed_and_unique():
+    paid = {p.service: p.probe_cost_micro for p in P.REGISTRY.values() if p.probe_cost_micro}
+    assert paid == {"trestleiq": 15_000}
+    assert all(isinstance(p.probe_cost_micro, int) and p.probe_cost_micro >= 0
+               for p in P.REGISTRY.values())
+    listing = {row["service"]: row for row in P.listing()}
+    assert listing["trestleiq"]["probe_cost_micro"] == 15_000
+    assert listing["wiza"]["probe_cost_micro"] == 0
+
+
+def test_trestleiq_registry_uses_the_billed_sandbox_probe_and_lowercase_header(monkeypatch):
+    monkeypatch.setenv("TREG_PLATFORM_KEY_TRESTLEIQ", "PLATFORM-TRESTLEIQ")
+    monkeypatch.setenv("TREG_PLATFORM_PROVIDERS", "trestleiq")
+    provider = P.get("trestleiq")
+    assert provider.base_url == "https://api.trestleiq.com"
+    assert provider.probe_path == "/3.0/phone_intel?phone=%2B13005550100&is_sandbox=true"
+    assert provider.probe_cost_micro == 15_000
+    assert Settings(_env_file=None).platform_key_for("trestleiq") == "PLATFORM-TRESTLEIQ"
+    assert P.platform_bindings(provider) == [{
+        "platform_setting": "platform_key_trestleiq",
+        "injector": "env",
+        "location": "header",
+        "name": "x-api-key",
+        "format": "{secret}",
+    }]
+
+
+async def test_trestleiq_paid_probe_rejects_bad_key_and_is_never_saved_as_health_check(
+    clients, monkeypatch,
+):
+    def probe(request):
+        assert request.url.path == "/3.0/phone_intel"
+        assert request.url.params["phone"] == "+13005550100"
+        assert request.url.params["is_sandbox"] == "true"
+        if request.headers["x-api-key"] == "bad":
+            return httpx.Response(403, json={"errorCode": "AUTHENTICATION_FAILED"})
+        return httpx.Response(200, json={"is_valid": False, "warnings": ["Invalid Input"]})
+
+    async with AsyncClient(transport=httpx.MockTransport(probe)) as upstream:
+        monkeypatch.setattr(app.state, "http", upstream)
+        bad = await clients.post("/connections/token", json={"provider": "trestleiq", "token": "bad"})
+        assert bad.status_code == 422
+        good = await clients.post(
+            "/connections/token", json={"provider": "trestleiq", "token": "own-key"})
+        assert good.status_code == 200, good.text
+    tool = next(t for t in (await clients.get("/tools")).json() if t["name"] == "trestleiq")
+    assert tool["health_check"] is None
+
+
 def test_openmart_registry_uses_the_free_balance_probe_and_bearer_key(monkeypatch):
     monkeypatch.setenv("TREG_PLATFORM_KEY_OPENMART", "PLATFORM-OPENMART")
     monkeypatch.setenv("TREG_PLATFORM_PROVIDERS", "openmart")

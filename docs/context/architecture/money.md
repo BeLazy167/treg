@@ -34,6 +34,7 @@ sources:
   - src/treg/routers/orgs.py
   - src/treg/routers/referrals.py
   - tests/test_call_architecture.py
+  - tests/test_marketplace_call.py
   - tests/test_asynctasks.py
 related:
   - architecture/catalog.md
@@ -44,16 +45,23 @@ related:
 
 # Money
 
+TrestleIQ charges USD 0.015 for Phone Validation, USD 0.03 for Real Contact, and USD 0.01 for
+Address Validation. Every HTTP 200 response is billable, including a negative verdict; 4xx and 5xx
+responses are free. Phone Validation was isolated with an exact two-call wallet delta. One
+additional controlled call to each product produced the expected rounded aggregate wallet delta,
+verifying the Real Contact and Address prices together. The three tools use generic `per_call`
+settlement.
+
 LimaData converts credits at the assigned account's sustainable automatic-top-up replacement rate:
 $100 for 6,667 credits, rounded up to $0.015 per credit. Only fixed, synchronous prices use the
 shared key. Variable charges, a route billed on HTTP 404, extraction modifiers, and asynchronous
-refunds remain BYOK-only, so no LimaData settlement branch is needed. See [LimaData](limadata.md).
+refunds remain BYOK-only, so no LimaData settlement branch is needed.
 
 MoltSets is the first real `treg_shared_plan` catalog rate: $0.01 per ordinary successful record on
 the flat $27 subscription. Its verified 5,000-record weekly allowance is conservatively 20,000 per
 four-week month, so the disclosed 2,700-call monthly break-even is 13.5% utilization. Generic
 success-only settlement handles its eligible tools; variable, batch, and dual-meter phone operations
-stay BYOK-only. See [MoltSets](moltsets.md).
+stay BYOK-only.
 
 A catalogued endpoint can be served on **treg's own key** - no provider signup for the caller - which
 means treg pays the provider and bills the team. That needs a balance, a way to top it up, and a way
@@ -938,7 +946,7 @@ balance update. Free-plan null charge fields use the same documented fallback po
 from returned profiles using the YAML Starter micro-USD rates. It reuses the existing money lifecycle.
 Profile-only LinkedIn enrichment reserves and settles 20,000 micro-USD when a profile is found;
 misses remain free. Platform reveal search requires an explicit page size to bound its hold.
-Own keys are unmetered; see [ContactOut](contactout.md) for prices, free verification and evidence limits.
+Own keys are unmetered.
 
 ## Top-up product attribution
 
@@ -966,7 +974,7 @@ label is released and retrying performs another free read. MIME type never decid
 
 ## HarvestAPI integration
 
-HarvestAPI reuses `cost.reported_charge` with path `cost` in USD. Billed misses retain their reported charge; wallet reads may lag and are never per-call evidence. Profile variants reserve their own scalar price. See [HarvestAPI](harvestapi.md).
+HarvestAPI reuses `cost.reported_charge` with path `cost` in USD. Billed misses retain their reported charge; wallet reads may lag and are never per-call evidence. Profile variants reserve their own scalar price.
 
 
 ## Dropleads credit settlement
@@ -976,7 +984,7 @@ requested bulk count or company-search limit. `_observed_cost_micro` then reads 
 reported credit use from its three verified response shapes. A finite, nonnegative value, including
 zero, replaces the estimate. A known email-finder `not_found` response also settles at zero when the
 provider omits the numeric field. Missing or malformed evidence keeps the estimate. BYOK calls do
-not enter this money path. See [Dropleads](dropleads.md) for the endpoint limits and verified costs.
+not enter this money path.
 
 
 ## Prospeo credit settlement
@@ -987,4 +995,4 @@ credit-modifier path performs the arithmetic and a missing FX rate retains the o
 instead of raising. `_prospeo_cost_micro` settles bulk calls from finite nonnegative `total_cost`,
 single enrichments from endpoint-specific success evidence plus `free_enrichment`, searches from
 `free` and the result list, and suggestions at zero. Non-finite or malformed numeric evidence keeps
-the estimate for reconciliation. BYOK calls never enter this money path. See [Prospeo](prospeo.md).
+the estimate for reconciliation. BYOK calls never enter this money path.

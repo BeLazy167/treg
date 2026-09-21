@@ -44,16 +44,21 @@ related:
 
 # Provider capacity
 
+TrestleIQ publishes no free balance or usage API. Capacity reports the wallet as Developer
+Portal-only and does not spend a validation query to read it. The policy records cash with vendor
+auto recharge, manually verified as enabled in the portal, and a documented 10 requests/second
+shared-key pace. treg does not read or change the vendor's auto-top-up setting.
+
 LimaData exposes no free standalone balance API, so capacity reports its credit balance as
 dashboard-only. The assigned account's existing automatic top-up is enabled, and the default policy
 is `credits / auto_recharge / manual`. Shared-key smoothing uses the documented default one request
-per second; BYOK bypasses it. See [LimaData](../architecture/limadata.md).
+per second; BYOK bypasses it.
 
 BounceBan's collector calls the free `GET /v1/account` route with the raw `Authorization` key and
 reads `available_credits`. Zero and finite nonnegative numbers are exact balances; missing, Boolean,
 string, negative, and non-finite values are unknown. Its policy is `credits / manual / api`, with a
 conservative shared-key rate of 25 requests per second. No reset, renewal, or auto-top-up behavior is
-inferred, and no overflow route is claimed. See [BounceBan](../architecture/bounceban.md).
+inferred, and no overflow route is claimed.
 
 Datagma's collector calls the free internal `GET /api/ingress/v1/mine` route with the query-bound
 API ID and retains only `currentCredit`. Account identity and plan fields are discarded and never
@@ -61,31 +66,29 @@ become catalog output. Finite nonnegative numbers and decimal strings are accept
 negative, and nonfinite values are rejected. HTTP failures are sanitized so the URL cannot expose
 the query credential. Its policy is `credits / manual / api`, with the documented 10 requests per
 second shared-key limit. No empty-account signature was forced and no overflow route is claimed.
-See [Datagma](../architecture/datagma.md).
 
 ZeroBounce's collector calls the free `GET /v2/getcredits` route with the query-bound key and reads
 `Credits`. Nonnegative integers and decimal strings are exact balances. Boolean, missing,
 malformed, and negative values are unknown; this includes the provider's invalid-key `-1` sentinel.
 Its policy is `credits / auto_recharge / api` for vendor-managed Auto-Pay, but treg does not read or
 change that setting. Shared-key pacing starts at 25 requests per second. No empty-account
-response was forced and no overflow route is claimed. See
-[ZeroBounce](../architecture/zerobounce.md).
+response was forced and no overflow route is claimed.
 
 `collectors._moltsets` reads the free account envelope and reports the tighter rolling enrichment
 record remainder, with both enrichment/search request and record pools in its note. Missing
 enrichment windows produce unknown capacity rather than substituting the separate token/phone
 balance. Its `rolling_quota` type means the quota is measured over rolling windows; the explicit
 10/second smoothing policy is a routing pace, not a reinterpretation of the 5,000-request/5h
-capacity allowance. See [MoltSets](../architecture/moltsets.md).
+capacity allowance.
 
-`collectors._sumble` reads `credits_remaining` from a free technology-search miss. Its monthly allowance and optional vendor top-ups remain separate from per-call pricing; no renewal date or auto-funding status is assumed. See [Sumble](../architecture/sumble.md).
+`collectors._sumble` reads `credits_remaining` from a free technology-search miss. Its monthly allowance and optional vendor top-ups remain separate from per-call pricing; no renewal date or auto-funding status is assumed.
 
 `collectors._getleadsio` reads numeric nonnegative `credits_remaining` from the free fair-use route.
 It represents the promotional database-credit allocation, not the separate Live Leads wallet.
 Default smoothing is the documented 100 requests per minute. An exact observed zero publishes the
 normal exhausted state: platform calls then receive the shared typed 503 with an own-key instruction
 before reserve, while BYOK remains available. No empty-account response was forced, so the upstream
-exhaustion signature remains unrecorded and no overflow route is claimed. See [GetLeads.io](../architecture/getleadsio.md).
+exhaustion signature remains unrecorded and no overflow route is claimed.
 
 Financial Datasets uses the existing capacity path with `_KNOWN` policy
 `credits / auto_recharge / manual`. The official API publishes no free balance or usage endpoint,
@@ -149,7 +152,7 @@ they do not replace the spendable total. The default policy is `credits / manual
 `scripts/provider_balances.py` needs no provider branch because the typed platform-key setting and
 the shared collector table discover Dropleads automatically. The free trial was not exhausted, so
 the actual upstream exhaustion response is acknowledged as unrecorded and no overflow route is
-enabled. See [Dropleads](../architecture/dropleads.md).
+enabled.
 
 ## Prospeo subscriptions
 
@@ -171,8 +174,7 @@ selects the shared collector. The collector reads its key setting independently 
 allow-list so disabling a provider does not hide its last balance check. A focused live
 reconciliation matched one paid one-credit call beside two free calls without exposing the key.
 The Starter allowance was not exhausted, so its provider-specific exhaustion response remains in
-the acknowledged-unrecorded set and no overflow route is claimed. See
-[Prospeo](../architecture/prospeo.md).
+the acknowledged-unrecorded set and no overflow route is claimed.
 
 ## Wiza prepaid API credits
 
@@ -189,8 +191,7 @@ smoothing is not endpoint-aware. This spaces sequential platform calls by about 
 about 38 seconds of waiting across 20 one-row search pages; BYOK is unaffected. The bounded,
 process-local limiter reduces ordinary bursts but is not a strict quota gate: calls whose computed
 wait exceeds `DEFAULT_MAX_WAIT_MS` proceed. Relax the ceiling after real 429 evidence, or when
-smoothing becomes endpoint-aware. The public replacement rate and platform/BYOK boundary are
-documented in [Wiza](../architecture/wiza.md).
+smoothing becomes endpoint-aware.
 
 ## Pieces (`src/treg/domain/capacity/`)
 
@@ -477,8 +478,7 @@ results varied, so no numeric free-plan concurrency/rate limit is configured.
 not a scalar balance. `snapshot_from` and `latest_state` preserve it without marking the provider
 exhausted. Prepaid quotas are already remaining credits. The pools are independent and require
 separate operator monitoring and top-ups. Stats freshness remains unconfirmed; treg
-keeps the existing sweep cadence and does not assume behavior at zero credits. See
-[ContactOut](../architecture/contactout.md).
+keeps the existing sweep cadence and does not assume behavior at zero credits.
 
 ContactOut overflow now has verified routes on Orthogonal and Monid, using the same price gates,
 expiry, opt-out and budget controls. Its documented out-of-credit 403 is endpoint-scoped quota,
@@ -492,5 +492,4 @@ remain private operational state.
 A spent prepaid wallet or a key's own spend cap answers `402`. Observed 2026-09-19 by driving a
 trial key past its cap: `{"error": "trial_cap_reached"}`, recorded in `signatures._TABLE` as a
 `balance` signal. The funded-wallet body ("insufficient wallet balance", per its OpenAPI 402
-description) matches the same row but has not been observed. No overflow route is claimed. See
-[AnyAPI](../architecture/anyapi.md).
+description) matches the same row but has not been observed. No overflow route is claimed.
