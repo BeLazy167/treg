@@ -208,7 +208,8 @@ Crawl remain direct-only: their grouped account-level debit can land on a later 
 bounded shared-key holds are materially less competitive than the existing automatic choices.
 None is an Enrich Arena task because Arena is limited to its declared enrichment jobs.
 
-Shared-key calls force `include_usage: true` so settlement can use Tavily's response-reported
+Every Tavily call requires the caller to send `include_usage: true`, keeping the catalog contract
+consistent across own-key and platform calls; platform settlement then uses Tavily's response-reported
 `usage.credits`. Map and Crawl additionally require an explicit `limit` from 1 through 20 on the
 platform key. That bound caps the maximum hold while leaving Tavily's accepted range unchanged for
 BYOK. Search reserves at most two credits; Extract, Map, and Crawl reserve their documented

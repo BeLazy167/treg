@@ -1627,10 +1627,10 @@ async def test_tavily_own_key_wins_and_all_four_tools_remain_unmetered(
     async with httpx.AsyncClient(transport=httpx.MockTransport(serve)) as upstream:
         monkeypatch.setattr(A.app.state, "http", upstream)
         calls = (
-            ("search", {"query": "no result"}),
-            ("extract", {"urls": ["https://example.com"]}),
-            ("map", {"url": "https://example.com"}),
-            ("crawl", {"url": "https://example.com"}),
+            ("search", {"query": "no result", "include_usage": True}),
+            ("extract", {"urls": ["https://example.com"], "include_usage": True}),
+            ("map", {"url": "https://example.com", "include_usage": True}),
+            ("crawl", {"url": "https://example.com", "include_usage": True}),
         )
         for endpoint, body in calls:
             response = await clients.post(f"/call/tavily.web.{endpoint}", json=body)

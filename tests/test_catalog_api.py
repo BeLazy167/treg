@@ -28,6 +28,11 @@ def test_tavily_surface_keeps_only_safe_synchronous_data_tools():
     assert all(ep["platform"] == "web" and ep["scope"] == "any_account" for ep in rows.values())
     assert all(cat.platform_eligible(ep) for ep in rows.values())
     assert rows["tavily.web.extract"]["input"]["body"]["urls"]["maxItems"] == 20
+    assert all(
+        row["input"]["body"]["include_usage"]["required"] is True
+        and row["input"]["body"]["include_usage"]["enum"] == [True]
+        for row in rows.values()
+    )
     assert all(ep["verified"] == "2026-09-21" and ep["example_file"] for ep in rows.values())
     assert cat.credit_rates["tavily"] == 0.008
     shown = {eid: cat.cost_view(ep["cost"], "tavily") for eid, ep in rows.items()}
