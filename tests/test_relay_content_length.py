@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import httpx
 import pytest
+import json
 
 from treg.application.call.types import UpstreamRequest
 from treg.infra.upstream import relay as relay_module
@@ -59,3 +60,47 @@ async def test_chunked_caller_stays_chunked(monkeypatch) -> None:
                                          (b"transfer-encoding", b"chunked")))
     assert headers.get("transfer-encoding") == "chunked"
     assert "content-length" not in headers
+
+
+@pytest.mark.asyncio
+async def test_json_bindings_overwrite_credentials_and_recompute_length(monkeypatch) -> None:
+    seen: dict[str, object] = {}
+
+    async def handler(req: httpx.Request) -> httpx.Response:
+        body = await req.aread()
+        seen.update(body=json.loads(body), length=req.headers.get("content-length"))
+        return httpx.Response(200, content=b"ok")
+
+    raw = b'{"company_domain":"example.com","api_key":"caller-value"}'
+
+    async def stream():
+        yield raw
+
+    async def read():
+        return raw
+
+    settings = relay_module.get_settings()
+    monkeypatch.setattr(settings, "proxy_ssrf_check", False, raising=False)
+    monkeypatch.setattr(settings, "platform_key_adyntel", "server-key", raising=False)
+    monkeypatch.setattr(settings, "platform_email_adyntel", "owner@example.com", raising=False)
+    tool = Tool(org_id=1, name="adyntel", owner="t", base_url="https://api.adyntel.com",
+                host="api.adyntel.com", bindings=[
+                    {"platform_setting": "platform_key_adyntel", "injector": "env",
+                     "location": "json", "name": "api_key", "format": "{secret}"},
+                    {"platform_setting": "platform_email_adyntel", "injector": "env",
+                     "location": "json", "name": "email", "format": "{secret}"},
+                ])
+    req = UpstreamRequest(
+        method="POST",
+        raw_headers=((b"content-type", b"application/json"),
+                     (b"content-length", str(len(raw)).encode())),
+        query_items=(), body_stream=stream, has_body=True, body_read=read,
+    )
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        resp = await relay_module.relay(req, "https://api.adyntel.com/facebook", tool, {}, client)
+        await resp.close()
+
+    assert seen["body"] == {
+        "company_domain": "example.com", "api_key": "server-key", "email": "owner@example.com",
+    }
+    assert seen["length"] == str(len(json.dumps(seen["body"], separators=(",", ":")).encode()))

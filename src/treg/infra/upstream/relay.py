@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
+import json
 from collections.abc import Awaitable, Callable
 
 import httpx
@@ -140,6 +141,25 @@ async def relay(
         if not drop_params or k not in drop_params
     ]
 
+    json_bindings = any(binding.get("location") == "json" for binding in tool.bindings)
+    json_body: dict[str, object] | None = None
+    if json_bindings:
+        if not request.has_body or request.body_read is None:
+            raise GatewayFailed(
+                "injection_failed", status_code=502,
+                detail="JSON credential injection requires a readable request body")
+        try:
+            parsed = json.loads(await request.body_read())
+        except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+            raise GatewayFailed(
+                "injection_failed", status_code=502,
+                detail="JSON credential injection requires a valid JSON request body") from exc
+        if not isinstance(parsed, dict):
+            raise GatewayFailed(
+                "injection_failed", status_code=502,
+                detail="JSON credential injection requires a JSON object request body")
+        json_body = parsed
+
     # Apply every binding (a request may need several credentials at once).
     for binding in tool.bindings:
         # A PLATFORM binding injects one of treg's own credentials (Google Ads' developer token),
@@ -154,7 +174,7 @@ async def relay(
                     "injection_failed", status_code=502,
                     detail=f"this server has no {setting} configured")
             try:
-                injectors.inject(headers, params, binding, value)
+                injectors.inject(headers, params, binding, value, json_body=json_body)
             except ValueError as exc:
                 raise GatewayFailed(
                     "injection_failed", status_code=502,
@@ -162,7 +182,8 @@ async def relay(
             continue
         secret = secrets[binding["secret_id"]]
         try:
-            injectors.inject(headers, params, binding, crypto.decrypt(secret.value))
+            injectors.inject(headers, params, binding, crypto.decrypt(secret.value),
+                             json_body=json_body)
         except ValueError as exc:
             raise GatewayFailed(
                 "injection_failed", status_code=502,
@@ -171,13 +192,16 @@ async def relay(
     # Only carry a body when the caller actually sent one — otherwise passing an (unsized) stream
     # makes httpx frame the request `Transfer-Encoding: chunked`, putting a bogus body-frame on a
     # GET/HEAD/OPTIONS (which strict upstreams reject).
-    content = request.body_stream() if request.has_body else None
+    content = (json.dumps(json_body, separators=(",", ":")).encode()
+               if json_body is not None else request.body_stream() if request.has_body else None)
     # A streamed body with no length makes httpx frame it `Transfer-Encoding: chunked`. The bytes are
     # the caller's, unaltered, so the caller's own Content-Length is exact — carry it, and httpx
     # frames the upstream request with it instead. Meta's Graph API edge does not read a chunked
     # request body: every JSON/form/multipart POST arrived as a bodyless request, and an ad creative
     # sent that way failed "Ad incomplete" (live 2026-09-19). A caller who streamed chunked stays chunked.
-    if content is not None and (cl := _header_value(request.raw_headers, "content-length")):
+    if json_body is not None:
+        headers["content-length"] = str(len(content))
+    elif content is not None and (cl := _header_value(request.raw_headers, "content-length")):
         headers["content-length"] = cl
     # Merge the query onto the URL rather than passing params=: httpx REPLACES a URL's existing
     # query whenever params is given (even an empty list), which silently stripped a catalog path's
