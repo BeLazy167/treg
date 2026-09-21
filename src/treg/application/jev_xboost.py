@@ -131,9 +131,18 @@ QUESTIONS = {
     },
 }
 
-_GENERIC = re.compile(
-    r"^(@\w+\s*)*((great|nice|amazing|awesome|love|wow|congrats|congratulations|this|so true|facts|fire"
-    r"|🔥|👏|💯|🙌|❤️|!|\.|\s)+)$", re.I)
+# A reply is "generic" when nothing is left once mentions, stock praise, the usual emoji and
+# punctuation are taken out. Done by removal, not by one anchored pattern: the old
+# `^(@\w+\s*)*((great|…|\s)+)$` nested a repeat over overlapping alternatives and backtracked
+# exponentially on a long run that ALMOST matched, and this text is a stranger's reply on X.
+_GENERIC_WORDS = re.compile(
+    r"@\w+|\b(?:great|nice|amazing|awesome|love|wow|congrats|congratulations|this|so true|facts|fire)\b", re.I)
+_GENERIC_NOISE = str.maketrans("", "", "🔥👏💯🙌❤\ufe0f!. \t\r\n")
+
+
+def _is_generic(text: str) -> bool:
+    text = (text or "").strip()[:500]   # a reply is short; the cap bounds the work on anything that is not
+    return bool(text) and not _GENERIC_WORDS.sub("", text).translate(_GENERIC_NOISE)
 _POST_URL = re.compile(r"^https?://(?:www\.)?(?:x|twitter)\.com/([A-Za-z0-9_]{1,15})/status/(\d{1,25})")
 
 
@@ -156,7 +165,7 @@ def forensics(p: dict, profile: dict | None, replies: list[dict]) -> dict:
     sample = [r for r in replies if r.get("createdUtc")]
     quick = [r for r in sample if r["createdUtc"] - (p.get("createdUtc") or 0) <= 600]
     short = [r for r in sample if len(re.sub(r"@\w+", "", r.get("text") or "").split()) < 6]
-    generic = [r for r in sample if _GENERIC.match((r.get("text") or "").strip())]
+    generic = [r for r in sample if _is_generic(r.get("text"))]
     share = lambda xs: round(len(xs) / len(sample), 2) if sample else None  # noqa: E731
     return {
         "rates": {"likes_per_view": round(likes / v, 5), "replies_per_view": round(reps / v, 5),

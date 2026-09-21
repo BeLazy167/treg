@@ -148,3 +148,18 @@ async def test_judge_answers_a_known_post_from_the_store_without_spending(client
     seed_id = run["posts"][0]["id"]
     r = await clients.post("/jev/xboost/judge", json={"url": f"https://x.com/someone/status/{seed_id}"})
     assert r.status_code == 200 and r.json()["cached"] is True and len(calls) == 1
+
+
+def test_generic_reply_check_is_linear_and_keeps_its_verdicts():
+    """The old anchored pattern backtracked exponentially on a long near-match (CodeQL py/redos);
+    replies are strangers' text, reachable through the public judge endpoint."""
+    import time
+    from treg.application.jev_xboost import _is_generic
+    for yes in ("great", "@a @b nice!", "🔥🔥🔥", "So true. Facts!", "congrats ❤️", "  wow  "):
+        assert _is_generic(yes), yes
+    for no in ("", "great product, how does pricing work?", "this broke my build", "greatness", "@someone"[:0]):
+        assert not _is_generic(no), no
+    t0 = time.perf_counter()
+    assert not _is_generic("great " * 5000 + "x")
+    assert time.perf_counter() - t0 < 0.5
+
