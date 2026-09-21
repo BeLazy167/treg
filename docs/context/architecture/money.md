@@ -222,7 +222,7 @@ Pending `AsyncTaskRecord` holds are excluded from this short request reaper. The
 `domain/money/settlement.py` is the single data-derived calculation seam. Reserve time freezes a basis
 with `when: response|terminal` and `amount.kind: table|usage|observed`; `settle(basis, evidence)` returns
 raw integer micro-USD and never writes the ledger. `table_amount_micro` bounds a `times` multiplier by
-the field's declared `min`/`max` (finite, positive when no minimum is declared): an out-of-range value
+the field's declared `min`/`max` (finite and always positive, whatever minimum is declared): an out-of-range value
 matches no row and prices at the fallback, so a caller can neither reserve zero nor bill past the
 validated ceiling. Both the normal response path and the async worker
 use it. Provider differences remain in catalog YAML; there are no provider billing adapters.
@@ -280,9 +280,14 @@ ate what the team's blocks could not cover). A success whose terminal response c
 figure settles at the reserve with `reconcile_review` and an ERROR alert, never at the ceiling.
 When the pending row itself cannot be persisted, the request path releases the
 hold with reason `async_task_not_recorded` and logs an ERROR alert - the same doctrine, since nobody
-will observe that task's outcome. The only usage unit real traffic has settled is `usd` (OpenRouter's
-`usage.cost`); a token unit returns with the first metered token-priced listing, together with its fx
-rule and a live test. Ledger writes remain exclusively through `domain/money`.
+will observe that task's outcome. Two usage units settle: `usd` (OpenRouter's `usage.cost`) and
+`credit`, the provider's own credit priced by its `credit_rates_usd` entry in fx.yaml (reAPI's
+`usage.credits`). The credit's micro-USD worth is frozen into the basis as `amount.unit_micro` at
+reserve, so a later fx edit never re-prices a task in flight, and a credit basis with no frozen rate
+settles at the reserve rather than reading credits as dollars. The table is then only the reserve:
+a table-settled video row once billed its fallback ceiling for the provider's mandatory `duration: -1`
+(auto) mode, because the frozen request re-prices identically at settle. A token unit returns with
+the first metered token-priced listing, together with its fx rule and a live test. Ledger writes remain exclusively through `domain/money`.
 
 The audit row (`CallRecord`) froze the reserve as `cost_charged_micro` at submission, so displays
 must not read it alone. `application.asynctasks.views_for(org_id, call_ids)` is the read side: it
@@ -510,7 +515,11 @@ bill one row per listed item — the length of `targets`/`keywords`/`domains`/`u
 `emails`. Each of those was a live overcharge first (2026-08-28: companyenrich `pageSize: 2`
 settled 20 rows, moz's one `targets` entry settled 20 quota rows; 2026-09-02: lusha decision-makers,
 catalogued FREE, answered 44 contacts for one domain and settled $5.49 from `billing.creditsCharged`
-with nothing reserved). Without any signal it is the
+with nothing reserved). The cap key only reserves what the provider will honour: Lusha had already
+removed `/v3/contacts/decision-makers` (2026-08-12) and its legacy handler rejected `contactsLimit`
+with a 400, so the reservation followed a cap the bill ignored; `lusha.x.decision-makers` is a
+retired tombstone since 2026-09-09 and `lusha.x.buying-group` is the path where `contactsLimit`
+is the spend cap. Without any signal it is the
 20-row page, and a settle-at-estimate provider then charges that page.
 The page default has no meaning at all when the catalog prices per INPUT entity, and the estimator
 knows the difference since 2026-09-05: a `per_result`/`quota_rows` cost whose `unit` is `target`,

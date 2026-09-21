@@ -481,6 +481,37 @@ def test_instagram_catalog_paths_do_not_embed_query_strings():
         assert all("?" not in path for path in (ep.get("authorization_paths") or {}).values()), ep["id"]
 
 
+def test_instagram_publishing_notes_use_current_meta_quota():
+    """Feedback #430: Content Publishing guide is 100 API-published posts / 24h, not 50.
+
+    Meta's content_publishing_limit reference still samples quota_total: 50 in
+    places; catalog prose follows the Content Publishing guide and tells agents
+    to read remaining allowance live rather than hard-coding only one number.
+    Settlement is unchanged.
+    """
+    cat = cs.load()
+    create = cat.by_id["instagram.instagram.media.container.create"]
+    publish = cat.by_id["instagram.instagram.post.publish"]
+    limit = cat.by_id["instagram.x.user-content-publishing-limit"]
+    quota_phrase = "100 API-published posts per 24-hour moving period"
+    carousel = "carousels count as one"
+    live_check = "GET /{ig_user_id}/content_publishing_limit"
+    for note in (
+        create["cost"]["note"],
+        publish["input"]["note"],
+        publish["cost"]["note"],
+        limit["summary"],
+    ):
+        assert quota_phrase in note
+        assert carousel in note
+        assert "50" not in note
+        assert "50-posts" not in note
+        assert "50-per-24h" not in note
+    assert live_check in publish["input"]["note"]
+    assert "before a batch" in publish["input"]["note"]
+    assert limit["path"] == "/{ig_user_id}/content_publishing_limit"
+
+
 async def test_retired_rows_leave_discovery_but_keep_an_actionable_direct_lookup(clients: AsyncClient):
     """A cached endpoint id needs its migration story, while a new agent must never discover it."""
     retired = "tikhub.x.linkedin-web-search-jobs"
@@ -498,6 +529,39 @@ async def test_retired_rows_leave_discovery_but_keep_an_actionable_direct_lookup
     assert detail["superseded_by"] == successor
     search = (await clients.get("/catalog/search", params={"q": retired})).json()
     assert retired not in {row["id"] for row in search["results"]}
+
+
+def test_lusha_decision_makers_is_a_tombstone_pointing_at_buying_group():
+    """Lusha removed POST /v3/contacts/decision-makers on 2026-08-12 (changelog 2.9.0); the legacy
+    handler still answered companies-only bodies but rejected `contactsLimit`, so the documented
+    spend cap never applied. The id stays as a tombstone with its story; the successor is the only
+    operation that honours the cap and is the row an agent may now discover and spend against."""
+    cat = cs.load()
+    retired, successor = "lusha.x.decision-makers", "lusha.x.buying-group"
+    old, new = cat.by_id[retired], cat.by_id[successor]
+    assert old["status"] == "retired"
+    assert old["superseded_by"] == successor
+    assert "contactsLimit" in old["status_note"] and "2026-08-12" in old["status_note"]
+    assert "contactsLimit" not in old["input"].get("body", {}), (
+        "the retired path must not advertise a cap it never honoured")
+    assert "personas" not in old["input"].get("body", {})
+    assert retired not in {ep["id"] for ep in cat.endpoints}
+    assert not cat.platform_eligible(old), "a tombstone is never an offer"
+
+    assert not new.get("status")
+    assert new["path"] == "/v3/contacts/buying-group" and new["method"] == "POST"
+    assert new["capability"] == old["capability"] == "people.decision_makers"
+    assert new["cost"]["type"] == "per_result" and new["cost"]["value"] == 1
+    assert new["cost"]["currency"] == "credit"
+    assert new["test_request"]["body"] == {"companies": [{"domain": "lusha.com"}], "contactsLimit": 1}
+    assert new["input"]["body"]["contactsLimit"]["type"] == "integer"
+    assert new["input"]["body"]["personas"]["enum"] == [
+        "decision_maker", "potential_champion", "end_user"]
+    assert "60" in new["input"]["note"] and "contactsLimit" in new["input"]["note"]
+    assert not new.get("verified") and not new.get("example_file"), "no live probe was run"
+    assert cat.platform_eligible(new), "the successor must stay servable on treg's key"
+    live = {ep["id"] for ep in cat.endpoints if ep.get("capability") == "people.decision_makers"}
+    assert successor in live and retired not in live
 
 
 def test_tikhub_drift_repair_preserves_markers_and_rescues_only_real_jobs():
@@ -1783,6 +1847,63 @@ async def test_catalog_get_scrapecreators_linkedin_search_posts_date_posted(
     assert "not accepted" in note
 
 
+TIKTOK_SEARCH_VIDEOS_ID = "scrapecreators.tiktok.search.videos"
+TIKTOK_SEARCH_VIDEOS_DATE_POSTED = [
+    "yesterday", "this-week", "this-month", "last-3-months", "last-6-months", "all-time",
+]
+TIKTOK_SEARCH_VIDEOS_SORT_BY = ["relevance", "most-liked", "date-posted"]
+
+
+def test_scrapecreators_tiktok_search_videos_query_params_match_openapi():
+    """Feedback #430: GET /v1/tiktok/search/keyword exposes the current OpenAPI params.
+
+    catalog_get used to advertise only query + date_posted (no enum). Upstream
+    OpenAPI also has sort_by, region (proxy placement, not a region filter),
+    cursor, and trim. Settlement, path, capability, and adapters are unchanged.
+
+    Ref: https://docs.scrapecreators.com/openapi.json
+    """
+    cat = cs.load()
+    ep = cat.by_id[TIKTOK_SEARCH_VIDEOS_ID]
+    assert ep["path"] == "/v1/tiktok/search/keyword"
+    params = ep["input"]["queryParams"]
+    assert set(params) == {
+        "query", "date_posted", "sort_by", "region", "cursor", "trim",
+    }
+    assert params["query"]["required"] is True
+    date_posted = params["date_posted"]
+    assert date_posted["required"] is False
+    assert date_posted["enum"] == TIKTOK_SEARCH_VIDEOS_DATE_POSTED
+    assert date_posted["example"] == "all-time"
+    sort_by = params["sort_by"]
+    assert sort_by["required"] is False
+    assert sort_by["enum"] == TIKTOK_SEARCH_VIDEOS_SORT_BY
+    assert sort_by["example"] == "relevance"
+    assert sort_by["note"].lower() == "sort by"
+    region_note = params["region"]["note"].lower()
+    assert "does not filter" in region_note or "doesn't filter" in region_note
+    assert "proxy" in region_note
+    assert params["cursor"]["type"] == "number"
+    assert params["cursor"]["example"] == 10
+    assert "cursor" in params["cursor"]["note"].lower()
+    assert params["trim"]["type"] == "boolean"
+    assert "trim" in params["trim"]["note"].lower()
+    assert ep["cost"]["value"] == 1
+    assert ep["cost"]["currency"] == "credit"
+
+
+async def test_catalog_get_scrapecreators_tiktok_search_videos_query_params(
+        clients: AsyncClient):
+    """Feedback #430: catalog_get must name keyword-search sort/region/cursor/trim."""
+    body = (await clients.get(f"/catalog/endpoints/{TIKTOK_SEARCH_VIDEOS_ID}")).json()
+    params = body["endpoint"]["input"]["queryParams"]
+    assert params["date_posted"]["enum"] == TIKTOK_SEARCH_VIDEOS_DATE_POSTED
+    assert params["sort_by"]["enum"] == TIKTOK_SEARCH_VIDEOS_SORT_BY
+    assert "proxy" in params["region"]["note"].lower()
+    assert params["cursor"]["type"] == "number"
+    assert params["trim"]["type"] == "boolean"
+
+
 FACEBOOK_ADLIBRARY_SEARCH_ADS_ID = "scrapecreators.x.v1-facebook-adlibrary-search-ads"
 FACEBOOK_ADLIBRARY_AD_ID = "scrapecreators.x.v1-facebook-adlibrary-ad"
 FACEBOOK_ADLIBRARY_SEARCH_ADS_SORT_BY = [
@@ -1844,6 +1965,136 @@ async def test_catalog_get_scrapecreators_facebook_adlibrary_search_ads_sort_by(
     assert "collation_count" in input_note
     assert FACEBOOK_ADLIBRARY_AD_ID in body["endpoint"]["input"]["note"]
     assert "search" in input_note and "detail" in input_note
+
+
+REDDIT_SEARCH_POSTS_ID = "scrapecreators.reddit.search.posts"
+REDDIT_SEARCH_POSTS_SORT = ["relevance", "new", "top", "comment_count"]
+TIKHUB_REDDIT_SEARCH_ID = "tikhub.x.reddit-app-fetch-dynamic-search"
+
+
+def test_scrapecreators_reddit_search_posts_sort_enum():
+    """Feedback #507 / #461: GET /v1/reddit/search sort=new is chronological, not 'about X'.
+
+    catalog_get used to advertise sort as a free string (example relevance)
+    with note 'Sort by', so agents sent sort=new expecting recent posts about
+    the query and got newest sitewide posts weakly related or unrelated.
+    Sibling #461: query=Betterment + sort=new matched colloquial 'better'.
+    Upstream OpenAPI enum is relevance | new | top | comment_count. Catalog-only:
+    sort names that enum and warns to prefer relevance; input.note repeats the
+    caveat. Settlement is unchanged.
+
+    Ref: https://docs.scrapecreators.com/openapi.json
+    """
+    cat = cs.load()
+    ep = cat.by_id[REDDIT_SEARCH_POSTS_ID]
+    assert ep["path"] == "/v1/reddit/search"
+    field = ep["input"]["queryParams"]["sort"]
+    assert field["enum"] == REDDIT_SEARCH_POSTS_SORT
+    assert field["example"] == "relevance"
+    note = field["note"].lower()
+    assert "relevance" in note
+    assert "new" in note
+    assert "chronological" in note or "newest-first" in note or "newest first" in note
+    assert "weak" in note or "unrelated" in note
+    input_note = ep["input"]["note"].lower()
+    assert "relevance" in input_note
+    assert "new" in input_note
+    assert "chronological" in input_note or "newest" in input_note
+    assert "weak" in input_note or "unrelated" in input_note
+    params = ep["input"]["queryParams"]
+    assert params["filter"]["enum"] == ["posts", "comments"]
+    assert params["timeframe"]["enum"] == ["all", "day", "week", "month", "year"]
+    assert "after" in params
+    assert params["trim"]["type"] == "boolean"
+    assert (ep.get("test_request") or {}).get("queryParams", {}).get("sort") == "relevance"
+    assert ep["cost"]["value"] == 1
+    assert ep["cost"]["currency"] == "credit"
+
+    tikhub = cat.by_id[TIKHUB_REDDIT_SEARCH_ID]
+    tikhub_sort = tikhub["input"]["queryParams"]["sort"]["note"]
+    assert "RELEVANCE" in tikhub_sort and "NEW" in tikhub_sort
+    assert "HOT" in tikhub_sort and "TOP" in tikhub_sort and "COMMENTS" in tikhub_sort
+    tikhub_note = tikhub_sort.lower()
+    assert "chronological" in tikhub_note or "newest" in tikhub_note
+    assert "weak" in tikhub_note or "unrelated" in tikhub_note
+    tikhub_input = tikhub["input"]["note"]
+    assert "RELEVANCE" in tikhub_input and "NEW" in tikhub_input
+
+
+async def test_catalog_get_reddit_keyword_search_sort_new_weak_relevance(
+        clients: AsyncClient):
+    """Feedback #507 / #461: catalog_get must warn that chronological/new is weakly related."""
+    for endpoint_id in (REDDIT_SEARCH_POSTS_ID, TIKHUB_REDDIT_SEARCH_ID):
+        body = (await clients.get(f"/catalog/endpoints/{endpoint_id}")).json()
+        field = body["endpoint"]["input"]["queryParams"]["sort"]
+        note = field["note"].lower()
+        input_note = body["endpoint"]["input"]["note"].lower()
+        blob = f"{note} {input_note}"
+        assert "relevance" in blob
+        assert "chronological" in blob or "newest" in blob
+        assert "weak" in blob or "unrelated" in blob
+        assert "new" in blob
+        if endpoint_id == REDDIT_SEARCH_POSTS_ID:
+            assert field["enum"] == REDDIT_SEARCH_POSTS_SORT
+            assert field["example"] == "relevance"
+        else:
+            raw = field["note"]
+            assert "NEW" in raw and "RELEVANCE" in raw
+
+
+TWITTER_TWEET_TRANSCRIPT_ID = "scrapecreators.x.v1-twitter-tweet-transcript"
+TWITTER_TWEET_DETAIL_ID = "scrapecreators.x.v1-twitter-tweet"
+
+
+def test_scrapecreators_twitter_tweet_transcript_article_null():
+    """Feedback #633: native video tweet transcript; Articles may return transcript: null.
+
+    catalog_get used to advertise a tweet URL with no URL-shape caveat, so agents
+    treated HTTP success + transcript: null as a successful empty caption while
+    still paying the per-call credit. Observed on X Articles whose media is only
+    article-embedded video. Catalog-only: input.note names native video tweet
+    URLs, treats null as unsupported / no transcript, and points at tweet detail
+    scrapecreators.x.v1-twitter-tweet for embedded video URLs. Settlement is
+    unchanged.
+
+    Ref: https://docs.scrapecreators.com/openapi.json
+    """
+    cat = cs.load()
+    ep = cat.by_id[TWITTER_TWEET_TRANSCRIPT_ID]
+    assert ep["path"] == "/v1/twitter/tweet/transcript"
+    url_note = ep["input"]["queryParams"]["url"]["note"].lower()
+    assert "video" in url_note
+    assert "article" in url_note
+    input_note = ep["input"]["note"].lower()
+    assert "native" in input_note and "video tweet" in input_note
+    assert "article" in input_note
+    assert "transcript" in input_note and "null" in input_note
+    assert "credit" in input_note
+    assert "unsupported" in input_note
+    assert "no transcript" in input_note
+    assert "empty" in input_note
+    assert TWITTER_TWEET_DETAIL_ID in ep["input"]["note"]
+    assert "embedded video" in input_note
+    assert ep["cost"]["value"] == 1
+    assert ep["cost"]["currency"] == "credit"
+
+
+async def test_catalog_get_scrapecreators_twitter_tweet_transcript_article_null(
+        clients: AsyncClient):
+    """Feedback #633: catalog_get must warn that Article-embedded video can return transcript: null."""
+    body = (await clients.get(
+        f"/catalog/endpoints/{TWITTER_TWEET_TRANSCRIPT_ID}")).json()
+    url_note = body["endpoint"]["input"]["queryParams"]["url"]["note"].lower()
+    assert "video" in url_note
+    assert "article" in url_note
+    input_note = body["endpoint"]["input"]["note"].lower()
+    assert "native" in input_note and "video tweet" in input_note
+    assert "article" in input_note
+    assert "transcript" in input_note and "null" in input_note
+    assert "credit" in input_note
+    assert "unsupported" in input_note
+    assert "no transcript" in input_note
+    assert TWITTER_TWEET_DETAIL_ID in body["endpoint"]["input"]["note"]
 
 
 LLM_MENTIONS_HISTORICAL_ID = "dataforseo.x.ai-optimization-llm-mentions-historical-live"
@@ -2157,6 +2408,77 @@ async def test_catalog_get_tikhub_tiktok_ads_search_ads_period_and_limit(
     assert "default 20" in limit_note
     assert "≤ 20" in fields["limit"]["note"]
     assert fields["limit"]["example"] == 20
+
+
+TIKTOK_ADS_TRENDS_HASHTAG_LIST_ID = "tikhub.x.tiktok-ads-get-trends-hashtag-list"
+TIKTOK_ADS_TRENDS_HASHTAG_TIME_RANGE = "7 | 30 | 90"
+
+
+def test_tikhub_tiktok_ads_trends_hashtag_list_limit_is_preview_capped():
+    """Feedback #606: body limit is often ignored; this is a tiny public preview.
+
+    catalog_get used to advertise limit as "Items per page" with example 20,
+    and test_request / call templates use limit 5+. A live paid call requesting
+    30 hashtags (Spain / 7 days) returned only 3 items with data.pagination
+    {hasMore:false, limit:3, page:1, totalCount:3} — the captured
+    example_response already shows that shape. Catalog-only: limit.note and
+    input.note warn that the public trends list is a small preview (~3 items),
+    the requested limit is frequently ignored or capped, and agents must trust
+    data.pagination over the request body. Do not invent a larger national
+    ranking. time_range.note names 7 | 30 | 90 without changing types.
+    Settlement, routing and credentials are unchanged. Sibling #424 (opaque
+    400 validation) stays on its own ticket.
+    """
+    cat = cs.load()
+    ep = cat.by_id[TIKTOK_ADS_TRENDS_HASHTAG_LIST_ID]
+    assert ep["path"] == "/api/v1/tiktok/ads/get_trends_hashtag_list"
+    assert ep["method"] == "POST"
+    body = ep["input"]["body"]
+
+    limit = body["limit"]
+    assert limit["type"] == "integer"
+    assert limit["example"] == 20
+    note = limit["note"].lower()
+    assert "preview" in note
+    assert "~3" in note or "tiny" in note
+    assert "ignored" in note or "capped" in note
+    assert "data.pagination" in note
+    assert "limit" in note and "totalcount" in note and "hasmore" in note
+    assert "national" in note or "ranking" in note
+
+    input_note = ep["input"]["note"].lower()
+    assert "preview" in input_note
+    assert "ranking" in input_note or "dump" in input_note
+    assert "pagination" in input_note
+
+    time_range = body["time_range"]
+    assert time_range["type"] == "integer"
+    assert time_range["example"] == 7
+    assert TIKTOK_ADS_TRENDS_HASHTAG_TIME_RANGE in time_range["note"]
+
+    assert (ep.get("test_request") or {}).get("body", {}).get("limit") == 5
+    assert ep["cost"]["type"] == "per_success"
+    assert ep["cost"]["value"] == 0.001
+    assert ep["cost"]["currency"] == "USD"
+
+
+async def test_catalog_get_tikhub_tiktok_ads_trends_hashtag_list_limit_preview(
+        clients: AsyncClient):
+    """Feedback #606: catalog_get must warn that limit is a preview cap."""
+    body = (await clients.get(
+        f"/catalog/endpoints/{TIKTOK_ADS_TRENDS_HASHTAG_LIST_ID}")).json()
+    fields = body["endpoint"]["input"]["body"]
+    note = fields["limit"]["note"].lower()
+    assert "preview" in note
+    assert "ignored" in note or "capped" in note
+    assert "data.pagination" in note
+    assert "totalcount" in note and "hasmore" in note
+    input_note = body["endpoint"]["input"]["note"].lower()
+    assert "preview" in input_note
+    assert "pagination" in input_note
+    assert TIKTOK_ADS_TRENDS_HASHTAG_TIME_RANGE in fields["time_range"]["note"]
+    assert fields["limit"]["example"] == 20
+    assert fields["time_range"]["example"] == 7
 
 
 YOUTUBE_SEARCH_ID = "scrapecreators.x.v1-youtube-search"

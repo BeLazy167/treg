@@ -323,9 +323,15 @@ def _table_rate(cost: object) -> tuple[float, float] | None:
         if not isinstance(row, dict) or not isinstance(row.get("value"), (int, float)):
             return None
         times = row.get("times")
+        if times is None and any(str(f).rsplit(".", 1)[-1] == "duration" for f in row.get("when") or {}):
+            # A flat row pinning the duration itself (`duration: -1`, the provider's auto mode)
+            # is a whole-clip reserve ceiling, not a rate; the per-second rows still quote the model.
+            continue
         if not isinstance(times, str) or times.rsplit(".", 1)[-1] != "duration":
             return None
         values.append(float(row["value"]))
+    if not values:
+        return None
     return (min(values), max(values))
 
 

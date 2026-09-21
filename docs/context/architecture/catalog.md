@@ -134,6 +134,7 @@ sources:
   - src/treg/catalog/diffbot.yaml
   - src/treg/catalog/diffbot.extended.yaml
   - src/treg/catalog/tikhub.extended.yaml
+  - src/treg/catalog/lusha.extended.yaml
   - src/treg/catalog/examples/minimax.video-gen.result.retrieve.json
   - src/treg/catalog/examples/minimax.video-gen.from_image.json
   - src/treg/catalog/examples/minimax.video-gen.task.status.json
@@ -825,7 +826,10 @@ and image rows replace it whole for `output.image_urls`. PiAPI wraps its task ro
 its OpenAI-shaped `/api/v1/images/generations/async` route answers the bare task object, so those
 two rows override both `id_from` and `expect` (`error.code` 0). PiAPI's `meta.usage` counts
 "points" at ten million per dollar; it is read for the evidence ledger, not settled on, because
-`usd` is the only usage unit the settlement engine accepts.
+points carry no fx rate: the settlement engine accepts `usd` and a provider `credit` priced in
+fx.yaml. reAPI's Seedance rows settle that way, on the terminal body's `usage.credits`, and price
+the provider's `duration: -1` (auto, mandatory when the prompt edits a video reference) with flat
+rows ahead of the per-second rows: thirty seconds at the requested resolution, as a reserve only.
 
 OpenRouter ingest reads `/api/v1/videos/models`, emits one extended row per model on the shared
 `POST /videos` route, and converts duration-based `pricing_skus` into price tables with
@@ -1065,13 +1069,16 @@ ones; the validator rejects a later condition shadowed by an earlier subset, dup
 unknown row/fallback keys, non-finite values, values outside input enum/min/max, and simultaneous
 `cost.value` plus `cost.table`. `fallback` is a hand-written, explained global upper bound, checked
 against every row's maximum computable price. A `times` value outside the field's declared range
-(or non-finite, or non-positive when no minimum is declared) matches no row and prices at the
+(or non-finite, or non-positive) matches no row and prices at the
 fallback, so a request cannot reserve zero or bill past the ceiling. With `settle: table`, the
 matched row is reserved and settled (fallback when unmatched). With `settle: usage`, the matched
 row is reserved as the rate-card estimate and the terminal `usage.path` figure settles, which may
 exceed the reserve (OpenRouter's unpublished minimums); `settle: usage` therefore requires an async
-descriptor, exactly a dotted `usage.path` and a supported `usage.unit`, and `settle: table` rejects
-a stray usage block. The money fragment describes the settlement itself.
+descriptor, exactly a dotted `usage.path` and a supported `usage.unit` (`usd`, or `credit` when
+fx.yaml prices that provider's credit), and `settle: table` rejects a stray usage block. A `times`
+value is never non-positive, whatever minimum the field declares, so a field that admits a sentinel
+such as `-1` cannot multiply a rate by it; the sentinel is priced by a flat row that pins it, and
+that row is left out of the advertised per-second rate span. The money fragment describes the settlement itself.
 
 `value` + `currency` + `per` answer *how much*; `type` + `unit` answer *per what*; `source` +
 `source_url` + `checked` + `confidence` answer *says who, and how sure*. All four questions have to
@@ -1337,6 +1344,19 @@ The validator treats the marker as a contract: only `retired` and `broken` are v
 needs a non-empty note; `status_note` and `superseded_by` cannot float without `status`; and a
 successor must be a different, existing, live catalog id. A marked id is therefore an explanation,
 not an alias chain or a route treg will still spend against.
+
+The marker is not TikHub-specific, and the provider does not have to answer 404 for a row to be
+dead. `lusha.x.decision-makers` (2026-09-09) is the second shape: Lusha removed
+`POST /v3/contacts/decision-makers` on 2026-08-12 in favour of `/v3/contacts/buying-group`, the only
+operation that accepts `contactsLimit` and `personas` - but a legacy handler kept answering
+companies-only bodies on the old path and rejected the cap parameter with a 400. A route that still
+returns 200 while silently ignoring the caller's spend control is broken in the way that costs the
+most (every call ran at the 60-contacts-per-company default, 1 credit each), so it is retired with
+`superseded_by: lusha.x.buying-group` even though the old URL "works". The successor was written from
+the provider's OpenAPI bundle without a live probe and says so with `skipped` and no
+`example_response`; an invented fixture would be worse than none. `lusha.extended.yaml` is
+hand-maintained (no ingester reads Lusha's client-rendered reference), so the "regenerated wholesale"
+caveat above does not apply to it and the tombstone survives.
 
 ### `platform_blocked:` — works upstream, but not on treg's plan
 
@@ -1787,6 +1807,24 @@ Settlement is unchanged. Enforced by `test_minimax_image_01_platform_request_pin
 `test_catalog_get_minimax_image_01_platform_request`, and
 `test_minimax_image_01_platform_request_accepts_documented_model`.
 
+### Instagram Content Publishing quota
+
+Meta's Content Publishing guide limits an account to 100 API-published posts
+per 24-hour moving period (carousels count as one), enforced on
+`POST /{ig_user_id}/media_publish`. The `content_publishing_limit` reference
+page still samples `config.quota_total: 50` in places; catalog prose follows
+the guide and tells agents to read remaining allowance live. Feedback #430:
+`instagram.instagram.media.container.create`,
+`instagram.instagram.post.publish`, and
+`instagram.x.user-content-publishing-limit` still said 50. Catalog-only: those
+notes now say 100 API-published posts per 24-hour moving period (carousels
+count as one) and keep recommending
+`GET /{ig_user_id}/content_publishing_limit` before a batch. The ingest
+source for the extended limit row (`INSTAGRAM_EDGES` in
+`scripts/catalog_ingest.py`) matches. Settlement, routing and request
+shaping are unchanged. Enforced by
+`test_instagram_publishing_notes_use_current_meta_quota`.
+
 ### ScrapeCreators Instagram reels search `date_posted`
 
 ScrapeCreators' OpenAPI for `GET /v2/instagram/reels/search` restricts `date_posted` to
@@ -1846,6 +1884,56 @@ notes that `view_count`, `upload_date`, and `rating` are not accepted.
 unchanged. Enforced by `test_scrapecreators_youtube_search_filter_enums` and
 `test_catalog_get_scrapecreators_youtube_search_filter_enums`.
 
+### ScrapeCreators TikTok keyword search queryParams
+
+ScrapeCreators' OpenAPI for `GET /v1/tiktok/search/keyword` accepts `query`
+(required), `date_posted` (`yesterday | this-week | this-month |
+last-3-months | last-6-months | all-time`, example `all-time`), `sort_by`
+(`relevance | most-liked | date-posted`, example `relevance`), `region`
+(proxy placement, not a region filter; 2-letter codes like US, GB, FR),
+`cursor`, and `trim`. Feedback #430: `scrapecreators.tiktok.search.videos`
+advertised only `query` + `date_posted` with no enum. Catalog-only: the
+field list now matches that OpenAPI. Cost, path, capability, adapters,
+settlement and request shaping are unchanged. `test_request` stays
+`query=ai` + `date_posted=all-time`. Enforced by
+`test_scrapecreators_tiktok_search_videos_query_params_match_openapi` and
+`test_catalog_get_scrapecreators_tiktok_search_videos_query_params`.
+
+### ScrapeCreators Reddit search `sort` (and TikHub sibling)
+
+ScrapeCreators' OpenAPI for `GET /v1/reddit/search` restricts `sort` to
+`relevance | new | top | comment_count` (example `relevance`). Feedback #507:
+`scrapecreators.reddit.search.posts` advertised a free-form "Sort by" string,
+so agents sent `sort=new` expecting "recent posts about X" and got newest
+sitewide posts weakly related or unrelated to the query. Sibling feedback #461:
+the same endpoint with `query=Betterment` + `sort=new` matched colloquial
+"better" substrings. Relevance sort matches the query. Catalog-only: `sort`
+now names the OpenAPI enum and warns that `new` is chronological, not
+query-relevant; `input.note` repeats the caveat. Optional OpenAPI fields
+`filter` (`posts|comments`), `timeframe` (`all|day|week|month|year`), `after`,
+and `trim` are documented too. TikHub's
+`tikhub.x.reddit-app-fetch-dynamic-search` keeps provider casing
+`RELEVANCE|HOT|TOP|NEW|COMMENTS` and the same `NEW` caveat. Settlement,
+routing and request shaping are unchanged. Enforced by
+`test_scrapecreators_reddit_search_posts_sort_enum` and
+`test_catalog_get_reddit_keyword_search_sort_new_weak_relevance`.
+
+### ScrapeCreators X tweet transcript `transcript: null` on Articles
+
+ScrapeCreators' `GET /v1/twitter/tweet/transcript` targets a native video tweet
+URL. Feedback #633: `scrapecreators.x.v1-twitter-tweet-transcript` advertised a
+generic tweet URL, so agents treated HTTP success with `transcript: null` as a
+successful empty caption while still paying the per-call credit. Observed on
+X Articles / posts whose media is only article-embedded video; the sibling
+`scrapecreators.x.v1-twitter-tweet` (tweet detail) can still expose those
+embedded video URLs. Catalog-only: `input.note` names the native-video target,
+treats null as unsupported / no transcript for that URL shape, and points at
+tweet detail. Cause is observation-only — not a documented provider
+guarantee. Settlement, routing and request shaping are unchanged. Related
+TikTok null-transcript tickets stay separate. Enforced by
+`test_scrapecreators_twitter_tweet_transcript_article_null` and
+`test_catalog_get_scrapecreators_twitter_tweet_transcript_article_null`.
+
 ### SerpApi Google Trends `data_type` query cardinality
 
 SerpApi's Google Trends engine (`GET /search?engine=google_trends`) accepts five `data_type`
@@ -1875,6 +1963,28 @@ send `type=place` and a `q` (place name, or `place_id` as `q`) alongside `place_
 The verified search `test_request` / `call_template` is unchanged. Settlement is
 unchanged. Enforced by `test_serpapi_google_maps_documents_place_id` and
 `test_catalog_get_serpapi_google_maps_place_id`.
+
+### TikHub TikTok Ads trends hashtag list `limit`
+
+TikHub's `POST /api/v1/tiktok/ads/get_trends_hashtag_list` accepts body
+`limit` as a requested page size. Feedback #606:
+`tikhub.x.tiktok-ads-get-trends-hashtag-list` advertised "Items per page"
+with example 20, and `test_request` / call templates use `limit` 5+, so
+agents treated `limit` as a real page size and over-expected a full
+national trends list. A live paid call requesting 30 hashtags for Spain /
+7 days returned only 3 items with `data.pagination`
+`{hasMore:false, limit:3, page:1, totalCount:3}`; the captured
+`example_response` already shows that shape. Catalog-only: `limit.note`
+warns that the public trends list often returns a tiny preview (~3
+items), the requested `limit` is frequently ignored or capped by the
+upstream, and agents must trust `data.pagination.limit` / `totalCount` /
+`hasMore` over the request body; `input.note` states this is a small
+public-preview sample, not a full country ranking dump. `time_range.note`
+names `7 | 30 | 90` without changing types. Cost, path, method,
+settlement, routing and credentials are unchanged. Sibling #424 (opaque
+400 validation) stays on its own ticket. Enforced by
+`test_tikhub_tiktok_ads_trends_hashtag_list_limit_is_preview_capped` and
+`test_catalog_get_tikhub_tiktok_ads_trends_hashtag_list_limit_preview`.
 
 ## Choosing between providers (`domain/catalog/stats.py`)
 

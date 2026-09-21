@@ -60,7 +60,7 @@ endpoints:
       body:
         model: {type: string, required: true, enum: [doubao-seedance-2.5-face], example: doubao-seedance-2.5-face}
         prompt: {type: string, required: true, example: "A paper boat drifts across a quiet pond at sunrise.", note: "Up to 20,000 characters; refer to references as @image1, @audio1."}
-        duration: {type: integer, required: false, default: 5, min: 4, max: 30, example: 5, note: "Seconds of output. The provider's -1 (auto) mode is not listed: it reserves the 30-second maximum."}
+        duration: {type: integer, required: false, default: 5, min: -1, max: 30, example: 5, note: "Seconds of output, 4-30, or -1 (auto) which the provider REQUIRES when the prompt edits a @video reference: the output then follows the source clip. -1 reserves 30 seconds at the requested resolution; every task settles at the credits reAPI reports."}
         size: {type: string, required: false, default: adaptive, enum: [adaptive, "16:9", "9:16", "1:1", "4:3", "3:4", "21:9"], example: "16:9", note: "When image_with_roles uses role first_frame or last_frame, size must be adaptive — not a fixed ratio such as 1:1."}
         resolution: {type: string, required: false, default: 720p, enum: [480p, 720p, 1080p], example: 480p}
         generate_audio: {type: boolean, required: false, default: true}
@@ -75,12 +75,16 @@ endpoints:
     cost:
       type: per_success
       table:
-        - {when: {body.resolution: 480p}, value: 0.1186, times: body.duration}
-        - {when: {body.resolution: 720p}, value: 0.26683, times: body.duration}
-        - {when: {body.resolution: 1080p}, value: 0.462, times: body.duration}
-      fallback: {value: 13.87, note: "Thirty seconds of 1080p output at the documented per-second rate ($13.86), rounded up a cent to clear float comparison."}
+        - {when: {body.resolution: 480p, body.duration: -1}, value: 3.558}
+        - {when: {body.resolution: 720p, body.duration: -1}, value: 8.0049}
+        - {when: {body.resolution: 1080p, body.duration: -1}, value: 13.86}
+        - {when: {body.resolution: 480p}, value: 0.1186, times: body.duration, times_min: 4}
+        - {when: {body.resolution: 720p}, value: 0.26683, times: body.duration, times_min: 4}
+        - {when: {body.resolution: 1080p}, value: 0.462, times: body.duration, times_min: 4}
+      fallback: {value: 13.87, note: "Thirty seconds of 1080p output at the documented per-second rate ($13.86), rounded up a cent to clear float comparison. The -1 (auto) rows reserve thirty seconds at the requested resolution; the table is the reserve only, the reported credits settle."}
       currency: USD
-      settle: table
+      settle: usage
+      usage: {path: usage.credits, unit: credit}
       source: observed
       source_url: https://reapi.ai/models/seedance-2-5
       checked: 2026-09-14
@@ -104,7 +108,7 @@ endpoints:
         model: {type: string, required: true, enum: [doubao-seedance-2.5-face], example: doubao-seedance-2.5-face}
         content_filter: {type: boolean, required: true, example: false, note: "Send false for the relaxed route. This row exists so the relaxed route is discoverable beside PiAPI's less-restriction task."}
         prompt: {type: string, required: true, example: "The person in @image1 talks to the camera in a handheld selfie video.", note: "Up to 20,000 characters; refer to references as @image1, @audio1."}
-        duration: {type: integer, required: false, default: 5, min: 4, max: 30, example: 5}
+        duration: {type: integer, required: false, default: 5, min: -1, max: 30, example: 5, note: "Seconds of output, 4-30, or -1 (auto) which the provider REQUIRES when the prompt edits a @video reference: the output then follows the source clip. -1 reserves 30 seconds at the requested resolution; every task settles at the credits reAPI reports."}
         size: {type: string, required: false, default: adaptive, enum: [adaptive, "16:9", "9:16", "1:1", "4:3", "3:4", "21:9"], example: "9:16", note: "When image_with_roles uses role first_frame or last_frame, size must be adaptive — not a fixed ratio such as 1:1."}
         resolution: {type: string, required: false, default: 720p, enum: [480p, 720p, 1080p], example: 480p}
         generate_audio: {type: boolean, required: false, default: true}
@@ -118,12 +122,16 @@ endpoints:
     cost:
       type: per_success
       table:
-        - {when: {body.resolution: 480p}, value: 0.1186, times: body.duration}
-        - {when: {body.resolution: 720p}, value: 0.26683, times: body.duration}
-        - {when: {body.resolution: 1080p}, value: 0.462, times: body.duration}
-      fallback: {value: 13.87, note: "Thirty seconds of 1080p output at the documented per-second rate ($13.86), rounded up a cent to clear float comparison."}
+        - {when: {body.resolution: 480p, body.duration: -1}, value: 3.558}
+        - {when: {body.resolution: 720p, body.duration: -1}, value: 8.0049}
+        - {when: {body.resolution: 1080p, body.duration: -1}, value: 13.86}
+        - {when: {body.resolution: 480p}, value: 0.1186, times: body.duration, times_min: 4}
+        - {when: {body.resolution: 720p}, value: 0.26683, times: body.duration, times_min: 4}
+        - {when: {body.resolution: 1080p}, value: 0.462, times: body.duration, times_min: 4}
+      fallback: {value: 13.87, note: "Thirty seconds of 1080p output at the documented per-second rate ($13.86), rounded up a cent to clear float comparison. The -1 (auto) rows reserve thirty seconds at the requested resolution; the table is the reserve only, the reported credits settle."}
       currency: USD
-      settle: table
+      settle: usage
+      usage: {path: usage.credits, unit: credit}
       source: observed
       source_url: https://reapi.ai/models/seedance-2-5
       checked: 2026-09-14
