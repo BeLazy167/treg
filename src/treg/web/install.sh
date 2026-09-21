@@ -52,6 +52,14 @@ elif command -v pipx >/dev/null 2>&1; then
     pipx install --force "$SRC"
   fi
 elif command -v pip3 >/dev/null 2>&1; then
+  # pip can only install into the interpreter it belongs to. Outside PYREQ it prints a wall of
+  # "Ignored the following versions" and dies — say what is wrong and how to fix it instead.
+  if ! pip3 --version 2>/dev/null | grep -qE '\(python 3\.1[23]\)'; then
+    echo "pip3 belongs to $(pip3 --version 2>/dev/null | sed -n 's/.*(python \([0-9.]*\)).*/Python \1/p'), but treg needs Python 3.12 or 3.13." >&2
+    echo "Easiest fix — install uv (it fetches a matching Python by itself), then rerun this command:" >&2
+    echo "  curl -LsSf https://astral.sh/uv/install.sh | sh" >&2
+    exit 1
+  fi
   pip3 install --user --upgrade "$SRC"
 else
   echo "Need Python 3.12 or 3.13 and one of: uv (recommended), pipx, or pip3." >&2

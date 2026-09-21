@@ -737,6 +737,15 @@
       "GET",
       "HEAD"
     ],
+    "name": "make_ugc_skill_md",
+    "path": "/skills/ugc/SKILL.md"
+  },
+  {
+    "kind": "APIRoute",
+    "methods": [
+      "GET",
+      "HEAD"
+    ],
     "name": "feedback_md",
     "path": "/feedback.md"
   },
@@ -1032,6 +1041,15 @@
     ],
     "name": "well_known_skill_md",
     "path": "/.well-known/skills/treg/SKILL.md"
+  },
+  {
+    "kind": "APIRoute",
+    "methods": [
+      "GET",
+      "HEAD"
+    ],
+    "name": "well_known_make_ugc_md",
+    "path": "/.well-known/skills/make-ugc/SKILL.md"
   },
   {
     "kind": "APIRoute",
@@ -1365,6 +1383,14 @@
     ],
     "name": "usage_by_tag",
     "path": "/orgs/{org_id}/usage/by-tag"
+  },
+  {
+    "kind": "APIRoute",
+    "methods": [
+      "PATCH"
+    ],
+    "name": "rename_org",
+    "path": "/orgs/{org_id}"
   },
   {
     "kind": "APIRoute",

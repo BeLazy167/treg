@@ -37,7 +37,7 @@ EP = "replicate.image-gen.flux-schnell"
 
 def test_all_generation_catalog_entries_forbid_cache_including_extended():
     entries = [ep for ep in catalog_store.load().endpoints
-               if ep["platform"] in {"image-gen", "video-gen"}]
+               if ep["platform"] in {"image-gen", "video-gen", "voice-gen"}]
     assert any(".x." in ep["id"] for ep in entries)
     assert any(ep["id"] == "minimax.image-gen.from_text" for ep in entries)
     for ep in entries:
@@ -1032,6 +1032,32 @@ def test_basis_derivation_and_settlement_table_vs_usage():
     # The provider's reported cost settles even when it exceeds the reserve (Wan 3.0's minimum).
     assert settlement.settle(cheap, {"terminal": {"usage": {"cost": 0.2125}}}) == 212_500
 
+    # A provider that meters in its own credits settles the reported credits at the rate frozen
+    # into the basis; a sentinel the provider demands (`duration: -1`, auto) is priced by its own
+    # row, so it neither multiplies the rate negative nor turns the ceiling into the bill.
+    credits = {"settle": "usage", "usage": {"path": "usage.credits", "unit": "credit"},
+               "table": [{"when": {"body.resolution": "480p", "body.duration": -1}, "value": 3.558},
+                         {"when": {"body.resolution": "480p"}, "value": 0.1186,
+                          "times": "body.duration", "times_min": 4}],
+               "fallback": {"value": 13.87}}
+    schema = {"body": {"resolution": {"type": "string"},
+                       "duration": {"type": "integer", "min": -1, "max": 30}}}
+    auto = settlement.derive_basis(
+        credits, request={"body": {"resolution": "480p", "duration": -1}}, input_schema=schema,
+        unit_micro=1_000_000, terminal=True, usage_unit_micro=1_000)
+    assert auto["reserve_micro"] == 3_558_000
+    assert settlement.settle(auto, {"terminal": {"usage": {"credits": 712}}}) == 712_000
+    # A declared minimum of -1 never lets zero multiply a rate: the ceiling is held instead.
+    zero = settlement.derive_basis(
+        credits, request={"body": {"resolution": "480p", "duration": 0}}, input_schema=schema,
+        unit_micro=1_000_000, terminal=True, usage_unit_micro=1_000)
+    assert zero["reserve_micro"] == 13_870_000
+    # A credit meter with no frozen rate cannot be priced: the reserve settles, not credits-as-USD.
+    unrated = settlement.derive_basis(
+        credits, request={"body": {"resolution": "480p", "duration": 5}}, input_schema=schema,
+        unit_micro=1_000_000, terminal=True)
+    assert settlement.settle(unrated, {"terminal": {"usage": {"credits": 712}}}) == 593_000
+
     request = settlement.request_evidence(
         [("id", "42"), ("count", "2")], b"{}", path_names={"id"})
     path_table = {"table": [{"when": {"pathParams.id": 42}, "value": 0.01,
@@ -1422,3 +1448,50 @@ async def test_own_key_relays_idempotency_label_verbatim(clients: AsyncClient, m
                                   headers={"Idempotency-Key": "retry-1"})
     assert response.status_code == 201
     assert _upstream_idempotency_keys(relayed) == ["retry-1"]
+
+
+async def test_reapi_auto_duration_reserves_its_resolution_and_settles_reported_credits(
+    clients: AsyncClient, monkeypatch,
+):
+    """The provider REQUIRES `duration: -1` for a video edit. It once matched no price row, so the
+    thirty-second 1080p ceiling was both held and billed. Through the real call path: the hold is
+    thirty seconds at the requested resolution, and the bill is the credits the provider reports."""
+    monkeypatch.setenv("TREG_PLATFORM_KEY_REAPI", "test-platform-token")
+    monkeypatch.setenv("TREG_PLATFORM_PROVIDERS", "reapi")
+    get_settings.cache_clear()
+    try:
+        org_id = (await clients.get("/orgs")).json()[0]["org_id"]
+        async with session_maker() as db:
+            await ledger.grant(db, org_id, amount_micro=5_000_000, kind="reapi_test", once=False)
+            await db.commit()
+            before = await ledger.balance_of(db, org_id)
+
+        async def submitted(*args, **kwargs):
+            return _response(200, {"id": "task_auto_duration", "status": "queued"})
+        monkeypatch.setattr(call_service, "relay", submitted)
+        response = await clients.post("/call/reapi.video-gen.seedance-2-5.unrestricted", json={
+            "model": "doubao-seedance-2.5-face", "content_filter": False, "duration": -1,
+            "resolution": "480p", "prompt": "Replace the face in @video1 with @image1.",
+            "video_urls": ["https://example.invalid/source.mp4"]})
+        assert response.status_code == 200, response.text
+        call_id = response.headers["X-Treg-Call-Id"]
+        async with session_maker() as db:
+            row = await db.get(AsyncTaskRecord, call_id)
+            assert row.reserved_micro == 3_558_000  # 30 s of 480p, not the 13.87 1080p ceiling
+            assert row.settlement_basis["amount"]["unit_micro"] == 1_000  # fx.yaml, frozen
+            row.next_check_at = utcnow_naive() - timedelta(seconds=1)
+            await db.commit()
+
+        async def completed(row, client):
+            return 200, json.dumps({"id": "task_auto_duration", "status": "completed",
+                                    "usage": {"credits": 712},
+                                    "output": {"video_urls": ["https://example.invalid/out.mp4"]}}).encode()
+        monkeypatch.setattr(task_app, "_poll", completed)
+        await task_app.settle_due()
+        async with session_maker() as db:
+            row = await db.get(AsyncTaskRecord, call_id)
+            assert row.status == "settled" and row.settled_micro == 712_000
+            assert await db.get(Hold, call_id) is None
+            assert before - await ledger.balance_of(db, org_id) == 712_000
+    finally:
+        get_settings.cache_clear()

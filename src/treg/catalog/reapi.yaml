@@ -60,13 +60,13 @@ endpoints:
       body:
         model: {type: string, required: true, enum: [doubao-seedance-2.5-face], example: doubao-seedance-2.5-face}
         prompt: {type: string, required: true, example: "A paper boat drifts across a quiet pond at sunrise.", note: "Up to 20,000 characters; refer to references as @image1, @audio1."}
-        duration: {type: integer, required: false, default: 5, min: 4, max: 30, example: 5, note: "Seconds of output. The provider's -1 (auto) mode is not listed: it reserves the 30-second maximum."}
-        size: {type: string, required: false, default: adaptive, enum: [adaptive, "16:9", "9:16", "1:1", "4:3", "3:4", "21:9"], example: "16:9"}
+        duration: {type: integer, required: false, default: 5, min: -1, max: 30, example: 5, note: "Seconds of output, 4-30, or -1 (auto) which the provider REQUIRES when the prompt edits a @video reference: the output then follows the source clip. -1 reserves 30 seconds at the requested resolution; every task settles at the credits reAPI reports."}
+        size: {type: string, required: false, default: adaptive, enum: [adaptive, "16:9", "9:16", "1:1", "4:3", "3:4", "21:9"], example: "16:9", note: "When image_with_roles uses role first_frame or last_frame, size must be adaptive — not a fixed ratio such as 1:1."}
         resolution: {type: string, required: false, default: 720p, enum: [480p, 720p, 1080p], example: 480p}
         generate_audio: {type: boolean, required: false, default: true}
-        image_urls: {type: array, required: false, example: ["https://picsum.photos/seed/treg-aigc/720/1280"], note: "Up to 30 public image URLs (<30 MB each), used as references. Each URL must answer a plain GET with the raw image bytes and an image/* content-type (signed cloud-storage or CDN links work; file-page hosts such as tmpfiles.org return HTML, and the task then fails unbilled with the vendor's generic upstream error). `treg host <file>` prints a URL that satisfies this."}
+        image_urls: {type: array, required: false, example: ["https://picsum.photos/seed/treg-aigc/720/1280"], note: "Up to 30 public image URLs (<30 MB each), used as references. Mutually exclusive with image_with_roles — send one or the other, never both; combining them yields provider HTTP 400 code 20003. Each URL must answer a plain GET with the raw image bytes and an image/* content-type (signed cloud-storage or CDN links work; file-page hosts such as tmpfiles.org return HTML, and the task then fails unbilled with the vendor's generic upstream error). `treg host <file>` prints a URL that satisfies this."}
         audio_urls: {type: array, required: false, note: "Up to 10 public audio URLs (<=15 MB, 2-30 s each; combined <=30 s). Audio references are not billed."}
-        image_with_roles: {type: array, required: false, note: "Objects {url, role} with role first_frame, last_frame or reference_image; first/last-frame tasks need size: adaptive."}
+        image_with_roles: {type: array, required: false, note: "Objects {url, role} with role first_frame, last_frame or reference_image. Mutually exclusive with image_urls — send one or the other, never both; combining them yields provider HTTP 400 code 20003. When using role first_frame or last_frame, size must be adaptive (not a fixed ratio such as 1:1)."}
         seed: {type: integer, required: false}
         watermark: {type: boolean, required: false, default: false}
       bodyType: json
@@ -75,12 +75,16 @@ endpoints:
     cost:
       type: per_success
       table:
-        - {when: {body.resolution: 480p}, value: 0.1186, times: body.duration}
-        - {when: {body.resolution: 720p}, value: 0.26683, times: body.duration}
-        - {when: {body.resolution: 1080p}, value: 0.462, times: body.duration}
-      fallback: {value: 13.87, note: "Thirty seconds of 1080p output at the documented per-second rate ($13.86), rounded up a cent to clear float comparison."}
+        - {when: {body.resolution: 480p, body.duration: -1}, value: 3.558}
+        - {when: {body.resolution: 720p, body.duration: -1}, value: 8.0049}
+        - {when: {body.resolution: 1080p, body.duration: -1}, value: 13.86}
+        - {when: {body.resolution: 480p}, value: 0.1186, times: body.duration, times_min: 4}
+        - {when: {body.resolution: 720p}, value: 0.26683, times: body.duration, times_min: 4}
+        - {when: {body.resolution: 1080p}, value: 0.462, times: body.duration, times_min: 4}
+      fallback: {value: 13.87, note: "Thirty seconds of 1080p output at the documented per-second rate ($13.86), rounded up a cent to clear float comparison. The -1 (auto) rows reserve thirty seconds at the requested resolution; the table is the reserve only, the reported credits settle."}
       currency: USD
-      settle: table
+      settle: usage
+      usage: {path: usage.credits, unit: credit}
       source: observed
       source_url: https://reapi.ai/models/seedance-2-5
       checked: 2026-09-14
@@ -104,13 +108,13 @@ endpoints:
         model: {type: string, required: true, enum: [doubao-seedance-2.5-face], example: doubao-seedance-2.5-face}
         content_filter: {type: boolean, required: true, example: false, note: "Send false for the relaxed route. This row exists so the relaxed route is discoverable beside PiAPI's less-restriction task."}
         prompt: {type: string, required: true, example: "The person in @image1 talks to the camera in a handheld selfie video.", note: "Up to 20,000 characters; refer to references as @image1, @audio1."}
-        duration: {type: integer, required: false, default: 5, min: 4, max: 30, example: 5}
-        size: {type: string, required: false, default: adaptive, enum: [adaptive, "16:9", "9:16", "1:1", "4:3", "3:4", "21:9"], example: "9:16"}
+        duration: {type: integer, required: false, default: 5, min: -1, max: 30, example: 5, note: "Seconds of output, 4-30, or -1 (auto) which the provider REQUIRES when the prompt edits a @video reference: the output then follows the source clip. -1 reserves 30 seconds at the requested resolution; every task settles at the credits reAPI reports."}
+        size: {type: string, required: false, default: adaptive, enum: [adaptive, "16:9", "9:16", "1:1", "4:3", "3:4", "21:9"], example: "9:16", note: "When image_with_roles uses role first_frame or last_frame, size must be adaptive — not a fixed ratio such as 1:1."}
         resolution: {type: string, required: false, default: 720p, enum: [480p, 720p, 1080p], example: 480p}
         generate_audio: {type: boolean, required: false, default: true}
-        image_urls: {type: array, required: false, example: ["https://picsum.photos/seed/treg-aigc/720/1280"], note: "Up to 30 public image URLs; a photo of a person is accepted as the subject reference. Each URL must answer a plain GET with the raw image bytes and an image/* content-type (signed cloud-storage or CDN links work; file-page hosts such as tmpfiles.org return HTML, and the task then fails unbilled with the vendor's generic upstream error). `treg host <file>` prints a URL that satisfies this."}
+        image_urls: {type: array, required: false, example: ["https://picsum.photos/seed/treg-aigc/720/1280"], note: "Up to 30 public image URLs; a photo of a person is accepted as the subject reference. Mutually exclusive with image_with_roles — send one or the other, never both; combining them yields provider HTTP 400 code 20003. Each URL must answer a plain GET with the raw image bytes and an image/* content-type (signed cloud-storage or CDN links work; file-page hosts such as tmpfiles.org return HTML, and the task then fails unbilled with the vendor's generic upstream error). `treg host <file>` prints a URL that satisfies this."}
         audio_urls: {type: array, required: false, note: "Up to 10 public audio URLs; a voice reference drives the generated speech."}
-        image_with_roles: {type: array, required: false}
+        image_with_roles: {type: array, required: false, note: "Objects {url, role} with role first_frame, last_frame or reference_image. Mutually exclusive with image_urls — send one or the other, never both; combining them yields provider HTTP 400 code 20003. When using role first_frame or last_frame, size must be adaptive (not a fixed ratio such as 1:1)."}
         seed: {type: integer, required: false}
       bodyType: json
     test_request:
@@ -118,12 +122,16 @@ endpoints:
     cost:
       type: per_success
       table:
-        - {when: {body.resolution: 480p}, value: 0.1186, times: body.duration}
-        - {when: {body.resolution: 720p}, value: 0.26683, times: body.duration}
-        - {when: {body.resolution: 1080p}, value: 0.462, times: body.duration}
-      fallback: {value: 13.87, note: "Thirty seconds of 1080p output at the documented per-second rate ($13.86), rounded up a cent to clear float comparison."}
+        - {when: {body.resolution: 480p, body.duration: -1}, value: 3.558}
+        - {when: {body.resolution: 720p, body.duration: -1}, value: 8.0049}
+        - {when: {body.resolution: 1080p, body.duration: -1}, value: 13.86}
+        - {when: {body.resolution: 480p}, value: 0.1186, times: body.duration, times_min: 4}
+        - {when: {body.resolution: 720p}, value: 0.26683, times: body.duration, times_min: 4}
+        - {when: {body.resolution: 1080p}, value: 0.462, times: body.duration, times_min: 4}
+      fallback: {value: 13.87, note: "Thirty seconds of 1080p output at the documented per-second rate ($13.86), rounded up a cent to clear float comparison. The -1 (auto) rows reserve thirty seconds at the requested resolution; the table is the reserve only, the reported credits settle."}
       currency: USD
-      settle: table
+      settle: usage
+      usage: {path: usage.credits, unit: credit}
       source: observed
       source_url: https://reapi.ai/models/seedance-2-5
       checked: 2026-09-14

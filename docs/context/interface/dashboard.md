@@ -63,6 +63,10 @@ the key creator metadata; the internal `agent-{team}-{name}@agents.treg.local` i
 The Key chip shows its safe prefix visibly, so Activity from pre- and post-rotation keys with the same
 name remains distinguishable.
 Human Activity rows keep their existing short email identity.
+The loaded Activity window counts calls served from the archive and shows that summary only when it
+contains a cache hit. Each cached call also carries a quiet `Cached` pill beside its actual charge;
+the displayed amount remains the settled charge from `/calls`, including free own-key hits and
+reduced metered repeat hits. The key selector and success filter continue to operate independently.
 
 Catalog provider choices show each endpoint's optional `name` below the provider name.
 Names wrap and are included in the platform filter. This distinguishes tools that use the
@@ -348,7 +352,11 @@ Server side (`domain.identity.access`): `require_identity` (who, from token OR s
     it; the setup webhook then arms the policy. A team that already has a mandate sees a read-only
     "auto top-up is on" line instead. The preselected card is `topup.default_usd`, which is per-org:
     one preset above the last manual top-up, capped at $50 (see [money](../architecture/money.md)).
-  - **Team settings** — deliberately JUST the **Danger zone** (leave / delete), visible to EVERY role
+  - **Team settings** — the daily spend limit, a **Team name and slug** form (admin+, prefilled from
+    the active team by `resetRenameForm` on tab open and on team switch; Save is enabled only when a
+    value differs and `renameOrg` sends just the changed fields to `PATCH /orgs/{id}`; on a slug
+    change the active slug in `localStorage`/`cfg.orgs` follows the new one and the page reloads its
+    lists) and the **Danger zone** (leave / delete), visible to EVERY role
     (leaving is self-service, and `loadOrgAdmin` lands a non-admin here). New team / Join by code /
     Paste token live only in the sidebar picker — cut from this tab on founder review; a personal
     team shows a one-line explainer instead of an empty page.
@@ -640,10 +648,13 @@ platform without opening it, and every field comes off the `/catalog/platforms` 
   provider with no published rate stays silent. Note that `price_from` arrives as `null` *or* as an
   empty `{}`, and the empty object has to be normalised to null first — being truthy, it otherwise
   short-circuits the auth-kind branch and silently costs an OAuth-only platform its "free with your
-  account".
+  account". A grouped scalar rate such as MiniMax TTS supplies `display_usd` plus `display_unit`, so
+  the card says `$0.60 / 10000 characters` instead of rounding the normalized per-character rate
+  down to an unreadable number.
 
 **Prices are unified USD.** Every price the marketplace displays — the card footer, the capability card's
-"from", and the per-endpoint cost chip — is the **server's computed `usd`** field on `cost` / `price_from`,
+"from", and the per-endpoint cost chip — comes from the server's price object on `cost` / `price_from`:
+normally its computed **`usd`**, or its equivalent grouped **`display_usd` / `display_unit`** pair,
 formatted by `usdNum`: two significant figures under a dollar (`$0.015`, `$0.00015`), cents at or above one.
 The FX table lives in the catalog (`fx.yaml`) so a rate refresh re-prices every surface at once, and the
 dashboard carries **no** conversion constant of its own — one here would drift from the CLI the moment the
@@ -1044,6 +1055,13 @@ again asks anyone to add funds.
 
 `GET /referrals` mints the code as well as sweeping, so the page is one call and `link` is never
 empty on a first visit.
+
+**Two programs, forked at the header (`refTab`).** The "Refer a friend" tab is the credit program
+above. The "Affiliate partner" tab is the invite-only cash tier: three short sections and a button
+to an application form, no treg state behind it. It is a fork rather than a card under the referral
+column because a card there read as step four of the referral program. Hand-approval via the form is
+the anti-gaming design (see money), so nothing on that tab is self-serve, and it renders for
+everyone, team or not. The cap card points at the tab instead of a support address.
 
 **Every status renders a reason** (`refStatus`), including `capped` and `rejected`. "I referred
 someone and got nothing" is the ticket this program generates, and the answer belongs on the page

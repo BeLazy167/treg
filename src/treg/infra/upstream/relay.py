@@ -172,9 +172,21 @@ async def relay(
     # makes httpx frame the request `Transfer-Encoding: chunked`, putting a bogus body-frame on a
     # GET/HEAD/OPTIONS (which strict upstreams reject).
     content = request.body_stream() if request.has_body else None
-    upstream_req = client.build_request(
-        request.method, upstream_url, headers=headers, params=params, content=content
-    )
+    # A streamed body with no length makes httpx frame it `Transfer-Encoding: chunked`. The bytes are
+    # the caller's, unaltered, so the caller's own Content-Length is exact — carry it, and httpx
+    # frames the upstream request with it instead. Meta's Graph API edge does not read a chunked
+    # request body: every JSON/form/multipart POST arrived as a bodyless request, and an ad creative
+    # sent that way failed "Ad incomplete" (live 2026-09-19). A caller who streamed chunked stays chunked.
+    if content is not None and (cl := _header_value(request.raw_headers, "content-length")):
+        headers["content-length"] = cl
+    # Merge the query onto the URL rather than passing params=: httpx REPLACES a URL's existing
+    # query whenever params is given (even an empty list), which silently stripped a catalog path's
+    # own query — LinkedIn's `/rest/images?action=initializeUpload`, Facebook's `?is_hidden=true`.
+    # Same trap, same fix as the health probe (health.py).
+    url = httpx.URL(upstream_url)
+    for k, v in params:
+        url = url.copy_add_param(k, v)
+    upstream_req = client.build_request(request.method, url, headers=headers, content=content)
     # Call-time SSRF guard: resolve the upstream host NOW and refuse an internal target — defeats DNS
     # rebinding (base_url was public at registration, its DNS now points at 169.254.169.254 / localhost).
     from . import health  # local: health imports proxy-adjacent modules, so keep the cycle lazy

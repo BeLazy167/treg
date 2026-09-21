@@ -9,9 +9,7 @@ sources:
   - src/treg/catalog/examples/dropleads.people.search.json
   - src/treg/catalog/examples/dropleads.people.search.count.json
   - src/treg/catalog/examples/dropleads.people.enrich.verified.json
-  - src/treg/catalog/examples/dropleads.people.enrich.verified.bulk.json
   - src/treg/catalog/examples/dropleads.people.enrich.json
-  - src/treg/catalog/examples/dropleads.people.enrich.bulk.json
   - src/treg/catalog/examples/dropleads.companies.search.json
   - src/treg/catalog/examples/dropleads.companies.search.count.json
   - src/treg/catalog/examples/dropleads.companies.enrich.json
@@ -48,11 +46,10 @@ because `CatalogTarget` explicitly allow-lists it. The platform credential is
 
 ## Public surface
 
-The catalog exposes twelve synchronous tools: email finding, mobile finding, email verification,
-people search and count, verified person enrichment and its 10-item bulk form, simple person
-enrichment and its 10-item bulk form, and company search, count and enrichment. Company enrichment
-accepts at most 50 combined domains and company names. These are synchronous bulk requests, so they
-fit the ordinary relay; no asynchronous task model was added.
+The catalog exposes ten synchronous tools: email finding, mobile finding, email verification,
+people search and count, verified and simple single-person enrichment, and company search, count and
+enrichment. Company enrichment accepts at most 50 combined domains and company names. The two
+10-person bulk enrichment operations are omitted from the catalog.
 
 The two single-person Try requests use a neutral name, organization and domain combination. They
 show a documented identity shape without storing a user's email or LinkedIn profile in the catalog.
@@ -63,7 +60,7 @@ searchable or callable through the public catalog on BYOK or platform credential
 
 Seven adapters join existing routed tools and therefore the corresponding Enrich Arena tasks:
 work-email finding, phone finding, email verification, people search, simple person enrichment,
-company search and company enrichment. Count and bulk endpoints remain direct tools. Verified
+company search and company enrichment. Count endpoints remain direct tools. Verified
 person enrichment has a distinct catalog capability rather than silently changing the ordinary
 person-enrichment contract. Company count reuses the existing `companies.search.count` capability,
 so it compares with other providers that count the same search result set.
@@ -81,8 +78,8 @@ Dropleads settlement is provider-specific. `credits_charged` is read for finder/
 finite, nonnegative reported value—including zero—replaces the reservation estimate. Email Finder's
 documented `status: not_found` response omits its numeric field and settles at zero explicitly.
 Missing or malformed charge evidence falls back to the catalog estimate rather than inventing a
-free call. Request-time reservation counts `details` for 10-item people batches, combines
-`domains + companyNames` up to 50 for company enrichment, and caps company-search pagination at 50.
+free call. Request-time reservation combines `domains + companyNames` up to 50 for company
+enrichment and caps company-search pagination at 50.
 Numeric string limits use the same bound, so a request for `"50"` cannot reserve only the default
 20 rows. People search sends `filters.countries` as a list; company search sends the provider's
 different `{include: [...]}` country object. Live three-way count checks proved both shapes.
@@ -104,8 +101,8 @@ The other paid rates remain documented until equivalent endpoint-specific billin
 retained; their response shapes still support exact settlement when they report a charge. Tested
 misses were free. People search and count agreed on totals. People search accepted a requested
 limit above 50 but returned at most 50.
-Both people bulk routes rejected 0 and 11 inputs; company enrichment rejected more than 50 combined
-identities. Prime balance and API-host consumption can reconcile with delay, so per-call settlement
+Historical discovery confirmed both omitted people-bulk routes rejected 0 and 11 inputs;
+company enrichment rejected more than 50 combined identities. Prime balance and API-host consumption can reconcile with delay, so per-call settlement
 uses response evidence rather than before/after wallet reads.
 
 The same live checks confirmed that both count routes return root-level `{success, count}`. Their

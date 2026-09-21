@@ -523,10 +523,19 @@ the installer uses: a **team-pinned token as an `Authorization: Bearer` header**
 (`mcp_install.py`, sibling of `treg skill bootstrap`) registers the server into every supported agent
 with that header — Claude Code via its own `claude mcp add --scope user` (user-global, not the
 default project scope; it owns its format and redacts the token), Cursor and opencode via their
-documented JSON (`~/.cursor/mcp.json`, `~/.config/opencode/opencode.json`). Codex (TOML +
-`bearer_token_env_var`), Hermes (yaml) and OpenClaw are **reported, not written** — their formats
-aren't safely expressible from the light CLI (no toml writer, yaml is a server-only dep), so we print
-the exact manual step rather than a config we haven't runtime-verified.
+documented JSON (`~/.cursor/mcp.json`, `~/.config/opencode/opencode.json`), Codex as one
+`[mcp_servers.treg]` table in `~/.codex/config.toml` with an inline `http_headers` map. Stdlib has no
+TOML writer, so `_write_toml_agent` cuts out any previous `[mcp_servers.treg]` table as text, appends
+a fresh one, and only lands the file when `tomllib` parses it back to exactly our entry. Hermes
+(yaml) and OpenClaw are **reported, not written** — their formats aren't safely expressible from the
+light CLI (yaml is a server-only dep), so we print the exact manual step instead.
+
+**Codex must get the token inline, never by `bearer_token_env_var`.** The old manual step said
+"set TREG_TOKEN in its environment"; a user's agent did exactly that, the Codex app restarted
+without the variable, treg answered 401 and Codex dropped every treg tool silently. The agent then
+drove the dashboard through Codex's own browser and spent the user's daily Codex allowance on a
+$0.13 job. Live-verified on codex-cli 0.144: `http_headers = { "Authorization" = "Bearer …" }` loads
+the tools; an `X-Treg-Token` header does NOT (the MCP surface answers 401 and starts OAuth).
 
 The command **verifies the token against `/auth/me` before writing anything** — the same check
 `treg login --token` runs. Learned the hard way: without it, a garbage token fans out silently into

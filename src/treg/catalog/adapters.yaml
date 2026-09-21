@@ -15,6 +15,13 @@
 
 adapters:
   # ---- people.email.find --------------------------------------------------------------------
+  contactout.people.contact.work:
+    accepts: [[linkedin_url]]
+    in: {linkedin_url: queryParams.profile}
+    const: {queryParams.email_type: work, queryParams.include_phone: false}
+    test_identity: {linkedin_url: "https://www.linkedin.com/in/routing-fixture"}
+    out: {email: "profile.work_email[0]"}
+    miss: "at_least(status_code != 200, coalesce(profile.work_email) == null)"
   dropleads.people.email.find:
     accepts: [[first_name, last_name, domain]]
     in: {first_name: body.first_name, last_name: body.last_name, domain: body.company_domain}
@@ -29,6 +36,12 @@ adapters:
     out: {email: person.email.email, first_name: person.first_name, last_name: person.last_name,
           verified: "person.email.status == 'VERIFIED'"}
     miss: "person.email.email == null"
+  aiark.people.email.find:
+    accepts: [[linkedin_url]]
+    in: {linkedin_url: body.url}
+    out: {email: "data.email.output[0].address", first_name: data.profile.first_name,
+          last_name: data.profile.last_name, verified: "data.email.output[0].status == 'VALID'"}
+    miss: "data.email.output[0].address == null"
   trykitt.people.email.find:
     accepts: [[full_name, domain], [first_name, last_name, domain]]
     in: {full_name: body.fullName, domain: body.domain, linkedin_url: body.linkedinStandardProfileURL}
@@ -90,6 +103,23 @@ adapters:
             body.validateEmails: true}
     out: {email: "output.profile.emails[0].email"}
     miss: "output.profile.emails == []"
+  moltsets.people.email.find.name:
+    accepts: [[full_name, domain], [first_name, last_name, domain]]
+    in: {full_name: body.name, first_name: body.first_name, last_name: body.last_name,
+         domain: body.company_domain}
+    out: {email: results.email, linkedin_url: results.linkedin_url,
+          verified: "results.risk_score == 'A'"}
+    miss: "status != 'ok'"
+  limadata.people.email.find.name:
+    accepts: [[full_name, domain], [first_name, last_name, domain]]
+    in: {full_name: body.full_name, domain: body.company_domain}
+    out: {email: email}
+    miss: "email == null"
+  limadata.people.email.find.linkedin:
+    accepts: [[linkedin_url]]
+    in: {linkedin_url: body.linkedin_url}
+    out: {email: email}
+    miss: "email == null"
 
   # ---- instagram.user.profile ---------------------------------------------------------------
   tikhub.instagram.user.profile:
@@ -235,6 +265,13 @@ adapters:
     miss: "data.creator_info.unique_id == null"
 
   # ---- people.phone.find --------------------------------------------------------------------
+  contactout.people.contact.phone:
+    accepts: [[linkedin_url]]
+    in: {linkedin_url: queryParams.profile}
+    const: {queryParams.email_type: none, queryParams.include_phone: true}
+    test_identity: {linkedin_url: "https://www.linkedin.com/in/routing-fixture"}
+    out: {phone: "profile.phone[0]", line_type: "'mobile'"}
+    miss: "at_least(status_code != 200, coalesce(profile.phone) == null)"
   dropleads.people.phone.find:
     accepts: [[linkedin_url]]
     in: {linkedin_url: body.linkedin_url}
@@ -249,6 +286,11 @@ adapters:
     out: {phone: person.mobile.mobile_international, line_type: "'mobile'",
           country_code: person.mobile.mobile_country_code}
     miss: "person.mobile.mobile_international == null"
+  aiark.people.phone.find:
+    accepts: [[linkedin_url], [full_name, domain], [first_name, last_name, domain]]
+    in: {linkedin_url: body.linkedin, full_name: body.name, domain: body.domain}
+    out: {phone: "get(data.data[0], '[0]')", line_type: "'mobile'"}
+    miss: "get(data.data[0], '[0]') == null"
   tomba.people.phone.find:
     accepts: [[email], [linkedin_url]]
     in:  {email: queryParams.email, linkedin_url: queryParams.linkedin}
@@ -274,6 +316,11 @@ adapters:
     in:  {linkedin_url: queryParams.linkedinURL, email: queryParams.email}
     out: {phone: "phones[0].phoneNumber"}
     miss: "phones == []"
+  limadata.people.phone.find:
+    accepts: [[linkedin_url], [full_name, domain], [first_name, last_name, domain]]
+    in: {linkedin_url: body.linkedin_url, full_name: body.name, domain: body.company_domain}
+    out: {phone: "phone_numbers[0].number", line_type: "phone_numbers[0].type"}
+    miss: "phone_numbers == []"
   lusha.people.phone.find:
     # Lusha's native direct-dial/mobile data (its third-party phone waterfall is not connected on
     # treg's account). Dearest phone finder in the ladder — 6 credits on a hit — so it ranks last
@@ -300,6 +347,20 @@ adapters:
     in: {email: body.email}
     out: {valid: "status == 'valid'", status: status}
     miss: "status == null"
+  scrubby.people.email.verify:
+    accepts: [[email]]
+    in: {email: body.email}
+    out: {valid: "result == 'Valid'", status: result}
+    # Invalid, Risky and Unknown are useful verdicts. Only a missing verdict is a miss.
+    miss: "result == null"
+  zerobounce.people.email.verify:
+    accepts: [[email]]
+    in: {email: queryParams.email}
+    out: {valid: "status == 'valid'", status: status}
+    # Invalid, catch-all, abuse, spamtrap and do_not_mail are useful answers. ZeroBounce documents
+    # unknown as uncharged; treating it as a miss lets the existing generic success settlement
+    # release the hold and lets a routed waterfall continue.
+    miss: "coalesce(status, 'unknown') == 'unknown'"
   trykitt.people.email.verify:
     accepts: [[email]]
     in: {email: body.email}
@@ -320,6 +381,13 @@ adapters:
     out: {valid: "result == 'ok'", status: result}
     # Like peer verifiers, risky/invalid verdicts are answers; API errors omit quality.
     miss: "quality == null"
+  bounceban.people.email.verify:
+    accepts: [[email]]
+    in: {email: queryParams.email}
+    out: {valid: "result == 'deliverable'", status: result, score: score}
+    # A standard submission can return status=verifying before the verdict exists. It was billed,
+    # but it is not a routed answer yet, so the existing waterfall may continue.
+    miss: "result == null"
   leadmagic.people.email.verify:
     accepts: [[email]]
     in:  {email: body.email}
@@ -335,6 +403,11 @@ adapters:
     in:  {email: queryParams.email}
     out: {valid: "data.status == 'valid'", status: data.status, score: data.score}
     miss: "data.status == null"
+  limadata.people.email.verify:
+    accepts: [[email]]
+    in: {email: body.email}
+    out: {valid: "result == 'Valid'", status: result, score: score}
+    miss: "result == null"
 
   # ---- people.enrich ------------------------------------------------------------------------
   dropleads.people.enrich:
@@ -358,6 +431,13 @@ adapters:
           linkedin_url: person.linkedin_url,
           location: "join(person.location.city, person.location.state, person.location.country)"}
     miss: "person == null"
+  aiark.people.enrich:
+    accepts: [[email]]
+    in: {email: body.search}
+    out: {full_name: profile.full_name, first_name: profile.first_name, last_name: profile.last_name,
+          title: profile.title, company: company.summary.name, company_domain: company.link.domain,
+          linkedin_url: link.linkedin, location: location.default}
+    miss: "profile.full_name == null"
   tomba.people.enrich:
     accepts: [[email]]
     in:  {email: queryParams.email}
@@ -404,6 +484,29 @@ adapters:
     in:  {linkedin_url: queryParams.linkedinURL, email: queryParams.email}
     out: {full_name: fullName, linkedin_url: URLs.linkedin}
     miss: "fullName == null"
+  moltsets.people.enrich.name:
+    accepts: [[full_name, domain], [first_name, last_name, domain]]
+    in: {full_name: body.name, first_name: body.first_name, last_name: body.last_name,
+         domain: body.company_domain}
+    out: {full_name: results.full_name, first_name: results.first_name, last_name: results.last_name,
+          title: results.title, company: results.company, company_domain: results.company_domain,
+          linkedin_url: results.linkedin_url}
+    miss: "status != 'ok'"
+  moltsets.people.enrich.email:
+    accepts: [[email]]
+    in: {email: body.email}
+    out: {full_name: "join(results.first_name, results.last_name)", first_name: results.first_name,
+          last_name: results.last_name, title: results.title,
+          company: results.current_company, company_domain: results.current_company_url,
+          linkedin_url: results.linkedinurl, location: results.country}
+    miss: "status != 'ok'"
+  moltsets.people.enrich.linkedin:
+    accepts: [[linkedin_url]]
+    in: {linkedin_url: body.linkedin_url}
+    out: {full_name: results.full_name, first_name: results.first_name, last_name: results.last_name,
+          title: results.title, company: results.company.name, company_domain: results.company.website_url,
+          linkedin_url: results.linkedin_url, location: results.country}
+    miss: "status != 'ok'"
 
   # ---- instagram.user.posts -----------------------------------------------------------------
   tikhub.instagram.user.posts:
@@ -572,6 +675,22 @@ adapters:
     # Prospeo fixes pages at 25, so there is no honest `limit` input to forward. Return its total.
     out: {people: results, count: pagination.total_count}
     miss: "results == []"
+  wiza.people.search:
+    accepts: [[title]]
+    in: {title: body.filters.job_title}
+    in_expr: {body.filters.job_title: "choose(title, list(obj('v', title, 's', 'i')), null)"}
+    const: {body.size: 1}
+    test_identity: {title: Founder}
+    out: {people: data.profiles, count: data.total, next_cursor: data.next_page_token}
+    miss: "data.profiles == []"
+  aiark.people.search:
+    accepts: [[company_domain]]
+    in: {company_domain: body.account.domain.any.include}
+    in_expr: {body.account.domain.any.include: "list(company_domain)"}
+    const: {body.page: 0, body.size: 1}
+    test_identity: {company_domain: example.com}
+    out: {people: content, count: totalElements}
+    miss: "content == []"
   exa.people.search:
     accepts: [[q]]
     in:  {q: body.query}
@@ -661,7 +780,6 @@ adapters:
           title: "results[0].jobTitle", company: "results[0].company.name", linkedin_url: "results[0].socialLinks.linkedin",
           location: "results[0].location.raw"}
     miss: "results[0].error != null"
-
   # ---- companies.enrich (batch 5, 2026-08-28) --------------------------------------------------
   dropleads.companies.enrich:
     accepts: [[domain], [name]]
@@ -683,6 +801,21 @@ adapters:
           employees: company.employee_count, founded: company.founded,
           location: "join(company.location.city, company.location.state, company.location.country)",
           linkedin_url: company.linkedin_url}
+    miss: "company == null"
+  wiza.companies.enrich:
+    accepts: [[domain], [name]]
+    in: {domain: body.company_domain, name: body.company_name}
+    out: {name: data.company_name, domain: data.company_domain, website: data.domain,
+          description: data.company_description, industry: data.company_industry,
+          employees: data.company_size, founded: data.company_founded,
+          location: data.company_location, linkedin_url: data.company_linkedin}
+    miss: "data.company_name == null"
+  limadata.companies.enrich:
+    accepts: [[domain], [linkedin_url]]
+    in: {domain: body.domain, linkedin_url: body.linkedin_url}
+    out: {name: company.name, domain: company.domain, website: company.website,
+          description: company.description, employees: company.employees.max,
+          founded: company.founded_year, linkedin_url: company.linkedin.url}
     miss: "company == null"
   thecompaniesapi.companies.enrich:
     accepts: [[domain]]
@@ -858,6 +991,24 @@ adapters:
     # Prospeo fixes pages at 25, so there is no honest `limit` input to forward. Return its total.
     out: {companies: results, count: pagination.total_count}
     miss: "results == []"
+  wiza.companies.search:
+    accepts: [[industry], [technology]]
+    in: {industry: body.filters.company_industry, technology: body.filters.technologies}
+    in_expr:
+      body.filters.company_industry: "choose(industry, list(obj('v', industry, 's', 'i')), null)"
+      body.filters.technologies: "choose(technology, list(obj('v', technology, 's', 'i')), null)"
+    const: {body.size: 1}
+    test_identity: {industry: Computer Software}
+    out: {companies: data.companies, count: data.total, next_cursor: data.next_page_token}
+    miss: "data.companies == []"
+  aiark.companies.search:
+    accepts: [[domain]]
+    in: {domain: body.account.domain.any.include}
+    in_expr: {body.account.domain.any.include: "list(domain)"}
+    const: {body.page: 0, body.size: 1}
+    test_identity: {domain: example.com}
+    out: {companies: content, count: totalElements}
+    miss: "content == []"
   exa.companies.search:
     accepts: [[q]]
     in:  {q: body.query}
@@ -2213,10 +2364,48 @@ adapters:
     out: {companies: data, count: "len(data)", next_cursor: meta.next_cursor}
     miss: "coalesce(data, []) == []"
 
+  # Datagma's single-record email/person/company tools are price-competitive routed candidates.
+  # Phone is deliberately absent: its verified 30-credit cost makes it a direct catalog choice.
+  datagma.people.email.find:
+    accepts: [[full_name, domain], [first_name, last_name, domain]]
+    in: {full_name: queryParams.fullName, first_name: queryParams.firstName, last_name: queryParams.lastName, domain: queryParams.company}
+    out: {email: email, verified: "status == 'Valid'"}
+    miss: "email == null"
+  datagma.people.enrich:
+    accepts: [[email], [linkedin_url], [full_name, domain], [first_name, last_name, domain]]
+    in: {}
+    test_identity: {full_name: Raphael Azot, domain: datagma.com}
+    in_expr:
+      queryParams.data: "coalesce(email, linkedin_url, domain)"
+      queryParams.fullName: "coalesce(full_name, join(first_name, last_name))"
+    const: {queryParams.companyPremium: false, queryParams.companyFull: false,
+            queryParams.personFull: false, queryParams.phoneFull: false,
+            queryParams.deepTraffic: false, queryParams.debug: false}
+    out: {full_name: person.basic.name, first_name: person.basic.firstName, last_name: person.basic.lastName,
+          title: person.basic.jobTitle, company: person.basic.company, company_domain: person.basic.companyDomain,
+          linkedin_url: person.basic.linkedInUrl, location: person.basic.location}
+    miss: "person.basic.name == null"
+  datagma.companies.enrich:
+    accepts: [[domain], [website], [name], [linkedin_url], [email]]
+    in: {}
+    test_identity: {domain: algolia.com}
+    in_expr:
+      queryParams.data: "coalesce(domain, website, name, linkedin_url, email)"
+    const: {queryParams.companyPremium: true, queryParams.companyFull: true,
+            queryParams.personFull: false, queryParams.phoneFull: false,
+            queryParams.deepTraffic: false, queryParams.debug: false}
+    out: {name: "coalesce(company.premium.name, company.full.properties.title)", website: company.premium.website,
+          linkedin_url: company.premium.url, description: "coalesce(company.premium.about, company.full.properties.shortDescription)",
+          industry: company.premium.industries, employee_count: company.premium.companySize,
+          founded_year: company.premium.founded, location: company.premium.headquarters}
+    miss: "coalesce(company.premium.name, company.full.properties.title) == null"
 
 
-  # ContactOut people search/profile adapters are omitted: the PII rule excludes
-  # their verification fixtures. Direct tools remain available. Company discovery:
+
+  # ContactOut work-email and phone lookups use sanitized structural fixtures above. People
+  # search/profile adapters remain omitted because their PII-bearing responses have no safe
+  # routing fixture. Personal email stays direct-only because the shared email contract is work-only.
+  # Company discovery:
   contactout.companies.search:
     accepts: [[domain], [name], [industry], [technology]]
     in: {domain: body.domain, name: body.name, industry: body.industry, technology: body.technologies}
@@ -2292,3 +2481,136 @@ adapters:
     cost_units: "25"
     out: {people: elements, count: pagination.totalElements}
     miss: "coalesce(elements, []) == []"
+
+  # ---- AnyAPI (PR #398) --------------------------------------------------------------------------
+  # One envelope for every SKU: `output.found` + `output.data`, exact charge in `costUsd`. A
+  # profile miss is `found: false, data: null`; a search miss is `found: true` with an empty list,
+  # so list rows test `coalesce(list, []) == []`. AnyAPI BILLS a miss on profile and post rows
+  # (2026-09-19 probe); `reported_charge` settles that charge ahead of the miss rule, as HarvestAPI.
+  # Left out on purpose: linkedin.email (a $0.011 billed miss in a waterfall of free misses),
+  # tiktok.profile_videos (contract identity is sec_uid, the row takes a handle).
+  anyapi.x.search.posts:
+    accepts: [[q]]
+    in:  {q: body.query}
+    out: {posts: output.data.items, next_cursor: output.data.nextCursor}
+    miss: "coalesce(output.data.items, []) == []"
+  anyapi.x.user.posts:
+    accepts: [[username]]
+    in:  {username: body.handle}
+    out: {posts: output.data.tweets, next_cursor: output.data.nextCursor}
+    miss: "coalesce(output.data.tweets, []) == []"
+  anyapi.x.user.posts.timeline:
+    accepts: [[username]]
+    in:  {username: body.handle}
+    out: {posts: output.data.tweets, next_cursor: output.data.nextCursor}
+    miss: "coalesce(output.data.tweets, []) == []"
+  anyapi.x.user.profile:
+    accepts: [[username]]
+    in:  {username: body.handle}
+    out: {username: output.data.handle, name: output.data.displayName, followers: output.data.followers,
+          following: output.data.following, posts_count: output.data.tweets,
+          is_verified: output.data.verified, description: output.data.bio}
+    miss: "output.found == false"
+  anyapi.x.post.comments:
+    accepts: [[tweet_id]]
+    in:  {}
+    in_expr: {body.url: "fmt('https://x.com/i/status/{}', tweet_id)"}
+    test_identity: {tweet_id: "20"}
+    out: {comments: output.data.items, next_cursor: output.data.nextCursor}
+    miss: "coalesce(output.data.items, []) == []"
+  anyapi.tiktok.user.profile:
+    accepts: [[username]]
+    in:  {username: body.handle}
+    out: {username: output.data.handle, user_id: output.data.userId, sec_uid: output.data.secUid,
+          nickname: output.data.displayName, followers: output.data.followers, following: output.data.following,
+          likes: output.data.likes, videos_count: output.data.videos, is_verified: output.data.verified,
+          biography: output.data.bio}
+    miss: "output.found == false"
+  anyapi.tiktok.search.videos:
+    accepts: [[q]]
+    in:  {q: body.query}
+    out: {videos: output.data.videos, next_cursor: output.data.nextCursor}
+    miss: "coalesce(output.data.videos, []) == []"
+  anyapi.tiktok.search.users:
+    accepts: [[q]]
+    in:  {q: body.query}
+    out: {users: output.data.users, next_cursor: output.data.nextCursor}
+    miss: "coalesce(output.data.users, []) == []"
+  anyapi.tiktok.video.comments:
+    accepts: [[url]]
+    in:  {url: body.url}
+    out: {comments: output.data.comments, next_cursor: output.data.nextCursor}
+    miss: "coalesce(output.data.comments, []) == []"
+  anyapi.instagram.user.posts:
+    accepts: [[username]]
+    in:  {username: body.handle}
+    out: {posts: output.data.posts, next_cursor: output.data.nextCursor}
+    miss: "coalesce(output.data.posts, []) == []"
+  anyapi.instagram.user.reels:
+    accepts: [[username]]
+    in:  {username: body.handle}
+    out: {reels: output.data.reels, next_cursor: output.data.nextCursor}
+    miss: "coalesce(output.data.reels, []) == []"
+  anyapi.instagram.post.detail:
+    accepts: [[url]]
+    in:  {url: body.url}
+    out: {id: output.data.id, shortcode: output.data.shortcode, likes: output.data.likes,
+          owner_username: output.data.owner}
+    miss: "output.found == false"
+  anyapi.instagram.post.comments:
+    accepts: [[url]]
+    in:  {url: body.url}
+    out: {comments: output.data.comments, next_cursor: output.data.nextCursor}
+    miss: "coalesce(output.data.comments, []) == []"
+  anyapi.instagram.hashtag.posts:
+    accepts: [[hashtag]]
+    in:  {hashtag: body.hashtag}
+    out: {posts: output.data.posts, next_cursor: output.data.nextCursor}
+    miss: "coalesce(output.data.posts, []) == []"
+  anyapi.instagram.search.reels:
+    accepts: [[q]]
+    in:  {q: body.query}
+    out: {reels: output.data.reels, next_cursor: output.data.nextCursor}
+    miss: "coalesce(output.data.reels, []) == []"
+  anyapi.facebook.user.posts:
+    accepts: [[url]]
+    in:  {url: body.url}
+    out: {posts: output.data.posts, next_cursor: output.data.nextCursor}
+    miss: "coalesce(output.data.posts, []) == []"
+  anyapi.linkedin.user.profile:
+    accepts: [[linkedin_url]]
+    in:  {linkedin_url: body.url}
+    out: {full_name: output.data.name, location: output.data.location, followers: output.data.followers,
+          about: output.data.about}
+    miss: "output.found == false"
+  anyapi.linkedin.user.profile.full:
+    accepts: [[linkedin_url]]
+    in:  {linkedin_url: body.url}
+    out: {full_name: "join(output.data.firstName, output.data.lastName)", first_name: output.data.firstName,
+          last_name: output.data.lastName, headline: output.data.headline, location: output.data.location,
+          followers: output.data.followerCount, connections: output.data.connectionsCount,
+          about: output.data.about, linkedin_url: output.data.url}
+    miss: "output.found == false"
+  anyapi.google.serp.organic:
+    accepts: [[q]]
+    in:  {q: body.query}
+    in_expr: {body.gl: "lower(country)", body.hl: language, body.limit: limit}
+    out: {results: output.data.results, count: "len(output.data.results)"}
+    miss: "coalesce(output.data.results, []) == []"
+  anyapi.google.serp.news:
+    accepts: [[q]]
+    in:  {q: body.query}
+    in_expr: {body.gl: "lower(country)", body.hl: language}
+    out: {results: output.data.items, count: "len(output.data.items)"}
+    miss: "coalesce(output.data.items, []) == []"
+  anyapi.google.serp.maps.place:
+    accepts: [[q]]
+    in:  {q: body.query}
+    out: {places: output.data.items, count: "len(output.data.items)"}
+    miss: "coalesce(output.data.items, []) == []"
+  anyapi.google.keywords.ideas:
+    accepts: [[keyword]]
+    in:  {keyword: body.query}
+    in_expr: {body.gl: "lower(country)", body.hl: language}
+    out: {keywords: output.data.suggestions, count: "len(output.data.suggestions)"}
+    miss: "coalesce(output.data.suggestions, []) == []"

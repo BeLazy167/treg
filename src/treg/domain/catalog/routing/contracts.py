@@ -140,6 +140,48 @@ def parse_adapters(doc: dict) -> dict[str, Adapter]:
 
 # ---- identity -------------------------------------------------------------------------------
 
+def miss_status(endpoint: dict) -> int | None:
+    """The ERROR status this endpoint's YAML declares as "no result" (`miss: {status, means}`),
+    or None. Only a 4xx counts: a `status: 200` block documents a 2xx the adapter's own `miss`
+    predicate decides, and honouring it here would call every success a miss."""
+    m = endpoint.get("miss")
+    if isinstance(m, dict) and m.get("status") is not None:
+        try:
+            status = int(m["status"])
+        except (TypeError, ValueError):
+            return None
+        return status if 400 <= status < 500 else None
+    return None
+
+
+def declared_miss(endpoint: dict, status: int, body: Any) -> bool:
+    """True when a child's ERROR status is the endpoint's declared "no result" answer — the ONE
+    reader of the `miss:` block for the router and the arena, so both agree.
+
+    `miss: {status}` matches on status alone. `miss: {status, when}` adds a body predicate in the
+    adapter expression language (`when: "error_code == 'NO_MATCH'"`) for providers whose one
+    status carries both a miss and a fault (prospeo 400: NO_MATCH vs INVALID_DATAPOINTS). `body`
+    is the raw bytes or the parsed document; only a JSON object can satisfy a predicate, and a
+    predicate that raises reads as "not a miss"."""
+    if status != miss_status(endpoint):
+        return False
+    when = (endpoint.get("miss") or {}).get("when")
+    if not when:
+        return True
+    doc = body
+    if isinstance(body, (bytes, bytearray, str)):
+        try:
+            doc = json.loads(body)
+        except ValueError:
+            return False
+    if not isinstance(doc, dict):
+        return False
+    try:
+        return bool(P.evaluate(str(when), doc))
+    except Exception:  # noqa: BLE001 — a broken predicate must never crash a call
+        return False
+
+
 def canonical_identity(contract: Contract, given: dict[str, Any]) -> tuple[dict[str, Any], tuple[str, ...] | None]:
     """The caller's fields + everything derivable → (identity, the variant they supplied), or
     (identity, None) when no variant is complete. Derived keys count for matching adapters."""
@@ -147,6 +189,11 @@ def canonical_identity(contract: Contract, given: dict[str, Any]) -> tuple[dict[
     supplied = next((v for v in contract.identity if all(k in ident for k in v)), None)
     if supplied is None:
         return ident, None
+    if isinstance(ident.get("linkedin_url"), str):
+        # One normalisation for every adapter that forwards the URL raw: a scheme-less
+        # `linkedin.com/in/x` reached quickenrich as-is and 422'd "must be a valid URL"
+        # (311 routed calls in two days, 2026-09-18); a handle becomes the public URL.
+        ident["linkedin_url"] = P.linkedin_url(ident["linkedin_url"]) or ident["linkedin_url"]
     for _ in range(2):  # derive until stable (join needs first+last; split needs full_name)
         for k, expr in contract.derive.items():
             if ident.get(k) in (None, ""):

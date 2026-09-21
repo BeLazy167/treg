@@ -85,9 +85,9 @@ async def test_live_verified_seed_enables_ten_routes_and_expires():
     assert not email.enabled and email.disabled_reason == "never verified"
     search = next(r for r in rows if r.endpoint_id == SEARCH)
     assert search.agg_unit == "call" and search.agg_price_micro == 30_000
-    assert R.route_for(rows, SEARCH, estimate_micro=5_980) == []
-    assert R.route_for(rows, SEARCH, estimate_micro=11_960) == [search]
-    assert R.route_for(rows, SEARCH, estimate_micro=59_800) == [search]
+    # 2026-09-17: a one-creator request (direct estimate $0.00598) is served at the flat $0.03 too;
+    # the absolute ceiling is the only price guard, never a ratio against the request.
+    assert R.route_for(rows, SEARCH) == [search]
     for r in rows:
         if r.enabled:
             ep = next(e for e in catalog_store.load().endpoints if e["id"] == r.endpoint_id)
@@ -144,10 +144,12 @@ async def test_exhaustion_releases_parent_and_charges_flat_orthogonal_price(
     assert len(spend) == 1 and spend[0].cost_micro == 30_000 and spend[0].calls == 1
 
 
-@pytest.mark.parametrize("limit,expected_status", [(1, 503), (2, 200)])
-async def test_known_empty_account_applies_request_price_guard_before_reserve(
+@pytest.mark.parametrize("limit,expected_status", [(1, 200), (2, 200)])
+async def test_known_empty_account_skips_direct_and_serves_any_page_size_via_overflow(
     clients, influencers_on, monkeypatch, limit, expected_status,
 ):
+    """2026-09-17: a one-creator request used to fail the 4x ratio guard and get a typed 503 telling
+    the caller to bring their own key; the flat $0.03 is now admitted by its absolute ceiling."""
     await _sync()
     now = utcnow_naive()
     async with session_maker() as db:
@@ -165,20 +167,16 @@ async def test_known_empty_account_applies_request_price_guard_before_reserve(
                                   headers={"Idempotency-Key": "discovery-empty"})
     assert response.status_code == expected_status, response.text
     entries = [r for r in await _rows(LedgerEntry) if r.kind != "grant"]
-    assert len(seen) == (1 if limit == 2 else 0)
+    assert len(seen) == 1 and response.headers["X-Treg-Cost-Micro"] == "30000"
     assert await _holds() == []
-    if limit == 1:
-        assert entries == []
-    else:
-        assert sorted(r.kind for r in entries) == ["reserve", "settle"]
-        replay = await clients.post(f"/call/{SEARCH}", json=_body(limit=limit),
-                                    headers={"Idempotency-Key": "discovery-empty"})
-        assert replay.status_code == 200 and replay.headers["X-Treg-Idempotent-Replay"] == "true"
-        assert len(seen) == 1
+    assert sorted(r.kind for r in entries) == ["reserve", "settle"]
+    replay = await clients.post(f"/call/{SEARCH}", json=_body(limit=limit),
+                                headers={"Idempotency-Key": "discovery-empty"})
+    assert replay.status_code == 200 and replay.headers["X-Treg-Idempotent-Replay"] == "true"
+    assert len(seen) == 1
 
 
-@pytest.mark.parametrize("case,status", [("small_page", 402), ("own_key", 402),
-                                        ("opt_out", 402), ("validation", 400)])
+@pytest.mark.parametrize("case,status", [("own_key", 402), ("opt_out", 402), ("validation", 400)])
 async def test_no_fallback_or_charge_when_call_is_ineligible(
     clients, influencers_on, monkeypatch, case, status,
 ):
@@ -195,7 +193,7 @@ async def test_no_fallback_or_charge_when_call_is_ineligible(
     seen = []
     monkeypatch.setattr(O, "_send", _orthogonal([(200, ENVELOPE)], seen))
     before = await _balance(clients)
-    response = await clients.post(f"/call/{SEARCH}", json=_body(limit=1 if case == "small_page" else 2))
+    response = await clients.post(f"/call/{SEARCH}", json=_body(limit=2))
     assert response.status_code == status and response.content == error
     assert seen == [] and before == await _balance(clients) and await _holds() == []
 

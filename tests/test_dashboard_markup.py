@@ -190,6 +190,10 @@ def test_the_category_list_comes_from_the_data_not_the_order_list():
         assert gone not in body, f"{gone} is no longer a catalog category — remove the reference"
 
 
+def test_ai_generation_shelf_names_all_three_media_modalities():
+    assert "'AI generation':'video, image and voice models" in INDEX
+
+
 def test_tiles_are_grouped_by_category_on_every_capability_tab():
     """"All" is not a flat wall of tiles: it keeps the category headings, and a category tab is the
     same grouping filtered to one — so the page never loses its place."""
@@ -309,7 +313,8 @@ def test_the_card_price_is_the_servers_computed_usd():
     would drift from the CLI the moment the rate table changed."""
     fn = INDEX[INDEX.index("platPrice(pl){") :][:1400]
     assert "typeof pf.usd==='number'" in fn
-    assert "'$'+this.usdNum(pf.usd)+' / '+this.priceUnit(pf.type)" in fn
+    assert "typeof pf.display_usd==='number' ? pf.display_usd : pf.usd" in fn
+    assert "pf.display_unit || this.priceUnit(pf.type)" in fn
     assert "return null; }" in fn  # priced but unpublished → say nothing, not "from —"
     # "from" is a floor: an OAuth provider among the platform's providers makes the floor $0, even
     # when metered providers publish a rate — that rate demotes to the tooltip.
@@ -1179,6 +1184,24 @@ def test_activity_shows_agent_name_with_owner_badge_not_internal_identity():
     assert "k.assigned_name||this.short(k.identity)" in INDEX
     assert "if(!this.apiKeys.length)await this.loadApiKeys()" in INDEX
     assert "{{a.api_key_name}}<span v-if=\"a.api_key_prefix\"" in INDEX
+
+
+def test_activity_feed_marks_cached_calls_without_changing_the_charge():
+    feed = INDEX[INDEX.index('<template v-if="actTab===\'feed\'">') :]
+    start = feed.index('<tr v-for="a in activityShown"')
+    row = feed[start : feed.index("</tr>", start)]
+    assert "{{a.cost!=null?money(a.cost):'—'}}" in row
+    assert 'v-if="a.cached" class="chip cached"' in row
+    assert "Served from treg's archive instead of calling the provider." in row
+    assert row.index("{{a.cost!=null?money(a.cost):'—'}}") < row.index('v-if="a.cached"')
+    assert ".chip.cached{" in INDEX and "background:var(--panel2)" in INDEX
+
+
+def test_activity_feed_summarizes_cached_calls_in_the_loaded_window():
+    assert 'v-if="activityCachedCount" class="sub"' in INDEX
+    assert "{{activityCachedCount}} of {{activityCallCount}} loaded" in INDEX
+    assert "activityCallCount(){ return this.activityRows.filter(a=>a.kind==='call').length; }" in INDEX
+    assert "activityCachedCount(){ return this.activityRows.filter(a=>a.kind==='call' && a.cached).length; }" in INDEX
 
 
 def test_agent_creation_requires_explicit_tool_scope_and_default_key_has_disabled_state():

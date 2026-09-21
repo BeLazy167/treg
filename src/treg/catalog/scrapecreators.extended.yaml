@@ -581,7 +581,8 @@ endpoints:
       sort_by:
         type: string
         required: false
-        note: Sort by impressions (high to low), or Most Recent (relevancy_monthly_grouped). Defaults to impressions.
+        enum: [total_impressions, relevancy_monthly_grouped]
+        note: "Order only. One of: total_impressions | relevancy_monthly_grouped. Defaults to impressions ranking (total_impressions). Controls result ORDER, not verified performance — does not guarantee non-null spend, impressions_text, or a positive impressions_index. Those fields are often null / -1 for commercial ads and are not verified performance metrics."
         example: total_impressions
       search_type:
         type: string
@@ -628,6 +629,7 @@ endpoints:
         required: false
         note: Set to true for a trimmed down version of the response
         example: 'false'
+    note: "sort_by is order-only: ranking by total_impressions does not mean the response carries verified spend or impression counts. Search may return a non-null collation_count that is null on scrapecreators.x.v1-facebook-adlibrary-ad detail for the same ad — grouping semantics differ between search and detail; do not treat collation_count as creative-variant or budget counts."
   test_request:
     queryParams:
       query: running
@@ -2830,7 +2832,8 @@ endpoints:
       date_posted:
         type: string
         required: false
-        note: Date posted filter based on Google-indexed results
+        enum: [last-hour, last-day, last-week, last-month, last-year]
+        note: "Google-indexed date window. One of: last-hour | last-day | last-week | last-month | last-year. Values like past-week / past-day are NOT accepted (provider rejects them)."
         example: last-week
       cursor:
         type: string
@@ -5243,13 +5246,14 @@ endpoints:
       url:
         type: string
         required: true
-        note: Tweet URL
+        note: "Video tweet URL — a native video tweet, not an X Article / post whose media is only article-embedded video."
         example: https://x.com/TheoVon/status/1916982720317821050
       cache_max_age:
         type: string
         required: false
         note: 'If we have a response in the cache that is this many days old or newer, return the cached response (0 credits, with "cached": true and a "cached_at" timestamp). Otherwise, scrape a live result (1 credit). [See the Cac...'
         example: 7d
+    note: "This endpoint targets a native video tweet URL. X Articles / posts whose media is only article-embedded video may return HTTP success with transcript: null while still charging the normal per-call credit — treat null as unsupported / no transcript available for that URL shape, not as a successful empty caption. For those posts, call scrapecreators.x.v1-twitter-tweet (tweet detail) first; if it exposes embedded video URLs, decide whether another transcript path applies. Observed; not a documented provider guarantee."
   test_request:
     queryParams:
       url: https://x.com/TheoVon/status/1916982720317821050
@@ -5560,21 +5564,25 @@ endpoints:
       uploadDate:
         type: string
         required: false
-        note: Upload date
+        enum: [today, this_week, this_month, this_year]
+        note: "Filter by upload date. One of: today | this_week | this_month | this_year."
       sortBy:
         type: string
         required: false
-        note: Sort by
+        enum: [relevance, popular]
+        note: "Only relevance|popular work. view_count, upload_date, and rating are NOT accepted (HTTP 400)."
         example: relevance
       type:
         type: string
         required: false
-        note: Type of content to search for
+        enum: [videos, shorts, channels, playlists]
+        note: "Type of content to search for. Plural forms: videos | shorts | channels | playlists (not video/channel)."
         example: videos
       duration:
         type: string
         required: false
-        note: Duration of the video. Only applies to videos (not shorts).
+        enum: [under_3_min, between_3_and_20_min, over_20_min]
+        note: "Duration of the video. Only applies to videos (not shorts). One of: under_3_min | between_3_and_20_min | over_20_min."
         example: under_3_min
       region:
         type: string
@@ -5822,8 +5830,9 @@ endpoints:
       date_posted:
         type: string
         required: false
-        note: Date posted
-        example: last-hour
+        enum: [last-week, last-month, last-year]
+        note: Google-indexed date window (last-week, last-month, last-year). Hour/day windows are not supported; Google does not index Instagram reels reliably enough in those windows.
+        example: last-week
       page:
         type: number
         required: false
