@@ -98,7 +98,7 @@ server-side first-touch attribution across signup, first successful call and top
 | `/jev` | "How to use Jev" (file `jev.html`; the on-page headline reads "How to use Jev for GTM Automation"); the hero carries a literal "What is Jev?" heading. Sections in order: "Quick Jev 101", ONE arrow-driven deck of eleven slides (three on what jev is, five use-case demos judged live by jev with three community recordings credited and linked, three on how to use it in code) staged like the video slides: a kicker, one big header, the visual full width, description text hidden by CSS scoped to `#deck`; then the GTM recipes, whose tab bar is mirrored in the nav everywhere except while the real bar is on screen; then community posts as cards built from each post's own data (avatars and posters bundled in `media/jev/built/`, no X embed script) in a marquee that becomes a swipeable row on touch and reduced motion; then the FAQ with its JSON-LD. The use-case demo script follows the deck through a `deckslide` event, offset by the three opening slides. The recipes are three agent prompts to copy (install treg, get a Vercel AI Gateway key, call jev's evaluation-model endpoint, then the pipeline) with the demo each produces underneath. The X launch radar recipe is **live**: `/jev/xboost.json` serves the document `treg-worker jev xboost` stores daily under Ephemeral (`jev`/`xboost`), else the bundled snapshot `media/jev/xboost-seed.json` flagged `snapshot: true`; `POST /jev/xboost/judge {url}` runs the same forensics + jev on one visitor-pasted post (5 per IP and 60 fleet-wide per hour via ratestore, 503 until `jev_treg_token` and `ai_gateway_api_key` are set) and prepends it to the document's `manual` list, which survives the daily run. treg is a client of itself in that pipeline (`application/jev_xboost.py` calls `/call/` with the demo team's token), so the receipt is a real bill. The signup-triage and signal-first-leads recipes replay bundled runs in `media/jev/*.json` with every email address replaced; `tests/test_jev.py` pins that. Same nav, footer, capture scripts, sitemap priority and `_BLOG_LAUNCHES` entry as the other landings. |
 | `/catalog` | The dashboard SPA, in public mode — the marketplace's Catalog view on an indexable URL. |
 | `/catalog/<slug>` | The same SPA, on the platform view for one shelf. |
-| `/tools/<service>` | The catalog sliced by **vendor**, fully server-rendered (`_page`, no SPA): one public page per provider. Titles lead with API pricing; mixed-access heroes show the full inventory with platform/BYOK counts. Own-account providers get `{Provider}: connect your own account`. The page shows logo, category, blurb from the oauth-provider registry, setup/MCP instructions, all tools for inventories of up to 50, otherwise up to 8 tools per platform (with a catalog link for larger sets), why-treg cards, alternatives, and a metered-vs-own-account FAQ. JSON-LD: BreadcrumbList (with `treg.to` not bare `treg`), ItemList, FAQPage, HowTo. Tool counts and prices are live from `catalog_store`, never hardcoded. No em-dashes in page copy. There is no provider index page: /providers earned no searches and the provider links live in /catalog's prerender instead. `/tools/<service>` is safe from shadowing the API (the API's GETs are `/tools` and `/tools/by-name/…`). A signed-out `GET /app/marketplace/<service>` 302s to `/tools/<service>`. `tests/test_provider_pages.py` pins the route shape. |
+| `/tools/<service>` | The catalog sliced by **vendor**, fully server-rendered (`_page`, no SPA): one public page per provider. Title matches H1 (metered: `{Provider}: {n} tools from {price}`, mixed: `{Provider}: {n} tools, platform or your own key`, own-account: `{Provider}: connect your own account`); mixed-access heroes show the full inventory with platform/BYOK counts. The page shows logo, category, blurb from the oauth-provider registry, setup/MCP instructions, all tools for inventories of up to 50, otherwise up to 8 tools per platform (with a catalog link for larger sets), why-treg cards, alternatives, and a metered-vs-own-account FAQ. JSON-LD: BreadcrumbList (with `treg.to` not bare `treg`), ItemList, FAQPage, HowTo. Tool counts and prices are live from `catalog_store`, never hardcoded. No em-dashes in page copy. There is no provider index page: /providers earned no searches and the provider links live in /catalog's prerender instead. `/tools/<service>` is safe from shadowing the API (the API's GETs are `/tools` and `/tools/by-name/…`). A signed-out `GET /app/marketplace/<service>` 302s to `/tools/<service>`. `tests/test_provider_pages.py` pins the route shape. |
 | `/docs` | Server-rendered API reference built from `app.openapi()`. |
 | `/docs/api` | FastAPI's Swagger UI, moved here and `Disallow`ed. ReDoc is off. |
 | `/media/og.png` | The 1200×630 social card, served by the pre-existing `/media` mount. |
@@ -737,23 +737,29 @@ What links what now, and where it is generated:
 Both reverse indexes are derived from the same tables the pages render from, so a new job or
 workflow is cross-linked the moment it is routed, and nothing is listed by hand.
 
-### Titles: the pricing intent
+### Titles: Title matches H1
 
-The non-brand queries that reach the site are "{provider} api pricing" phrasings ("linkedin api
-pricing", "1688 api pricing"), not "api for agents". So:
+`/tools/<provider>` titles match their H1s:
 
-- `/tools/<provider>` titles lead with it: `{Provider} API pricing: from $0.00245/result, no signup | treg.to`
-  (the price label carries its own billing unit, so the copy never says "per call" beside it;
-  falls back to `{Provider} API pricing: from $X | treg.to` past 65 characters; own-account
-  providers get `{Provider}: connect your own account | treg.to`). **Title and H1 now match**:
-  metered H1 is `{Provider}: {n} tools from {price}`, own-account H1 is `{Provider}: connect your own account`.
-  The kicker carries the measured line (calls observed, ok rate weighted by DECIDED calls, median p50)
-  read through `_observed_or_empty`. Descriptions go through `_serp_desc` (sentence-fit under
-  Google's cut), and the HowTo's steps mirror the visible setup section in order — the one-line
-  install first, direct MCP second — because schema describing a different flow than the page
-  shows is the mismatch Google treats as a violation. The setup line on these pages is the
-  canonical `set up treg — {base}/llms.txt` (the em-dash is the documented exception, and a
-  colon variant that shipped briefly forked the product's one paste-line).
+- Metered: `{Provider}: {n} tools from {price} | treg.to` (falls back to `{Provider}: from {price} | treg.to`
+  or `{Provider}: {n} tools | treg.to` past 65 characters)
+- Mixed (platform + BYOK): `{Provider}: {n} tools, platform or your own key | treg.to` (falls back to
+  `{Provider}: {n} tools, platform + BYOK | treg.to` or `{Provider}: platform + BYOK | treg.to` past 65 characters)
+- Own-account: `{Provider}: connect your own account | treg.to`
+- **MCP-intent own-account providers** (`_MCP_INTENT_PROVIDERS`: google-search-console, google-analytics,
+  semrush) lead with MCP instead: `{Provider} MCP: connect your own account | treg.to` for Title and H1,
+  and the meta description names MCP plus connect-own-account plus treg.to as one MCP for the catalog.
+  The MCP-intent titles win over the generic own-account title pattern for these three providers.
+
+The price label carries its own billing unit ("$0.00245/result", "$0.0089/call"), so the copy
+never says "per call" beside it: a per-result or per-success rate is not a per-call one.
+The kicker carries the measured line (calls observed, ok rate weighted by DECIDED calls, median p50)
+read through `_observed_or_empty`. Descriptions go through `_serp_desc` (sentence-fit under
+Google's cut) and may still mention pricing intent. The HowTo's steps mirror the visible setup section
+in order — the one-line install first, direct MCP second — because schema describing a different
+flow than the page shows is the mismatch Google treats as a violation. The setup line on these
+pages is the canonical `set up treg - {base}/llms.txt` (the em-dash is the documented exception,
+and a colon variant that shipped briefly forked the product's one paste-line).
 - compare-form job titles get `, from $X` appended when the hand-written title carries no price and
   the result stays within `_TITLE_MAX` (65); " compared" is dropped to make room.
 
