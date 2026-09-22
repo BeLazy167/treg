@@ -1615,6 +1615,15 @@
   {
     "kind": "APIRoute",
     "methods": [
+      "GET",
+      "HEAD"
+    ],
+    "name": "list_provider_resources",
+    "path": "/orgs/{org_id}/provider-resources"
+  },
+  {
+    "kind": "APIRoute",
+    "methods": [
       "POST"
     ],
     "name": "create_project",

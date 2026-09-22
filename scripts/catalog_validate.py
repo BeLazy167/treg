@@ -165,7 +165,7 @@ def _input_fields(input_schema: object) -> dict[str, dict]:
     if not isinstance(input_schema, dict):
         return {}
     fields: dict[str, dict] = {}
-    for location in ("pathParams", "queryParams", "body"):
+    for location in ("pathParams", "queryParams", "headers", "body"):
         block = input_schema.get(location)
         if not isinstance(block, dict):
             continue
@@ -240,15 +240,16 @@ def check_strict_body(ep: dict, where: str, errors: list[str]) -> None:
 
 def check_platform_request(rule: object, input_schema: object, where: str,
                            errors: list[str]) -> None:
-    """Platform-only fixed body values; BYOK input remains an upstream contract."""
+    """Platform-only fixed request values; BYOK input remains an upstream contract."""
     if not isinstance(rule, dict) or not rule:
         fail(errors, where, "platform_request must be a non-empty mapping")
         return
     fields = _input_fields(input_schema)
     for path, value in rule.items():
         spec = fields.get(path) if isinstance(path, str) else None
-        if not isinstance(path, str) or not path.startswith("body.") or spec is None:
-            fail(errors, where, "platform_request must name a declared body field")
+        if (not isinstance(path, str)
+                or not path.startswith(("body.", "headers.")) or spec is None):
+            fail(errors, where, "platform_request must name a declared body or header field")
             continue
         allowed = spec.get("enum")
         if (not isinstance(allowed, list) or len(allowed) != 1
@@ -573,6 +574,66 @@ def check_resource_ownership(rule: object, where: str, input_schema: object,
                         or not isinstance(item.get("path"), str)
                         or not JSON_PATH.fullmatch(item["path"])):
                     fail(errors, where, "each resource_ownership.produces item needs exactly kind and JSON path")
+
+
+def check_managed_resource(rule: object, where: str, input_schema: object,
+                           errors: list[str]) -> None:
+    """Validate long-lived shared-account resource lifecycle declarations."""
+    allowed = {"operation", "kind", "id", "name_from", "cleanup_endpoint", "public_lookup"}
+    if not isinstance(rule, dict) or set(rule) - allowed:
+        fail(errors, where, "managed_resource has unsupported fields")
+        return
+    operation = rule.get("operation")
+    if operation not in {"create", "read", "use", "update", "delete"}:
+        fail(errors, where, "managed_resource.operation must be create/read/use/update/delete")
+    if not isinstance(rule.get("kind"), str) or not rule["kind"].strip():
+        fail(errors, where, "managed_resource.kind must be non-empty")
+    locator = rule.get("id")
+    if not isinstance(locator, dict):
+        fail(errors, where, "managed_resource.id must be a mapping")
+        return
+    if set(locator) - {"in", "name", "path", "optional", "many"}:
+        fail(errors, where, "managed_resource.id has unsupported fields")
+    location = locator.get("in")
+    field = locator.get("name") or locator.get("path")
+    if location not in {"response", "pathParams", "queryParams", "body"}:
+        fail(errors, where, "managed_resource.id.in has an unsupported location")
+    if not isinstance(field, str) or not field.strip():
+        fail(errors, where, "managed_resource.id needs a non-empty name/path")
+    elif location != "response" and f"{location}.{field}" not in _input_fields(input_schema):
+        fail(errors, where, f"managed_resource id references undeclared {location}.{field}")
+    for flag in ("optional", "many"):
+        if flag in locator and type(locator[flag]) is not bool:
+            fail(errors, where, f"managed_resource.id.{flag} must be boolean")
+    if operation == "create" and location != "response":
+        fail(errors, where, "managed_resource create id must come from response")
+    if operation != "create" and location == "response":
+        fail(errors, where, "only managed_resource create may read its id from response")
+    if rule.get("cleanup_endpoint") is not None and operation != "create":
+        fail(errors, where, "managed_resource.cleanup_endpoint is create-only")
+    public_lookup = rule.get("public_lookup")
+    if public_lookup is not None:
+        if operation != "use":
+            fail(errors, where, "managed_resource.public_lookup is use-only")
+        if (not isinstance(public_lookup, dict)
+                or set(public_lookup) != {"method", "path", "requires"}
+                or public_lookup.get("method") != "GET"
+                or not isinstance(public_lookup.get("path"), str)
+                or public_lookup["path"].count("{id}") != 1
+                or not public_lookup["path"].startswith("/")
+                or not isinstance(public_lookup.get("requires"), dict)
+                or not public_lookup["requires"]):
+            fail(errors, where, "managed_resource.public_lookup needs GET path with {id} and requires")
+        elif any(not isinstance(key, str) or not key or isinstance(value, (dict, list))
+                 for key, value in public_lookup["requires"].items()):
+            fail(errors, where, "managed_resource.public_lookup requires must contain scalar fields")
+    name_from = rule.get("name_from")
+    if name_from is not None:
+        if (not isinstance(name_from, dict) or set(name_from) != {"in", "path"}
+                or name_from.get("in") != "body"
+                or not isinstance(name_from.get("path"), str)
+                or f"body.{name_from.get('path')}" not in _input_fields(input_schema)):
+            fail(errors, where, "managed_resource.name_from must reference a declared body field")
 
 
 def _credit_rate(provider: str | None) -> object:
@@ -1023,6 +1084,8 @@ def main(argv: list[str]) -> int:
                 fail(errors, where, "cost.settle 'usage' requires an async descriptor")
             if ep.get("resource_ownership") is not None:
                 check_resource_ownership(ep["resource_ownership"], where, inp, errors)
+            if ep.get("managed_resource") is not None:
+                check_managed_resource(ep["managed_resource"], where, inp, errors)
             if ep.get("verified"):
                 ex = ep.get("example_response")
                 if not ex:

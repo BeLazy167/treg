@@ -229,6 +229,31 @@ def test_resource_ownership_contract_validates_ids_and_declared_parameters():
     assert any("produces item needs exactly" in error for error in errors)
 
 
+def test_managed_public_lookup_is_read_only_bounded_and_use_only():
+    schema = {"body": {"reference_id": {"type": "string"}}}
+    valid = {
+        "operation": "use", "kind": "voice",
+        "id": {"in": "body", "path": "reference_id"},
+        "public_lookup": {
+            "method": "GET", "path": "/model/{id}",
+            "requires": {"visibility": "public", "licensed": True},
+        },
+    }
+    errors: list[str] = []
+    validator.check_managed_resource(valid, "catalog:test", schema, errors)
+    assert errors == []
+
+    broken: list[str] = []
+    validator.check_managed_resource(
+        valid | {"operation": "update", "public_lookup": {
+            "method": "POST", "path": "/model", "requires": {},
+        }},
+        "catalog:test", schema, broken,
+    )
+    assert any("public_lookup is use-only" in error for error in broken)
+    assert any("public_lookup needs GET path" in error for error in broken)
+
+
 def test_platform_async_object_reads_cannot_silently_omit_ownership_metadata():
     """A new/edited shared-account task reader must fail CI instead of becoming fail-open."""
     catalog = catalog_store.load()

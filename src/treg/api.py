@@ -61,6 +61,7 @@ from .routers import feedback as feedback_routes
 from .routers import media as media_routes
 from .routers import onboard as onboard_routes
 from .routers import orgs as org_routes
+from .routers import provider_resources as provider_resource_routes
 from .routers import referrals as referral_routes
 from .routers import resources as resources_routes
 from .routers import web as web_routes
@@ -341,6 +342,7 @@ router.routes.extend(billing_routes.webhook_router.routes)
 router.routes.extend(org_routes.member_management_router.routes)
 router.routes.extend(org_routes.machine_identity_router.routes)
 router.routes.extend(api_key_routes.router.routes)
+router.routes.extend(provider_resource_routes.router.routes)
 
 
 # ---- projects: an optional sub-scope inside an org ------------------------------------------

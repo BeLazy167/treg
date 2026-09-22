@@ -5,6 +5,8 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+from email import policy
+from email.parser import BytesParser
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from urllib.parse import quote, urlsplit
@@ -25,6 +27,7 @@ from ...domain.connections.refresh import expiry_state
 from ...domain.governance import access as access_policy
 from ...domain.identity.access import Caller
 from ...domain.money import settlement as settlement_basis
+from ...domain import provider_resources
 from ...infra.db import session_maker
 from ...domain.governance.access import pinned_tag_predicates
 from ...models import AsyncResourceRecord, AsyncTaskRecord, CapabilityPin, Org, Secret, Tool
@@ -334,6 +337,8 @@ class MarketplaceCall:
     request_data: dict = field(default_factory=dict)
     async_descriptor: dict | None = None
     resource_ownership: dict | None = None
+    managed_resource: dict | None = None
+    public_resource_ids: tuple[str, ...] = ()
     # A platform-key utility poll was authorized against this org-owned submission. The buffered
     # response may teach the same row its provider result/file id before the background worker runs.
     async_owner_call_id: str | None = None
@@ -484,6 +489,18 @@ def _body_text_characters(body: bytes) -> int:
     return 1
 
 
+def _body_text_utf8_bytes(body: bytes) -> int:
+    """Count Fish Audio's billed unit: UTF-8 bytes in the JSON ``text`` string."""
+    if body:
+        try:
+            document = json.loads(body)
+        except (ValueError, UnicodeDecodeError):
+            document = None
+        if isinstance(document, dict) and isinstance(document.get("text"), str):
+            return max(1, len(document["text"].encode("utf-8")))
+    return 1
+
+
 def _platform_estimate_micro(cost: dict, query, body: bytes = b"") -> int:
     """What one call is expected to cost the platform, in RAW micro-USD (no margin — ledger.reserve
     applies that). Rounds UP: a fraction of a micro-dollar is not representable and must not round to
@@ -494,6 +511,8 @@ def _platform_estimate_micro(cost: dict, query, body: bytes = b"") -> int:
     n = 1
     if cost.get("unit") == "character":
         n = _body_text_characters(body)
+    elif cost.get("unit") == "utf8_byte":
+        n = _body_text_utf8_bytes(body)
     elif cost.get("type") in ("per_result", "quota_rows") and cost.get("unit") in _ENTITY_UNITS:
         # Priced per INPUT entity, not per returned row: the page-size default below has no
         # meaning here and billed one-target calls 20x (seranking summary, serpstat overview —
@@ -1182,7 +1201,64 @@ def _enforce_catalog_body(ep: dict, body: bytes) -> None:
             )
 
 
-def _enforce_platform_request(ep: dict, body: bytes) -> None:
+def _request_headers(headers) -> dict[str, str]:
+    if headers is None:
+        return {}
+    if hasattr(headers, "raw"):
+        return {
+            name.decode("latin-1").lower(): value.decode("latin-1")
+            for name, value in headers.raw
+        }
+    return {str(name).lower(): str(value) for name, value in headers.items()}
+
+
+def _request_header_values(headers, wanted: str) -> list[str]:
+    """Preserve duplicates for fixed-header checks; ambiguity must not reach the provider."""
+    wanted = wanted.lower()
+    if headers is None:
+        return []
+    if hasattr(headers, "raw"):
+        return [value.decode("latin-1") for name, value in headers.raw
+                if name.decode("latin-1").lower() == wanted]
+    return [str(value) for name, value in headers.items() if str(name).lower() == wanted]
+
+
+def _multipart_fields(body: bytes, content_type: str, ep_id: str) -> dict[str, object]:
+    """Read text fields for policy checks without changing the relayed multipart bytes."""
+    try:
+        message = BytesParser(policy=policy.default).parsebytes(
+            b"Content-Type: " + content_type.encode("latin-1")
+            + b"\r\nMIME-Version: 1.0\r\n\r\n" + body
+        )
+        if not message.is_multipart():
+            raise ValueError("not multipart")
+        fields: dict[str, object] = {}
+        for part in message.iter_parts():
+            name = part.get_param("name", header="content-disposition")
+            if not name or part.get_filename() is not None:
+                continue
+            value = part.get_content()
+            if name in fields:
+                current = fields[name]
+                fields[name] = [*current, value] if isinstance(current, list) else [current, value]
+            else:
+                fields[name] = value
+        return fields
+    except Exception as exc:  # noqa: BLE001 - malformed multipart is one caller error
+        raise ResolutionFailed(
+            "catalog_parameter_invalid", status_code=400,
+            detail=f"{ep_id} requires a valid multipart/form-data request body",
+        ) from exc
+
+
+def _request_body_document(ep: dict, body: bytes, headers) -> dict:
+    content_type = _request_headers(headers).get("content-type", "")
+    if content_type.lower().startswith("multipart/form-data"):
+        return _multipart_fields(body, content_type, ep["id"])
+    return _strict_json_object(body, ep["id"])
+
+
+def _enforce_platform_request(ep: dict, body: bytes, headers=None) -> None:
     """Check explicit platform constraints and fixed pricing selectors before reserve/relay.
 
     Catalog tables may price several rows on one upstream path. A table condition whose body field
@@ -1210,9 +1286,23 @@ def _enforce_platform_request(ep: dict, body: bytes) -> None:
             )
 
     input_schema = ep.get("input") or {}
+    rules = ep.get("platform_request") or {}
+    for path, expected in sorted(rules.items()):
+        if not str(path).startswith("headers."):
+            continue
+        name = str(path).split(".", 1)[1].lower()
+        supplied = _request_header_values(headers, name)
+        if supplied != [str(expected)]:
+            raise ResolutionFailed(
+                "catalog_parameter_invalid", status_code=400, detail={
+                    "error": "catalog_parameter_invalid", "endpoint_id": ep["id"],
+                    "parameter": f"headers.{name}", "expected": expected,
+                    "message": f"{ep['id']} requires header {name}: {expected}",
+                },
+            )
     selectors: dict[str, object] = {
         path.removeprefix("body."): value
-        for path, value in (ep.get("platform_request") or {}).items()
+        for path, value in rules.items() if str(path).startswith("body.")
     }
     for row in (ep.get("cost") or {}).get("table") or []:
         for path in (row.get("when") or {}):
@@ -1226,7 +1316,7 @@ def _enforce_platform_request(ep: dict, body: bytes) -> None:
     bounds = ep.get("platform_bounds") or {}
     if not selectors and not bounds:
         return
-    document = _strict_json_object(body, ep["id"])
+    document = _request_body_document(ep, body, headers)
     for path, expected in sorted(selectors.items()):
         actual = _document_value(document, path)
         if actual != expected or (isinstance(expected, bool) and type(actual) is not bool):
@@ -1260,6 +1350,68 @@ def _enforce_platform_request(ep: dict, body: bytes) -> None:
                     ),
                 },
             )
+
+
+def _managed_values(ep: dict, rule: dict, query: QueryValues, body: bytes, headers) -> list[str]:
+    locator = rule.get("id") or {}
+    where = locator.get("in")
+    name = str(locator.get("name") or locator.get("path") or "")
+    value: object = None
+    if where in ("pathParams", "queryParams"):
+        found = [item for key, item in query.items if key == name]
+        value = found if locator.get("many") else (found[-1] if found else None)
+    elif where == "body":
+        value = _document_value(_request_body_document(ep, body, headers), name)
+    if value in (None, "") and locator.get("optional"):
+        return []
+    values = value if isinstance(value, list) else [value]
+    if (not values or any(not isinstance(item, str) or not item.strip() for item in values)
+            or (not locator.get("many") and len(values) != 1)):
+        raise ResolutionFailed(
+            "catalog_parameter_invalid", status_code=400, detail={
+                "error": "catalog_parameter_invalid", "endpoint_id": ep["id"],
+                "parameter": f"{where}.{name}",
+                "message": f"{ep['id']} requires a valid managed resource id",
+            },
+        )
+    return [item.strip() for item in values]
+
+
+async def _enforce_platform_managed_ownership(
+    ep: dict, query: QueryValues, body: bytes, headers, caller: Caller, db: AsyncSession,
+) -> tuple[str, ...]:
+    rule = ep.get("managed_resource") or {}
+    operation = rule.get("operation")
+    if not rule or operation == "create":
+        return ()
+    values = _managed_values(ep, rule, query, body, headers)
+    public_ids: list[str] = []
+    for upstream_id in values:
+        row = await provider_resources.owned(
+            db, caller.org_id, ep["provider"], str(rule.get("kind") or ""), upstream_id,
+            include_deleted=operation == "delete",
+        )
+        if row is not None:
+            continue
+        # A resource assigned to another org (or tombstoned by this one) is private even when the
+        # provider also has a public catalog. Deny it locally; never ask the shared account about a
+        # cross-tenant id. Only ids absent from treg's durable ownership table may be public.
+        if await provider_resources.assigned(
+                db, ep["provider"], str(rule.get("kind") or ""), upstream_id) is not None:
+            raise ResolutionFailed(
+                "provider_resource_not_owned", status_code=403,
+                detail={"error": "provider_resource_not_owned",
+                        "message": "resource is not owned by this organization"},
+            )
+        if rule.get("public_lookup"):
+            public_ids.append(upstream_id)
+            continue
+        raise ResolutionFailed(
+            "provider_resource_not_owned", status_code=403,
+            detail={"error": "provider_resource_not_owned",
+                    "message": "resource is not owned by this organization"},
+        )
+    return tuple(public_ids)
 
 
 def _async_resource_refs(ep: dict) -> list[tuple[str, dict]]:
@@ -1514,6 +1666,7 @@ async def _resolve_marketplace_call(
     ep: dict, *, method: str, query: QueryValues, has_body: bool,
     read_body: Callable[[], Awaitable[bytes]], caller: Caller, db: AsyncSession,
     resolve_call: Callable[[str, Caller, AsyncSession], Awaitable[ResolvedTarget]],
+    request_headers=None,
     authorization_method: str = "",
 ) -> MarketplaceCall:
     """Resolve a catalog call, selecting an explicit OAuth grant before host matching.
@@ -1623,6 +1776,7 @@ async def _resolve_marketplace_call(
         unit_micro=info_unit, reported_charge_unit_micro=reported_charge_unit_micro,
         settlement_basis=basis, request_data=request_data,
         async_descriptor=ep.get("async"), resource_ownership=ep.get("resource_ownership"),
+        managed_resource=ep.get("managed_resource"),
     )
     if chosen_tool is not None:
         return MarketplaceCall(tool=chosen_tool, tier="tool", **common)
@@ -1651,7 +1805,7 @@ async def _resolve_marketplace_call(
     # request without inventing an Authorization or provider-key header.
     anonymous_cost = _anonymous_offer(ep, caller.org)
     if anonymous_cost is not None:
-        _enforce_platform_request(ep, body)
+        _enforce_platform_request(ep, body, request_headers)
         virtual = Tool(
             org_id=caller.org_id, name=ep["id"], owner=caller.email,
             base_url=provider.base_url, host=_host_of(provider.base_url), bindings=[],
@@ -1668,7 +1822,7 @@ async def _resolve_marketplace_call(
     cost = _platform_offer(ep, provider, caller.org)
     async_owner_call_id = None
     if cost is not None:
-        _enforce_platform_request(ep, body)
+        _enforce_platform_request(ep, body, request_headers)
         if service == "sumble":
             from . import sumble
             sumble.enforce(ep, _strict_json_object(body, ep["id"]) if has_body else {}, query)
@@ -1697,6 +1851,8 @@ async def _resolve_marketplace_call(
                         "message": f"{ep['id']} requires {name}={expected!r}; use the matching catalog tool.",
                     })
         async_owner_call_id = await _enforce_platform_async_ownership(ep, query, caller, db)
+        public_resource_ids = await _enforce_platform_managed_ownership(
+            ep, query, body, request_headers, caller, db)
     skip_direct = False
     probe_lock_id = None
     if cost is not None and capacity_view.is_exhausted(service, ep["id"]):
@@ -1723,6 +1879,7 @@ async def _resolve_marketplace_call(
         )
         return MarketplaceCall(tool=virtual, tier="platform", skip_direct=skip_direct,
                                async_owner_call_id=async_owner_call_id,
+                               public_resource_ids=public_resource_ids,
                                probe_lock_id=probe_lock_id, **{
             **common, "cost_type": str(cost.get("type") or "per_call"),
             "estimate_micro": info_est, "unit_micro": info_unit})
@@ -1762,6 +1919,7 @@ async def resolve_marketplace_target(
     read_body: Callable[[], Awaitable[bytes]],
     caller: Caller,
     resolve_call: Callable[[str, Caller, AsyncSession], Awaitable[ResolvedTarget]],
+    request_headers=None,
     authorization_method: str = "",
 ) -> MarketplaceCall:
     # The exhausted view is refreshed here — before the resolution session opens, so at most one
@@ -1780,6 +1938,7 @@ async def resolve_marketplace_target(
             caller=caller,
             db=db,
             resolve_call=resolve_call,
+            request_headers=request_headers,
             authorization_method=authorization_method,
         )
 

@@ -16,6 +16,13 @@ tools-registry is built so that **reading the source does not help an attacker**
 is hidden in the code. Secrets live in the database (encrypted with a Fernet key held only in the server
 environment) and enforcement happens server-side and in the operating system.
 
+Durable objects created with a shared provider credential are assigned to one organization before
+their upstream id is exposed. Every shared-key read, use, update, or delete checks that assignment
+before contacting the provider; unknown and cross-organization ids return the same denial. If a
+create succeeds upstream but ownership cannot be committed, treg attempts compensating deletion and
+returns an error without exposing the unmanaged id. BYOK objects remain scoped by the customer's
+provider account and bypass this platform ownership table.
+
 - **The proxy never hands the key to the caller.** For an HTTP tool, the registry injects the credential
   server-side and makes the upstream call; the consumer's token only authorizes it.
 - **Encryption at rest.** Stored secrets are Fernet-encrypted; the key is an environment variable, never

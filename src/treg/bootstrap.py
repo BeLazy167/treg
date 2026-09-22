@@ -240,6 +240,7 @@ _CONTROL_ROUTE_KEYS: frozenset[RouteKey] = frozenset({
     ('/orgs/{org_id}/api-keys/{key_id}/rotate', ('POST',), 'rotate_api_key'),
     ('/orgs/{org_id}/api-keys/{key_id}/hide', ('POST',), 'hide_api_key'),
     ('/orgs/{org_id}/api-keys/{key_id}/events', ('GET',), 'list_api_key_events'),
+    ('/orgs/{org_id}/provider-resources', ('GET',), 'list_provider_resources'),
     ('/orgs/{org_id}/projects', ('POST',), 'create_project'),
     ('/orgs/{org_id}/projects', ('GET',), 'list_projects'),
     ('/orgs/{org_id}/projects/{project_id}', ('DELETE',), 'delete_project'),

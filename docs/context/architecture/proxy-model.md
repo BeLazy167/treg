@@ -522,6 +522,17 @@ Unknown and cross-org ids receive the same 403 without contacting the provider. 
 are learned from an authorized successful poll or from the worker's terminal response. BYOK keeps its
 faithful-relay semantics because those ids belong to the caller's own provider account.
 
+Durable shared-account objects use the separate catalog `managed_resource` contract and
+`ProviderResource` table. Create relays with no DB connection held, then commits ownership before the
+provider id is returned; persistence failure triggers best-effort provider deletion and returns a
+treg 502 without exposing the id. Update changes local display state only after upstream success.
+Delete authorizes active or tombstoned ownership, treats an owned upstream 404 as deleted, then
+tombstones locally, making retries safe. These rules run only on the platform-key tier; own keys keep
+the ordinary faithful relay. A managed `use` declaration may permit provider-public ids through a
+bounded GET predicate. The local ownership check runs first; cross-org and tombstoned ids are denied
+without upstream I/O, while wholly unassigned ids are verified only after the DB phase closes and
+before money is reserved. Managed responses remain under the same 8 MiB complete-body limit.
+
 An owned platform status poll with an explicit free price and zero estimate takes the
 `MarketplaceCall.free_owned_poll` branch. It bypasses a new poll reservation and settlement while
 buffering the response for `observe_owned_poll`, which learns fetch ownership and finalizes the

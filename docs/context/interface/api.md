@@ -11,6 +11,7 @@ sources:
   - src/treg/caller_metadata.py
   - src/treg/client_identity.py
   - src/treg/application/auth.py
+  - src/treg/application/provider_resources.py
   - src/treg/application/call/access.py
   - src/treg/application/call/authorize.py
   - src/treg/application/call/idempotency.py
@@ -36,6 +37,7 @@ sources:
   - src/treg/routers/connections.py
   - src/treg/routers/onboard.py
   - src/treg/routers/orgs.py
+  - src/treg/routers/provider_resources.py
   - src/treg/routers/api_keys.py
   - src/treg/routers/resources.py
   - src/treg/routers/referrals.py
@@ -94,6 +96,19 @@ answers `{url, token, content_type, size, expires_at}`; `GET /m/{token}` serves 
 token, because the vendor's fetcher has none. 30 MB per file, 300 MB per org per 24 h, 7-day TTL,
 `image/*` / `audio/*` / `video/*` only, refused in the sandbox. Refusals: 415 type, 413 size, 429
 quota, 403 sandbox. Not metered. See [media](../architecture/media.md).
+
+## Provider resources
+
+`GET /orgs/{id}/provider-resources` is the unified HTTP/curl read for durable provider resources.
+Its default `source=auto` uses a connected Fish account for the Fish voice inventory and otherwise
+returns the team's platform-created rows. `source=platform` always returns the durable rows owned by
+the organization; the dashboard's Team resources tab uses that explicit view so BYOK account objects
+are never presented as treg-owned team resources.
+Ordinary providers read the organization's local rows. For `provider=fishaudio&kind=voice`, a team
+Fish credential makes the same route relay Fish's `self=true` account list and normalize it to the
+local resource shape; without BYOK it returns only voices owned by that treg organization. The
+`X-Treg-Resource-Source` response header is `byok` or `platform`. The raw
+`/call/fishaudio.voices.list` route remains a faithful BYOK-only upstream relay.
 
 ## Composition
 
