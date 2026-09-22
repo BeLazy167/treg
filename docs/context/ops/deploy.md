@@ -228,9 +228,30 @@ database is local SQLite. Hosted deployments must still leave it false.
 whole `web/` directory, so tutorials, agent files and installer assets ship with the server wheel.
 
 [`deploy/render.example.yaml`](../../../deploy/render.example.yaml) is a generic self-hosting example.
-It creates one web service and one PostgreSQL database, runs `python -m treg upgrade` before serving,
+It creates one web service and one PostgreSQL database, builds with
+`uv sync --locked --no-dev --extra server --active`, runs `python -m treg upgrade` before serving,
 starts `python -m treg`, and checks `/meta`. Copy it into the operator's own deployment repository and
 change resource names, region, plans, public URL and integrations.
+
+### Build from the lock file
+
+A deployment built from a checkout must install the dependency set `uv.lock` records, which is the
+set CI tests (`uv sync --locked` in `.github/workflows/ci.yml`). `pip install ".[server]"` does not
+read the lock: it resolves every open range in `pyproject.toml` afresh, so a build made after a
+dependency publishes a breaking release ships that release with no commit in this repository, and
+the suite that passed on the lock proves nothing about it. `--locked` refuses a stale lock instead
+of resolving, which makes a forgotten `uv lock` a failed build rather than a silent drift; `--no-dev`
+leaves the test tooling out; `--active` installs into the virtual environment the platform already
+activated for the start command. Every process that shares a database (web service and scheduled
+workers) must build the same way, or they run different dependency sets against one schema.
+
+Render adds `uv` to its Python runtime when `uv.lock` is present at the service root, but at an
+older version than `[tool.uv] required-version` accepts; set `UV_VERSION` on the service to a
+version that satisfies it. Upgrading a dependency is a `uv lock --upgrade-package <name>` (or
+`uv lock --upgrade`) commit that CI tests before it can reach a build.
+
+Installing the published wheel (`pip install "tools-registry[server]"`) is a different path: a wheel
+carries no lock, so that operator pins versions in their own requirements file.
 
 The example is deliberately not the treg.to production Blueprint. The hosted topology and settings
 are private operational state.
