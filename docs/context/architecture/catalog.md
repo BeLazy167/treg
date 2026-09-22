@@ -54,6 +54,7 @@ sources:
   - src/treg/catalog/examples/financialdatasets.prices.tickers.json
   - tests/test_financialdatasets.py
   - src/treg/catalog/quickenrich.yaml
+  - src/treg/catalog/influencersclub.yaml
   - src/treg/catalog/quickenrich.extended.yaml
   - src/treg/catalog/examples/quickenrich.companies.search.json
   - src/treg/catalog/examples/quickenrich.people.email.find.json
@@ -2334,7 +2335,10 @@ to choose (`docs/CAPABILITY-ROUTING-PLAN.md`). Everything else in the catalog st
   and agent-guessed `info@` addresses that one verify call each would have caught. The
   `hunter.companies.emails` catalog summary carries the same warning for direct `/call/` users,
   whose body is relayed verbatim. A suggestion only: treg never chains the verify call, which
-  would double every hit's price and change what the find bills.
+  would double every hit's price and change what the find bills. `routed: false` declares an
+  admission-only contract: its adapters verify like any other (which is what the archive's
+  `has_result_rules` reads), but no `treg.<capability>` row is ever generated from it. For a
+  capability whose "children" are one provider's price tiers, not a choice treg should make.
 - **Adapters** — `adapters.yaml`, one per endpoint: `accepts` (identity variants), `in` (contract
   field → `queryParams.x` / `body.x`), `const` (fixed provider params), `out` (core field →
   expression over the body), `miss`. The expression language (`domain/catalog/routing/paths.py`)
@@ -2358,7 +2362,7 @@ to choose (`docs/CAPABILITY-ROUTING-PLAN.md`). Everything else in the catalog st
   A failing adapter is not a candidate; the endpoint is still callable via `/call/` exactly as
   before. `tests/test_routing.py` pins that every shipped adapter passes.
 - **The generated row** — `routing/synthetic.py`: every capability with ≥ 2 verified children gets
-  `treg.<capability>` (`provider: treg`, `kind: routed`, `POST /<capability>`, `input` = the
+  `treg.<capability>` (`store.load` skips a `routed: false` contract) (`provider: treg`, `kind: routed`, `POST /<capability>`, `input` = the
   contract, `cost` = the children's range, `routed_children`). Never hand-written; not in any
   provider file.
   `catalog_get` on it returns the contract and the ranked **plan** (the quote) —
@@ -2576,9 +2580,9 @@ brackets are deliberately not addressable in this first grammar. Missing paths a
 
 `archive._normalized_hash` removes only these paths from a parsed copy for TTL equality. It never
 changes archived or served data, raw hashes, deduplication or hit/miss classification. Without a
-nonempty list, exact byte comparison remains authoritative. No shipped endpoint has an ignore
-list; use the bounded `archive_change_observed` reports and HogQL in [archive](archive.md) as
-human review input, then add a justified declaration in a separate PR.
+nonempty list, exact byte comparison remains authoritative. A declaration lives on the row with a
+one-line reason; the evidence behind it (`archive_change_observed` reports, HogQL in
+[archive](archive.md)) belongs in the PR that adds it, not here.
 
 
 ## Security

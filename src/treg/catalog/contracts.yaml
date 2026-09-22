@@ -1142,3 +1142,27 @@ contracts:
       count: {type: int}
     miss: "pages == []"
     idempotent: true
+
+  # ---- influencers.club creator enrichment: admission only. `routed: false` because raw / profile
+  # / full are ONE provider at three prices, not three providers to choose between.
+  creators.profile:
+    summary: "A creator's profile by social handle — influencers.club raw/profile/full tiers; cache result admission only, never routed"
+    identity:
+      - {handle: str, platform: str}
+    filters: {}
+    output:
+      profile: {type: dict, required: true, note: "the platform block (`result.<platform>`) — a creator the provider knows"}
+    miss: "profile == null"
+    idempotent: true
+    routed: false
+
+  creators.analytics:
+    summary: "A creator's performance analytics by social handle — influencers.club analytics tier; cache result admission only, never routed"
+    identity:
+      - {handle: str, platform: str}
+    filters: {}
+    output:
+      analytics: {type: dict, required: true, note: "the platform block (`result.<platform>`) — a creator the provider knows"}
+    miss: "analytics == null"
+    idempotent: true
+    routed: false

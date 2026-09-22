@@ -2651,3 +2651,26 @@ adapters:
     in_expr: {body.limit: limit}
     out: {pages: output.data.items, count: "len(output.data.items)"}
     miss: "coalesce(output.data.items, []) == []"
+
+  # ---- influencers.club enrich tiers: cache result admission only (`routed: false` contracts) --
+  # A hit is a platform block under `result`; an unknown creator is HTTP 400 and never recorded.
+  influencersclub.creators.enrich.raw:
+    accepts: [[handle, platform]]
+    in: {handle: body.handle, platform: body.platform}
+    out: {profile: "coalesce(result.instagram, result.youtube, result.tiktok, result.twitter, result.twitch, result.onlyfans, result.snapchat, result.discord, result.pinterest, result.facebook, result.linkedin)"}
+    miss: "coalesce(result.instagram, result.youtube, result.tiktok, result.twitter, result.twitch, result.onlyfans, result.snapchat, result.discord, result.pinterest, result.facebook, result.linkedin) == null"
+  influencersclub.creators.enrich.profile:
+    accepts: [[handle, platform]]
+    in: {handle: body.handle, platform: body.platform}
+    out: {profile: "coalesce(result.instagram, result.youtube, result.tiktok, result.twitter, result.twitch, result.onlyfans, result.snapchat, result.discord, result.pinterest, result.facebook, result.linkedin)"}
+    miss: "coalesce(result.instagram, result.youtube, result.tiktok, result.twitter, result.twitch, result.onlyfans, result.snapchat, result.discord, result.pinterest, result.facebook, result.linkedin) == null"
+  influencersclub.creators.enrich.full:
+    accepts: [[handle, platform]]
+    in: {handle: body.handle, platform: body.platform}
+    out: {profile: "coalesce(result.instagram, result.youtube, result.tiktok, result.twitter, result.twitch, result.onlyfans, result.snapchat, result.discord, result.pinterest, result.facebook, result.linkedin)"}
+    miss: "coalesce(result.instagram, result.youtube, result.tiktok, result.twitter, result.twitch, result.onlyfans, result.snapchat, result.discord, result.pinterest, result.facebook, result.linkedin) == null"
+  influencersclub.creators.enrich.analytics:
+    accepts: [[handle, platform]]
+    in: {handle: body.handle, platform: body.platform}
+    out: {analytics: "coalesce(result.instagram, result.youtube, result.tiktok, result.twitter, result.twitch, result.onlyfans, result.snapchat, result.discord, result.pinterest, result.facebook, result.linkedin)"}
+    miss: "coalesce(result.instagram, result.youtube, result.tiktok, result.twitter, result.twitch, result.onlyfans, result.snapchat, result.discord, result.pinterest, result.facebook, result.linkedin) == null"
