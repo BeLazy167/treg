@@ -1166,3 +1166,18 @@ contracts:
     miss: "analytics == null"
     idempotent: true
     routed: false
+
+  creators.enrich.by_email:
+    summary: "The creator behind an email address — influencers.club reverse lookup; cache result admission only, never routed"
+    identity:
+      - {email: str}
+    filters: {}
+    output:
+      platform: {type: str, required: true, note: "the creator's strongest platform — a creator the provider knows"}
+      username: {type: str}
+      url: {type: str}
+      full_name: {type: str}
+      followers: {type: int}
+    miss: "platform == null"
+    idempotent: true
+    routed: false
