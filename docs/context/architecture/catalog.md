@@ -2253,6 +2253,14 @@ with prose was the least useful thing the data allowed. Served structured over M
 the HTTP route's `near` + a hint line, and as "almost:" lines in the CLI — the caller is usually
 an LLM, and told exactly what to drop it re-queries correctly on the next call.
 
+The gate has a second failure the miss allowance cannot reach: task-phrased queries whose words are
+parameter VALUES. "apple stock closing prices for last year" carries six rare words, four must hit,
+and no row will ever contain "apple", "last" or "year" — the two rows that answer it match three
+each and stop one short. That is a semantic judgment (a value is not a capability), and the
+[discovery experiment](search-experiment.md) tests a relevance judge behind a widened recall
+(`candidates`: admit on ONE required hit, cut at 30) against this ranker on caller behaviour,
+without changing anything here while it runs in `shadow`.
+
 `scripts/search_bench.py` is the labeled replay (30 agent-shaped queries): sentence-style hit@8 went
 14% → 100% (hit@1 64%, MRR .766) with the 8 short-query regression rows byte-identical. The residue
 past this is semantic matching — an embedding model — which the bench so far says is not needed.

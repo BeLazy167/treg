@@ -1104,22 +1104,54 @@ def search(query: str, cat: Catalog, limit: int = 25) -> tuple[list[tuple[dict, 
         if sum(1 for i in required if per_tok[i]) < need:
             continue
         scored.append((ep, round(sum(w * idf[i] for i, w in enumerate(per_tok)), 4)))
-    # A routed parent (`treg.<capability>`) rides in whenever one of its children matched, at the
-    # best child's score: `find leads` matches `leadsforge.people.email.find` on the PROVIDER's
-    # name, and the row an agent should see first for that job is the one where treg chooses among
-    # every provider — which contains no word of that query (2026-08-28).
+    scored = with_routed_parents(scored, cat)
+    scored.sort(key=lambda row: (-row[1], row[0]["tier"] != "core", not row[0]["verified"], row[0]["id"]))
+    return scored[:max(limit, 0)], len(scored)
+
+
+def with_routed_parents(scored: list[tuple[dict, float]], cat: Catalog) -> list[tuple[dict, float]]:
+    """A routed parent (`treg.<capability>`) rides in whenever one of its children is in `scored`, at
+    the best child's score: `find leads` matches `leadsforge.people.email.find` on the PROVIDER's
+    name, and the row an agent should see first for that job is the one where treg chooses among
+    every provider — which contains no word of that query (2026-08-28). Shared by `search` and the
+    judged page (`candidates` deliberately holds no routed rows), so both pages steer alike."""
     present = {ep["id"] for ep, _ in scored}
     best_child: dict[str, float] = {}
     for ep, score in scored:
         parent_id = f"treg.{ep.get('capability')}" if ep.get("capability") else None
         if parent_id and parent_id not in present and ep.get("kind") != "routed":
             best_child[parent_id] = max(best_child.get(parent_id, 0.0), score)
+    out = list(scored)
     for parent_id, score in best_child.items():
         parent = cat.by_id.get(parent_id)
         if parent is not None and parent.get("kind") == "routed":
-            scored.append((parent, score))
+            out.append((parent, score))
+    return out
+
+
+def candidates(query: str, cat: Catalog, limit: int = 30) -> list[tuple[dict, float]]:
+    """Recall for a JUDGE, not an answer: every concrete endpoint that hits at least one required
+    token, best lexical score first, cut at `limit`.
+
+    `search` demands most of the rare words; that gate is what keeps a keyword page honest and it is
+    also what zeroes task-shaped queries — "apple stock closing prices for last year" carries three
+    words that are parameter VALUES (apple, last, year) and no catalog row will ever contain them.
+    A judge that reads the task can tell a value from a capability; the gate cannot. So this pass
+    admits on ONE hit and lets the judge decide, which is only safe because nothing here is shown
+    without the judge's answer. Routed parents are left out: the judge scores what an endpoint DOES,
+    and `with_routed_parents` puts the parent back over its children afterwards.
+    """
+    m = _match(query, cat)
+    if m is None or limit <= 0:
+        return []
+    tokens, rows, best, idf, required, need = m
+    scored: list[tuple[dict, float]] = []
+    for (ep, _), per_tok in zip(rows, best):
+        if ep.get("kind") == "routed" or not any(per_tok[i] for i in required):
+            continue
+        scored.append((ep, round(sum(w * idf[i] for i, w in enumerate(per_tok)), 4)))
     scored.sort(key=lambda row: (-row[1], row[0]["tier"] != "core", not row[0]["verified"], row[0]["id"]))
-    return scored[:max(limit, 0)], len(scored)
+    return scored[:limit]
 
 
 def near_misses(query: str, cat: Catalog, limit: int = 3) -> list[dict]:

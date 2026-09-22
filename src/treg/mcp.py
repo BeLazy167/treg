@@ -51,7 +51,8 @@ from mcp.server.transport_security import TransportSecuritySettings
 from mcp.shared.exceptions import MCPError
 from mcp.types import METHOD_NOT_FOUND, ToolAnnotations
 
-from . import audit, hints
+from . import analytics, audit, hints
+from .application import search_experiment
 from .domain.catalog import store as catalog_store
 from .config import PUBLIC_HOST_ALIASES, get_settings
 from .feedback_contract import FeedbackCategory, FEEDBACK_DESCRIPTION, ReviewUsefulness, REVIEW_DESCRIPTION
@@ -590,12 +591,34 @@ async def _whose_grant(client: httpx.AsyncClient, slug: str | None, *, oauth: bo
     annotations=_READS,
     structured_output=True
 )
-async def catalog_search(query: str, limit: int = 8) -> SearchOut:
-    return await _catalog_search_impl(query, limit, surface=_TEAM_SURFACE)
+async def catalog_search(query: str, ctx: Context, limit: int = 8) -> SearchOut:
+    return await _catalog_search_impl(query, limit, ctx=ctx, surface=_TEAM_SURFACE)
+
+
+async def _search_identity(ctx: Context | None) -> tuple[str | None, int | None, str | None]:
+    """`(caller_key, org_id, email)` for the discovery experiment — best effort, never a gate.
+
+    The key deals the arm and needs only the token. The team and email are what a later `call`
+    (audit.CallRecord) carries, so they are what the outcome joins on; resolving them costs the
+    same in-process round trips `balance` makes, and only while the experiment is on.
+    """
+    token = _bearer(ctx) if ctx is not None else ""
+    key = search_experiment.caller_key(token)
+    if not token:
+        return key, None, None
+    try:
+        async with _api(token) as client:
+            org_id, _slug, _problem = await _resolve_org(client)
+            me = await client.get("/auth/me")
+            email = _body(me).get("email") if me.status_code == 200 else None
+            return key, org_id, email
+    except Exception:  # noqa: BLE001 — attribution, never a reason to fail a search
+        logging.getLogger("treg.mcp").warning("search experiment: identity unresolved", exc_info=True)
+        return key, None, None
 
 
 async def _catalog_search_impl(
-    query: str, limit: int = 8, *, surface: _SurfacePolicy
+    query: str, limit: int = 8, *, ctx: Context | None = None, surface: _SurfacePolicy
 ) -> SearchOut:
     cat = catalog_store.load()
     limit = max(1, min(limit, 25))
@@ -619,6 +642,32 @@ async def _catalog_search_impl(
         max_children=catalog_store.MAX_ROUTED_CHILDREN)
     hidden = {r["ep"]["id"]: r["children_hidden"] for r in grouped if r.get("children_hidden")}
     ranked = [(r["ep"], r["score"]) for r in grouped][:limit]
+    baseline_page = ranked
+    if query.strip() and search_experiment.mode() != "off":
+        # The discovery experiment (application.search_experiment): a relevance judge over a wider
+        # recall, compared with the page above on what the caller does next. `shadow` serves this
+        # page unchanged and only logs; `interleave` may serve a merge. Whatever the judge does,
+        # `ranked` stays a page — an abstaining judge leaves the baseline in place.
+        async def _finish(rows):
+            st = await _observed_stats([ep["id"] for ep, _ in rows])
+            rows = catalog_store.rerank(rows, st, cat)
+            g = catalog_store.group_routed(
+                [{"ep": ep, "score": sc, "capability": ep.get("capability"), "kind": ep.get("kind")}
+                 for ep, sc in rows], max_children=catalog_store.MAX_ROUTED_CHILDREN)
+            return [(r["ep"], r["score"]) for r in g][:limit], st
+        key, org_id, email = await _search_identity(ctx)
+        exp = await search_experiment.run(query, cat, baseline=baseline_page, baseline_total=total,
+                                          limit=limit, caller=key, finish=_finish)
+        stats = {**exp.stats, **stats}
+        ranked = exp.shown
+        audit.record_search(query=query.strip(), source=surface.event_source, org_id=org_id,
+                            user_email=email, **exp.log)
+        analytics.capture(key or "anonymous", "catalog_search_judged", {
+            "source": surface.event_source, "mode": exp.log["mode"], "arm": exp.arm,
+            "baseline_total": total, "baseline_empty": not baseline_page,
+            "differs": exp.log["differs"], "judge_ms": exp.log["judge_ms"],
+            "judge_error": exp.log["judge_error"], "judge_tokens_in": exp.log["judge_tokens_in"],
+            "shown": len(ranked)})
     for ep, score in ranked:
         obs = stats.get(ep["id"]) or {}
         cost = cat.cost_view(ep.get("cost"), ep.get("provider")) or {}
@@ -657,11 +706,13 @@ async def _catalog_search_impl(
         out["ranking_note"] = (f"{query!r} matches too broadly to rank on measured reliability past "
                                f"the first {catalog_store.RERANK_BAND} equally-scoring rows — "
                                f"add a word to narrow it")
-    if not results:
+    if not baseline_page and query.strip():
         # Same miss log as GET /catalog/search (see models.SearchMiss) — this tool reads the catalog
-        # in-process, so the HTTP route's logging never sees an MCP agent's empty search.
-        if query.strip():
-            audit.record_search_miss(query=query.strip(), source=surface.event_source)
+        # in-process, so the HTTP route's logging never sees an MCP agent's empty search. Judged by
+        # the LEXICAL page: the miss log measures the shipped ranker's coverage, and a judged page
+        # that found something is the experiment's result, not a reason to stop recording the gap.
+        audit.record_search_miss(query=query.strip(), source=surface.event_source)
+    if not results:
         # the zero-result answer carries the rows that JUST missed the gate and which words they
         # missed — the caller is an LLM, and told exactly what to drop it re-queries correctly
         near = catalog_store.near_misses(query, cat)
@@ -1206,8 +1257,8 @@ directory_mcp = MCPServer(
     annotations=_DIRECTORY_SEARCH,
     structured_output=True,
 )
-async def directory_catalog_search(query: str, limit: int = 8) -> SearchOut:
-    return await _catalog_search_impl(query, limit, surface=_DIRECTORY_SURFACE)
+async def directory_catalog_search(query: str, ctx: Context, limit: int = 8) -> SearchOut:
+    return await _catalog_search_impl(query, limit, ctx=ctx, surface=_DIRECTORY_SURFACE)
 
 
 @directory_mcp.tool(
