@@ -21,7 +21,9 @@ environment) and enforcement happens server-side and in the operating system.
 - **Encryption at rest.** Stored secrets are Fernet-encrypted; the key is an environment variable, never
   in the repo or the database.
 - **Tenant isolation.** Every secret, tool, and record is scoped to an org; access is gated by role and,
-  per member, by an explicit tool allow-list.
+  per member, by an explicit tool allow-list. Pinned agent tags additionally scope call/run history,
+  archived results and shared-provider async ownership; foreign and untagged records return 404.
+  These scopes do not partition a team's BYOK account or authenticate public media URLs.
 - **SSRF guard.** A tool's upstream host is re-resolved at call time and internal/metadata addresses are
   refused (defeats DNS-rebinding).
 - **Local runs are sandboxed.** `treg run` on a member's machine executes the CLI as a locked-down

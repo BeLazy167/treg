@@ -425,3 +425,12 @@ redistribute the code to third parties as a competing hosted/managed registry se
 permission (`jason@superdesign.dev`). **Using the hosted treg.to API** inside your own product —
 with pass-through billing via `X-Treg-Meta` and `usage/by-tag` — is allowed without permission;
 that's calling our API, not redistributing our software.
+
+### Pinned customer read scopes
+
+For a restricted customer agent, `treg org agent-new bot --pin customer=cust_A` enforces attribution
+and scopes call/run history, archived results and shared-provider async ownership to that pin.
+Foreign or unattributed ids return 404; an unpinned operator keeps the org-wide view and shared
+balance. BYOK account access and public media URLs retain their existing permissions. See the
+[multi-tenancy contract](docs/context/architecture/multi-tenancy.md#caller-tags-and-pinned-read-scopes)
+for multiple pins, migration and replay behavior.

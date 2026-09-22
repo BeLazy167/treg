@@ -465,6 +465,9 @@ class RunRecord(SQLModel, table=True):
     api_key_prefix: str | None = Field(default=None)
     created_at: NaiveUTC = Field(default_factory=_now)
 
+    # Attribution snapshot: never infer ownership from a current membership or lossy audit.
+    tags: dict | None = Field(default=None, sa_column=Column("tags", JSON, nullable=True))
+
 
 class Bundle(SQLModel, table=True):
     """A skill: the named grouping of a recipe (SKILL.md) + its secrets + its tool(s) — pure
@@ -848,6 +851,9 @@ class AsyncTaskRecord(SQLModel, table=True):
     settled_micro: int | None = Field(default=None)
     completed_at: NaiveUTC | None = Field(default=None, index=True)
 
+    # Attribution snapshot: never infer ownership from a current membership or lossy audit.
+    tags: dict | None = Field(default=None, sa_column=Column("tags", JSON, nullable=True))
+
 
 class AsyncResourceRecord(SQLModel, table=True):
     """An opaque object created on a shared provider account and owned by one org."""
@@ -866,6 +872,9 @@ class AsyncResourceRecord(SQLModel, table=True):
     resource_id: str = Field(index=True)
     source_call_id: str = Field(index=True)
     created_at: NaiveUTC = Field(default_factory=_now, index=True)
+
+    # Attribution snapshot: never infer ownership from a current membership or lossy audit.
+    tags: dict | None = Field(default=None, sa_column=Column("tags", JSON, nullable=True))
 
 
 class TagSpend(SQLModel, table=True):
@@ -1232,6 +1241,8 @@ class Feedback(SQLModel, table=True):
     call_ids: list[str] = Field(default_factory=list, sa_column=Column(JSON, nullable=False))
     verified_call_ids: list[str] = Field(default_factory=list, sa_column=Column(JSON, nullable=False))
     endpoint_id: str | None = Field(default=None)
+    # Attribution snapshot: never infer ownership from a current membership or lossy audit.
+    tags: dict | None = Field(default=None, sa_column=Column("tags", JSON, nullable=True))
     created_at: NaiveUTC = Field(default_factory=_now)
 
 

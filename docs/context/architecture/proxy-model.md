@@ -557,3 +557,13 @@ CLI output, boundaries, Range, disconnects, settlement evidence, archive and rep
 ## HarvestAPI integration
 
 Catalog entries can opt into `strict_query`: `_enforce_catalog_query` rejects bodies, undeclared/duplicate query parameters, missing required inputs and unsupported enum values before credential selection. It applies to catalog calls on every tier, leaves unmarked entries unchanged and does not rewrite requests or constrain arbitrary raw own-tool relays.
+
+## Pinned shared-provider reads
+
+`_enforce_platform_async_ownership` adds `pinned_tag_predicates` to its org-scoped task and resource
+queries. All pins must match the submission snapshot; a pinned unknown/foreign id returns 404 before
+relay. BYOK and raw own-tool access keep their existing credential ACLs. The shared-provider
+`Idempotency-Key` rewrite additionally includes the complete enforced pin, so different customers
+cannot receive one upstream job through provider deduplication. Unpinned digests are unchanged.
+`intake.prepare_call_intake` includes the same full pin in Treg's membership replay namespace. See
+[multi-tenancy](multi-tenancy.md#caller-tags-and-pinned-read-scopes) for the history and ledger scopes.

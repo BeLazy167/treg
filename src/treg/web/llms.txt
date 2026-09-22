@@ -136,7 +136,9 @@ one back with its ledger entries.
   limit — so do not sell them to your users as exact.
 - **Declare** which keys carry budgets at `PATCH /orgs/{id}/settings` (up to 3).
 - **Isolate** the few who need it: `treg org agent-new bot --pin customer=cust_A` mints a token that
-  can only ever bill `cust_A`. Tag for counting, token for control.
+  can only ever bill `cust_A` and reads only matching call/run history and shared-provider async
+  objects. Foreign or untagged ids return 404. BYOK account access and public media URLs are unchanged.
+  Tag for counting, token for control.
 
 This use case — your product calling the hosted treg.to API, billing your users based on the usage
 data treg returns — is **allowed and encouraged** with no special agreement. treg.to is the API you

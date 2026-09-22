@@ -26,6 +26,7 @@ from ...domain.governance import access as access_policy
 from ...domain.identity.access import Caller
 from ...domain.money import settlement as settlement_basis
 from ...infra.db import session_maker
+from ...domain.governance.access import pinned_tag_predicates
 from ...models import AsyncResourceRecord, AsyncTaskRecord, CapabilityPin, Org, Secret, Tool
 from ..connect import _host_of, _provider_bindings
 from .types import ResolutionFailed, ResolvedTarget
@@ -1310,6 +1311,7 @@ async def _enforce_platform_async_ownership(
         value = _one_resource_value(ep, query, [("resource", {"name": required.get("param")})])
         resource_owned = (await db.execute(select(AsyncResourceRecord.id).where(
             AsyncResourceRecord.org_id == caller.org_id,
+            *pinned_tag_predicates(AsyncResourceRecord.tags, caller.membership.pinned_tags),
             AsyncResourceRecord.provider == ep["provider"],
             AsyncResourceRecord.resource_kind == required.get("kind"),
             AsyncResourceRecord.resource_id == value,
@@ -1318,11 +1320,12 @@ async def _enforce_platform_async_ownership(
     refs = _async_resource_refs(ep)
     if not refs:
         if required and not resource_owned:
-            raise _async_resource_denied()
+            raise _async_resource_denied(caller)
         return None
     value = _one_resource_value(ep, query, refs)
     candidates = (await db.execute(select(AsyncTaskRecord).where(
         AsyncTaskRecord.org_id == caller.org_id,
+        *pinned_tag_predicates(AsyncTaskRecord.tags, caller.membership.pinned_tags),
         AsyncTaskRecord.provider == ep["provider"],
         or_(AsyncTaskRecord.task_id == value, AsyncTaskRecord.result_id == value),
     ))).scalars().all()
@@ -1344,12 +1347,13 @@ async def _enforce_platform_async_ownership(
                     return None
     if resource_owned:
         return None
-    raise _async_resource_denied()
+    raise _async_resource_denied(caller)
 
 
-def _async_resource_denied() -> ResolutionFailed:
+def _async_resource_denied(caller: Caller) -> ResolutionFailed:
     return ResolutionFailed(
-        "async_resource_not_owned", status_code=403, detail={
+        "async_resource_not_owned",
+        status_code=404 if caller.membership.pinned_tags else 403, detail={
             "error": "async_resource_not_owned",
             "message": "this async task or result is not available to the current team",
         },

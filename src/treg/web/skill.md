@@ -313,6 +313,7 @@ treg org ls / treg org switch <slug>           # your orgs / switch active
 **Give an agent its own identity** (admin+). An agent doesn't have to borrow the human's token — mint
 it one, and every call it makes is capped, scoped and logged as *itself*:
 ```bash
+treg org agent-new customer-bot --pin customer=cust_A  # scope history and shared-provider async reads
 treg org agent-new ci-bot                        # prints the token ONCE (run again to rotate)
 treg org agent-new ci-bot --tools stripe,gh --cap 500   # only these tools, 500 calls/day
 treg org agents                                  # who the team's agents are + today's usage

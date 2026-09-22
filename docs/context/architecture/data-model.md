@@ -2,6 +2,7 @@
 title: Data model — the registry tables, async DB, audit writer
 status: shipped
 sources:
+  - src/treg/alembic/versions/0042_pinned_read_scope.py
   - alembic.ini
   - src/treg/alembic/env.py
   - src/treg/alembic/versions/0001_baseline_current_schema.py
@@ -586,7 +587,10 @@ records), `budget_dim`/`budget_val` (the indexed copy of the primary pair) and `
 
 `Org` gains `budget_dims` (which keys may carry budgets, ≤3), `primary_dim` (the one that scopes
 idempotency) and `daily_cap_micro` (the team's own spend ceiling, 0 = follow the deployment default).
-`Membership` gains `pinned_tags`.
+`Membership` gains `pinned_tags`. Revision `0042` adds nullable `tags` snapshots to `RunRecord`,
+`AsyncTaskRecord` and `AsyncResourceRecord`. No historical ownership is inferred: NULL snapshots
+are invisible to pinned readers. The reserve `LedgerEntry.meta.tags` freezes effective attribution
+without a new ledger column, allowing scoped ledger-only reads after audit loss or release.
 
 The columns are part of the Alembic baseline schema (the legacy startup migrations that once added
 them are deleted); `TagSpend` and `TagBudget` are ordinary baseline tables.

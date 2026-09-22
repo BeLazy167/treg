@@ -262,7 +262,10 @@ deadline it releases the hold in full**, marks the row `timed_out` with `reconci
 an ERROR-level alert: an outcome nobody observed is the platform's cost, never the customer's, and a
 provider that silently changed its status field shows up as absorbed timeouts in
 `reconcile.async_task_settlement` (`absorbed_timeouts`) rather than as a quiet overcharge.
-Platform-key poll and fetch calls are authorized against the caller org's row before relay. A
+Platform-key poll and fetch calls are authorized against the caller org's row before relay, and
+against all membership pins when present. `defer_submission` freezes effective tags on the task;
+`_remember_resource` propagates them to later resource ids. `remember_platform_resources` freezes
+successful non-deferred submissions too. Missing legacy tags fail closed for pinned readers. A
 successful caller-driven poll may see a fetch-mode result id before the worker does, so the buffered
 terminal response records that id on the same row; the worker records it as part of settlement too.
 This makes the durable record both the hold owner and the authority for later shared-account objects.
@@ -299,7 +302,7 @@ a table-settled video row once billed its fallback ceiling for the provider's ma
 the first metered token-priced listing, together with its fx rule and a live test. Ledger writes remain exclusively through `domain/money`.
 
 The audit row (`CallRecord`) froze the reserve as `cost_charged_micro` at submission, so displays
-must not read it alone. `application.asynctasks.views_for(org_id, call_ids)` is the read side: it
+must not read it alone. `application.asynctasks.views_for(org_id, call_ids, pinned_tags=...)` is the read side: it
 joins the org's `AsyncTaskRecord`s, loads the archived terminal JSON for settled ones, and derives
 the artifact with the pure `domain.asynctasks.artifact(descriptor, terminal)` - the first URL under
 `result.path`, or the `{endpoint, name, value}` retrieval target for fetch-mode descriptors (the
@@ -998,3 +1001,12 @@ instead of raising. `_prospeo_cost_micro` settles bulk calls from finite nonnega
 single enrichments from endpoint-specific success evidence plus `free_enrichment`, searches from
 `free` and the result list, and suggestions at zero. Non-finite or malformed numeric evidence keeps
 the estimate for reconciliation. BYOK calls never enter this money path.
+
+## Pinned attribution and replay reads
+
+`reserve_in_transaction` writes `meta.tags` from its authoritative `tags` argument, overriding any
+same-named caller provenance. The append-only reserve entry survives hold release and provides the
+ownership proof for `/calls/{call_ref}` when audit was shed. Amounts and settlement rules are unchanged.
+`_scoped_idempotency_key` also folds in every membership pin; unpinned primary-tag scoping is unchanged.
+The shared-provider label includes the pin too (`scope_shared_idempotency_key`), preventing two
+customers' identical labels from resolving to one upstream job. BYOK labels remain verbatim.

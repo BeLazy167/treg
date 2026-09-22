@@ -854,7 +854,8 @@ async def _execute_call(request: _ApplicationRequest, upstream_client: httpx.Asy
                 # Rewrite 4 of the relay's faithfulness contract: every org shares ONE provider
                 # account here, so a caller's Idempotency-Key must be partitioned by org before it
                 # reaches a provider that honors it (relay.py explains the leak it closes).
-                raw_headers = scope_shared_idempotency_key(raw_headers, caller.org_id)
+                raw_headers = scope_shared_idempotency_key(
+                    raw_headers, caller.org_id, pinned_tags=caller.membership.pinned_tags)
             upstream_request = UpstreamRequest(
                 method=request.method,
                 raw_headers=raw_headers,
@@ -968,7 +969,8 @@ async def _execute_call(request: _ApplicationRequest, upstream_client: httpx.Asy
                 if mk.resource_ownership and 200 <= response.status < 300:
                     try:
                         await async_task_app.remember_platform_resources(
-                            caller.org_id, mk.provider, call_ref, mk.resource_ownership, body)
+                            caller.org_id, mk.provider, call_ref, mk.resource_ownership, body,
+                            tags=meta.tags)
                     except Exception:  # noqa: BLE001 - failure keeps later access fail-closed
                         logging.getLogger("treg.asynctasks").warning(
                             "could not persist async resource ownership for %s", call_ref,
@@ -1102,7 +1104,8 @@ async def _execute_call(request: _ApplicationRequest, upstream_client: httpx.Asy
             request.context.finalization = FinalizationState.FINALIZING
             if deferred:
                 try:
-                    charged = await async_task_app.defer_submission(mk, body, caller.org_id)
+                    charged = await async_task_app.defer_submission(
+                        mk, body, caller.org_id, tags=meta.tags)
                     observed = None
                     request.context.finalization = FinalizationState.FINALIZED
                 except Exception as exc:  # noqa: BLE001 - an accepted task must never orphan a hold

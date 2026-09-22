@@ -875,7 +875,11 @@ Caps are **advisory**: concurrent calls can overshoot slightly. Your balance is 
 Untagged traffic shows up as `unattributed_micro` rather than being dropped.
 
 **Isolation.** `treg org agent-new <name> --pin customer=cust_A` mints a token pinned to one tag value;
-the pin beats the header and a mismatch is a 403. Rule of thumb: **tag for counting, token for control.**
+the pin beats the header and a mismatch is a 403. Call history, archived results, call references,
+runs and shared-provider async ownership require every pinned tag. Foreign and unattributed ids
+return 404 to pinned callers. Unpinned org readers retain their existing access; BYOK provider
+account permissions and public media URLs are unchanged. See [multi-tenancy](../architecture/multi-tenancy.md)
+for legacy rows and ledger-only reads. Rule of thumb: **tag for counting, token for control.**
 
 ## Referrals
 
