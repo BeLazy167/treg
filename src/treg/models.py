@@ -1348,6 +1348,44 @@ class SearchMiss(SQLModel, table=True):
     created_at: datetime = Field(default_factory=_now, index=True)
 
 
+class SearchLog(SQLModel, table=True):
+    """One MCP catalog search under the discovery experiment (`application.search_experiment`):
+    what the lexical ranker answered, what the relevance judge answered, and what was SHOWN.
+
+    The experiment has no labels. Its signal is behaviour: a `call` by the same caller, soon after,
+    to an endpoint that was on the page. That join needs the page as it was served and, for an
+    interleaved page, which ranker put each row there — so the row keeps both full lists and the
+    per-row owner rather than a summary. `baseline_total` (0 = the lexical gate admitted nothing)
+    is the stratum: recall gain and ranking gain are different claims and are read separately.
+
+    Carries identity, unlike `SearchMiss`, because the caller's later call is the outcome — an
+    anonymous row has no outcome to join. Written fire-and-forget through `audit.record_search`;
+    a dropped row costs one sample, never a search. The judge's timings and errors ride along so
+    the latency guardrail reads from the same table as the effect.
+    """
+
+    id: int | None = Field(default=None, primary_key=True)
+    created_at: datetime = Field(default_factory=_now, index=True)
+    source: str = Field(default="mcp", index=True)          # mcp | claude-connector
+    query: str                                               # capped by the writer
+    org_id: int | None = Field(default=None, index=True)
+    user_email: str | None = Field(default=None)
+    mode: str                                                # shadow | interleave
+    arm: str                                                 # shadow | baseline | judged | interleave
+    # [endpoint_id, ...] — the lexical page as the caller would have seen it without the experiment
+    baseline_ids: list | None = Field(default=None, sa_column=Column("baseline_ids", JSON, nullable=True))
+    # [[endpoint_id, probability], ...] — the judge's kept rows, in the order the judged arm shows
+    judged: list | None = Field(default=None, sa_column=Column("judged", JSON, nullable=True))
+    # [[endpoint_id, owner], ...] — the page actually served; owner is baseline | judged | both
+    shown: list | None = Field(default=None, sa_column=Column("shown", JSON, nullable=True))
+    baseline_total: int = 0                                  # lexical matches before the page cut
+    differs: bool = False                                    # the two pages are not the same set+order
+    judge_ms: int | None = Field(default=None)
+    judge_tokens_in: int | None = Field(default=None)
+    judge_tokens_out: int | None = Field(default=None)
+    judge_error: str | None = Field(default=None)            # timeout | http_<status> | <exception>; None = answered
+
+
 class CapacityPolicy(SQLModel, table=True):
     """How one treg-owned provider account (tier 4) is funded and metered — written by the capacity
     worker only (`treg-worker capacity sweep`), never by the call path.

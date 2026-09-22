@@ -278,6 +278,29 @@ class Settings(BaseSettings):
     # it by default" are separate questions, and the second one is answered by traffic, not by
     # argument.
     routed_discovery: str = "on"
+    # The discovery EXPERIMENT (application.search_experiment): a relevance judge (TypeSafe's Jev)
+    # scores a widened lexical recall and the result is compared with the shipped ranker on
+    # behaviour — did the caller go on to `call` something from the page. `off` (default) leaves
+    # search exactly as it is. `shadow` computes and logs both pages, serves the baseline.
+    # `interleave` serves a team-draft merge of both pages to most callers and a pure page to two
+    # holdouts. Any value here is also the kill switch: a bad judge is one env change from off.
+    search_experiment: str = "off"
+    # Per-caller share (each) of the two pure arms in `interleave` mode; the rest is interleaved.
+    search_experiment_holdout_percent: int = 10
+    # Stirs the caller→arm hash, so a rerun of the experiment re-deals the arms.
+    search_experiment_salt: str = ""
+    # Rows the judge sees per query (widened recall), and the probability cut that keeps a row on
+    # the judged page (`keep`) or puts it in its top bucket (`high`).
+    search_experiment_candidates: int = 30
+    search_judge_keep: float = 0.4
+    search_judge_high: float = 0.7
+    # The judge itself. Empty key = the experiment cannot run and every mode behaves as `off`.
+    typesafe_api_key: str = ""
+    typesafe_model: str = "jev-latest"
+    typesafe_url: str = "https://api.typesafe.ai/v1/systemone"
+    # Past this the search answers from the baseline alone; the row records `judge_error=timeout`.
+    # Measured at 30 candidates: about 1.2-1.5 s per answer on a quiet day, so 1.5 sits on the edge.
+    typesafe_timeout_s: float = 2.5
     # DEFAULT per-org, per-UTC-day limit on tier-4 spend, for a team that has not set its own
     # `Org.daily_cap_micro`. 0 = no default limit. A team may set its own figure to anything,
     # including 0 for no limit — the limit is the team's protection against a runaway agent

@@ -264,6 +264,10 @@ contract:
 - `TREG_PLATFORM_PROVIDERS` enables use of configured platform credentials.
 - `TREG_OVERFLOW_MODE` and `TREG_OVERFLOW_DAILY_BUDGET_USD` control same-vendor overflow. See
   [capacity](capacity.md).
+- `TREG_SEARCH_EXPERIMENT` (`off` | `shadow` | `interleave`) runs the
+  [discovery experiment](../architecture/search-experiment.md) on the MCP search tools; it is also
+  its kill switch. Needs `TREG_TYPESAFE_API_KEY`; `TREG_TYPESAFE_TIMEOUT_S` bounds what the judge
+  may add to a search. Off by default, and off whenever the key is empty.
 
 Exact treg.to values, funded accounts and rollout instructions live in the private
 [provider-capacity runbook](https://github.com/superdesigndev/treg-internal/blob/main/docs/production/provider-capacity.md).
