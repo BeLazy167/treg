@@ -95,6 +95,19 @@ async def _submit(clients: AsyncClient, monkeypatch, document: dict):
     }})
 
 
+async def test_naive_datetime_bind_does_not_raise_under_sqlmodel_0_0_45(clients: AsyncClient):
+    """Regression test: SQLModel 0.0.45+ rejects naive datetime binds unless fields use NaiveDatetime.
+
+    The settle worker passes utcnow_naive() to WHERE next_check_at <= :now. Before the NaiveUTC
+    annotation fix, this raised:
+        ValueError: Datetime values must have timezone information.
+    """
+    now = utcnow_naive()
+    assert now.tzinfo is None, "sanity check: utcnow_naive() must return a naive datetime"
+    candidates = await task_app._due_candidates(limit=10, now=now)
+    assert isinstance(candidates, list)
+
+
 @pytest.mark.parametrize("legacy_cache", [False, True])
 async def test_generation_is_never_replayed_across_orgs(
     clients: AsyncClient, monkeypatch, replicate_platform, legacy_cache,
