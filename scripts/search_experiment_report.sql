@@ -57,46 +57,44 @@ GROUP BY 1, 2 ORDER BY 2, 1;
 --    pages DISAGREE: a row only one page carried, or one they ranked differently (the higher rank
 --    wins). Rows both pages carried at the same rank are ties and count for nobody. Under the null
 --    hypothesis the two credits are a fair coin; the last column is the two-sided binomial z.
+--    Membership comes from the served page's per-row `owner` (baseline | judged | both), which is
+--    exact for every row including routed parents; the rank comparison for a `both` row reads the
+--    two page lists and calls it a tie when the judged rank is unknown (a routed parent on rows
+--    written before parents were listed in `judged`).
 WITH il AS (
   SELECT s.id, s.org_id, s.user_email, s.created_at,
          ARRAY(SELECT jsonb_array_elements_text(s.baseline_ids::jsonb)) AS base_ids,
          ARRAY(SELECT jsonb_array_elements(s.judged::jsonb)->>0)        AS judged_ids,
-         ARRAY(SELECT jsonb_array_elements(s.shown::jsonb)->>0)         AS shown_ids
+         s.shown::jsonb                                                 AS shown
   FROM searchlog s
   WHERE s.created_at > now() - :'window'::interval AND s.mode = 'interleave' AND s.arm = 'interleave'
     AND s.judged IS NOT NULL AND s.differs AND s.org_id IS NOT NULL
 ),
 first_call AS (
-  SELECT DISTINCT ON (il.id) il.id, il.base_ids, il.judged_ids, c.endpoint_id
+  SELECT DISTINCT ON (il.id) il.id, il.base_ids, il.judged_ids, c.endpoint_id,
+         (SELECT e->>1 FROM jsonb_array_elements(il.shown) e WHERE e->>0 = c.endpoint_id LIMIT 1) AS owner
   FROM il JOIN callrecord c
     ON c.org_id = il.org_id AND c.user_email = il.user_email
    AND c.created_at BETWEEN il.created_at AND il.created_at + :'followup'::interval
-   AND c.endpoint_id = ANY (il.shown_ids)
+   AND c.endpoint_id IN (SELECT e->>0 FROM jsonb_array_elements(il.shown) e)
   ORDER BY il.id, c.created_at
-),
-credited AS (
-  SELECT id,
-         array_position(base_ids, endpoint_id)   AS rank_base,
-         array_position(judged_ids, endpoint_id) AS rank_judged
-  FROM first_call
 ),
 points AS (
   SELECT CASE
-           WHEN rank_base IS NOT NULL AND rank_judged IS NULL THEN 'baseline'
-           WHEN rank_judged IS NOT NULL AND rank_base IS NULL THEN 'judged'
-           WHEN rank_base < rank_judged THEN 'baseline'
-           WHEN rank_judged < rank_base THEN 'judged'
+           WHEN owner IN ('baseline', 'judged') THEN owner
+           WHEN array_position(base_ids, endpoint_id) < array_position(judged_ids, endpoint_id) THEN 'baseline'
+           WHEN array_position(judged_ids, endpoint_id) < array_position(base_ids, endpoint_id) THEN 'judged'
            ELSE 'tie'
          END AS credit
-  FROM credited
+  FROM first_call
 )
 SELECT sum((credit = 'judged')::int)   AS judged_wins,
        sum((credit = 'baseline')::int) AS baseline_wins,
        sum((credit = 'tie')::int)      AS ties,
        (SELECT count(*) FROM il)       AS interleaved_searches_with_disagreement,
-       round(
+       round((
          (sum((credit = 'judged')::int) - sum((credit = 'baseline')::int))
-         / sqrt(nullif(sum((credit IN ('judged', 'baseline'))::int), 0)), 2) AS z
+         / sqrt(nullif(sum((credit IN ('judged', 'baseline'))::int), 0)))::numeric, 2) AS z
 FROM points;
 
 -- 4. Re-query rate: a second search by the same caller within two minutes with no call in between
