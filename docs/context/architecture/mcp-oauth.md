@@ -172,7 +172,11 @@ rate-limit bucket. `catalog_search`'s zero-result hint names it, so an agent tha
 and found nothing can file the gap in the same session — and the miss itself is logged as a
 `SearchMiss` row (`audit.record_search_miss`, `source="mcp"` on the team MCP and
 `source="claude-connector"` on V2): this tool reads the catalog in-process, so the HTTP route's own
-miss logging never sees an MCP agent's empty search.
+miss logging never sees an MCP agent's empty search. Both MCP search tools also take the caller's
+`Context`: while `search_experiment` is not `off`, the search runs through the
+[discovery experiment](search-experiment.md), which may serve a judged or interleaved page and logs
+a `SearchLog` row with the caller's team and email — the HTTP route, being anonymous, is not part
+of it.
 
 ## In-process, not over the network
 

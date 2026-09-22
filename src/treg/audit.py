@@ -21,7 +21,7 @@ import logging
 from collections import deque
 
 from .infra.db import background_session_maker
-from .models import CallRecord, RunRecord, SearchMiss
+from .models import CallRecord, RunRecord, SearchLog, SearchMiss
 
 _pending: set[asyncio.Task] = set()
 # ONE writer per process, and it writes in batches. Audit rows are single-row inserts that cost
@@ -91,6 +91,16 @@ def record_search_miss(*, query: str, source: str) -> None:
     models.SearchMiss). Same contract as every write here: fire-and-forget, and a dropped row
     under load costs a data point, never a search response."""
     _enqueue(SearchMiss, dict(query=query[:300], source=source))
+
+
+def record_search(*, query: str, source: str, org_id: int | None, user_email: str | None,
+                  **fields) -> None:
+    """One search under the discovery experiment (models.SearchLog): both rankers' pages and the one
+    served, with the caller's identity so a later call can be credited. `fields` are the
+    experiment's own columns (application.search_experiment.Outcome.log). Fire-and-forget, like
+    every write here — a dropped row costs one sample of the experiment, never a search."""
+    _enqueue(SearchLog, dict(query=query[:300], source=source, org_id=org_id,
+                             user_email=user_email, **fields))
 
 
 def record_run(
