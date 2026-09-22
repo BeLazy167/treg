@@ -1,7 +1,8 @@
 # qBraid — quantum computing platform API (devices, OpenQASM tooling, job submission).
-# UNVERIFIED 2026-09-22: params and prices transcribed from the qBraid API source (qbraid-api
-# src/features/{device,composer,job,provider} validators and routes) and the v2 docs; no route in
-# this file has been live-called through treg yet, so every price stays `documented`.
+# SELF-VERIFIED 2026-09-22 (vendor run, not a maintainer stamp): params transcribed from the qBraid API
+# source (qbraid-api src/features/{device,composer,job,provider} validators and routes) and the v2 docs;
+# all 10 test_requests were live-called with a vendor key via scripts/catalog_verify.py (10/10 PASS) and
+# the free simulator submit billed 0 credits. No `verified:` stamps here — those are the maintainers' to add.
 #
 # Auth: `X-API-Key: <key>` (keys look like qbr_…). Probe: GET /devices?limit=1 (free, authenticated;
 # a garbage key answers 401 {"success":false,"message":"Invalid API key format",
@@ -14,8 +15,8 @@
 # a (device, shots) pair, so price a job there before submitting. Composer simulation is capped at
 # 20 qubits. The three /jobs/{qrn} routes need a job qrn from a prior POST /jobs, so they carry no
 # test_request until a live submission produces one.
-# Example device qrn `qbraid:qbraid:sim:qir-sv` (the qBraid QIR state-vector simulator) comes from
-# the qbraid-api test seeds; confirm it is ONLINE via GET /devices before relying on it.
+# Example device qrn `qbraid:qbraid:sim:qir-sv` (the qBraid QIR state-vector simulator) was ONLINE and
+# free (pricing all 0) on the live run; re-check via GET /devices before relying on it.
 provider: qbraid
 source:
   docs: https://docs.qbraid.com/v2
