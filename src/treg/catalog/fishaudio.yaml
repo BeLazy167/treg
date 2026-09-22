@@ -3,7 +3,7 @@ source:
   docs: https://docs.fish.audio/api-reference/introduction
   curated: 2026-09-21
 pricing_url: https://docs.fish.audio/developer-guide/models-pricing/pricing-and-rate-limits
-limits: "Platform TTS supports s2.1-pro. The shared account uses the documented 5-concurrent-request baseline. Shared-key voice ids are private to the organization that created them; bring your own key to use other Fish models or account voices."
+limits: "Platform TTS supports s2.1-pro. The shared account uses a conservative 5-concurrent-request limit. Shared-key TTS accepts organization-owned voices and Fish voices verified as public and licensed; bring your own key to use other Fish models or account voices."
 proposed_capabilities:
   voice-gen.fishaudio.s2-1-pro.generate: "Generate speech with Fish Audio S2.1 Pro"
   voice-gen.private-voices.create: "Create a reusable private voice from reference audio"
@@ -25,17 +25,39 @@ endpoints:
         model: {type: string, required: true, enum: [s2.1-pro], example: s2.1-pro}
       body:
         text: {type: string, required: true, min: 1, example: "Welcome to treg."}
-        reference_id: {type: string_or_array, required: false, note: "Omit for Fish's default voice. On treg's key every id must belong to the current team."}
+        reference_id: {type: string_or_array, required: false, note: "Omit for Fish's default voice. On treg's key each id must be owned by the current team or verified by Fish as public and licensed."}
+        temperature: {type: number, required: false, min: 0, max: 1, default: 0.7}
+        top_p: {type: number, required: false, min: 0, max: 1, default: 0.7}
+        prosody:
+          type: object
+          required: false
+          example: {speed: 1, volume: 0, normalize_loudness: true}
+          properties:
+            speed: {type: number, required: false, min: 0.5, max: 2, default: 1}
+            volume: {type: number, required: false, default: 0, note: "Volume adjustment in decibels; Fish documents no numeric bound."}
+            normalize_loudness: {type: boolean, required: false, default: true}
+        chunk_length: {type: integer, required: false, min: 100, max: 300, default: 300}
         format: {type: string, required: false, enum: [mp3, wav, pcm, opus], default: mp3, example: mp3}
+        sample_rate: {type: integer, required: false, enum: [8000, 16000, 24000, 32000, 44100, 48000], note: "Supported output rates depend on the selected format."}
         mp3_bitrate: {type: integer, required: false, enum: [64, 128, 192], default: 128}
+        opus_bitrate: {type: integer, required: false, enum: [-1000, 24000, 32000, 48000, 64000], default: -1000}
         normalize: {type: boolean, required: false, default: true}
-        latency: {type: string, required: false, enum: [normal, balanced], default: normal}
+        latency: {type: string, required: false, enum: [low, normal, balanced], default: normal}
+        max_new_tokens: {type: integer, required: false, default: 1024}
+        repetition_penalty: {type: number, required: false, default: 1.2}
+        min_chunk_length: {type: integer, required: false, min: 0, max: 100, default: 50}
+        condition_on_previous_chunks: {type: boolean, required: false, default: true}
+        early_stop_threshold: {type: number, required: false, min: 0, max: 1, default: 1}
       bodyType: json
     platform_request: {headers.model: s2.1-pro}
     managed_resource:
       operation: use
       kind: voice
       id: {in: body, path: reference_id, optional: true, many: true}
+      public_lookup:
+        method: GET
+        path: /model/{id}
+        requires: {visibility: public, licensed: true}
     test_request:
       headers: {model: s2.1-pro}
       body: {text: "This is a Fish Audio test.", format: mp3}
@@ -109,6 +131,33 @@ endpoints:
         page_number: {type: integer, required: false, min: 1, default: 1}
     test_request: {queryParams: {self: true, page_size: 1, page_number: 1}}
     cost: {type: free, value: 0, currency: USD, unit: call}
+    docs_url: https://docs.fish.audio/api-reference/endpoint/model/list-models
+
+  - id: fishaudio.voices.discover
+    kind: utility
+    capability: voice-gen.voices.list
+    platform: voice-gen
+    domain: models
+    scope: any_account
+    method: GET
+    path: /model
+    name: "Fish Audio: discover licensed voices"
+    summary: "Find Fish voices approved for reuse; pass an item's _id to TTS as reference_id."
+    strict_query: true
+    input:
+      queryParams:
+        self: {type: string, required: true, enum: ["false"], example: "false"}
+        licensed: {type: string, required: true, enum: ["true"], example: "true"}
+        title: {type: string, required: false, note: "Optional title search."}
+        language: {type: string, required: false, note: "Optional language filter."}
+        sort_by: {type: string, required: false, enum: [score, task_count, created_at], default: score}
+        page_size: {type: integer, required: false, min: 1, max: 100, default: 10}
+        page_number: {type: integer, required: false, min: 1, default: 1}
+    test_request:
+      queryParams: {self: "false", licensed: "true", page_size: 3, page_number: 1}
+    cost: {type: free, value: 0, currency: USD, unit: call, note: "Licensed public-voice discovery is a free account-management read."}
+    verified: 2026-09-22
+    example_response: examples/fishaudio.voices.discover.json
     docs_url: https://docs.fish.audio/api-reference/endpoint/model/list-models
 
   - id: fishaudio.voices.update

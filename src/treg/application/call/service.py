@@ -308,6 +308,66 @@ async def _drain(response: UpstreamResponse) -> bytes:
     return body
 
 
+async def _verify_public_managed_resources(
+    mk: MarketplaceCall, secrets: dict, upstream_client: httpx.AsyncClient,
+) -> None:
+    """Authorize shared-key public resources without exposing another org's private ids."""
+    lookup = (mk.managed_resource or {}).get("public_lookup") or {}
+    if not mk.public_resource_ids or not lookup:
+        return
+    for upstream_id in mk.public_resource_ids:
+        path = str(lookup["path"]).replace("{id}", quote(upstream_id, safe=""))
+        upstream_url = f"{mk.tool.base_url.rstrip('/')}{path}"
+        try:
+            response = await relay(
+                UpstreamRequest(
+                    method="GET", raw_headers=(), query_items=(),
+                    body_stream=_empty_body, has_body=False,
+                ),
+                upstream_url,
+                mk.tool,
+                secrets,
+                upstream_client,
+                force_identity=True,
+            )
+            chunks: list[bytes] = []
+            size = 0
+            try:
+                async for chunk in response.body_stream:
+                    size += len(chunk)
+                    if size > 256 * 1024:
+                        raise ValueError("public resource response too large")
+                    chunks.append(chunk)
+            finally:
+                await response.close()
+        except (httpx.RequestError, ValueError) as exc:
+            raise GatewayFailed(
+                "upstream_failed", status_code=502,
+                detail="provider public-resource verification failed",
+            ) from exc
+        if response.status not in (200, 403, 404):
+            raise GatewayFailed(
+                "upstream_failed", status_code=502,
+                detail="provider public-resource verification failed",
+            )
+        try:
+            document = json.loads(b"".join(chunks)) if response.status == 200 else None
+        except (UnicodeDecodeError, json.JSONDecodeError):
+            raise GatewayFailed(
+                "upstream_failed", status_code=502,
+                detail="provider public-resource verification failed",
+            )
+        required = lookup.get("requires") or {}
+        if (not isinstance(document, dict)
+                or any(_document_value(document, key) != value
+                       for key, value in required.items())):
+            raise AuthorizationFailed(
+                "provider_resource_not_owned", status_code=403,
+                detail={"error": "provider_resource_not_owned",
+                        "message": "resource is not owned by this organization"},
+            )
+
+
 def _bytes_response(
     content: bytes, status_code: int = 200, media_type: str = "",
     headers: dict[str, str] | None = None,
@@ -411,9 +471,14 @@ async def _apply_managed_resource_result(
     if not successful and not (operation == "delete" and status == 404):
         return
     ids = _managed_values(endpoint, rule, query, request_body, request_headers)
+    public_ids = set(mk.public_resource_ids)
     try:
         async with session_maker() as resource_db:
             for upstream_id in ids:
+                # Public ids were verified against the provider before the main call and have no
+                # local lifecycle row to update. Owned ids retain the post-call consistency check.
+                if operation == "use" and upstream_id in public_ids:
+                    continue
                 row = await provider_resources.owned(
                     resource_db, caller.org_id, mk.provider, str(rule.get("kind") or ""),
                     upstream_id, include_deleted=operation == "delete",
@@ -854,6 +919,17 @@ async def _execute_call(request: _ApplicationRequest, upstream_client: httpx.Asy
             has_body=request.has_body,
             read_body=request.body,
         ), request, call_ref)
+
+    if mk is not None and mk.tier == "platform" and mk.public_resource_ids:
+        # Resolution already proved these ids are absent from every org's durable assignments.
+        # End the DB phase before asking the provider whether each is an approved public resource.
+        await db.commit()
+        try:
+            await _await_before_reserve(
+                _verify_public_managed_resources(mk, secrets, upstream_client), request, call_ref)
+        except CallFailure as exc:
+            _audit(exc.status_code, refused_by=_refusal_kind(exc.status_code), answered=False)
+            raise
 
     if mk is not None and mk.metered:
         _set_caller_max_cost(request, mk)

@@ -48,6 +48,17 @@ async def owned(
     return (await db.execute(query)).scalars().one_or_none()
 
 
+async def assigned(
+    db: AsyncSession, provider: str, resource_kind: str, upstream_id: str,
+) -> ProviderResource | None:
+    """Return any durable assignment for an upstream id, including deleted resources."""
+    return (await db.execute(select(ProviderResource).where(
+        ProviderResource.provider == provider,
+        ProviderResource.resource_kind == resource_kind,
+        ProviderResource.upstream_id == upstream_id,
+    ))).scalars().one_or_none()
+
+
 async def register(
     db: AsyncSession, *, org_id: int, provider: str, resource_kind: str,
     upstream_id: str, display_name: str, created_by: str, source_call_id: str,

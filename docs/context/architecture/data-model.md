@@ -63,7 +63,7 @@ related:
 
 # Data model
 
-Migration `0042` adds `ProviderResource`, the durable organization-owned counterpart to the existing
+Migration `0043` adds `ProviderResource`, the durable organization-owned counterpart to the existing
 async ownership rows. It stores provider, resource kind, upstream id, display name, creator, source
 call, lifecycle state and timestamps. `(provider, resource_kind, upstream_id)` is globally unique so
 one shared-account object cannot be assigned to two organizations. Deletes tombstone rows, preserving

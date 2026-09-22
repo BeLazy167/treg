@@ -1166,7 +1166,7 @@ async def test_ai_generation_pages_keep_comparisons_curated_and_coverage_in_mode
 
     voice_full = (await clients.get(
         "/catalog/platforms/voice-gen?include_hidden=1")).json()
-    assert voice_full["hidden_count"] == 5
+    assert voice_full["hidden_count"] == 6
     action_endpoints = {
         endpoint["id"]: endpoint
         for section in voice_full["domains"]
@@ -1174,7 +1174,9 @@ async def test_ai_generation_pages_keep_comparisons_curated_and_coverage_in_mode
         for endpoint in row["endpoints"]
         if endpoint["kind"] == "utility"
     }
-    assert set(action_endpoints) == {"minimax.voice-gen.voices.list"}
+    assert set(action_endpoints) == {
+        "fishaudio.voices.discover", "minimax.voice-gen.voices.list",
+    }
     account_endpoints = {
         endpoint["id"]
         for section in voice_full["domains"]

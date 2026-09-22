@@ -169,7 +169,11 @@ voices appear in `treg resources list --provider fishaudio --kind voice`. With B
 lists the connected Fish account instead. Curl callers use
 `GET /orgs/{org_id}/provider-resources?provider=fishaudio&kind=voice`; it returns the same normalized
 rows with `X-Treg-Resource-Source: byok|platform`. BYOK users may also call Fish's raw account-wide
-list directly.
+list directly. To choose a reusable Fish-supplied voice, call
+`fishaudio.voices.discover` with `self=false&licensed=true` and pass a returned `_id` as the TTS
+`reference_id`. On the platform key, treg verifies that non-team ids remain public and licensed
+before synthesis. `treg catalog get fishaudio.tts.s2-1-pro` lists the supported generation,
+prosody, output-format, bitrate, sample-rate, latency, and chunking controls.
 
 **How a catalogued call is served — the credential ladder, in order:**
 

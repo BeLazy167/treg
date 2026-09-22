@@ -5,6 +5,7 @@ sources:
   - src/treg/catalog/fishaudio.yaml
   - src/treg/catalog/examples/fishaudio.tts.s2-1-pro.json
   - src/treg/catalog/examples/fishaudio.voices.create.json
+  - src/treg/catalog/examples/fishaudio.voices.discover.json
   - src/treg/application/provider_resources.py
   - src/treg/domain/provider_resources.py
   - src/treg/routers/provider_resources.py
@@ -93,13 +94,15 @@ related:
 
 ## Fish Audio v1
 
-Fish Audio contributes synchronous S2.1 Pro TTS and private voice create/update/
-delete tools. Fish's documented single-model GET is omitted because live private workspace voices
-return 403 while list, update, delete, and TTS reuse succeed. The raw account-wide model list remains
-`own_account`/BYOK-only. `application.provider_resources.list_for_caller` gives HTTP, dashboard, CLI,
-and MCP one unified read: it selects Fish's account list when BYOK exists and otherwise returns only
-the current organization's `ProviderResource` voices in the same normalized shape. Its access-check
-database session closes before Fish I/O.
+Fish Audio contributes synchronous S2.1 Pro TTS, licensed public-voice discovery, and private voice
+create/update/delete tools. Fish's documented single-model GET is not exposed as a catalog tool
+because live private workspace voices return 403 while list, update, delete, and TTS reuse succeed.
+It is used internally only to verify that a non-team TTS reference is both public and licensed. The
+raw account-wide model list remains `own_account`/BYOK-only, while the separate discovery tool fixes
+`self=false` and `licensed=true`. `application.provider_resources.list_for_caller` gives HTTP,
+dashboard, CLI, and MCP one unified read: it selects Fish's account list when BYOK exists and
+otherwise returns only the current organization's `ProviderResource` voices in the same normalized
+shape. Its access-check database session closes before Fish I/O.
 Shared-key TTS fixes the `model` header to `s2.1-pro` and displays `$15 / 1M UTF-8 bytes` rather than
 the internal per-byte settlement rate; private voice creation fixes
 `type=tts`, `train_mode=fast`, and `visibility=private` in multipart form data. TTS is priced at the
@@ -107,10 +110,13 @@ documented $15 per million UTF-8 bytes.
 
 `managed_resource` is the generic catalog contract for durable provider objects. It names the CRUD
 operation, resource kind, id location (path/query/body scalar or array, or create response), optional
-display-name source, and create-compensation endpoint. This is the narrow exception allowing an
-otherwise account-kind tool onto a platform key: the runtime proves organization ownership before
-relay. BYOK never applies this policy. Fish remains deployment-disabled until live management-price,
-shared-account permission, and commercial checks pass.
+display-name source, create-compensation endpoint, and an optional public-resource verification
+read for use operations. This is the narrow exception allowing an otherwise account-kind tool onto
+a platform key: the runtime proves organization ownership locally, or verifies an unassigned id
+against the declared public predicate after closing the database session, before relay. An id
+assigned to any organization is never sent through the public lookup. BYOK never applies this
+policy. Fish remains deployment-disabled until live management-price, shared-account permission,
+and commercial checks pass.
 
 ## Authorization metadata
 

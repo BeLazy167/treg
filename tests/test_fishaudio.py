@@ -236,16 +236,39 @@ async def test_unknown_and_cross_org_voice_ids_are_identical_403_without_upstrea
     assert called == 0
 
 
-async def test_tts_checks_every_voice_in_an_array(
+async def test_cross_org_tts_voice_is_denied_without_public_lookup(
     clients: AsyncClient, fishaudio_platform_on, monkeypatch,
 ):
-    await _add_voice(clients, "voice-a")
+    await _add_voice(clients, "private-team-one")
+    other = (await clients.post("/orgs", json={"name": "Other Fish TTS Team"})).json()
+    clients.headers["X-Treg-Token"] = other["token"]
+    clients.headers.pop("X-Treg-Org", None)
     called = False
 
     async def relay(*args, **kwargs):
         nonlocal called
         called = True
-        return _response(200, b"audio", ((b"content-type", b"audio/mpeg"),))
+        return _response(200)
+
+    monkeypatch.setattr(call_service, "relay", relay)
+    response = await clients.post(
+        "/call/fishaudio.tts.s2-1-pro",
+        headers={"model": "s2.1-pro"},
+        json={"text": "Must stay private", "reference_id": "private-team-one"},
+    )
+    assert response.status_code == 403
+    assert called is False
+
+
+async def test_tts_checks_every_voice_in_an_array(
+    clients: AsyncClient, fishaudio_platform_on, monkeypatch,
+):
+    await _add_voice(clients, "voice-a")
+    calls = []
+
+    async def relay(request, upstream_url, *args, **kwargs):
+        calls.append((request.method, upstream_url))
+        return _response(200, b'{"_id":"not-ours","visibility":"public","licensed":false}')
 
     monkeypatch.setattr(call_service, "relay", relay)
     response = await clients.post(
@@ -254,7 +277,68 @@ async def test_tts_checks_every_voice_in_an_array(
         json={"text": "Two voices", "reference_id": ["voice-a", "not-ours"]},
     )
     assert response.status_code == 403
-    assert called is False
+    assert calls == [("GET", "https://api.fish.audio/model/not-ours")]
+
+
+async def test_tts_accepts_a_live_verified_public_licensed_voice_without_holding_db(
+    clients: AsyncClient, fishaudio_platform_on, monkeypatch,
+):
+    await audit.drain()
+    calls = []
+    checked_out = []
+
+    async def relay(request, upstream_url, *args, **kwargs):
+        calls.append((request.method, upstream_url))
+        checked_out.append(_engine.pool.checkedout())
+        if request.method == "GET":
+            return _response(
+                200,
+                b'{"_id":"public-voice","visibility":"public","licensed":true}',
+            )
+        return _response(200, b"audio", ((b"content-type", b"audio/mpeg"),))
+
+    monkeypatch.setattr(call_service, "relay", relay)
+    response = await clients.post(
+        "/call/fishaudio.tts.s2-1-pro",
+        headers={"model": "s2.1-pro"},
+        json={"text": "Public voice", "reference_id": "public-voice"},
+    )
+    assert response.status_code == 200, response.text
+    assert response.content == b"audio"
+    assert calls == [
+        ("GET", "https://api.fish.audio/model/public-voice"),
+        ("POST", "https://api.fish.audio/v1/tts"),
+    ]
+    assert checked_out == [0, 0]
+
+
+async def test_licensed_voice_discovery_is_a_free_platform_action(
+    clients: AsyncClient, fishaudio_platform_on, monkeypatch,
+):
+    await audit.drain()
+    observed = []
+
+    async def relay(request, upstream_url, *args, **kwargs):
+        observed.append((upstream_url, dict(request.query_items), _engine.pool.checkedout()))
+        return _response(
+            200,
+            b'{"total":1,"items":[{"_id":"public-voice","visibility":"public",'
+            b'"licensed":true}],"has_more":false}',
+            ((b"content-type", b"application/json"),),
+        )
+
+    monkeypatch.setattr(call_service, "relay", relay)
+    response = await clients.get(
+        "/call/fishaudio.voices.discover",
+        params={"self": "false", "licensed": "true", "page_size": "3", "page_number": "1"},
+    )
+    assert response.status_code == 200, response.text
+    assert response.json()["items"][0]["_id"] == "public-voice"
+    assert observed == [(
+        "https://api.fish.audio/model",
+        {"self": "false", "licensed": "true", "page_size": "3", "page_number": "1"},
+        0,
+    )]
 
 
 @pytest.mark.parametrize("reference_id", [None, "voice-a", ["voice-a", "voice-b"]])
@@ -396,3 +480,4 @@ def test_fish_catalog_uses_the_human_billing_unit_and_omits_broken_get():
     assert cost["display_unit"] == "1M UTF-8 bytes"
     assert catalog.by_id["fishaudio.tts.s2-1-pro"]["verified"] == "2026-09-22"
     assert catalog.by_id["fishaudio.voices.create"]["verified"] == "2026-09-22"
+    assert catalog.by_id["fishaudio.voices.discover"]["cost"]["type"] == "free"

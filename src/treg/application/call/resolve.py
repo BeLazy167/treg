@@ -338,6 +338,7 @@ class MarketplaceCall:
     async_descriptor: dict | None = None
     resource_ownership: dict | None = None
     managed_resource: dict | None = None
+    public_resource_ids: tuple[str, ...] = ()
     # A platform-key utility poll was authorized against this org-owned submission. The buffered
     # response may teach the same row its provider result/file id before the background worker runs.
     async_owner_call_id: str | None = None
@@ -1378,23 +1379,39 @@ def _managed_values(ep: dict, rule: dict, query: QueryValues, body: bytes, heade
 
 async def _enforce_platform_managed_ownership(
     ep: dict, query: QueryValues, body: bytes, headers, caller: Caller, db: AsyncSession,
-) -> None:
+) -> tuple[str, ...]:
     rule = ep.get("managed_resource") or {}
     operation = rule.get("operation")
     if not rule or operation == "create":
-        return
+        return ()
     values = _managed_values(ep, rule, query, body, headers)
+    public_ids: list[str] = []
     for upstream_id in values:
         row = await provider_resources.owned(
             db, caller.org_id, ep["provider"], str(rule.get("kind") or ""), upstream_id,
             include_deleted=operation == "delete",
         )
-        if row is None:
+        if row is not None:
+            continue
+        # A resource assigned to another org (or tombstoned by this one) is private even when the
+        # provider also has a public catalog. Deny it locally; never ask the shared account about a
+        # cross-tenant id. Only ids absent from treg's durable ownership table may be public.
+        if await provider_resources.assigned(
+                db, ep["provider"], str(rule.get("kind") or ""), upstream_id) is not None:
             raise ResolutionFailed(
                 "provider_resource_not_owned", status_code=403,
                 detail={"error": "provider_resource_not_owned",
                         "message": "resource is not owned by this organization"},
             )
+        if rule.get("public_lookup"):
+            public_ids.append(upstream_id)
+            continue
+        raise ResolutionFailed(
+            "provider_resource_not_owned", status_code=403,
+            detail={"error": "provider_resource_not_owned",
+                    "message": "resource is not owned by this organization"},
+        )
+    return tuple(public_ids)
 
 
 def _async_resource_refs(ep: dict) -> list[tuple[str, dict]]:
@@ -1834,7 +1851,7 @@ async def _resolve_marketplace_call(
                         "message": f"{ep['id']} requires {name}={expected!r}; use the matching catalog tool.",
                     })
         async_owner_call_id = await _enforce_platform_async_ownership(ep, query, caller, db)
-        await _enforce_platform_managed_ownership(
+        public_resource_ids = await _enforce_platform_managed_ownership(
             ep, query, body, request_headers, caller, db)
     skip_direct = False
     probe_lock_id = None
@@ -1862,6 +1879,7 @@ async def _resolve_marketplace_call(
         )
         return MarketplaceCall(tool=virtual, tier="platform", skip_direct=skip_direct,
                                async_owner_call_id=async_owner_call_id,
+                               public_resource_ids=public_resource_ids,
                                probe_lock_id=probe_lock_id, **{
             **common, "cost_type": str(cost.get("type") or "per_call"),
             "estimate_micro": info_est, "unit_micro": info_unit})

@@ -579,7 +579,7 @@ def check_resource_ownership(rule: object, where: str, input_schema: object,
 def check_managed_resource(rule: object, where: str, input_schema: object,
                            errors: list[str]) -> None:
     """Validate long-lived shared-account resource lifecycle declarations."""
-    allowed = {"operation", "kind", "id", "name_from", "cleanup_endpoint"}
+    allowed = {"operation", "kind", "id", "name_from", "cleanup_endpoint", "public_lookup"}
     if not isinstance(rule, dict) or set(rule) - allowed:
         fail(errors, where, "managed_resource has unsupported fields")
         return
@@ -611,6 +611,22 @@ def check_managed_resource(rule: object, where: str, input_schema: object,
         fail(errors, where, "only managed_resource create may read its id from response")
     if rule.get("cleanup_endpoint") is not None and operation != "create":
         fail(errors, where, "managed_resource.cleanup_endpoint is create-only")
+    public_lookup = rule.get("public_lookup")
+    if public_lookup is not None:
+        if operation != "use":
+            fail(errors, where, "managed_resource.public_lookup is use-only")
+        if (not isinstance(public_lookup, dict)
+                or set(public_lookup) != {"method", "path", "requires"}
+                or public_lookup.get("method") != "GET"
+                or not isinstance(public_lookup.get("path"), str)
+                or public_lookup["path"].count("{id}") != 1
+                or not public_lookup["path"].startswith("/")
+                or not isinstance(public_lookup.get("requires"), dict)
+                or not public_lookup["requires"]):
+            fail(errors, where, "managed_resource.public_lookup needs GET path with {id} and requires")
+        elif any(not isinstance(key, str) or not key or isinstance(value, (dict, list))
+                 for key, value in public_lookup["requires"].items()):
+            fail(errors, where, "managed_resource.public_lookup requires must contain scalar fields")
     name_from = rule.get("name_from")
     if name_from is not None:
         if (not isinstance(name_from, dict) or set(name_from) != {"in", "path"}

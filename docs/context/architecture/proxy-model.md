@@ -528,7 +528,10 @@ provider id is returned; persistence failure triggers best-effort provider delet
 treg 502 without exposing the id. Update changes local display state only after upstream success.
 Delete authorizes active or tombstoned ownership, treats an owned upstream 404 as deleted, then
 tombstones locally, making retries safe. These rules run only on the platform-key tier; own keys keep
-the ordinary faithful relay. Managed responses remain under the same 8 MiB complete-body limit.
+the ordinary faithful relay. A managed `use` declaration may permit provider-public ids through a
+bounded GET predicate. The local ownership check runs first; cross-org and tombstoned ids are denied
+without upstream I/O, while wholly unassigned ids are verified only after the DB phase closes and
+before money is reserved. Managed responses remain under the same 8 MiB complete-body limit.
 
 An owned platform status poll with an explicit free price and zero estimate takes the
 `MarketplaceCall.free_owned_poll` branch. It bypasses a new poll reservation and settlement while
