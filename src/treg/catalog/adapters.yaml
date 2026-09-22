@@ -2324,6 +2324,7 @@ adapters:
     in: {linkedin_url: queryParams.linkedin_url, first_name: queryParams.first_name, last_name: queryParams.last_name, domain: queryParams.company_url}
     out: {email: "null_if(data.email, '', 'n/a', 'null', 'none')", first_name: data.first_name, last_name: data.last_name}
     miss: "null_if(data.email, '', 'n/a', 'null', 'none') == null"
+  # country_code is the provider's company-context country, not proof of the phone owner's location.
   quickenrich.people.phone.find:
     accepts: [[linkedin_url], [first_name, last_name, domain]]
     in: {linkedin_url: queryParams.linkedin_url, first_name: queryParams.first_name, last_name: queryParams.last_name, domain: queryParams.company_url}

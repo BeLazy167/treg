@@ -165,6 +165,15 @@ xdist is pulled via `--with`, not the lockfile — same as CI. The Postgres CI j
   names the fragments it updated.
 - `/mcp/` and `/mcp/v2/` differ on purpose. A change to either or to shared MCP code is reviewed
   against both; do not unify them in passing.
+- **A catalog data PR is a few rows and a PR body.** Cache admission, comparison declarations,
+  adapters and contracts are rows in `src/treg/catalog/`; each declaration carries a one-line
+  reason and nothing more. The evidence (traffic, byte sizes, change observations, bodies read)
+  goes in the PR body, never into a fragment or a comment. A fragment moves only when a mechanism
+  changes; `drift.sh` naming one is a prompt to check it, not an obligation to write. No dated
+  per-provider sections in `docs/context/architecture/catalog.md`: a provider's quirk lives on
+  its row as a `note`. No per-endpoint tests: the round-trip test over every shipped adapter and
+  the validator already judge the rows, and a test that restates a list of declarations is
+  deleted, not extended. Code that a data PR needs is its own PR, merged first.
 
 ## When writing user-facing copy
 
