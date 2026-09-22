@@ -5489,7 +5489,7 @@ def cmd_connections_rm(args, cfg) -> None:
 
 
 def cmd_resources_list(args, cfg) -> None:
-    """List durable resources created with treg's platform provider credentials."""
+    """List provider resources through the server's unified BYOK/platform view."""
     with _client(cfg) as c:
         org_id = _active_org_id(cfg, c)
         if org_id is None:

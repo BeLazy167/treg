@@ -11,6 +11,7 @@ sources:
   - src/treg/application/auth.py
   - src/treg/application/asynctasks.py
   - src/treg/application/call/resolve.py
+  - src/treg/application/provider_resources.py
   - src/treg/domain/provider_resources.py
   - src/treg/routers/provider_resources.py
   - src/treg/alembic/versions/0043_provider_resources.py
@@ -388,8 +389,10 @@ the ledger/hold it references. Pinned read scopes do not change budget concurren
   upstream is contacted. BYOK calls keep access to ids in the team's own provider account.
 - **Shared-provider durable objects are org-scoped.** A platform-key managed-resource call verifies
   every scalar or array id against `ProviderResource` before contacting the provider. Unknown and
-  cross-org ids return the same 403. All members may create, inspect, use, rename and delete their
+  cross-org ids return the same 403. All members may create, list, use, rename and delete their
   team's objects; the organization boundary, not the creator, owns them. BYOK bypasses this table.
+  The dashboard's Team resources inventory explicitly requests `source=platform`; a connected BYOK
+  account therefore never replaces or widens the organization's durable-resource inventory.
 
 ## Signup analytics boundary
 

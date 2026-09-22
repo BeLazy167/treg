@@ -20,6 +20,7 @@ _BLAME_BY_KIND: dict[str, Blame] = {
     "invalid_target": "caller",
     "tool_access_denied": "caller",
     "target_not_found": "caller",
+    "unknown_endpoint": "caller",
     "target_ambiguous": "caller",
     "catalog_retired": "caller",
     "catalog_parameter_invalid": "caller",

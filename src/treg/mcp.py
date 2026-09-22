@@ -276,6 +276,7 @@ class CallOut(TypedDict, total=False):
 
 class ResourcesOut(TypedDict, total=False):
     team: str | None
+    source: str | None
     count: int | None
     resources: list[dict[str, Any]] | None
     error: str | None
@@ -1275,15 +1276,18 @@ async def _resources_list_impl(
         org_id, slug, problem = await _resolve_org(client)
         if problem:
             return problem
+        request_headers = {"X-Treg-Org": slug or ""}
         response = await client.get(
             f"/orgs/{org_id}/provider-resources",
             params={k: v for k, v in {"provider": provider, "kind": kind}.items() if v},
-            headers={"X-Treg-Org": slug or ""},
+            headers=request_headers,
         )
+        source = response.headers.get("X-Treg-Resource-Source", "platform")
     body = _body(response)
     if response.status_code != 200:
         return {"error": "could not list provider resources", "detail": body}
-    return {"team": slug, "count": len(body), "resources": body}
+    resources = body if isinstance(body, list) else []
+    return {"team": slug, "source": source, "count": len(resources), "resources": resources}
 
 
 @mcp.tool(

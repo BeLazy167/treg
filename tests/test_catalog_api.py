@@ -773,6 +773,12 @@ async def test_unknown_endpoint_is_404(clients: AsyncClient):
     assert r.status_code == 404 and "tikhub.tiktok.nope" in r.text
 
 
+async def test_unknown_endpoint_access_is_a_clean_404(clients: AsyncClient):
+    r = await clients.get("/catalog/endpoints/not.a.real.endpoint/access")
+    assert r.status_code == 404
+    assert "unknown endpoint" in r.text
+
+
 def test_hunter_multi_domain_search_uses_official_query_filters():
     """Hunter Multi-Domain Search (Beta) rejects a JSON `companies` array with
     `wrong_params` / `Unknown parameter: companies.` Official docs take company
@@ -1146,14 +1152,12 @@ async def test_ai_generation_pages_keep_comparisons_curated_and_coverage_in_mode
         "voice-gen.speech-2-8-hd.generate",
         "voice-gen.speech-2-8-turbo.generate",
         "voice-gen.fishaudio.s2-1-pro.generate",
-        "voice-gen.voice-design.create",
     }
     voice_endpoints = [endpoint for row in voice_rows for endpoint in row["endpoints"]]
     assert {endpoint["id"] for endpoint in voice_endpoints} == {
         "minimax.voice-gen.speech-2-8-hd",
         "minimax.voice-gen.speech-2-8-turbo",
         "fishaudio.tts.s2-1-pro",
-        "fishaudio.voice-design.create",
     }
     assert {endpoint["provider"] for endpoint in voice_endpoints} == {"minimax", "fishaudio"}
     catalog = cs.load()
@@ -1162,7 +1166,7 @@ async def test_ai_generation_pages_keep_comparisons_curated_and_coverage_in_mode
 
     voice_full = (await clients.get(
         "/catalog/platforms/voice-gen?include_hidden=1")).json()
-    assert voice_full["hidden_count"] == 6
+    assert voice_full["hidden_count"] == 5
     action_endpoints = {
         endpoint["id"]: endpoint
         for section in voice_full["domains"]
@@ -1179,7 +1183,7 @@ async def test_ai_generation_pages_keep_comparisons_curated_and_coverage_in_mode
         if endpoint["kind"] == "account"
     }
     assert account_endpoints == {
-        "fishaudio.voices.create", "fishaudio.voices.list", "fishaudio.voices.get",
+        "fishaudio.voices.create", "fishaudio.voices.list",
         "fishaudio.voices.update", "fishaudio.voices.delete",
     }
     assert catalog.by_id["minimax.voice-gen.voices.list"]["platform_request"] == {

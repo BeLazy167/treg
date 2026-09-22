@@ -31,6 +31,39 @@ def test_parser_dispatches_core():
     assert resources.provider == "fishaudio" and resources.kind == "voice"
 
 
+def test_resources_list_uses_the_unified_server_endpoint(monkeypatch, capsys):
+    calls = []
+
+    class Response:
+        status_code = 200
+        headers = {}
+        text = ""
+
+        def __init__(self, body): self.body = body
+        def json(self): return self.body
+
+    class Client:
+        def __enter__(self): return self
+        def __exit__(self, *args): return False
+        def get(self, path, params=None):
+            calls.append((path, params))
+            if path == "/orgs":
+                return Response([{"org_id": 7, "slug": "team", "active": True}])
+            return Response([{"provider": "fishaudio", "kind": "voice",
+                              "upstream_id": "voice-1", "display_name": "Narrator"}])
+
+    monkeypatch.setattr(cli, "_client", lambda cfg: Client())
+    args = type("Args", (), {
+        "provider": "fishaudio", "kind": "voice", "include_deleted": False,
+    })()
+    cli.cmd_resources_list(args, {"base_url": "http://registry", "active_org": "team"})
+    assert calls == [
+        ("/orgs", None),
+        ("/orgs/7/provider-resources", {"provider": "fishaudio", "kind": "voice"}),
+    ]
+    assert '"upstream_id": "voice-1"' in capsys.readouterr().out
+
+
 def test_call_named_and_single_url():
     p = cli.build_parser()
     a = p.parse_args(["call", "echo", "v1/x", "--method", "POST"])

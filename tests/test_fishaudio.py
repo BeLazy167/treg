@@ -51,6 +51,16 @@ async def _add_voice(clients: AsyncClient, voice_id: str, name: str = "Narrator"
         await db.commit()
 
 
+async def test_tts_access_explains_the_utf8_byte_rate(
+    clients: AsyncClient, fishaudio_platform_on,
+):
+    response = await clients.get("/catalog/endpoints/fishaudio.tts.s2-1-pro/access")
+    assert response.status_code == 200
+    assert response.json()["tier"] == "platform"
+    assert "$15/1M UTF-8 bytes" in response.json()["detail"]
+    assert "/call" not in response.json()["detail"]
+
+
 async def test_voice_create_is_private_and_becomes_an_org_resource(
     clients: AsyncClient, fishaudio_platform_on, monkeypatch,
 ):
@@ -67,13 +77,96 @@ async def test_voice_create_is_private_and_becomes_an_org_resource(
         files=[("voices", ("voice.wav", b"RIFF-test", "audio/wav"))],
     )
     assert response.status_code == 201, response.text
-    rows = (await clients.get(
+    listed = await clients.get(
         f"/orgs/{await _org_id(clients)}/provider-resources?provider=fishaudio&kind=voice"
-    )).json()
+    )
+    assert listed.headers["X-Treg-Resource-Source"] == "platform"
+    rows = listed.json()
     assert [(row["upstream_id"], row["display_name"], row["status"]) for row in rows] == [
         ("voice-created", "Narrator", "active")
     ]
     assert seen == [("POST", "https://api.fish.audio/model")]
+
+
+async def test_unified_voice_list_uses_byok_and_normalizes_without_holding_db(
+    clients: AsyncClient, fishaudio_platform_on, monkeypatch,
+):
+    await clients.post("/secrets", json={"name": "fishaudio", "value": "OWN-FISH-KEY"})
+    await audit.drain()
+    checked_out = []
+
+    async def relay(*args, **kwargs):
+        checked_out.append(_engine.pool.checkedout())
+        return _response(200, b'{"items":[{"_id":"account-voice","title":"Account narrator",'
+                              b'"state":"created","created_at":"2026-09-22T00:00:00Z"}]}')
+
+    monkeypatch.setattr(call_service, "relay", relay)
+    response = await clients.get(
+        f"/orgs/{await _org_id(clients)}/provider-resources?provider=fishaudio&kind=voice"
+    )
+    assert response.status_code == 200, response.text
+    assert response.headers["X-Treg-Resource-Source"] == "byok"
+    assert response.json() == [{
+        "id": "account-voice",
+        "provider": "fishaudio",
+        "kind": "voice",
+        "upstream_id": "account-voice",
+        "display_name": "Account narrator",
+        "created_by": None,
+        "source_call_id": None,
+        "status": "active",
+        "created_at": "2026-09-22T00:00:00Z",
+        "updated_at": None,
+        "deleted_at": None,
+    }]
+    assert checked_out == [0]
+
+
+async def test_unified_voice_list_follows_fish_pagination(
+    clients: AsyncClient, fishaudio_platform_on, monkeypatch,
+):
+    await clients.post("/secrets", json={"name": "fishaudio", "value": "OWN-FISH-KEY"})
+    seen_pages = []
+
+    async def relay(request, *args, **kwargs):
+        page = dict(request.query_items)["page_number"]
+        seen_pages.append(page)
+        body = (
+            b'{"items":[{"_id":"voice-one","title":"One"}],"has_more":true}'
+            if page == "1" else
+            b'{"items":[{"_id":"voice-two","title":"Two"}],"has_more":false}'
+        )
+        return _response(200, body)
+
+    monkeypatch.setattr(call_service, "relay", relay)
+    response = await clients.get(
+        f"/orgs/{await _org_id(clients)}/provider-resources?provider=fishaudio&kind=voice"
+    )
+    assert response.status_code == 200, response.text
+    assert [row["upstream_id"] for row in response.json()] == ["voice-one", "voice-two"]
+    assert seen_pages == ["1", "2"]
+
+
+async def test_platform_resource_source_never_substitutes_byok_account_rows(
+    clients: AsyncClient, fishaudio_platform_on, monkeypatch,
+):
+    await _add_voice(clients, "team-voice", "Team narrator")
+    await clients.post("/secrets", json={"name": "fishaudio", "value": "OWN-FISH-KEY"})
+    called = False
+
+    async def relay(*args, **kwargs):
+        nonlocal called
+        called = True
+        return _response(200, b'{"items":[{"_id":"account-voice"}]}')
+
+    monkeypatch.setattr(call_service, "relay", relay)
+    response = await clients.get(
+        f"/orgs/{await _org_id(clients)}/provider-resources?source=platform"
+    )
+    assert response.status_code == 200, response.text
+    assert response.headers["X-Treg-Resource-Source"] == "platform"
+    assert [row["upstream_id"] for row in response.json()] == ["team-voice"]
+    assert called is False
 
 
 async def test_voice_create_holds_no_db_connection_during_fish_io(
@@ -129,11 +222,15 @@ async def test_unknown_and_cross_org_voice_ids_are_identical_403_without_upstrea
         return _response(200)
 
     monkeypatch.setattr(call_service, "relay", relay)
-    unknown = await clients.get("/call/fishaudio.voices.get?id=unknown")
+    unknown = await clients.patch(
+        "/call/fishaudio.voices.update?id=unknown",
+        json={"title": "Nope", "visibility": "private"})
     other = (await clients.post("/orgs", json={"name": "Other Fish Team"})).json()
     clients.headers["X-Treg-Token"] = other["token"]
     clients.headers.pop("X-Treg-Org", None)
-    cross_org = await clients.get("/call/fishaudio.voices.get?id=voice-team-one")
+    cross_org = await clients.patch(
+        "/call/fishaudio.voices.update?id=voice-team-one",
+        json={"title": "Nope", "visibility": "private"})
     assert unknown.status_code == cross_org.status_code == 403
     assert unknown.json()["detail"] == cross_org.json()["detail"]
     assert called == 0
@@ -217,7 +314,8 @@ async def test_byok_bypasses_platform_voice_ownership(
         return _response(200, b'{"_id":"foreign-account-voice"}')
 
     monkeypatch.setattr(call_service, "relay", relay)
-    response = await clients.get("/call/fishaudio.voices.get?id=foreign-account-voice")
+    response = await clients.patch(
+        "/call/fishaudio.voices.update?id=foreign-account-voice", json={"title": "Mine"})
     assert response.status_code == 200, response.text
     assert called == 1
 
@@ -284,3 +382,17 @@ async def test_create_persistence_failure_deletes_the_unmanaged_fish_voice(
 def test_tts_estimate_uses_utf8_bytes(text: str, expected: int):
     cost = {"usd": 15 / 1_000_000, "unit": "utf8_byte"}
     assert call_resolution._platform_estimate_micro(cost, {}, json.dumps({"text": text}).encode()) == expected
+
+
+def test_fish_catalog_uses_the_human_billing_unit_and_omits_broken_get():
+    from treg.domain.catalog import store as catalog_store
+
+    catalog = catalog_store.load(refresh=True)
+    assert "fishaudio.voices.get" not in catalog.by_id
+    cost = catalog.cost_view(
+        catalog.by_id["fishaudio.tts.s2-1-pro"]["cost"], "fishaudio")
+    assert cost["usd"] == 0.000015
+    assert cost["display_usd"] == 15
+    assert cost["display_unit"] == "1M UTF-8 bytes"
+    assert catalog.by_id["fishaudio.tts.s2-1-pro"]["verified"] == "2026-09-22"
+    assert catalog.by_id["fishaudio.voices.create"]["verified"] == "2026-09-22"

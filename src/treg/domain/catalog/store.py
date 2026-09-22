@@ -159,7 +159,10 @@ class Catalog:
             grouped = display.get("grouped", False)
             out["display_usd"] = round(usd * per, 9) if grouped else usd
             unit = display["unit"]
-            out["display_unit"] = f"{per:g} {unit}" if grouped else unit
+            if grouped and per == 1_000_000:
+                out["display_unit"] = f"1M {unit}"
+            else:
+                out["display_unit"] = f"{per:g} {unit}" if grouped else unit
             if display.get("round_up"):
                 out["display_unit"] = "started " + out["display_unit"]
             out["display_suffix"] = "+" if display.get("variable") else ""

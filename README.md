@@ -69,7 +69,7 @@ treg balance                                     # exactly what that cost
 # (or `treg onboard` for the guided walkthrough)
 ```
 
-Fish Audio provides S2.1 Pro speech, voice design, and private voice cloning. Speech is binary
+Fish Audio provides S2.1 Pro speech and private voice cloning. Speech is binary
 stdout, so redirect it to a file. Voices created on treg's Fish account are durable team resources:
 
 ```bash

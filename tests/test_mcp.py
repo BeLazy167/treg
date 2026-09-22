@@ -210,6 +210,38 @@ async def test_call_accepts_base64_multipart_uploads_and_resources_list_reads_th
         get_settings.cache_clear()
 
 
+async def test_resources_list_uses_and_normalizes_fish_byok_voices(clients, monkeypatch):
+    from treg.application.call import service as call_service
+    from treg.application.call.types import UpstreamResponse
+
+    await clients.post("/secrets", json={"name": "fishaudio", "value": "OWN-FISH"})
+
+    async def relay(*args, **kwargs):
+        async def stream():
+            yield b'{"items":[{"_id":"byok-voice","title":"Account narrator"}],"total":1}'
+
+        async def close():
+            return None
+
+        return UpstreamResponse(
+            200, ((b"content-type", b"application/json"),), stream(), close)
+
+    monkeypatch.setattr(call_service, "relay", relay)
+    token = clients.headers["X-Treg-Token"]
+    async with mcp_session(clients) as c:
+        listed = await _call_tool(c, "resources_list", {
+            "provider": "fishaudio", "kind": "voice",
+        }, token=token)
+    assert listed["source"] == "byok"
+    assert listed["count"] == 1
+    assert listed["resources"][0] == {
+        "id": "byok-voice", "provider": "fishaudio", "kind": "voice",
+        "upstream_id": "byok-voice", "display_name": "Account narrator",
+        "created_by": None, "source_call_id": None,
+        "status": "active", "created_at": None, "updated_at": None, "deleted_at": None,
+    }
+
+
 async def test_catalog_search_returns_priced_results(clients):
     """Search is the entry point: an agent asks for a task and gets endpoints with prices. Needs a
     credential now, like every tool — see test_EVERY_tool_needs_a_credential_including_the_catalog."""

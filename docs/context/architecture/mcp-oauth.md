@@ -139,7 +139,7 @@ same-named team tool. A change is incomplete if only one relevant MCP test file 
 | `catalog_get` | one endpoint in full: params, cost, reliability, sibling providers |
 | `call` | a catalog endpoint by id, or `<tool-name>/<path>` for the team's own tool |
 | `call_media` | the same `/call/` path for audio endpoints, returned as native `AudioContent` plus structured call/cost metadata |
-| `resources_list` | durable platform-created resources owned by the active team |
+| `resources_list` | calls the unified provider-resource API; Fish voice listing uses the connected Fish account when BYOK exists, otherwise the active team's platform voices |
 | `balance` | the team's prepaid balance |
 | `my_tools` | what the team registered that can be called without holding the key |
 | `feedback` | submit a private problem report or suggestion |

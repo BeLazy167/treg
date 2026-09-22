@@ -261,12 +261,13 @@ synchronous: call `minimax.voice-gen.speech-2-8-hd` or
 contains a generated-audio URL valid for 24 hours and the price scales with input characters.
 Call `minimax.voice-gen.voices.list` with `{"voice_type":"system"}` to discover valid voice IDs.
 
-Fish Audio supports `fishaudio.tts.s2-1-pro`, `fishaudio.voice-design.create`, and private voice
-create/get/update/delete tools. TTS returns binary audio: redirect CLI stdout to a file, or use MCP
+Fish Audio supports `fishaudio.tts.s2-1-pro` and private voice
+create/update/delete tools. TTS returns binary audio: redirect CLI stdout to a file, or use MCP
 `call_media` for native audio content. On treg's Fish account, `reference_id` must be omitted or name
 voice ids owned by the active team. List them with
-`treg resources list --provider fishaudio --kind voice` or MCP `resources_list`. Voice design returns
-base64 preview candidates; saving one uploads its audio through `fishaudio.voices.create`. Fish's
+`treg resources list --provider fishaudio --kind voice` or MCP `resources_list`; both use Fish-account
+voices under BYOK and otherwise return only the current team's platform-created voices. HTTP callers use
+`GET /orgs/{org_id}/provider-resources?provider=fishaudio&kind=voice` for the same normalized view. Fish's
 account-wide voice list is BYOK-only. A team's own Fish key always wins and remains unrestricted and
 unmetered.
 
@@ -449,7 +450,7 @@ A small tool set, the same for every client:
     catalog_get      one endpoint in full: params, cost, reliability, siblings
     call             call a catalog endpoint by id, or one of your team's own tools
     call_media       call an audio endpoint and receive native audio plus call/cost metadata
-    resources_list   list durable platform-created resources owned by the active team
+    resources_list   list durable team resources (Fish voices use the connected account under BYOK)
     balance          the team's prepaid balance
     my_tools         what your team registered that you can call without the key
     catalog_request  request a missing capability

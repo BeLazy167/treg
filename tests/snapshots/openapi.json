@@ -10501,6 +10501,20 @@
             }
           },
           {
+            "in": "query",
+            "name": "source",
+            "required": false,
+            "schema": {
+              "default": "auto",
+              "enum": [
+                "auto",
+                "platform"
+              ],
+              "title": "Source",
+              "type": "string"
+            }
+          },
+          {
             "in": "header",
             "name": "x-treg-token",
             "required": false,

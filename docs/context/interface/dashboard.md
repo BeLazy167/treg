@@ -1020,10 +1020,21 @@ dashboard views rather than leaving the app; its allow-list now includes the **`
 ## Write UI — Phase 2b shipped (resource registration)
 The catalog Try drawer renders declared provider headers and multipart/file fields. Audio responses
 remain blobs with playback/download controls; replacing or closing a preview revokes its browser
-object URL. Fish voice-design candidates render inline and “Save as team voice” decodes the chosen
-base64 audio into the normal private voice-create multipart flow. The Fish team-voices panel reads
-the organization resource endpoint and offers use-in-TTS, inspect, rename, and confirmed delete; it
-never calls Fish's account-wide list on the platform key.
+object URL. The Fish voices panel calls the
+unified organization provider-resource route: BYOK reads the connected Fish account's list, while platform access reads only
+the current organization's resources. Both normalize into the same rows and offer use-in-TTS,
+rename, and confirmed delete. Save and rename use app-owned dialogs rather than browser prompts,
+mutations surface success or failure, and use-in-TTS unwraps the catalog endpoint-detail envelope.
+The panel never calls Fish's account-wide list on the platform key; the unusable Inspect action is absent.
+The Fish list action's Manual, CLI, API and agent recipes point at the unified resource surface, so
+platform teams do not see a misleading BYOK-required warning. Plain `/call/` remains the raw relay.
+
+**Team resources** is the third Your vault sub-tab (`view==='resources'`). It calls the organization
+resource endpoint with `source=platform`, so the table means exactly “durable objects owned by this
+team” even when the team has a Fish BYOK credential. Provider and kind filters narrow the table, the
+global dashboard search matches names and ids, and the client paginates ten rows at a time. Fish voice
+rows reuse the existing use-in-TTS, rename and confirmed-delete actions; every resource can copy its
+upstream id. The view participates in both hash-route whitelists and reloads on an organization switch.
 
 The **Tools** view registers resources (members+ via `canRegister`; viewers can't). The **Secrets** view
 (own sidebar tab) — `loadSecrets` (values never shown) + `addSecrets` (posts each filled `secretRows` row,

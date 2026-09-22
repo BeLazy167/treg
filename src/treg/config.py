@@ -246,6 +246,9 @@ class Settings(BaseSettings):
     platform_key_cloro: str = ""      # Bearer key (sk_live_…); Hobby metered rate $0.0004/credit; settles from X-Credits-Charged
     platform_key_minimax: str = ""    # Bearer key for MiniMax voice, image and video generation
     platform_key_fishaudio: str = ""  # Bearer key for Fish Audio speech and private voices
+    # Fish API-credit lookups need the workspace selector to read the shared workspace wallet.
+    # This is account metadata, not a credential and not another platform-provider slot.
+    platform_fishaudio_workspace_id: str = ""
     # The /jev landing page's live demo (application/jev_xboost.py). Both empty = the demo serves the
     # bundled snapshot and refuses judge requests with 503. `jev_treg_token` is an ordinary member
     # token of a treg team the demo spends from — treg is a client of itself here, so the page's

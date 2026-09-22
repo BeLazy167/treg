@@ -140,7 +140,7 @@ treg tool add google-ads --base-url https://googleads.googleapis.com \
 | `treg call ENDPOINT_ID --await` | `--timeout N` (default 900) | a generation call (video/image): submit, poll the provider, print the final response |
 | `treg host FILE` | `--content-type T`, `--json` | host a reference image/audio/video at a public URL a vendor can fetch (30 MB, 7-day TTL, free); prints the URL for `image_urls` / `audio_urls` |
 | `treg catalog request` | `"what's missing"` | searched, not there? file it — requests steer what gets added next |
-| `treg resources list` | `--provider fishaudio --kind voice` | list durable platform-created resources for the active team |
+| `treg resources list` | `--provider fishaudio --kind voice` | list Fish-account voices with BYOK, otherwise platform-created voices for the active team |
 
 ```bash
 treg catalog search "instagram profile"
@@ -165,8 +165,11 @@ treg call fishaudio.tts.s2-1-pro --method POST --header model=s2.1-pro \
 
 Create a voice with repeated `--upload voices=@clip.wav` parts and the fixed private fields shown by
 `treg catalog get fishaudio.voices.create`; then use its id as TTS `reference_id`. Platform-created
-voices appear only in `treg resources list --provider fishaudio --kind voice`. BYOK users may call
-Fish's account-wide voice list directly.
+voices appear in `treg resources list --provider fishaudio --kind voice`. With BYOK the same command
+lists the connected Fish account instead. Curl callers use
+`GET /orgs/{org_id}/provider-resources?provider=fishaudio&kind=voice`; it returns the same normalized
+rows with `X-Treg-Resource-Source: byok|platform`. BYOK users may also call Fish's raw account-wide
+list directly.
 
 **How a catalogued call is served — the credential ladder, in order:**
 
