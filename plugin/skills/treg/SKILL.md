@@ -215,12 +215,15 @@ How it works:
   valid system voice IDs, then choose HD or Turbo by endpoint id.
 - **Fish Audio is binary and team-scoped on the platform key.** Use
   `fishaudio.tts.s2-1-pro` with header `model: s2.1-pro`; redirect CLI stdout to an audio file or use
-  MCP `call_media`. Create reusable
+  MCP `call_media`. To use a Fish-supplied voice, call `fishaudio.voices.discover` with
+  `self=false` and `licensed=true|false`, then pass a returned `_id` as `reference_id`; `true`
+  selects Fish's rights-secured subset and `false` includes public/community voices. treg rechecks
+  that non-team id as public before platform-key synthesis. Create reusable
   private voices with `fishaudio.voices.create`, then list their ids with
   `treg resources list --provider fishaudio --kind voice` or MCP `resources_list`. Those list the
   connected Fish account under BYOK and otherwise list only the current team's platform voices; curl uses
-  `GET /orgs/{org_id}/provider-resources?provider=fishaudio&kind=voice`. Only those team
-  ids may be passed as platform-key `reference_id`; BYOK remains an unrestricted unmetered relay.
+  `GET /orgs/{org_id}/provider-resources?provider=fishaudio&kind=voice`. BYOK remains an unrestricted
+  unmetered relay.
 - **A video or image generation call is an async task.** The submission returns a task id at once; `--await` polls
   the provider until it finishes and prints the **final response only** on stdout. stderr carries the
   task id, a resumable `treg call …` command (Ctrl-C loses the wait, never the task or the money),
