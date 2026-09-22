@@ -3,7 +3,7 @@ source:
   docs: https://docs.fish.audio/api-reference/introduction
   curated: 2026-09-21
 pricing_url: https://docs.fish.audio/developer-guide/models-pricing/pricing-and-rate-limits
-limits: "Platform TTS supports s2.1-pro. The shared account uses a conservative 5-concurrent-request limit. Shared-key TTS accepts organization-owned voices and Fish voices verified as public and licensed; bring your own key to use other Fish models or account voices."
+limits: "Platform TTS supports s2.1-pro. The shared account uses a conservative 5-concurrent-request limit. Shared-key TTS accepts organization-owned voices and Fish voices verified as public; bring your own key to use other Fish models or account voices."
 proposed_capabilities:
   voice-gen.fishaudio.s2-1-pro.generate: "Generate speech with Fish Audio S2.1 Pro"
   voice-gen.private-voices.create: "Create a reusable private voice from reference audio"
@@ -25,7 +25,7 @@ endpoints:
         model: {type: string, required: true, enum: [s2.1-pro], example: s2.1-pro}
       body:
         text: {type: string, required: true, min: 1, example: "Welcome to treg."}
-        reference_id: {type: string_or_array, required: false, note: "Omit for Fish's default voice. On treg's key each id must be owned by the current team or verified by Fish as public and licensed."}
+        reference_id: {type: string_or_array, required: false, note: "Omit for Fish's default voice. On treg's key each id must be owned by the current team or verified by Fish as public."}
         temperature: {type: number, required: false, min: 0, max: 1, default: 0.7}
         top_p: {type: number, required: false, min: 0, max: 1, default: 0.7}
         prosody:
@@ -57,7 +57,7 @@ endpoints:
       public_lookup:
         method: GET
         path: /model/{id}
-        requires: {visibility: public, licensed: true}
+        requires: {visibility: public}
     test_request:
       headers: {model: s2.1-pro}
       body: {text: "This is a Fish Audio test.", format: mp3}
@@ -141,13 +141,13 @@ endpoints:
     scope: any_account
     method: GET
     path: /model
-    name: "Fish Audio: discover licensed voices"
-    summary: "Find Fish voices approved for reuse; pass an item's _id to TTS as reference_id."
+    name: "Fish Audio: discover public voices"
+    summary: "Find public Fish voices; pass an item's _id to TTS as reference_id. Set licensed=true for Fish's rights-secured subset."
     strict_query: true
     input:
       queryParams:
         self: {type: string, required: true, enum: ["false"], example: "false"}
-        licensed: {type: string, required: true, enum: ["true"], example: "true"}
+        licensed: {type: string, required: true, enum: ["true", "false"], example: "true", note: "true returns only Fish-licensed voices; false returns the broader public/community catalog."}
         title: {type: string, required: false, note: "Optional title search."}
         language: {type: string, required: false, note: "Optional language filter."}
         sort_by: {type: string, required: false, enum: [score, task_count, created_at], default: score}
@@ -155,7 +155,7 @@ endpoints:
         page_number: {type: integer, required: false, min: 1, default: 1}
     test_request:
       queryParams: {self: "false", licensed: "true", page_size: 3, page_number: 1}
-    cost: {type: free, value: 0, currency: USD, unit: call, note: "Licensed public-voice discovery is a free account-management read."}
+    cost: {type: free, value: 0, currency: USD, unit: call, note: "Public-voice discovery is a free account-management read."}
     verified: 2026-09-22
     example_response: examples/fishaudio.voices.discover.json
     docs_url: https://docs.fish.audio/api-reference/endpoint/model/list-models

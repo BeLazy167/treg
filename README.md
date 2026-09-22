@@ -69,14 +69,14 @@ treg balance                                     # exactly what that cost
 # (or `treg onboard` for the guided walkthrough)
 ```
 
-Fish Audio provides S2.1 Pro speech, licensed public-voice discovery, and private voice cloning.
+Fish Audio provides S2.1 Pro speech, public-voice discovery, and private voice cloning.
 Speech is binary stdout, so redirect it to a file. A discovered voice's `_id` or a team voice id is
 the TTS `reference_id`; voices created on treg's Fish account are durable team resources:
 
 ```bash
 treg call fishaudio.tts.s2-1-pro --method POST --header model=s2.1-pro \
   --data '{"text":"Hello from treg","format":"mp3"}' > speech.mp3
-treg call fishaudio.voices.discover --query self=false --query licensed=true
+treg call fishaudio.voices.discover --query self=false --query licensed=false --query language=en
 treg resources list --provider fishaudio --kind voice
 ```
 

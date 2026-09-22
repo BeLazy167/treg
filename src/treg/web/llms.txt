@@ -261,11 +261,12 @@ synchronous: call `minimax.voice-gen.speech-2-8-hd` or
 contains a generated-audio URL valid for 24 hours and the price scales with input characters.
 Call `minimax.voice-gen.voices.list` with `{"voice_type":"system"}` to discover valid voice IDs.
 
-Fish Audio supports `fishaudio.tts.s2-1-pro`, licensed voice discovery, and private voice
+Fish Audio supports `fishaudio.tts.s2-1-pro`, public voice discovery, and private voice
 create/update/delete tools. TTS returns binary audio: redirect CLI stdout to a file, or use MCP
 `call_media` for native audio content. Call `fishaudio.voices.discover` with `self=false` and
-`licensed=true`, then pass a returned `_id` as TTS `reference_id`; on treg's Fish account, any
-non-team id is rechecked as public and licensed before synthesis. List team voices with
+`licensed=true|false`, then pass a returned `_id` as TTS `reference_id`; `true` selects Fish's
+rights-secured subset and `false` includes public/community voices. On treg's Fish account, any
+non-team id is rechecked as public before synthesis. List team voices with
 `treg resources list --provider fishaudio --kind voice` or MCP `resources_list`; both use Fish-account
 voices under BYOK and otherwise return only the current team's platform-created voices. HTTP callers use
 `GET /orgs/{org_id}/provider-resources?provider=fishaudio&kind=voice` for the same normalized view. Fish's

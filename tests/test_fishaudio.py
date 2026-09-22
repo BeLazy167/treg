@@ -268,7 +268,7 @@ async def test_tts_checks_every_voice_in_an_array(
 
     async def relay(request, upstream_url, *args, **kwargs):
         calls.append((request.method, upstream_url))
-        return _response(200, b'{"_id":"not-ours","visibility":"public","licensed":false}')
+        return _response(200, b'{"_id":"not-ours","visibility":"private","licensed":false}')
 
     monkeypatch.setattr(call_service, "relay", relay)
     response = await clients.post(
@@ -280,7 +280,7 @@ async def test_tts_checks_every_voice_in_an_array(
     assert calls == [("GET", "https://api.fish.audio/model/not-ours")]
 
 
-async def test_tts_accepts_a_live_verified_public_licensed_voice_without_holding_db(
+async def test_tts_accepts_a_live_verified_public_community_voice_without_holding_db(
     clients: AsyncClient, fishaudio_platform_on, monkeypatch,
 ):
     await audit.drain()
@@ -293,7 +293,7 @@ async def test_tts_accepts_a_live_verified_public_licensed_voice_without_holding
         if request.method == "GET":
             return _response(
                 200,
-                b'{"_id":"public-voice","visibility":"public","licensed":true}',
+                b'{"_id":"public-voice","visibility":"public","licensed":false}',
             )
         return _response(200, b"audio", ((b"content-type", b"audio/mpeg"),))
 
@@ -312,8 +312,9 @@ async def test_tts_accepts_a_live_verified_public_licensed_voice_without_holding
     assert checked_out == [0, 0]
 
 
-async def test_licensed_voice_discovery_is_a_free_platform_action(
-    clients: AsyncClient, fishaudio_platform_on, monkeypatch,
+@pytest.mark.parametrize("licensed", ["true", "false"])
+async def test_public_voice_discovery_is_a_free_platform_action(
+    clients: AsyncClient, fishaudio_platform_on, monkeypatch, licensed,
 ):
     await audit.drain()
     observed = []
@@ -330,13 +331,13 @@ async def test_licensed_voice_discovery_is_a_free_platform_action(
     monkeypatch.setattr(call_service, "relay", relay)
     response = await clients.get(
         "/call/fishaudio.voices.discover",
-        params={"self": "false", "licensed": "true", "page_size": "3", "page_number": "1"},
+        params={"self": "false", "licensed": licensed, "page_size": "3", "page_number": "1"},
     )
     assert response.status_code == 200, response.text
     assert response.json()["items"][0]["_id"] == "public-voice"
     assert observed == [(
         "https://api.fish.audio/model",
-        {"self": "false", "licensed": "true", "page_size": "3", "page_number": "1"},
+        {"self": "false", "licensed": licensed, "page_size": "3", "page_number": "1"},
         0,
     )]
 

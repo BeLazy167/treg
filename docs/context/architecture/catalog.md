@@ -94,12 +94,13 @@ related:
 
 ## Fish Audio v1
 
-Fish Audio contributes synchronous S2.1 Pro TTS, licensed public-voice discovery, and private voice
+Fish Audio contributes synchronous S2.1 Pro TTS, public-voice discovery, and private voice
 create/update/delete tools. Fish's documented single-model GET is not exposed as a catalog tool
 because live private workspace voices return 403 while list, update, delete, and TTS reuse succeed.
-It is used internally only to verify that a non-team TTS reference is both public and licensed. The
-raw account-wide model list remains `own_account`/BYOK-only, while the separate discovery tool fixes
-`self=false` and `licensed=true`. `application.provider_resources.list_for_caller` gives HTTP,
+It is used internally only to verify that a non-team TTS reference is public. The raw account-wide
+model list remains `own_account`/BYOK-only, while the separate discovery tool fixes `self=false` and
+requires callers to choose whether `licensed=true` narrows the public catalog.
+`application.provider_resources.list_for_caller` gives HTTP,
 dashboard, CLI, and MCP one unified read: it selects Fish's account list when BYOK exists and
 otherwise returns only the current organization's `ProviderResource` voices in the same normalized
 shape. Its access-check database session closes before Fish I/O.

@@ -176,8 +176,9 @@ How it works:
 - **Fish Audio is binary and team-scoped on the platform key.** Use
   `fishaudio.tts.s2-1-pro` with header `model: s2.1-pro`; redirect CLI stdout to an audio file or use
   MCP `call_media`. To use a Fish-supplied voice, call `fishaudio.voices.discover` with
-  `self=false` and `licensed=true`, then pass a returned `_id` as `reference_id`; treg rechecks that
-  non-team id as public and licensed before platform-key synthesis. Create reusable
+  `self=false` and `licensed=true|false`, then pass a returned `_id` as `reference_id`; `true`
+  selects Fish's rights-secured subset and `false` includes public/community voices. treg rechecks
+  that non-team id as public before platform-key synthesis. Create reusable
   private voices with `fishaudio.voices.create`, then list their ids with
   `treg resources list --provider fishaudio --kind voice` or MCP `resources_list`. Those list the
   connected Fish account under BYOK and otherwise list only the current team's platform voices; curl uses
