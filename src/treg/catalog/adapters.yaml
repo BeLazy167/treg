@@ -2674,3 +2674,11 @@ adapters:
     in: {handle: body.handle, platform: body.platform}
     out: {analytics: "coalesce(result.instagram, result.youtube, result.tiktok, result.twitter, result.twitch, result.onlyfans, result.snapchat, result.discord, result.pinterest, result.facebook, result.linkedin)"}
     miss: "coalesce(result.instagram, result.youtube, result.tiktok, result.twitter, result.twitch, result.onlyfans, result.snapchat, result.discord, result.pinterest, result.facebook, result.linkedin) == null"
+  # enrich.email is `untestable` (a real address is its only input): its fixture is the hand-sanitized
+  # structural kind the Security rule allows, so the identity is stated here, not read from a test_request.
+  influencersclub.creators.enrich.email:
+    accepts: [[email]]
+    in: {email: body.email}
+    test_identity: {email: "creator@example.com"}
+    out: {platform: result.platform, username: result.username, url: result.url, full_name: result.fullname, followers: result.followers}
+    miss: "result.platform == null"
