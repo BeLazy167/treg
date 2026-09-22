@@ -258,6 +258,11 @@ version that satisfies it. Upgrading a dependency is a `uv lock --upgrade-packag
 Installing the published wheel (`pip install "tools-registry[server]"`) is a different path: a wheel
 carries no lock, so that operator pins versions in their own requirements file.
 
+The published source archive is built by Hatchling from the checkout. The
+`tool.hatch.build.targets.sdist.exclude` rules in `pyproject.toml` keep local linked worktrees,
+root-level working plans and previews, evidence, databases and environment files out of that public
+artifact. Release validation inspects the archive itself; a clean Git diff alone is not sufficient.
+
 The example is deliberately not the treg.to production Blueprint. The hosted topology and settings
 are private operational state.
 
