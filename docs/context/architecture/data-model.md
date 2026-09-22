@@ -38,6 +38,9 @@ sources:
   - src/treg/alembic/versions/0031_archive_result_admission.py
   - src/treg/alembic/versions/0032_archive_body_storage.py
   - src/treg/alembic/versions/0039_archive_own_key_and_repeat_pricing.py
+  - src/treg/alembic/versions/0043_provider_resources.py
+  - src/treg/domain/provider_resources.py
+  - src/treg/routers/provider_resources.py
   - src/treg/alembic/versions/0033_signup_promo_eligibility.py
   - src/treg/alembic/versions/0041_searchlog.py
   - src/treg/timeutil.py
@@ -59,6 +62,13 @@ related:
 ---
 
 # Data model
+
+Migration `0042` adds `ProviderResource`, the durable organization-owned counterpart to the existing
+async ownership rows. It stores provider, resource kind, upstream id, display name, creator, source
+call, lifecycle state and timestamps. `(provider, resource_kind, upstream_id)` is globally unique so
+one shared-account object cannot be assigned to two organizations. Deletes tombstone rows, preserving
+retry authorization and auditability. `GET /orgs/{org_id}/provider-resources` exposes only the active
+member's organization and filters by provider/kind. BYOK objects are never written here.
 
 Revision `0027` adds `ArenaRun` and `ArenaEvaluation` for [Enrich Arena](../interface/enrich-arena.md).
 Runs freeze encrypted inputs, adapter requests, outcomes and receipts; evaluations record an immutable

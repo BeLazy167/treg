@@ -2,6 +2,9 @@
 title: Endpoint catalog — what you can DO with a connected key, and which provider should do it
 status: shipped
 sources:
+  - src/treg/catalog/fishaudio.yaml
+  - src/treg/domain/provider_resources.py
+  - src/treg/routers/provider_resources.py
   - src/treg/catalog/tavily.yaml
   - src/treg/catalog/exa.yaml
   - src/treg/catalog/anyapi.extended.yaml
@@ -84,6 +87,21 @@ related:
 ---
 
 # Endpoint catalog — platform-grouped operations per provider
+
+## Fish Audio v1
+
+Fish Audio contributes synchronous S2.1 Pro TTS, voice design, and private voice create/read/update/
+delete tools. The account-wide model list remains `own_account`/BYOK-only. Shared-key TTS fixes the
+`model` header to `s2.1-pro`; voice design fixes it to `voice-design-1`; private voice creation fixes
+`type=tts`, `train_mode=fast`, and `visibility=private` in multipart form data. TTS is priced at the
+documented $15 per million UTF-8 bytes and voice design at $0.01 per successful request.
+
+`managed_resource` is the generic catalog contract for durable provider objects. It names the CRUD
+operation, resource kind, id location (path/query/body scalar or array, or create response), optional
+display-name source, and create-compensation endpoint. This is the narrow exception allowing an
+otherwise account-kind tool onto a platform key: the runtime proves organization ownership before
+relay. BYOK never applies this policy. Fish remains deployment-disabled until live management-price,
+shared-account permission, and commercial checks pass.
 
 ## Authorization metadata
 

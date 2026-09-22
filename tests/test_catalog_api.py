@@ -1145,20 +1145,24 @@ async def test_ai_generation_pages_keep_comparisons_curated_and_coverage_in_mode
     assert {row["capability"] for row in voice_rows} == {
         "voice-gen.speech-2-8-hd.generate",
         "voice-gen.speech-2-8-turbo.generate",
+        "voice-gen.fishaudio.s2-1-pro.generate",
+        "voice-gen.voice-design.create",
     }
     voice_endpoints = [endpoint for row in voice_rows for endpoint in row["endpoints"]]
     assert {endpoint["id"] for endpoint in voice_endpoints} == {
         "minimax.voice-gen.speech-2-8-hd",
         "minimax.voice-gen.speech-2-8-turbo",
+        "fishaudio.tts.s2-1-pro",
+        "fishaudio.voice-design.create",
     }
-    assert all(endpoint["provider"] == "minimax" for endpoint in voice_endpoints)
+    assert {endpoint["provider"] for endpoint in voice_endpoints} == {"minimax", "fishaudio"}
     catalog = cs.load()
     assert all(catalog.by_id[endpoint["id"]]["cache"] == "forbidden"
                for endpoint in voice_endpoints)
 
     voice_full = (await clients.get(
         "/catalog/platforms/voice-gen?include_hidden=1")).json()
-    assert voice_full["hidden_count"] == 1
+    assert voice_full["hidden_count"] == 6
     action_endpoints = {
         endpoint["id"]: endpoint
         for section in voice_full["domains"]
@@ -1167,6 +1171,17 @@ async def test_ai_generation_pages_keep_comparisons_curated_and_coverage_in_mode
         if endpoint["kind"] == "utility"
     }
     assert set(action_endpoints) == {"minimax.voice-gen.voices.list"}
+    account_endpoints = {
+        endpoint["id"]
+        for section in voice_full["domains"]
+        for row in section["rows"]
+        for endpoint in row["endpoints"]
+        if endpoint["kind"] == "account"
+    }
+    assert account_endpoints == {
+        "fishaudio.voices.create", "fishaudio.voices.list", "fishaudio.voices.get",
+        "fishaudio.voices.update", "fishaudio.voices.delete",
+    }
     assert catalog.by_id["minimax.voice-gen.voices.list"]["platform_request"] == {
         "body.voice_type": "system"
     }

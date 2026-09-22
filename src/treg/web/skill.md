@@ -43,8 +43,8 @@ teams: `treg org switch <slug>`.
 ## Already connected over MCP? Then you have the tools, not the CLI
 
 If you reached treg through `{BASE}/mcp/` — ChatGPT, Claude Code, Cursor — the CLI steps above do not
-apply to you. You have `catalog_search`, `catalog_get`, `call`, `balance`, `my_tools`,
-`catalog_request`, `feedback`, and `review`.
+apply to you. You have `catalog_search`, `catalog_get`, `call`, `call_media`, `resources_list`,
+`balance`, `my_tools`, `catalog_request`, `feedback`, and `review`.
 Everything in this document maps onto them:
 
 - "search the catalog" → `catalog_search`, then `catalog_get` for the exact price and parameters
@@ -173,6 +173,12 @@ How it works:
 - **Voice generation is synchronous.** MiniMax returns JSON containing a 24-hour audio URL. The
   catalog route fixes `stream:false` and `output_format:"url"`; use the voice-list action to discover
   valid system voice IDs, then choose HD or Turbo by endpoint id.
+- **Fish Audio is binary and team-scoped on the platform key.** Use
+  `fishaudio.tts.s2-1-pro` with header `model: s2.1-pro`; redirect CLI stdout to an audio file or use
+  MCP `call_media`. `fishaudio.voice-design.create` returns preview candidates. Create reusable
+  private voices with `fishaudio.voices.create`, then list their ids with
+  `treg resources list --provider fishaudio --kind voice` or MCP `resources_list`. Only those team
+  ids may be passed as platform-key `reference_id`; BYOK remains an unrestricted unmetered relay.
 - **A video or image generation call is an async task.** The submission returns a task id at once; `--await` polls
   the provider until it finishes and prints the **final response only** on stdout. stderr carries the
   task id, a resumable `treg call …` command (Ctrl-C loses the wait, never the task or the money),

@@ -140,6 +140,7 @@ treg tool add google-ads --base-url https://googleads.googleapis.com \
 | `treg call ENDPOINT_ID --await` | `--timeout N` (default 900) | a generation call (video/image): submit, poll the provider, print the final response |
 | `treg host FILE` | `--content-type T`, `--json` | host a reference image/audio/video at a public URL a vendor can fetch (30 MB, 7-day TTL, free); prints the URL for `image_urls` / `audio_urls` |
 | `treg catalog request` | `"what's missing"` | searched, not there? file it — requests steer what gets added next |
+| `treg resources list` | `--provider fishaudio --kind voice` | list durable platform-created resources for the active team |
 
 ```bash
 treg catalog search "instagram profile"
@@ -154,6 +155,18 @@ provider failed the task, 3 = timed out (resume with the printed command). Money
 submission and charged only on success; a failed task refunds the hold. Result URLs are time-limited
 (download promptly; treg never stores media). From a coding agent, raise the shell tool's timeout or
 run the call in the background - a video takes 1-5 minutes. `treg audit` shows each task's state.
+
+Fish Audio TTS is synchronous and returns audio bytes. Keep stdout clean and redirect it:
+
+```bash
+treg call fishaudio.tts.s2-1-pro --method POST --header model=s2.1-pro \
+  --data '{"text":"Hello","format":"mp3"}' > speech.mp3
+```
+
+Create a voice with repeated `--upload voices=@clip.wav` parts and the fixed private fields shown by
+`treg catalog get fishaudio.voices.create`; then use its id as TTS `reference_id`. Platform-created
+voices appear only in `treg resources list --provider fishaudio --kind voice`. BYOK users may call
+Fish's account-wide voice list directly.
 
 **How a catalogued call is served — the credential ladder, in order:**
 

@@ -11,6 +11,9 @@ sources:
   - src/treg/application/auth.py
   - src/treg/application/asynctasks.py
   - src/treg/application/call/resolve.py
+  - src/treg/domain/provider_resources.py
+  - src/treg/routers/provider_resources.py
+  - src/treg/alembic/versions/0043_provider_resources.py
   - src/treg/application/signup.py
   - src/treg/domain/governance/access.py
   - src/treg/domain/governance/budgets.py
@@ -379,6 +382,14 @@ not access by someone already holding a URL.
 `TagBudget` remains a ceiling on the org's shared balance, never a sub-account. `TagSpend` and
 `TagBudget` remain org-scoped in `domain.governance.teams.ORG_SCOPED_MODELS`, with `TagSpend` ahead of
 the ledger/hold it references. Pinned read scopes do not change budget concurrency or settlement.
+
+- **Shared-provider async objects are org-scoped.** Platform-key poll and result-fetch utility calls
+  must resolve their id through an org-owned `AsyncTaskRecord` or `AsyncResourceRecord` before the
+  upstream is contacted. BYOK calls keep access to ids in the team's own provider account.
+- **Shared-provider durable objects are org-scoped.** A platform-key managed-resource call verifies
+  every scalar or array id against `ProviderResource` before contacting the provider. Unknown and
+  cross-org ids return the same 403. All members may create, inspect, use, rename and delete their
+  team's objects; the organization boundary, not the creator, owns them. BYOK bypasses this table.
 
 ## Signup analytics boundary
 

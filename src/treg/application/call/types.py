@@ -24,6 +24,8 @@ _BLAME_BY_KIND: dict[str, Blame] = {
     "catalog_retired": "caller",
     "catalog_parameter_invalid": "caller",
     "async_resource_not_owned": "caller",
+    "provider_resource_not_owned": "caller",
+    "provider_resource_state_failed": "treg",
     "capability_pinned": "caller",
     "policy_denied": "caller",
     "daily_cap_reached": "caller",

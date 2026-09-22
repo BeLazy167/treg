@@ -26,6 +26,9 @@ def test_parser_dispatches_core():
     assert p.parse_args(["secret", "add", "k", "--value", "v"]).fn is cli.cmd_secret_add
     assert p.parse_args(["tool", "add", "t", "--base-url", "http://x", "--secret", "1"]).fn is cli.cmd_tool_add
     assert p.parse_args(["call", "echo", "get", "--query", "a=1"]).fn is cli.cmd_call
+    resources = p.parse_args(["resources", "list", "--provider", "fishaudio", "--kind", "voice"])
+    assert resources.fn is cli.cmd_resources_list
+    assert resources.provider == "fishaudio" and resources.kind == "voice"
 
 
 def test_call_named_and_single_url():

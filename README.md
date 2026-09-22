@@ -69,6 +69,18 @@ treg balance                                     # exactly what that cost
 # (or `treg onboard` for the guided walkthrough)
 ```
 
+Fish Audio provides S2.1 Pro speech, voice design, and private voice cloning. Speech is binary
+stdout, so redirect it to a file. Voices created on treg's Fish account are durable team resources:
+
+```bash
+treg call fishaudio.tts.s2-1-pro --method POST --header model=s2.1-pro \
+  --data '{"text":"Hello from treg","format":"mp3"}' > speech.mp3
+treg resources list --provider fishaudio --kind voice
+```
+
+With your own Fish key, requests remain an unrestricted, unmetered upstream relay and Fish owns the
+account boundary.
+
 Catalog tool inputs are described by `treg catalog get <id>`. Tools marked `strict_query` reject undeclared or repeated query parameters, unsupported values and request bodies.
 
 Your token identifies you on every call (`X-Treg-Token` header) and is the same for all tools.

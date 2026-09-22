@@ -877,6 +877,39 @@ class AsyncResourceRecord(SQLModel, table=True):
     tags: dict | None = Field(default=None, sa_column=Column("tags", JSON, nullable=True))
 
 
+class ProviderResource(SQLModel, table=True):
+    """A durable object created with treg's shared provider credential for one organization.
+
+    Unlike ``AsyncResourceRecord`` (short-lived poll/fetch ids), these rows are user-visible
+    resources with a lifecycle: voices today, and later phone numbers or mailboxes.  BYOK objects
+    never enter this table because the provider account already supplies their tenancy boundary.
+    """
+
+    __table_args__ = (
+        UniqueConstraint(
+            "provider", "resource_kind", "upstream_id",
+            name="uq_providerresource_provider_kind_upstream",
+        ),
+        Index(
+            "ix_providerresource_org_provider_kind_status",
+            "org_id", "provider", "resource_kind", "status",
+        ),
+    )
+
+    id: int | None = Field(default=None, primary_key=True)
+    org_id: int = Field(foreign_key="org.id", index=True)
+    provider: str = Field(index=True)
+    resource_kind: str = Field(index=True)
+    upstream_id: str = Field(index=True)
+    display_name: str = Field(default="")
+    created_by: str = Field(default="")
+    source_call_id: str = Field(default="", index=True)
+    status: str = Field(default="active", index=True)  # active | deleted
+    created_at: datetime = Field(default_factory=_now, index=True)
+    updated_at: datetime = Field(default_factory=_now)
+    deleted_at: datetime | None = Field(default=None, index=True)
+
+
 class TagSpend(SQLModel, table=True):
     """What one call cost, attributed to ONE of its caller tags. Written by `domain/money` only, inside
     the same transaction as the money movement — never through `audit.py`, which drops rows.

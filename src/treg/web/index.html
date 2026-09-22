@@ -3820,8 +3820,8 @@ product, including per-customer usage tracking and billing.</pre>
         </div>
       </div>
     </div>
-    <div class="scrim" role="dialog" aria-modal="true" v-if="epTry" @click.self="epTry=null" style="place-items:stretch;justify-items:end">
-      <div class="drawer"><div class="hd" style="padding:15px 18px;border-bottom:1px solid var(--line)"><b>Try “{{epTry.id}}”</b><button class="btn sm" @click="epTry=null" aria-label="Close">✕</button></div>
+    <div class="scrim" role="dialog" aria-modal="true" v-if="epTry" @click.self="closeEpTry" style="place-items:stretch;justify-items:end">
+      <div class="drawer"><div class="hd" style="padding:15px 18px;border-bottom:1px solid var(--line)"><b>Try “{{epTry.id}}”</b><button class="btn sm" @click="closeEpTry" aria-label="Close">✕</button></div>
         <div class="bd" style="padding:16px 18px;overflow:auto">
           <p class="explain"><span class="mono">{{epTry.method||'GET'}} {{epTryDisplayPath}}</span><br>{{epTry.summary}}</p>
           <p class="sub" v-if="epTryAccess" style="margin:0 0 12px">
@@ -3881,17 +3881,24 @@ treg login</pre></div>
                  class="banner" style="margin:0">
               {{epTryAccess.missing_message || (mkOauth(epTry.provider) ? 'Can\'t run this here yet — connect '+(epTry.provider_display||epTry.provider)+' first, then Run.' : 'This endpoint needs a key. Use the AI Agent / CLI / API tab, or bring your own.')}}
               <div style="margin-top:10px">
-                <button v-if="mkOauth(epTry.provider)" class="btn sm primary" @click="openProvider(epTry.provider); epTry=null">{{epTryAccess.action_label||endpointConnectLabel(epTry)}}</button>
+                <button v-if="mkOauth(epTry.provider)" class="btn sm primary" @click="openProvider(epTry.provider); closeEpTry()">{{epTryAccess.action_label||endpointConnectLabel(epTry)}}</button>
                 <button v-else-if="mkKnown(epTry.provider)" class="btn sm primary" @click="goByok(epTry.provider)">🔑 Bring your own key</button>
               </div>
             </div>
             <template v-else>
               <div class="field" v-for="p in epTryVisibleParams" :key="p.name" style="max-width:520px">
-                <label class="mono" style="min-width:140px">{{p.name}}<span v-if="p.required" style="color:var(--accent)"> *</span></label>
+                <label class="mono" style="min-width:140px">{{p.name}} <span class="muted">({{p.location}})</span><span v-if="p.required" style="color:var(--accent)"> *</span></label>
                 <input v-model="p.value" :placeholder="p.required?'required':'optional'"/>
               </div>
               <p v-if="!epTryVisibleParams.length && (epTry.method||'GET')==='GET'" class="sub" style="margin:0 0 12px">No parameters — just run it.</p>
-              <div v-if="(epTry.method||'GET')!=='GET' && epTryBody!==''" class="field" style="max-width:520px;align-items:flex-start">
+              <template v-if="epTryBodyType==='multipart'">
+                <div class="field" v-for="p in epTryMultipart" :key="p.name" style="max-width:520px">
+                  <label class="mono" style="min-width:140px">{{p.name}}<span v-if="p.required" style="color:var(--accent)"> *</span></label>
+                  <input v-if="String(p.type).includes('file')" type="file" :multiple="String(p.type).startsWith('array')" @change="setEpTryFiles(p.name,$event)"/>
+                  <input v-else v-model="p.value" :placeholder="p.required?'required':'optional'"/>
+                </div>
+              </template>
+              <div v-else-if="(epTry.method||'GET')!=='GET' && epTryBody!==''" class="field" style="max-width:520px;align-items:flex-start">
                 <label style="min-width:140px">Body (JSON)</label>
                 <textarea v-model="epTryBody" rows="6" style="width:100%;font-family:var(--mono);font-size:12px"></textarea>
               </div>
@@ -3902,7 +3909,28 @@ treg login</pre></div>
                 <span class="badge" :class="epTryStatus>=200&&epTryStatus<300?'ok':'invalid'">{{epTryStatus}}</span>
                 · {{epTryMs}}ms<span v-if="epTryCost!=null"> · charged {{money(epTryCost)}}<span v-if="epTryCost===0 && epTryStatus>=200 && epTryStatus<300" :title="epTryAccess&&epTryAccess.tier==='anonymous'?'This verified public upstream route used no provider key and did not charge the team balance.':'The provider reported charging nothing for this call — usually its own cache serving a repeat lookup (look for cached: true in the response). You are billed exactly what the provider billed treg.'"> {{epTryAccess&&epTryAccess.tier==='anonymous'?'(free — no provider key ⓘ)':'(free — provider charged 0 ⓘ)'}}</span></span>
                 · logged in Activity like any call</div>
-              <pre style="max-height:340px;overflow:auto">{{epTryResp}}</pre>
+              <audio v-if="epTryAudioUrl" :src="epTryAudioUrl" controls style="width:100%;margin:8px 0"></audio>
+              <a v-if="epTryAudioUrl" class="btn sm" :href="epTryAudioUrl" :download="epTryAudioName">Download audio</a>
+              <div v-if="epTryCandidates.length" style="display:grid;gap:10px;margin:10px 0">
+                <div v-for="(candidate,i) in epTryCandidates" :key="candidate.id||i" class="card" style="padding:10px">
+                  <audio :src="candidateAudio(candidate)" controls style="width:100%"></audio>
+                  <button class="btn sm" style="margin-top:7px" @click="saveVoiceCandidate(candidate,i)">Save as team voice</button>
+                </div>
+              </div>
+              <pre v-if="!epTryAudioUrl" style="max-height:340px;overflow:auto">{{epTryResp}}</pre>
+            </div>
+            <div v-if="epTry.provider==='fishaudio'" style="margin-top:20px;border-top:1px solid var(--line);padding-top:14px">
+              <div style="display:flex;justify-content:space-between;align-items:center"><b>Team voices</b><button class="btn sm" @click="loadFishVoices">Refresh</button></div>
+              <p v-if="!fishVoices.length" class="sub">No platform-created voices in this team yet.</p>
+              <div v-for="v in fishVoices" :key="v.id" class="card" style="padding:10px;margin-top:8px">
+                <div><b>{{v.display_name||'Untitled voice'}}</b><div class="mono muted" style="font-size:11px">{{v.upstream_id}}</div></div>
+                <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">
+                  <button class="btn sm" @click="useFishVoice(v)">Use in TTS</button>
+                  <button class="btn sm" @click="inspectFishVoice(v)">Inspect</button>
+                  <button class="btn sm" @click="renameFishVoice(v)">Rename</button>
+                  <button class="btn sm danger" @click="deleteFishVoice(v)">Delete</button>
+                </div>
+              </div>
             </div>
           </template>
         </div></div>
@@ -4047,8 +4075,8 @@ createApp({
       // marketplace endpoint Try-it drawer
       callView:null, callViewFull:false, callCopied:'',  // Activity → one call's request/response drawer
       actOkOnly:true,  // Activity feed: successes only by default; the toggle shows failed/refused too
-      epTry:null, epTryTab:'agent', epTryAccess:null, epTryAccessByMethod:{}, epTryAuthMethod:'', epTryParams:[], epTryBody:'', epTryResp:'', epTryStatus:null,
-      epTryMs:null, epTryCost:null, epTryBusy:false,
+      epTry:null, epTryTab:'agent', epTryAccess:null, epTryAccessByMethod:{}, epTryAuthMethod:'', epTryParams:[], epTryBody:'', epTryBodyType:'json', epTryMultipart:[], epTryFiles:{}, epTryResp:'', epTryStatus:null,
+      epTryMs:null, epTryCost:null, epTryBusy:false, epTryAudioUrl:'', epTryAudioName:'speech.mp3', epTryCandidates:[], fishVoices:[],
       catalogClis:null,  // bin → catalog default deny patterns (lazy, from /providers.json)
       newSkill:false, skillJson:'', skillBusy:false, skillErr:'', skillMode:'folder',
       skillFiles:[], detected:null, skillSel:{}, skillVals:{}, skillResults:null,
@@ -4418,17 +4446,25 @@ createApp({
     epTryDisplayPath(){ if(!this.epTry) return '';
       return (this.epTry.authorization_paths||{})[this.epTryAuthMethod]||this.epTry.path; },
     epTryVisibleParams(){ return (this.epTryParams||[]).filter(p=>this.epTryParamAllowed(p)); },
-    epTryQuery(){ return this.epTryVisibleParams.filter(p=>p.value!=='' && p.value!=null)
+    epTryQuery(){ return this.epTryVisibleParams.filter(p=>['query','path'].includes(p.location) && p.value!=='' && p.value!=null)
       .map(p=>encodeURIComponent(p.name)+'='+encodeURIComponent(p.value)).join('&'); },
     epTryShellBody(){ return "'"+String(this.epTryBody).replace(/'/g,"'\"'\"'")+"'"; },
     epTryCliCall(){ if(!this.epTry) return '';
-      const args=this.epTryVisibleParams.filter(p=>p.value!=='' && p.value!=null)
+      const args=this.epTryVisibleParams.filter(p=>['query','path'].includes(p.location) && p.value!=='' && p.value!=null)
         .map(p=>`--query ${p.name}=${/\s/.test(String(p.value))?JSON.stringify(String(p.value)):p.value}`).join(' ');
       const method=(this.epTry.method||'GET').toUpperCase();
       let s=`treg call ${this.epTry.id}${args?' '+args:''}`;
       if(method!=='GET') s+=` --method ${method}`;
       if(this.epTryAuthMethod) s+=` --authorization-method ${this.epTryAuthMethod}`;
-      if(method!=='GET' && this.epTryBody.trim()) s+=` --data ${this.epTryShellBody}`;
+      for(const p of this.epTryVisibleParams.filter(p=>p.location==='header'&&String(p.value)!==''))
+        s+=` --header ${p.name}=${JSON.stringify(String(p.value))}`;
+      if(this.epTryBodyType==='multipart'){
+        for(const p of this.epTryMultipart.filter(p=>!String(p.type).includes('file')&&String(p.value)!==''))
+          s+=` --form ${p.name}=${JSON.stringify(String(p.value))}`;
+        for(const p of this.epTryMultipart.filter(p=>String(p.type).includes('file')))
+          s+=` --upload ${p.name}=@${p.name==='voices'?'<reference-audio>':'<file>'}`;
+      }else if(method!=='GET' && this.epTryBody.trim()) s+=` --data ${this.epTryShellBody}`;
+      if(this.epTry.id==='fishaudio.tts.s2-1-pro') s+=' > speech.mp3';
       return s; },
     epTryCurl(){ if(!this.epTry) return '';
       const q=this.epTryQuery; const url=`${this.proxy}/call/${this.epTry.id}${q?'?'+q:''}`;
@@ -4436,7 +4472,12 @@ createApp({
       let s=`curl -X ${method} "${url}" \\\n  -H "X-Treg-Token: ${tok}"`;
       if(this.sessionMode && this.activeSlugNow) s+=` \\\n  -H "X-Treg-Org: ${this.activeSlugNow}"`;  // minted identity token needs the org header
       if(this.epTryAuthMethod) s+=` \\\n  -H "X-Treg-Authorization-Method: ${this.epTryAuthMethod}"`;
-      if(method!=='GET' && this.epTryBody.trim()) s+=` \\\n  -H "Content-Type: application/json" \\\n  --data ${this.epTryShellBody}`;
+      for(const p of this.epTryVisibleParams.filter(p=>p.location==='header'&&String(p.value)!=='')) s+=` \\\n  -H "${p.name}: ${String(p.value).replace(/"/g,'\\"')}"`;
+      if(this.epTryBodyType==='multipart'){
+        for(const p of this.epTryMultipart.filter(p=>!String(p.type).includes('file')&&String(p.value)!=='')) s+=` \\\n  -F "${p.name}=${String(p.value).replace(/"/g,'\\"')}"`;
+        for(const p of this.epTryMultipart.filter(p=>String(p.type).includes('file'))) s+=` \\\n  -F "${p.name}=@${p.name==='voices'?'<reference-audio>':'<file>'}"`;
+      }else if(method!=='GET' && this.epTryBody.trim()) s+=` \\\n  -H "Content-Type: application/json" \\\n  --data ${this.epTryShellBody}`;
+      if(this.epTry.id==='fishaudio.tts.s2-1-pro') s+=' \\\n  --output speech.mp3';
       return s; },
     // token + team embedded HERE ONLY (a copy-and-run-now context) — the setup line elsewhere stays clean
     epTrySetupLine(){ const S=this.activeSlugNow||'<team-slug>', T=this.myToken||'<YOUR_TOKEN>';
@@ -5701,7 +5742,7 @@ createApp({
     goPublicTool(service){ location.href='/tools/'+encodeURIComponent(service); },
     goByok(service){
       this.mkTab='platform'; this.mkCat='';
-      this.byokFocus=service||null; this.epTry=null;
+      this.byokFocus=service||null; this.closeEpTry();
       this.go('connections');
       if(!service) return;
       this.$nextTick(()=>{ const el=document.getElementById('prov-'+service);
@@ -5878,6 +5919,7 @@ createApp({
         if(names.length) out.push({key, label, type, rows:names.map(n=>({name:n, ...map[n]}))}); };
       add('query','Query', i.queryParams);
       add('path','Path', i.pathParams);
+      add('headers','Headers', i.headers);
       add('body','Body', i.body, i.bodyType);
       return out; },
     // Examples arrive as real JSON values, so an array or object has to be stringified rather than
@@ -6238,30 +6280,38 @@ createApp({
     async copy(text){ if(!(await this.toClipboard(text))) return; this.copied=true; setTimeout(()=>this.copied=false,1500); },
     // ---- marketplace endpoint Try-it ----
     openEpTry(e){
+      this.closeEpTry();
       this.epTry=e; this.epTryTab='agent'; this.epTryResp=''; this.epTryStatus=null; this.epTryMs=null; this.epTryCost=null;
       this.epTryAccess=null; this.epTryAccessByMethod={}; this.epTryBusy=false;
       this.epTryAuthMethod=e.authorization_method||((e.authorization_methods||[])[0])||'';
       const secs=this.paramSections(e);
       const tr=e.test_request||{};  // the live-verified request — the best possible prefill
-      const trq={...(tr.queryParams||{}), ...(tr.pathParams||{})};
+      const trq={...(tr.queryParams||{}), ...(tr.pathParams||{}), ...(tr.headers||{})};
       const qp=[];  // query + path params (path placeholders are consumed from query server-side)
       for(const s of secs) if(s.key!=='body') for(const p of s.rows)
         qp.push({name:p.name, required:!!p.required, authorization_methods:p.authorization_methods||[],
+                 location:s.key==='headers'?'header':s.key,
                  value: trq[p.name]!=null ? this.fmtExample(trq[p.name])
                         : (p.example!=null ? this.fmtExample(p.example) : '')});
       // test_request may carry params the input spec doesn't list — keep them, they made the call work
-      for(const [k,v] of Object.entries(trq)) if(!qp.some(p=>p.name===k)) qp.push({name:k, required:false, value:this.fmtExample(v)});
+      for(const [k,v] of Object.entries(trq)) if(!qp.some(p=>p.name===k)) qp.push({name:k, required:false, location:'query', value:this.fmtExample(v)});
       this.epTryParams=qp;
+      const bodySec=secs.find(s=>s.key==='body');
+      this.epTryBodyType=(bodySec&&bodySec.type)||'json'; this.epTryMultipart=[]; this.epTryFiles={};
+      if(this.epTryBodyType==='multipart' && bodySec){
+        this.epTryMultipart=bodySec.rows.map(p=>({name:p.name,type:p.type||'string',required:!!p.required,
+          value:tr.body&&tr.body[p.name]!=null?this.fmtExample(tr.body[p.name]):(p.example!=null?this.fmtExample(p.example):'')}));
+      }
       let body='';
-      if((e.method||'GET')!=='GET'){
+      if((e.method||'GET')!=='GET' && this.epTryBodyType!=='multipart'){
         if(tr.body!=null){ body=JSON.stringify(tr.body,null,2); }  // verbatim — array-vs-object is ground truth here
         else{
-          const bodySec=secs.find(s=>s.key==='body');
           if(bodySec){ const o={}; for(const p of bodySec.rows) if(p.example!=null||p.required) o[p.name]=p.example!=null?p.example:null;
             body=JSON.stringify(o,null,2); }
         }
       }
       this.epTryBody=body;
+      if(e.provider==='fishaudio') this.loadFishVoices(); else this.fishVoices=[];
       // the authenticated dry-run: which ladder rung would serve this org, and at what price
       this.loadEpTryAccessPolicy();
     },
@@ -6297,15 +6347,32 @@ createApp({
     async runEpTry(){
       const e=this.epTry; if(!e) return; this.epTryBusy=true; const t0=performance.now();
       try{
-        const qs=this.epTryVisibleParams.filter(p=>String(p.value)!=='').map(p=>encodeURIComponent(p.name)+'='+encodeURIComponent(p.value)).join('&');
+        if(this.epTryAudioUrl) URL.revokeObjectURL(this.epTryAudioUrl);
+        this.epTryAudioUrl=''; this.epTryCandidates=[];
+        const qs=this.epTryVisibleParams.filter(p=>['query','path'].includes(p.location)&&String(p.value)!=='').map(p=>encodeURIComponent(p.name)+'='+encodeURIComponent(p.value)).join('&');
         const opts={method:e.method||'GET', credentials:'include', headers:{...this.headers()}};
         if(this.epTryAuthMethod) opts.headers['X-Treg-Authorization-Method']=this.epTryAuthMethod;
-        if(opts.method!=='GET' && this.epTryBody.trim()){ opts.body=this.epTryBody; opts.headers['content-type']='application/json'; }
+        for(const p of this.epTryVisibleParams.filter(p=>p.location==='header'&&String(p.value)!=='')) opts.headers[p.name]=String(p.value);
+        if(this.epTryBodyType==='multipart'){
+          const form=new FormData();
+          for(const p of this.epTryMultipart){
+            if(String(p.type).includes('file')) for(const file of (this.epTryFiles[p.name]||[])) form.append(p.name,file,file.name);
+            else if(String(p.value)!=='') form.append(p.name,String(p.value));
+          }
+          opts.body=form;
+        }else if(opts.method!=='GET' && this.epTryBody.trim()){ opts.body=this.epTryBody; opts.headers['content-type']='application/json'; }
         const r=await fetch('/call/'+e.id+(qs?'?'+qs:''), opts);
         this.epTryStatus=r.status; this.epTryMs=Math.round(performance.now()-t0);
-        const txt=await r.text();
-        if(!txt){ this.epTryResp='(empty response body - status '+r.status+')'; }
-        else{ try{ this.epTryResp=JSON.stringify(JSON.parse(txt),null,2).slice(0,20000); }catch(_){ this.epTryResp=txt.slice(0,8000); } }
+        const contentType=(r.headers.get('content-type')||'').toLowerCase();
+        if(contentType.startsWith('audio/')){
+          const blob=await r.blob(); this.epTryAudioUrl=URL.createObjectURL(blob);
+          this.epTryAudioName='speech.'+({'audio/mpeg':'mp3','audio/wav':'wav','audio/opus':'opus'}[contentType.split(';')[0]]||'audio');
+          this.epTryResp='Audio ready ('+this.fmtBytes(blob.size)+')';
+        }else{
+          const txt=await r.text();
+          if(!txt){ this.epTryResp='(empty response body - status '+r.status+')'; }
+          else{ try{ const parsed=JSON.parse(txt); this.epTryResp=JSON.stringify(parsed,null,2).slice(0,20000); this.epTryCandidates=Array.isArray(parsed.candidates)?parsed.candidates:[]; }catch(_){ this.epTryResp=txt.slice(0,8000); } }
+        }
         // The charge, read back from the same telemetry Activity renders. The audit writer is
         // fire-and-forget, so give it a beat; also refresh the balance pill.
         setTimeout(async()=>{ try{
@@ -6316,6 +6383,62 @@ createApp({
         }catch(_){}} , 900);
       }catch(err){ this.epTryResp='Request failed: '+err; this.epTryStatus=0; this.epTryMs=Math.round(performance.now()-t0); }
       finally{ this.epTryBusy=false; }
+    },
+    closeEpTry(){
+      if(this.epTryAudioUrl) URL.revokeObjectURL(this.epTryAudioUrl);
+      for(const c of this.epTryCandidates||[]) if(c._object_url) URL.revokeObjectURL(c._object_url);
+      this.epTryAudioUrl=''; this.epTryCandidates=[]; this.epTry=null;
+    },
+    setEpTryFiles(name,event){ this.epTryFiles={...this.epTryFiles,[name]:Array.from(event.target.files||[])}; },
+    candidateAudio(candidate){
+      if(candidate._object_url) return candidate._object_url;
+      const raw=candidate.audio_base64||candidate.audio||''; if(!raw) return '';
+      try{ const bytes=Uint8Array.from(atob(raw),c=>c.charCodeAt(0)); const blob=new Blob([bytes],{type:'audio/wav'});
+        candidate._object_url=URL.createObjectURL(blob); return candidate._object_url; }catch(_){ return ''; }
+    },
+    async saveVoiceCandidate(candidate,index){
+      const title=prompt('Voice name','Designed voice '+(index+1)); if(!title) return;
+      try{
+        const raw=candidate.audio_base64||candidate.audio; if(!raw) throw new Error('candidate has no audio');
+        const bytes=Uint8Array.from(atob(raw),c=>c.charCodeAt(0)); const form=new FormData();
+        form.append('type','tts'); form.append('title',title.trim()); form.append('train_mode','fast'); form.append('visibility','private');
+        form.append('voices',new Blob([bytes],{type:'audio/wav'}),'voice-design.wav');
+        if(candidate.text) form.append('texts',candidate.text);
+        const signature=candidate.signature||candidate.voice_design_signature||candidate.id;
+        if(signature) form.append('voice_design_signatures',signature);
+        const r=await fetch('/call/fishaudio.voices.create',{method:'POST',credentials:'include',headers:{...this.headers()},body:form});
+        if(!r.ok) throw new Error((await r.text())||('HTTP '+r.status));
+        this.epTryResp=JSON.stringify(await r.json(),null,2); await this.loadFishVoices();
+      }catch(err){ this.epTryResp='Could not save voice: '+err; }
+    },
+    async loadFishVoices(){
+      if(!this.activeOrgId) return;
+      try{ this.fishVoices=await this.api('/orgs/'+this.activeOrgId+'/provider-resources?provider=fishaudio&kind=voice'); }
+      catch(_){ this.fishVoices=[]; }
+    },
+    async useFishVoice(voice){
+      const all=[...(this.plats.list||[]),...((this.platData&&this.platData.endpoints)||[])];
+      let ep=all.find(e=>e.id==='fishaudio.tts.s2-1-pro');
+      try{ if(!ep) ep=await this.api('/catalog/endpoints/fishaudio.tts.s2-1-pro'); }
+      catch(err){ this.epTryResp='Could not open Fish Audio TTS: '+err; return; }
+      this.openEpTry(ep); this.epTryTab='manual';
+      try{ const body=JSON.parse(this.epTryBody||'{}'); body.reference_id=voice.upstream_id; this.epTryBody=JSON.stringify(body,null,2); }catch(_){}
+    },
+    async inspectFishVoice(voice){
+      let ep=((this.platData&&this.platData.endpoints)||[]).find(e=>e.id==='fishaudio.voices.get');
+      try{ if(!ep) ep=await this.api('/catalog/endpoints/fishaudio.voices.get'); }
+      catch(err){ this.epTryResp='Could not open voice details: '+err; return; }
+      this.openEpTry(ep); this.epTryTab='manual'; const p=this.epTryParams.find(p=>p.name==='id'); if(p)p.value=voice.upstream_id;
+    },
+    async renameFishVoice(voice){
+      const title=prompt('Voice name',voice.display_name||''); if(!title)return;
+      try{ const r=await fetch('/call/fishaudio.voices.update?id='+encodeURIComponent(voice.upstream_id),{method:'PATCH',credentials:'include',headers:{...this.headers(),'content-type':'application/json'},body:JSON.stringify({title:title.trim(),visibility:'private'})}); if(!r.ok)throw new Error(await r.text()); await this.loadFishVoices(); }
+      catch(err){ this.epTryResp='Could not rename voice: '+err; }
+    },
+    async deleteFishVoice(voice){
+      if(!confirm('Delete “'+(voice.display_name||voice.upstream_id)+'”? This cannot be undone.'))return;
+      try{ const r=await fetch('/call/fishaudio.voices.delete?id='+encodeURIComponent(voice.upstream_id),{method:'DELETE',credentials:'include',headers:{...this.headers()}}); if(!(r.ok||r.status===404))throw new Error(await r.text()); await this.loadFishVoices(); }
+      catch(err){ this.epTryResp='Could not delete voice: '+err; }
     },
     async runTry(){ this.trying=true; const t0=performance.now();
       try{ const opts={method:this.tryMethod, credentials:'include', headers:{...this.headers()}};

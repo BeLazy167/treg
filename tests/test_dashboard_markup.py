@@ -924,7 +924,7 @@ def test_catalog_connection_badges_require_an_endpoint_compatible_grant():
     assert "endpointConnectLabel(e)" in logic
     drawer = INDEX[INDEX.index("<!-- MANUAL — the live test form -->") : INDEX.index("<!-- access reminder toast:")]
     assert "epTryAccess.connect_command" not in drawer
-    assert "openProvider(epTry.provider); epTry=null" in drawer
+    assert "openProvider(epTry.provider); closeEpTry()" in drawer
     assert "epTryAccess.action_label||endpointConnectLabel(epTry)" in drawer
 
 

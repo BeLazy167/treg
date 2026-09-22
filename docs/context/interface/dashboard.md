@@ -1018,6 +1018,13 @@ dashboard views rather than leaving the app; its allow-list now includes the **`
 **`start`** (Getting started) views too, so those are reachable by Back/Forward like the rest.
 
 ## Write UI — Phase 2b shipped (resource registration)
+The catalog Try drawer renders declared provider headers and multipart/file fields. Audio responses
+remain blobs with playback/download controls; replacing or closing a preview revokes its browser
+object URL. Fish voice-design candidates render inline and “Save as team voice” decodes the chosen
+base64 audio into the normal private voice-create multipart flow. The Fish team-voices panel reads
+the organization resource endpoint and offers use-in-TTS, inspect, rename, and confirmed delete; it
+never calls Fish's account-wide list on the platform key.
+
 The **Tools** view registers resources (members+ via `canRegister`; viewers can't). The **Secrets** view
 (own sidebar tab) — `loadSecrets` (values never shown) + `addSecrets` (posts each filled `secretRows` row,
 per-name errors, `encode:true` body for the edge WAF) + `deleteSecret` (surfaces the 409
