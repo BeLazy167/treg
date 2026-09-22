@@ -223,7 +223,8 @@ How it works:
   `treg resources list --provider fishaudio --kind voice` or MCP `resources_list`. Those list the
   connected Fish account under BYOK and otherwise list only the current team's platform voices; curl uses
   `GET /orgs/{org_id}/provider-resources?provider=fishaudio&kind=voice`. BYOK remains an unrestricted
-  unmetered relay.
+  unmetered relay. `treg resources list` requires CLI ≥ 0.21.0; run `treg update` if the
+  `resources` command is unrecognised.
 - **A video or image generation call is an async task.** The submission returns a task id at once; `--await` polls
   the provider until it finishes and prints the **final response only** on stdout. stderr carries the
   task id, a resumable `treg call …` command (Ctrl-C loses the wait, never the task or the money),
